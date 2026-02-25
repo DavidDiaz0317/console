@@ -1275,8 +1275,8 @@ export function GPUReservations() {
         <BaseModal.Footer>
           <div className="flex-1" />
           <div className="flex gap-3">
-            <button onClick={() => setDeleteConfirmId(null)}
-              className="px-4 py-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={() => setDeleteConfirmId(null)} disabled={isDeleting}
+              className="px-4 py-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors">
               {t('gpuReservations.delete.cancel')}
             </button>
             <button onClick={handleDeleteReservation} disabled={isDeleting}

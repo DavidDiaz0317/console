@@ -505,7 +505,7 @@ export function UpdateSettings() {
                 </button>
               </div>
             </div>
-            <button onClick={dismissProgress} className="text-green-400/60 hover:text-green-400">
+            <button onClick={dismissProgress} disabled={isUpdating} className="text-green-400/60 hover:text-green-400 disabled:opacity-50">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -523,7 +523,7 @@ export function UpdateSettings() {
                 )}
               </div>
             </div>
-            <button onClick={dismissProgress} className="text-red-400/60 hover:text-red-400 shrink-0 ml-2">
+            <button onClick={dismissProgress} disabled={isUpdating} className="text-red-400/60 hover:text-red-400 disabled:opacity-50 shrink-0 ml-2">
               <X className="w-4 h-4" />
             </button>
           </div>

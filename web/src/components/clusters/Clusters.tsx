@@ -619,7 +619,7 @@ function NamespaceResources({ clusterName, namespace }: NamespaceResourcesProps)
           <div className="border-l border-border/50 pl-2">
             {deployments.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('deployments')} className="flex items-center gap-1.5 py-1 hover:bg-card/30 rounded px-1 w-full text-left">
+                <button onClick={() => toggleType('deployments')} disabled={deploymentsLoading && !loadingTimedOut} className="flex items-center gap-1.5 py-1 hover:bg-card/30 rounded px-1 w-full text-left disabled:opacity-60 disabled:cursor-wait">
                   {expandedTypes.has('deployments') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 font-medium"><Layers className="w-3 h-3" />Deploy</span>
                   <span className="text-muted-foreground">({deployments.length})</span>
@@ -1318,7 +1318,7 @@ export function _ClusterDetail({ clusterName, onClose, onRename }: _ClusterDetai
                         <span key={role} className="text-xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{role}</span>
                       ))}
                     </div>
-                    <button onClick={() => setExpandedNodes(prev => { const next = new Set(prev); next.delete(node.name); return next })} className="text-muted-foreground hover:text-foreground">
+                    <button onClick={() => setExpandedNodes(prev => { const next = new Set(prev); next.delete(node.name); return next })} disabled={nodesLoading} className="text-muted-foreground hover:text-foreground disabled:opacity-50">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
