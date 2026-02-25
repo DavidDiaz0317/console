@@ -22,7 +22,7 @@ function StatusDot({ status }: { status: string }) {
 
 // Metric tile
 function MetricTile({ icon: Icon, label, value, sub, accent }: {
-  icon: React.ElementType
+  icon: React.ElementType<{ className?: string }>
   label: string
   value: number
   sub?: string

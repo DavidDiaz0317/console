@@ -14,7 +14,7 @@ const INSTALL_COMMAND = 'brew install kubestellar/tap/kc-agent && kc-agent'
 export function AgentSection({ isConnected, health, refresh }: AgentSectionProps) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<number>()
+  const timeoutRef = useRef<number>(undefined)
 
   const copyInstallCommand = async () => {
     await navigator.clipboard.writeText(INSTALL_COMMAND)

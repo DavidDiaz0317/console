@@ -2,6 +2,7 @@ import { CheckCircle, XCircle, AlertTriangle, HelpCircle, MinusCircle } from 'lu
 import { getIconForKind } from '../../../lib/resourceCategories'
 import type { MonitoredResource, ResourceHealthStatus } from '../../../types/workloadMonitor'
 import { useTranslation } from 'react-i18next'
+import type { JSX } from 'react'
 
 interface ListProps {
   resources: MonitoredResource[]
