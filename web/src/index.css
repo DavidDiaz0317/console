@@ -39,6 +39,31 @@
     --color-warning: #f59e0b;
     --color-error: #ef4444;
     --color-info: #06b6d4;
+    --color-neutral: #6b7280;
+
+    /* AI provider brand colors */
+    --provider-anthropic: #d97706;
+    --provider-openai: #10a37f;
+    --provider-google-blue: #4285f4;
+    --provider-google-green: #34a853;
+    --provider-google-red: #ea4335;
+    --provider-cursor: #6366f1;
+    --provider-cursor-light: #818cf8;
+    --provider-vscode: #007acc;
+    --provider-codeium: #09b6a2;
+    --provider-cline-bg: #1a1a2e;
+    --provider-cline-accent: #e94560;
+    --provider-jetbrains: #000000;
+    --provider-continue: #f97316;
+    --provider-raycast: #ff6363;
+    --provider-openwebui: #8b5cf6;
+    --provider-bob-primary: #4f46e5;
+    --provider-bob-dark: #3730a3;
+    --provider-bob-light: #f9fafb;
+    --provider-bob-border: #e5e7eb;
+    --provider-bob-eye: #1f2937;
+    --provider-bob-neutral: #9ca3af;
+    --provider-claude-local: #22c55e;
 
     /* Glass effect - can be overridden by theme */
     --glass-background: rgba(17, 24, 39, 0.92);
