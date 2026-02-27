@@ -37,7 +37,7 @@ export function ResolutionHistoryPanel({ onApplyResolution }: ResolutionHistoryP
   const [showShared, setShowShared] = useState(true)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [exportResolution, setExportResolution] = useState<Resolution | null>(null)
-  const deleteConfirmTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const deleteConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     return () => clearTimeout(deleteConfirmTimerRef.current)

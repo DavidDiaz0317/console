@@ -379,8 +379,8 @@ export function WidgetSettingsSection() {
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
   const [selectedWidget, setSelectedWidget] = useState<string | null>(null)
-  const downloadedTimerRef = useRef<ReturnType<typeof setTimeout>>()
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const downloadedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     return () => {

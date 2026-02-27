@@ -104,7 +104,7 @@ export function Weather({ config }: { config?: WeatherConfig }) {
   const [citySearchResults, setCitySearchResults] = useState<GeocodingResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showCityDropdown, setShowCityDropdown] = useState(false)
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>(() => {
     const saved = localStorage.getItem('weather-saved-locations-v2')

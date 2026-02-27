@@ -159,7 +159,7 @@ function getDemoProviders(): ProviderHealthInfo[] {
 export function useProviderHealth() {
   const [providers, setProviders] = useState<ProviderHealthInfo[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const { clusters } = useClusters()
 
   const fetchProviders = useCallback(async () => {

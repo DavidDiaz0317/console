@@ -14,7 +14,7 @@ interface CodeBlockProps {
 export function CodeBlock({ children, language = 'text', fontSize = 'sm' }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
-  const timeoutRef = useRef<number>()
+  const timeoutRef = useRef<number | undefined>(undefined)
 
   const handleCopy = async () => {
     // Clear any pending timeout to avoid race conditions

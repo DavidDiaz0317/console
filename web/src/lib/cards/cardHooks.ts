@@ -79,9 +79,9 @@ export interface UseCardFiltersResult<T> {
   /** Set cluster filter dropdown visibility */
   setShowClusterFilter: (show: boolean) => void
   /** Ref for cluster filter dropdown (for click outside handling) */
-  clusterFilterRef: React.RefObject<HTMLDivElement>
+  clusterFilterRef: React.RefObject<HTMLDivElement | null>
   /** Ref for cluster filter button (portal positioning) */
-  clusterFilterBtnRef: React.RefObject<HTMLButtonElement>
+  clusterFilterBtnRef: React.RefObject<HTMLButtonElement | null>
   /** Computed fixed position for portaled cluster dropdown */
   dropdownStyle: { top: number; left: number } | null
 }
@@ -869,9 +869,9 @@ export interface UseChartFiltersResult {
   /** Set cluster filter dropdown visibility */
   setShowClusterFilter: (show: boolean) => void
   /** Ref for cluster filter dropdown (for click outside handling) */
-  clusterFilterRef: React.RefObject<HTMLDivElement>
+  clusterFilterRef: React.RefObject<HTMLDivElement | null>
   /** Ref for cluster filter button (portal positioning) */
-  clusterFilterBtnRef: React.RefObject<HTMLButtonElement>
+  clusterFilterBtnRef: React.RefObject<HTMLButtonElement | null>
   /** Computed fixed position for portaled cluster dropdown */
   dropdownStyle: { top: number; left: number } | null
 }

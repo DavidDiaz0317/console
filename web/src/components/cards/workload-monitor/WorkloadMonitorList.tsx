@@ -2,13 +2,14 @@ import { CheckCircle, XCircle, AlertTriangle, HelpCircle, MinusCircle } from 'lu
 import { getIconForKind } from '../../../lib/resourceCategories'
 import type { MonitoredResource, ResourceHealthStatus } from '../../../types/workloadMonitor'
 import { useTranslation } from 'react-i18next'
+import type { ReactElement } from 'react'
 
 interface ListProps {
   resources: MonitoredResource[]
   onResourceClick?: (resource: MonitoredResource) => void
 }
 
-const STATUS_ICON: Record<ResourceHealthStatus, JSX.Element> = {
+const STATUS_ICON: Record<ResourceHealthStatus, ReactElement> = {
   healthy: <CheckCircle className="w-3.5 h-3.5 text-green-400" />,
   degraded: <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />,
   unhealthy: <XCircle className="w-3.5 h-3.5 text-red-400" />,

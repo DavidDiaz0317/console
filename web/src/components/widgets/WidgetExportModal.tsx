@@ -45,7 +45,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
   const [refreshInterval, setRefreshInterval] = useState(30)
   const [copied, setCopied] = useState(false)
   const [showCode, setShowCode] = useState(false)
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {

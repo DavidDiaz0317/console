@@ -16,7 +16,7 @@ export function AgentSetupDialog() {
   const { status, isConnected } = useLocalAgent()
   const [show, setShow] = useState(false)
   const [copied, setCopied] = useState(false)
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const installCommand = 'brew install kubestellar/tap/kc-agent && kc-agent'
 

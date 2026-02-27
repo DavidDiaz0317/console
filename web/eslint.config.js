@@ -24,6 +24,20 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // New rules from eslint-plugin-react-hooks v7 — set to warn to allow gradual migration
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/no-unnecessary-deps': 'warn',
+      // New rule from @eslint/js v10 recommended — set to warn for existing code
+      'no-useless-assignment': 'warn',
+    },
+  },
+  // E2e tests: disable React hook rules (Playwright uses 'use' as a fixture callback, not a React hook)
+  {
+    files: ['e2e/**/*.{ts,tsx}', 'e2e-pipeline-test.ts'],
+    rules: {
+      'react-hooks/rules-of-hooks': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'no-useless-assignment': 'warn',
     },
   },
 )

@@ -31,7 +31,7 @@ export function AgentStatusIndicator() {
   //    Fix: sticky demo styling that persists until agent actually connects.
 
   // --- Status debounce (fixes navigation flicker) ---
-  const connectingTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const connectingTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [stableStatus, setStableStatus] = useState(agentStatus)
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function AgentStatusIndicator() {
   // When demo mode is on, showDemoStyle=true. When demo mode is toggled off,
   // showDemoStyle stays true (sticky) until the agent connects or 3s elapses.
   const [showDemoStyle, setShowDemoStyle] = useState(isDemoMode)
-  const demoExitTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const demoExitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Set sticky flag when entering demo mode
   useEffect(() => {

@@ -44,7 +44,7 @@ const COMMANDS = [
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     return () => clearTimeout(copiedTimerRef.current)
@@ -94,7 +94,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
   const [testResult, setTestResult] = useState<{ reachable: boolean; serverVersion?: string; error?: string } | null>(null)
   const [connectError, setConnectError] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     return () => clearTimeout(closeTimerRef.current)
