@@ -24,6 +24,8 @@ const ALERT_RULES_KEY = 'kc_alert_rules'
 const ALERTS_KEY = 'kc_alerts'
 
 // Deduplicate alerts: for each (ruleId, cluster, namespace) keep only the latest firing alert.
+// User-added metadata (acknowledgment, AI diagnosis) is preserved by merging from the older
+// alert into the kept one so that no user work is silently discarded.
 // Resolved/non-firing alerts are kept as-is (historical records).
 function deduplicateAlerts(alerts: Alert[]): Alert[] {
   const latestFiring = new Map<string, Alert>()
@@ -36,8 +38,17 @@ function deduplicateAlerts(alerts: Alert[]): Alert[] {
     }
     const key = `${alert.ruleId}:${alert.cluster ?? ''}:${alert.namespace ?? ''}`
     const existing = latestFiring.get(key)
-    if (!existing || new Date(alert.firedAt) > new Date(existing.firedAt)) {
+    if (!existing) {
       latestFiring.set(key, alert)
+    } else if (new Date(alert.firedAt) > new Date(existing.firedAt)) {
+      // Keep the newer alert's dynamic fields, but preserve any user-set metadata
+      // from the older alert (acknowledgment, AI diagnosis) so it is never lost.
+      latestFiring.set(key, {
+        ...alert,
+        acknowledgedAt: existing.acknowledgedAt ?? alert.acknowledgedAt,
+        acknowledgedBy: existing.acknowledgedBy ?? alert.acknowledgedBy,
+        aiDiagnosis: existing.aiDiagnosis ?? alert.aiDiagnosis,
+      })
     }
   }
 
