@@ -145,7 +145,7 @@ const SortableGpuCard = memo(function SortableGpuCard({
             <button
               {...attributes}
               {...listeners}
-              className="p-1 rounded hover:bg-secondary cursor-grab active:cursor-grabbing"
+              className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded hover:bg-secondary cursor-grab active:cursor-grabbing"
               title="Drag to reorder"
               aria-label="Drag to reorder"
             >
@@ -817,7 +817,7 @@ export function GPUReservations() {
                 const isNext = item === 'next'
                 return (
                   <button key={item} onClick={isNext ? nextMonth : prevMonth}
-                    className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+                    className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-lg hover:bg-secondary transition-colors"
                     aria-label={isNext ? 'Next month' : 'Previous month'}>
                     {isNext ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
                   </button>
@@ -985,19 +985,19 @@ export function GPUReservations() {
                       </span>
                       <ClusterBadge cluster={r.cluster} size="sm" />
                       <button onClick={() => setExpandedReservationId(isExpanded ? null : r.id)}
-                        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                        className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
                         aria-label={t('gpuReservations.list.viewReservation', { title: r.title })}>
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                       <button onClick={() => { setEditingReservation(r); setShowReservationForm(true) }}
                         disabled={deleteConfirmId !== null || showReservationForm}
-                        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-purple-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground hover:text-purple-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label={t('gpuReservations.list.editReservation', { title: r.title })}>
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => setDeleteConfirmId(r.id)}
                         disabled={deleteConfirmId !== null || showReservationForm}
-                        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        className="p-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded hover:bg-secondary text-muted-foreground hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                         aria-label={t('gpuReservations.list.deleteReservation', { title: r.title })}>
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1675,7 +1675,7 @@ function ReservationFormModal({
                     setExtraResources(updated)
                   }} placeholder={t('gpuReservations.form.fields.resourcePlaceholder')} className="w-24 px-2 py-1.5 rounded bg-secondary border border-border text-sm text-foreground" />
                   <button onClick={() => setExtraResources(extraResources.filter((_, j) => j !== i))}
-                    className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-red-400"
+                    className="p-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:bg-secondary rounded text-muted-foreground hover:text-red-400"
                     aria-label="Remove resource limit">
                     <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>
