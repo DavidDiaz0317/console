@@ -23,7 +23,7 @@ interface Props {
   data: Record<string, unknown>
 }
 
-type TabType = 'overview' | 'resources' | 'history' | 'diff' | 'ai'
+type TabType = 'overview' | 'resources' | 'history' | 'diff' | 'gitops' | 'ai'
 
 // Sync status styles
 const getSyncStatusStyle = (status: string) => {
@@ -119,6 +119,8 @@ export function ArgoAppDrillDown({ data }: Props) {
   const [diffOutput, setDiffOutput] = useState<string | null>(null)
   const [diffLoading, setDiffLoading] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [syncRunning, setSyncRunning] = useState(false)
+  const [syncOutput, setSyncOutput] = useState<string | null>(null)
   const [aiAnalysis] = useState<string | null>(null)
   const [aiAnalysisLoading] = useState(false)
 
@@ -279,6 +281,24 @@ export function ArgoAppDrillDown({ data }: Props) {
     setTimeout(() => setCopiedField(null), 2000)
   }
 
+  const handleTriggerSync = async () => {
+    setSyncRunning(true)
+    setSyncOutput(null)
+    try {
+      const output = await runKubectl([
+        'annotate', 'application.argoproj.io', appName,
+        '-n', namespace,
+        'argocd.argoproj.io/refresh=normal',
+        '--overwrite',
+        '--context', cluster,
+      ])
+      setSyncOutput(output || 'Sync refresh triggered successfully')
+    } catch {
+      setSyncOutput('Error triggering sync')
+    }
+    setSyncRunning(false)
+  }
+
   // Start AI diagnosis
   const handleDiagnose = () => {
     const prompt = `Analyze this ArgoCD application "${appName}" in namespace "${namespace}".
@@ -325,6 +345,7 @@ Please:
     { id: 'resources', label: 'Resources', icon: Box },
     { id: 'history', label: 'History', icon: History },
     { id: 'diff', label: 'Manifest', icon: GitCommit },
+    { id: 'gitops', label: 'GitOps', icon: GitBranch },
     { id: 'ai', label: 'AI Analysis', icon: Stethoscope },
   ]
 
@@ -636,6 +657,132 @@ Please:
                 <p>No manifest available</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'gitops' && (
+          <div className="space-y-5">
+            {/* Intro */}
+            <div className="p-4 rounded-lg bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20">
+              <div className="flex items-start gap-3">
+                <GitBranch className="w-8 h-8 text-green-400 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Declarative GitOps Restart</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Trigger rolling restarts declaratively via Git — Argo CD picks up annotation changes on the next sync, preserving a full audit trail.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommended: Git annotation */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                Recommended — Add to Git manifest &amp; commit
+              </h5>
+              <div className="relative group">
+                <pre className="p-3 rounded-lg bg-card border border-border text-xs font-mono text-foreground overflow-x-auto leading-relaxed">{`spec:
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/restartedAt: "${new Date().toISOString()}"`}</pre>
+                <button
+                  onClick={() => handleCopy('gitYaml', `spec:\n  template:\n    metadata:\n      annotations:\n        kubectl.kubernetes.io/restartedAt: "${new Date().toISOString()}"`)}
+                  className="absolute top-2 right-2 p-1.5 rounded bg-secondary/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"
+                  title="Copy YAML"
+                >
+                  {copiedField === 'gitYaml' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground pl-1">
+                Commit this annotation to Git and push. Argo CD will detect the change, sync, and trigger a rolling restart.
+              </p>
+            </div>
+
+            {/* ArgoCD sync command */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                Trigger ArgoCD Sync
+              </h5>
+              <div className="relative group">
+                <code className="block p-3 rounded-lg bg-card border border-border text-xs font-mono text-foreground overflow-x-auto whitespace-pre">
+                  {`argocd app sync ${appName}`}
+                </code>
+                <button
+                  onClick={() => handleCopy('argoSync', `argocd app sync ${appName}`)}
+                  className="absolute top-2 right-2 p-1.5 rounded bg-secondary/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"
+                  title="Copy command"
+                >
+                  {copiedField === 'argoSync' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+              {agentConnected && (
+                <button
+                  onClick={handleTriggerSync}
+                  disabled={syncRunning}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {syncRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {syncRunning ? 'Triggering Sync…' : 'Trigger Sync via kubectl'}
+                </button>
+              )}
+              {syncOutput && (
+                <pre className="p-3 rounded-lg bg-card border border-border text-xs font-mono text-muted-foreground max-h-32 overflow-y-auto">
+                  {syncOutput}
+                </pre>
+              )}
+            </div>
+
+            {/* Imperative rollout restart (Deployments only, emergency) */}
+            {(() => {
+              const deployments = appResources?.filter(r => r.kind === 'Deployment') || []
+              if (deployments.length === 0) return null
+              return (
+                <div className="space-y-2">
+                  <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
+                    Imperative Restart (Emergency Only)
+                  </h5>
+                  <div className="space-y-1.5">
+                    {deployments.map((dep) => {
+                      const cmd = `kubectl rollout restart deployment/${dep.name} -n ${dep.namespace} --context ${cluster}`
+                      const key = `rollout-${dep.name}`
+                      return (
+                        <div key={dep.name} className="relative group">
+                          <code className="block p-2.5 rounded-lg bg-card border border-border text-xs font-mono text-foreground overflow-x-auto whitespace-pre">
+                            {cmd}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(key, cmd)}
+                            className="absolute top-1.5 right-1.5 p-1 rounded bg-secondary/80 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-all"
+                          >
+                            {copiedField === key ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs text-yellow-400 pl-1">
+                    ⚠ Imperative restarts bypass Git history. Use the annotation approach above for auditable, GitOps-compliant restarts.
+                  </p>
+                </div>
+              )
+            })()}
+
+            {/* Docs link */}
+            <div className="pt-2 border-t border-border/50">
+              <a
+                href="https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-purple-400 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Argo CD Declarative Setup Documentation
+              </a>
+            </div>
           </div>
         )}
 

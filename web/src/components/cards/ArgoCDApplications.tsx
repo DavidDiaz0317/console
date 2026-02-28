@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { CheckCircle, XCircle, RefreshCw, Clock, AlertTriangle, ChevronRight, ExternalLink, AlertCircle } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { CheckCircle, XCircle, RefreshCw, Clock, AlertTriangle, ChevronRight, ExternalLink, AlertCircle, Copy, Check } from 'lucide-react'
 import { ClusterBadge } from '../ui/ClusterBadge'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { Skeleton } from '../ui/Skeleton'
@@ -68,6 +68,14 @@ function ArgoCDApplicationsInternal({ config }: ArgoCDApplicationsProps) {
     consecutiveFailures,
   } = useArgoCDApplications()
   const { drillToArgoApp } = useDrillDownActions()
+  const [copiedSync, setCopiedSync] = useState<string | null>(null)
+
+  const handleCopySync = useCallback((e: React.MouseEvent, appName: string) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(`argocd app sync ${appName}`)
+    setCopiedSync(appName)
+    setTimeout(() => setCopiedSync(null), 2000)
+  }, [])
 
   // Report loading state to CardWrapper for skeleton/refresh behavior
   const { showSkeleton, showEmptyState } = useCardLoadingState({
@@ -311,7 +319,21 @@ function ArgoCDApplicationsInternal({ config }: ArgoCDApplicationsProps) {
                     </span>
                     <HealthIcon className={`w-4 h-4 ${healthConfig.color}`} aria-label={app.healthStatus} />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center gap-1">
+                    {app.syncStatus === 'OutOfSync' && (
+                      <button
+                        onClick={(e) => handleCopySync(e, app.name)}
+                        className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-orange-400 opacity-0 group-hover:opacity-100"
+                        title={t('argoCDApplications.copySyncCommand', { name: app.name })}
+                      >
+                        {copiedSync === app.name
+                          ? <Check className="w-3 h-3 text-green-400" />
+                          : <Copy className="w-3 h-3" />
+                        }
+                      </button>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">
