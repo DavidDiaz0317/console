@@ -23,6 +23,17 @@ import { loadDynamicCards, getAllDynamicCards, loadDynamicStats } from './lib/dy
 import { registerDynamicCardType } from './components/cards/cardRegistry'
 import { STORAGE_KEY_SQLITE_MIGRATED } from './lib/constants'
 import { initAnalytics } from './lib/analytics'
+import { setNotificationServiceWorkerRegistration } from './hooks/useDeepLink'
+
+// Register notification service worker for reliable macOS notification click handling
+// (uses clients.openWindow() instead of window.focus() / window.location.href)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/notification-sw.js').then((registration) => {
+    setNotificationServiceWorkerRegistration(registration)
+  }).catch((err) => {
+    console.warn('[NotificationSW] Registration failed:', err)
+  })
+}
 
 // Suppress recharts dimension warnings (these occur when charts render before container is sized)
 const originalWarn = console.warn

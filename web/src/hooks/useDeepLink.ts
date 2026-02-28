@@ -63,19 +63,69 @@ export function buildDeepLinkURL(params: DeepLinkParams): string {
   return `${base}?${searchParams.toString()}`
 }
 
+/** Stored registration set by main.tsx after the notification SW is registered */
+let _notificationSWRegistration: ServiceWorkerRegistration | null = null
+
 /**
- * Send a browser notification with deep link support
+ * Called from main.tsx once the notification service worker is registered.
+ * Storing the registration avoids ambiguity when multiple service workers
+ * (e.g. MSW in demo mode) share the same scope.
+ */
+export function setNotificationServiceWorkerRegistration(
+  registration: ServiceWorkerRegistration
+): void {
+  _notificationSWRegistration = registration
+}
+
+/**
+ * Send a browser notification with deep link support.
+ *
+ * When a notification service worker is registered the notification is
+ * dispatched through it (registration.showNotification).  The service worker
+ * handles the click with clients.openWindow() which correctly focuses the
+ * browser on macOS instead of opening Finder.
+ *
+ * Falls back to the legacy new Notification() API when no service worker is
+ * available.
  */
 export function sendNotificationWithDeepLink(
   title: string,
   body: string,
   params: DeepLinkParams,
   options?: NotificationOptions
-): Notification | null {
+): void {
   if (!('Notification' in window) || Notification.permission !== 'granted') {
-    return null
+    return
   }
 
+  const url = buildDeepLinkURL(params)
+
+  // Prefer service-worker notifications — click handling via clients.openWindow()
+  // works reliably on macOS where window.focus() does not.
+  if (_notificationSWRegistration) {
+    _notificationSWRegistration.showNotification(title, {
+      body,
+      icon: '/kubestellar-logo.svg',
+      requireInteraction: true,
+      data: { url },
+      ...options,
+    }).catch((err) => {
+      console.warn('[NotificationSW] showNotification failed, falling back:', err)
+      sendLegacyNotification(title, body, url, options)
+    })
+    return
+  }
+
+  sendLegacyNotification(title, body, url, options)
+}
+
+/** Fallback for environments without a registered notification service worker */
+function sendLegacyNotification(
+  title: string,
+  body: string,
+  url: string,
+  options?: NotificationOptions
+): void {
   const notification = new Notification(title, {
     body,
     icon: '/kubestellar-logo.svg',
@@ -84,17 +134,10 @@ export function sendNotificationWithDeepLink(
   })
 
   notification.onclick = () => {
-    // Focus existing window or open new one
     window.focus()
-
-    // Navigate to deep link
-    const url = buildDeepLinkURL(params)
     window.location.href = url
-
     notification.close()
   }
-
-  return notification
 }
 
 /**

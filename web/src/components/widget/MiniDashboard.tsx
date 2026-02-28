@@ -13,6 +13,7 @@ import { useClusters, useGPUNodes, usePodIssues } from '../../hooks/useMCP'
 import { cn } from '../../lib/cn'
 import { useTranslation } from 'react-i18next'
 import { LOCAL_AGENT_HTTP_URL } from '../../lib/constants'
+import { sendNotificationWithDeepLink } from '../../hooks/useDeepLink'
 
 // Node data type from agent
 interface NodeData {
@@ -158,31 +159,21 @@ export function MiniDashboard() {
         const firstOfflineNode = offlineNodes[0]
         const nodeNames = offlineNodes.slice(0, 3).map(n => n.name).join(', ')
 
-        const notification = new Notification('KubeStellar: Nodes Offline', {
-          body: `${newOffline} node${newOffline > 1 ? 's' : ''} went offline: ${nodeNames}${offlineCount > 3 ? '...' : ''}`,
-          icon: '/kubestellar-logo.svg',
-          tag: 'node-offline', // Prevents duplicate notifications
-          requireInteraction: true, // Keeps notification until dismissed
-        })
-
-        // Deep link to node drilldown when notification is clicked
-        notification.onclick = () => {
-          window.focus()
-          if (firstOfflineNode) {
-            // Build deep link URL to node drilldown
-            const params = new URLSearchParams({
-              drilldown: 'node',
+        const deepLinkParams = firstOfflineNode
+          ? {
+              drilldown: 'node' as const,
               cluster: firstOfflineNode.cluster || 'unknown',
               node: firstOfflineNode.name,
               issue: 'Node went offline',
-            })
-            window.location.href = `${window.location.origin}/?${params.toString()}`
-          } else {
-            // Fallback to main dashboard
-            window.location.href = window.location.origin + '/'
-          }
-          notification.close()
-        }
+            }
+          : {}
+
+        sendNotificationWithDeepLink(
+          'KubeStellar: Nodes Offline',
+          `${newOffline} node${newOffline > 1 ? 's' : ''} went offline: ${nodeNames}${offlineCount > 3 ? '...' : ''}`,
+          deepLinkParams,
+          { tag: 'node-offline' }
+        )
       }
     }
     prevOfflineCountRef.current = offlineCount
