@@ -50,6 +50,7 @@ interface MarketplaceRegistry {
   version: string
   updatedAt: string
   items: MarketplaceItem[]
+  presets?: MarketplaceItem[]
 }
 
 interface CachedRegistry {
@@ -108,7 +109,7 @@ export function useMarketplace() {
         if (cached) {
           const parsed: CachedRegistry = JSON.parse(cached)
           if (Date.now() - parsed.fetchedAt < CACHE_TTL_MS) {
-            setItems(parsed.data.items)
+            setItems([...(parsed.data.items || []), ...(parsed.data.presets || [])])
             setIsLoading(false)
             return
           }
@@ -122,7 +123,7 @@ export function useMarketplace() {
       const response = await fetch(REGISTRY_URL)
       if (!response.ok) throw new Error(`Registry fetch failed: ${response.status}`)
       const data: MarketplaceRegistry = await response.json()
-      setItems(data.items || [])
+      setItems([...(data.items || []), ...(data.presets || [])])
 
       // Cache the result
       try {
