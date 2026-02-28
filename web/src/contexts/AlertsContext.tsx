@@ -23,6 +23,27 @@ function generateId(): string {
 const ALERT_RULES_KEY = 'kc_alert_rules'
 const ALERTS_KEY = 'kc_alerts'
 
+// Deduplicate alerts: for each (ruleId, cluster, namespace) keep only the latest firing alert.
+// Resolved/non-firing alerts are kept as-is (historical records).
+function deduplicateAlerts(alerts: Alert[]): Alert[] {
+  const latestFiring = new Map<string, Alert>()
+  const nonFiring: Alert[] = []
+
+  for (const alert of alerts) {
+    if (alert.status !== 'firing') {
+      nonFiring.push(alert)
+      continue
+    }
+    const key = `${alert.ruleId}:${alert.cluster ?? ''}:${alert.namespace ?? ''}`
+    const existing = latestFiring.get(key)
+    if (!existing || new Date(alert.firedAt) > new Date(existing.firedAt)) {
+      latestFiring.set(key, alert)
+    }
+  }
+
+  return [...latestFiring.values(), ...nonFiring]
+}
+
 // Load from localStorage
 function loadFromStorage<T>(key: string, defaultValue: T): T {
   try {
@@ -86,9 +107,9 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     return stored
   })
 
-  // Alerts State
+  // Alerts State — deduplicate on load to clean up any existing duplicates in storage
   const [alerts, setAlerts] = useState<Alert[]>(() =>
-    loadFromStorage<Alert[]>(ALERTS_KEY, [])
+    deduplicateAlerts(loadFromStorage<Alert[]>(ALERTS_KEY, []))
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
 
@@ -346,17 +367,25 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       resourceKind?: string
     ) => {
       setAlerts(prev => {
-        // Check if similar alert already exists and is firing
+        // Check if similar alert already exists and is firing.
+        // Deduplicate by ruleId + cluster + namespace (not resource, which can be dynamic
+        // e.g. a comma-separated list of node names that changes between evaluations).
         const existingAlert = prev.find(
           a =>
             a.ruleId === rule.id &&
             a.status === 'firing' &&
             a.cluster === cluster &&
-            a.resource === resource
+            a.namespace === namespace
         )
 
         if (existingAlert) {
-          return prev
+          // Update the existing alert with the latest message/details/resource
+          // instead of creating a duplicate entry.
+          return prev.map(a =>
+            a.id === existingAlert.id
+              ? { ...a, message, details, resource, resourceKind }
+              : a
+          )
         }
 
         const alert: Alert = {
