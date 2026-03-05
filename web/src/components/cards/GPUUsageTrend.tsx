@@ -20,8 +20,8 @@ import {
   CHART_HEIGHT_STANDARD,
   CHART_GRID_STROKE,
   CHART_AXIS_STROKE,
-  CHART_TOOLTIP_BG,
-  CHART_TOOLTIP_BORDER,
+  CHART_TOOLTIP_STYLE,
+  CHART_LEGEND_STYLE,
   CHART_TICK_COLOR,
 } from '../../lib/constants'
 
@@ -353,12 +353,7 @@ export function GPUUsageTrend() {
                   allowDecimals={false}
                 />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: CHART_TOOLTIP_BG,
-                    border: `1px solid ${CHART_TOOLTIP_BORDER}`,
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                  }}
+                  contentStyle={CHART_TOOLTIP_STYLE}
                   labelStyle={{ color: CHART_TICK_COLOR }}
                   formatter={(value, name) => {
                     const label = name === 'allocated' ? 'In Use' : 'Free'
@@ -366,7 +361,7 @@ export function GPUUsageTrend() {
                   }}
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: '10px' }}
+                  wrapperStyle={CHART_LEGEND_STYLE}
                   iconType="rect"
                   formatter={(value) => value === 'allocated' ? 'In Use' : 'Free'}
                 />
