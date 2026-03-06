@@ -93,7 +93,7 @@ const getStatusColors = (status: ServiceExportStatus) => {
     case 'Failed':
       return { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/20', iconBg: 'bg-red-500/20' }
     default:
-      return { bg: 'bg-gray-500/20', text: 'text-gray-400', border: 'border-gray-500/20', iconBg: 'bg-gray-500/20' }
+      return { bg: 'bg-gray-500/20 dark:bg-gray-500/30', text: 'text-gray-400 dark:text-gray-300', border: 'border-gray-500/20 dark:border-gray-500/30', iconBg: 'bg-gray-500/20 dark:bg-gray-500/30' }
   }
 }
 

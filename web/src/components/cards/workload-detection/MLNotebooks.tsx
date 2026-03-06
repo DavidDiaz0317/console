@@ -54,9 +54,9 @@ export function MLNotebooks({ config: _config }: MLNotebooksProps) {
       case 'idle':
         return <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Idle</span>
       case 'stopped':
-        return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400">Stopped</span>
+        return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 dark:bg-gray-500/30 text-gray-400 dark:text-gray-300">Stopped</span>
       default:
-        return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400">{status}</span>
+        return <span className="text-xs px-1.5 py-0.5 rounded bg-gray-500/20 dark:bg-gray-500/30 text-gray-400 dark:text-gray-300">{status}</span>
     }
   }
 

@@ -107,7 +107,7 @@ export function ProwJobs({ config: _config }: ProwJobsProps) {
       periodic: 'bg-purple-500/20 text-purple-400',
       batch: 'bg-cyan-500/20 text-cyan-400',
     }
-    return colors[type] || 'bg-gray-500/20 text-gray-400'
+    return colors[type] || 'bg-gray-500/20 dark:bg-gray-500/30 text-gray-400 dark:text-gray-300'
   }
 
   if (isLoading) {
