@@ -6,6 +6,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Copy, Check, AlertCircle } from 'lucide-react'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../lib/constants/network'
 
+type CopyStatus = 'idle' | 'copied' | 'failed'
+
 interface CodeBlockProps {
   children: string
   language?: string
@@ -13,8 +15,8 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ children, language = 'text', fontSize = 'sm' }: CodeBlockProps) {
-  const [copied, setCopied] = useState(false)
-  const [copyFailed, setCopyFailed] = useState(false)
+  // Single state for copy status prevents consecutive setState calls causing extra renders
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
   const timeoutRef = useRef<number>()
 
   const handleCopy = async () => {
@@ -22,16 +24,15 @@ export function CodeBlock({ children, language = 'text', fontSize = 'sm' }: Code
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
-    
+
     try {
       await navigator.clipboard.writeText(children)
-      setCopied(true)
-      setCopyFailed(false)
-      timeoutRef.current = setTimeout(() => setCopied(false), UI_FEEDBACK_TIMEOUT_MS)
+      setCopyStatus('copied')
+      timeoutRef.current = setTimeout(() => setCopyStatus('idle'), UI_FEEDBACK_TIMEOUT_MS)
     } catch (err) {
       console.error('Failed to copy:', err)
-      setCopyFailed(true)
-      timeoutRef.current = setTimeout(() => setCopyFailed(false), UI_FEEDBACK_TIMEOUT_MS)
+      setCopyStatus('failed')
+      timeoutRef.current = setTimeout(() => setCopyStatus('idle'), UI_FEEDBACK_TIMEOUT_MS)
     }
   }
 
@@ -50,11 +51,11 @@ export function CodeBlock({ children, language = 'text', fontSize = 'sm' }: Code
         <button
           onClick={handleCopy}
           className="p-1.5 rounded bg-secondary/80 hover:bg-secondary/60 text-secondary-foreground transition-colors"
-          title={copied ? 'Copied!' : copyFailed ? 'Copy failed' : 'Copy code'}
+          title={copyStatus === 'copied' ? 'Copied!' : copyStatus === 'failed' ? 'Copy failed' : 'Copy code'}
         >
-          {copied ? (
+          {copyStatus === 'copied' ? (
             <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-          ) : copyFailed ? (
+          ) : copyStatus === 'failed' ? (
             <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
           ) : (
             <Copy className="w-4 h-4 text-muted-foreground" />

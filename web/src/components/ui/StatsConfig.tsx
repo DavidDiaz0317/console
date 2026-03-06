@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Settings, Check, GripVertical, Eye, EyeOff, Plus, Trash2, Search, ChevronRight, ChevronDown } from 'lucide-react'
 import { BaseModal } from '../../lib/modals'
@@ -283,6 +283,41 @@ interface StatsConfigModalProps {
   title?: string
 }
 
+// State and reducer for StatsConfigModal — defined at module scope so they are
+// not recreated on every render.
+type StatsConfigModalState = {
+  localBlocks: StatBlockConfig[]
+  showAddPanel: boolean
+  searchQuery: string
+  expandedCategories: Set<string>
+}
+type StatsConfigModalAction =
+  | { type: 'RESET'; blocks: StatBlockConfig[] }
+  | { type: 'SET_BLOCKS'; fn: (prev: StatBlockConfig[]) => StatBlockConfig[] }
+  | { type: 'SHOW_ADD_PANEL'; show: boolean }
+  | { type: 'SET_SEARCH'; query: string }
+  | { type: 'SET_EXPANDED'; categories: Set<string> }
+
+function statsConfigModalReducer(
+  state: StatsConfigModalState,
+  action: StatsConfigModalAction
+): StatsConfigModalState {
+  switch (action.type) {
+    case 'RESET':
+      return { localBlocks: action.blocks, showAddPanel: false, searchQuery: '', expandedCategories: new Set() }
+    case 'SET_BLOCKS':
+      return { ...state, localBlocks: action.fn(state.localBlocks) }
+    case 'SHOW_ADD_PANEL':
+      return { ...state, showAddPanel: action.show }
+    case 'SET_SEARCH':
+      return { ...state, searchQuery: action.query }
+    case 'SET_EXPANDED':
+      return { ...state, expandedCategories: action.categories }
+    default:
+      return state
+  }
+}
+
 export function StatsConfigModal({
   isOpen,
   onClose,
@@ -292,30 +327,29 @@ export function StatsConfigModal({
   title = 'Configure Stats',
 }: StatsConfigModalProps) {
   const { t: _t } = useTranslation()
-  const [localBlocks, setLocalBlocks] = useState<StatBlockConfig[]>(blocks)
-  const [showAddPanel, setShowAddPanel] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+
+  // useReducer groups all modal-specific state so a single dispatch atomically
+  // resets them when the modal opens, preventing consecutive-setState flicker.
+  const [{ localBlocks, showAddPanel, searchQuery, expandedCategories }, dispatch] = useReducer(
+    statsConfigModalReducer,
+    { localBlocks: blocks, showAddPanel: false, searchQuery: '', expandedCategories: new Set<string>() }
+  )
 
   useEffect(() => {
     if (isOpen) {
-      setLocalBlocks(blocks)
-      setShowAddPanel(false)
-      setSearchQuery('')
-      setExpandedCategories(new Set())
+      // Single dispatch atomically resets all modal state in one render
+      dispatch({ type: 'RESET', blocks })
     }
   }, [isOpen, blocks])
 
   const toggleCategory = (type: string) => {
-    setExpandedCategories(prev => {
-      const next = new Set(prev)
-      if (next.has(type)) {
-        next.delete(type)
-      } else {
-        next.add(type)
-      }
-      return next
-    })
+    const next = new Set(expandedCategories)
+    if (next.has(type)) {
+      next.delete(type)
+    } else {
+      next.add(type)
+    }
+    dispatch({ type: 'SET_EXPANDED', categories: next })
   }
 
   const sensors = useSensors(
@@ -357,33 +391,33 @@ export function StatsConfigModal({
   useEffect(() => {
     if (searchQuery.trim()) {
       // Expand all categories that have matching results
-      setExpandedCategories(new Set(availableStatsByCategory.keys()))
+      dispatch({ type: 'SET_EXPANDED', categories: new Set(availableStatsByCategory.keys()) })
     }
   }, [searchQuery, availableStatsByCategory])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setLocalBlocks(prev => {
+      dispatch({ type: 'SET_BLOCKS', fn: prev => {
         const oldIndex = prev.findIndex(b => b.id === active.id)
         const newIndex = prev.findIndex(b => b.id === over.id)
         return arrayMove(prev, oldIndex, newIndex)
-      })
+      }})
     }
   }
 
   const toggleVisibility = (id: string) => {
-    setLocalBlocks(prev =>
+    dispatch({ type: 'SET_BLOCKS', fn: prev =>
       prev.map(b => b.id === id ? { ...b, visible: !b.visible } : b)
-    )
+    })
   }
 
   const handleAddStat = (block: StatBlockConfig) => {
-    setLocalBlocks(prev => [...prev, { ...block, visible: true }])
+    dispatch({ type: 'SET_BLOCKS', fn: prev => [...prev, { ...block, visible: true }] })
   }
 
   const handleRemoveStat = (id: string) => {
-    setLocalBlocks(prev => prev.filter(b => b.id !== id))
+    dispatch({ type: 'SET_BLOCKS', fn: prev => prev.filter(b => b.id !== id) })
   }
 
   const handleSave = () => {
@@ -392,7 +426,7 @@ export function StatsConfigModal({
   }
 
   const handleReset = () => {
-    setLocalBlocks(defaultBlocks)
+    dispatch({ type: 'SET_BLOCKS', fn: () => defaultBlocks })
   }
 
   return (
@@ -436,14 +470,14 @@ export function StatsConfigModal({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => dispatch({ type: 'SET_SEARCH', query: e.target.value })}
                   placeholder="Search all available stats..."
                   className="w-full pl-9 pr-3 py-2 bg-secondary/30 border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/50"
                   autoFocus
                 />
               </div>
               <button
-                onClick={() => setShowAddPanel(false)}
+                onClick={() => dispatch({ type: 'SHOW_ADD_PANEL', show: false })}
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
                 Done
@@ -474,7 +508,7 @@ export function StatsConfigModal({
           </div>
         ) : (
           <button
-            onClick={() => setShowAddPanel(true)}
+            onClick={() => dispatch({ type: 'SHOW_ADD_PANEL', show: true })}
             className="mt-4 w-full flex items-center justify-center gap-2 py-2 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-purple-500/50 transition-colors"
           >
             <Plus className="w-4 h-4" />

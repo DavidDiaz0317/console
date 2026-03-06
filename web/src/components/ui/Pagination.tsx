@@ -1,11 +1,37 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import { useMemo, useCallback, useRef, useEffect, useReducer } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+type PaginationState = { currentPage: number; itemsPerPage: number }
+type PaginationAction =
+  | { type: 'SET_PER_PAGE'; perPage: number }
+  | { type: 'GO_TO_PAGE'; page: number }
+  | { type: 'RESET_BOTH'; itemsPerPage: number }
+  | { type: 'CLAMP_PAGE'; maxPage: number }
+
+function paginationReducer(state: PaginationState, action: PaginationAction): PaginationState {
+  switch (action.type) {
+    case 'SET_PER_PAGE':
+      // Batch itemsPerPage + currentPage reset into a single atomic update
+      return { itemsPerPage: action.perPage, currentPage: 1 }
+    case 'GO_TO_PAGE':
+      return { ...state, currentPage: action.page }
+    case 'RESET_BOTH':
+      // Batch itemsPerPage sync + currentPage reset into a single atomic update
+      return { itemsPerPage: action.itemsPerPage, currentPage: 1 }
+    case 'CLAMP_PAGE':
+      return { ...state, currentPage: action.maxPage }
+    default:
+      return state
+  }
+}
+
 // Hook for managing pagination state
 export function usePagination<T>(items: T[], defaultPerPage: number = 5, resetOnFilterChange: boolean = true) {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(defaultPerPage)
+  const [state, dispatch] = useReducer(paginationReducer, {
+    currentPage: 1,
+    itemsPerPage: defaultPerPage,
+  })
   const prevDefaultPerPage = useRef(defaultPerPage)
   const prevItemsLength = useRef(items.length)
 
@@ -13,50 +39,48 @@ export function usePagination<T>(items: T[], defaultPerPage: number = 5, resetOn
   useEffect(() => {
     if (prevDefaultPerPage.current !== defaultPerPage) {
       prevDefaultPerPage.current = defaultPerPage
-      setItemsPerPage(defaultPerPage)
-      setCurrentPage(1)
+      dispatch({ type: 'RESET_BOTH', itemsPerPage: defaultPerPage })
     }
   }, [defaultPerPage])
 
   // Reset to page 1 when filter changes (items count changes)
   useEffect(() => {
     if (resetOnFilterChange && prevItemsLength.current !== items.length) {
-      if (currentPage > 1) {
-        setCurrentPage(1)
+      if (state.currentPage > 1) {
+        dispatch({ type: 'GO_TO_PAGE', page: 1 })
       }
       prevItemsLength.current = items.length
     }
-  }, [items.length, resetOnFilterChange, currentPage])
+  }, [items.length, resetOnFilterChange, state.currentPage])
 
   const totalItems = items.length
-  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage))
+  const totalPages = Math.max(1, Math.ceil(totalItems / state.itemsPerPage))
 
   // Derive safe page without setState during render (avoids React anti-pattern)
-  const safePage = Math.min(currentPage, totalPages)
+  const safePage = Math.min(state.currentPage, totalPages)
 
   // Sync currentPage back when out of bounds, but via effect not during render
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages)
+    if (state.currentPage > totalPages && totalPages > 0) {
+      dispatch({ type: 'CLAMP_PAGE', maxPage: totalPages })
     }
-  }, [currentPage, totalPages])
+  }, [state.currentPage, totalPages])
 
   const paginatedItems = useMemo(() => {
-    const start = (safePage - 1) * itemsPerPage
-    return items.slice(start, start + itemsPerPage)
-  }, [items, safePage, itemsPerPage])
+    const start = (safePage - 1) * state.itemsPerPage
+    return items.slice(start, start + state.itemsPerPage)
+  }, [items, safePage, state.itemsPerPage])
 
   // Use ref to avoid stale totalPages in goToPage callback
   const totalPagesRef = useRef(totalPages)
   totalPagesRef.current = totalPages
 
   const goToPage = useCallback((page: number) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPagesRef.current)))
+    dispatch({ type: 'GO_TO_PAGE', page: Math.max(1, Math.min(page, totalPagesRef.current)) })
   }, [])
 
   const setPerPage = useCallback((perPage: number) => {
-    setItemsPerPage(perPage)
-    setCurrentPage(1)
+    dispatch({ type: 'SET_PER_PAGE', perPage })
   }, [])
 
   return {
@@ -64,11 +88,11 @@ export function usePagination<T>(items: T[], defaultPerPage: number = 5, resetOn
     currentPage: safePage,
     totalPages,
     totalItems,
-    itemsPerPage,
+    itemsPerPage: state.itemsPerPage,
     goToPage,
     setPerPage,
     // Convenience: whether pagination is needed
-    needsPagination: totalItems > itemsPerPage,
+    needsPagination: totalItems > state.itemsPerPage,
   }
 }
 
