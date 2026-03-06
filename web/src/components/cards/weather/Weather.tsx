@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, Component, type ReactNode } from 'react'
 import {
   Cloud, Wind, Droplets, Gauge, Eye,
   MapPin, Calendar, Search as SearchIcon, Star, X,
@@ -18,6 +18,18 @@ import type {
   WeatherConfig,
   SavedLocation,
 } from './types'
+
+// Isolates WeatherAnimation render crashes so the weather data panel stays visible.
+class WeatherAnimationErrorBoundary extends Component<{ children: ReactNode }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error) {
+    console.error('[WeatherAnimation] Render error (animation hidden):', error)
+  }
+  render() {
+    return this.state.hasError ? null : this.props.children
+  }
+}
 
 // Demo weather data for demo mode (avoids external API calls)
 function getDemoWeatherData(units: 'F' | 'C'): {
@@ -484,7 +496,9 @@ export function Weather({ config }: { config?: WeatherConfig }) {
             <div className="absolute inset-0 bg-black/20 z-0"></div>
 
             {/* Weather Animation */}
-            <WeatherAnimation weatherCode={currentWeather.weatherCode} isDaytime={currentWeather.isDaytime} windSpeed={currentWeather.windSpeed} />
+            <WeatherAnimationErrorBoundary>
+              <WeatherAnimation weatherCode={currentWeather.weatherCode} isDaytime={currentWeather.isDaytime} windSpeed={currentWeather.windSpeed} />
+            </WeatherAnimationErrorBoundary>
 
             <div className="relative z-10 text-white p-4">
               {/* Location */}
