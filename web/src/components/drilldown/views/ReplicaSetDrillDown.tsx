@@ -186,6 +186,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
       <div className="px-6 pt-6 pb-4">
         <div className="flex items-center gap-6 text-sm">
           <button
+            title={`Back to ${namespace}`}
             onClick={() => drillToNamespace(cluster, namespace)}
             className="flex items-center gap-2 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 px-3 py-1.5 rounded-lg transition-all group cursor-pointer"
           >
@@ -197,6 +198,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
             </svg>
           </button>
           <button
+            title="Back to cluster"
             onClick={() => drillToCluster(cluster)}
             className="flex items-center gap-2 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 px-3 py-1.5 rounded-lg transition-all group cursor-pointer"
           >

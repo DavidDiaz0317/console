@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { useMemo, useEffect } from 'react'
+import { ChevronRight, Server } from 'lucide-react'
 import { usePodIssues, useDeploymentIssues, useEvents } from '../../../hooks/useMCP'
-import { useDrillDownActions } from '../../../hooks/useDrillDown'
+import { useDrillDownActions, useDrillDown } from '../../../hooks/useDrillDown'
 import { StatusIndicator } from '../../charts/StatusIndicator'
 import { useTranslation } from 'react-i18next'
 
@@ -13,7 +13,16 @@ export function NamespaceDrillDown({ data }: Props) {
   const { t } = useTranslation()
   const cluster = data.cluster as string
   const namespace = data.namespace as string
-  const { drillToDeployment, drillToPod, drillToEvents } = useDrillDownActions()
+  const { drillToDeployment, drillToPod, drillToEvents, drillToCluster } = useDrillDownActions()
+  const { pop: goBack } = useDrillDown()
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack() }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [goBack])
 
   const { issues: allPodIssues } = usePodIssues(cluster)
   const { issues: allDeploymentIssues } = useDeploymentIssues()
@@ -37,6 +46,19 @@ export function NamespaceDrillDown({ data }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Back to cluster navigation */}
+      <div className="flex items-center gap-2 text-sm">
+        <button
+          title="Back to cluster"
+          onClick={() => drillToCluster(cluster)}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Server className="w-3.5 h-3.5" />
+          <span>{cluster.split('/').pop() || cluster}</span>
+          <ChevronRight className="w-3 h-3" />
+        </button>
+        <span className="text-foreground font-medium">{namespace}</span>
+      </div>
       {/* Overview Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="p-4 rounded-lg bg-card/50 border border-border">
