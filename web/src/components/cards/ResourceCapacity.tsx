@@ -10,7 +10,7 @@ import { CardControls, SortDirection } from '../ui/CardControls'
 import { Pagination, usePagination } from '../ui/Pagination'
 import { ClusterFilterDropdown } from '../ui/ClusterFilterDropdown'
 import { useChartFilters } from '../../lib/cards'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 
 interface ResourceCapacityProps {
   config?: Record<string, unknown>
@@ -44,6 +44,7 @@ export function ResourceCapacity({ config: _config }: ResourceCapacityProps) {
     selectedClusters: globalSelectedClusters,
     isAllClustersSelected,
   } = useGlobalFilters()
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   const [sortBy, setSortBy] = useState<SortByOption>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -56,6 +57,7 @@ export function ResourceCapacity({ config: _config }: ResourceCapacityProps) {
     isFailed,
     consecutiveFailures,
     errorMessage: error ?? undefined,
+    isDemoData: isDemoMode,
   })
 
   // Local cluster filter

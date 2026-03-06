@@ -22,7 +22,7 @@ import {
 } from '../../lib/cards'
 import type { ConsoleUser, UserRole, OpenShiftUser } from '../../types/users'
 import { Skeleton } from '../ui/Skeleton'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../ui/Toast'
 
@@ -85,6 +85,7 @@ export function UserManagement({ config: _config }: UserManagementProps) {
   const { serviceAccounts: allServiceAccounts, isLoading: sasInitialLoading, failedClusters: _saFailedClusters } = useAllK8sServiceAccounts(allClusters)
   // Fetch ALL OpenShift users from ALL clusters upfront, filter locally
   const { users: allOpenshiftUsers, isLoading: openshiftInitialLoading, failedClusters: _userFailedClusters } = useAllOpenShiftUsers(allClusters)
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   // Only show loading state on initial load when there's no data
   const sasLoading = sasInitialLoading && allServiceAccounts.length === 0
@@ -96,6 +97,7 @@ export function UserManagement({ config: _config }: UserManagementProps) {
     hasAnyData: allClusters.length > 0 || allUsers.length > 0 || allServiceAccounts.length > 0,
     isFailed: Boolean(usersError),
     consecutiveFailures: usersError ? 1 : 0,
+    isDemoData: isDemoMode,
   })
 
   const { selectedClusters, isAllClustersSelected } = useGlobalFilters()

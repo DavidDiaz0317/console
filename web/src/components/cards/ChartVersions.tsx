@@ -6,7 +6,7 @@ import {
   useCardData, commonComparators,
   CardSkeleton, CardSearchInput, CardControlsRow, CardPaginationFooter,
 } from '../../lib/cards'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 
 interface ChartVersionsProps {
@@ -34,6 +34,7 @@ const SORT_OPTIONS = [
 export function ChartVersions({ config: _config }: ChartVersionsProps) {
   const { t } = useTranslation()
   const { isLoading: clustersLoading } = useClusters()
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   // Fetch ALL Helm releases once - filter locally
   const {
@@ -49,6 +50,7 @@ export function ChartVersions({ config: _config }: ChartVersionsProps) {
     hasAnyData: allHelmReleases.length > 0,
     isFailed,
     consecutiveFailures,
+    isDemoData: isDemoMode,
   })
 
   // Transform Helm releases to chart info

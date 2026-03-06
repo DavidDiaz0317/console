@@ -4,7 +4,7 @@ import {
   Play, Square, Trash2, Plus, CheckCircle, XCircle,
   AlertTriangle, Loader2
 } from 'lucide-react'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 
 // Types
@@ -66,7 +66,8 @@ export function NetworkUtils() {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'ping' | 'ports' | 'info'>('ping')
   const [isInitialized, setIsInitialized] = useState(false)
-  useCardLoadingState({ isLoading: !isInitialized, hasAnyData: isInitialized })
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' }) // show demo badge when agent is offline
+  useCardLoadingState({ isLoading: !isInitialized, hasAnyData: isInitialized, isDemoData: isDemoMode })
   const [savedHosts, setSavedHosts] = useState<SavedHost[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)

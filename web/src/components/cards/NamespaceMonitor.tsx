@@ -12,7 +12,7 @@ import {
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { CardComponentProps } from './cardRegistry'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 
 // Resource types to monitor
@@ -97,11 +97,13 @@ export function NamespaceMonitor({ config: _config }: CardComponentProps) {
   const { deduplicatedClusters: clusters, isLoading } = useClusters()
   const { selectedClusters, isAllClustersSelected } = useGlobalFilters()
   const { drillToNamespace, drillToPod, drillToDeployment, drillToService, drillToPVC } = useDrillDownActions()
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   // Report loading state to CardWrapper for skeleton/refresh behavior
   useCardLoadingState({
     isLoading,
     hasAnyData: clusters.length > 0,
+    isDemoData: isDemoMode,
   })
 
   // UI state

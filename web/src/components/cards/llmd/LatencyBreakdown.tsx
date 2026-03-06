@@ -64,13 +64,13 @@ function CustomTooltip({ active, payload, label, unit }: {
 
 export function LatencyBreakdown() {
   const { t } = useTranslation()
-  const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
+  const { data: liveReports, isDemoFallback: isDemoMode, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(
-    () => isDemoFallback ? generateBenchmarkReports() : (liveReports ?? []),
-    [isDemoFallback, liveReports]
+    () => isDemoMode ? generateBenchmarkReports() : (liveReports ?? []),
+    [isDemoMode, liveReports]
   )
   useReportCardDataState({
-    isDemoData: isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing,
+    isDemoData: isDemoMode, isFailed, consecutiveFailures, isLoading, isRefreshing,
     hasData: effectiveReports.length > 0,
   })
 

@@ -57,13 +57,13 @@ function getColor(value: number, min: number, max: number, higherBetter: boolean
 
 export function PerformanceTimeline() {
   const { t } = useTranslation()
-  const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
+  const { data: liveReports, isDemoFallback: isDemoMode, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(
-    () => isDemoFallback ? generateBenchmarkReports() : (liveReports ?? []),
-    [isDemoFallback, liveReports]
+    () => isDemoMode ? generateBenchmarkReports() : (liveReports ?? []),
+    [isDemoMode, liveReports]
   )
   useReportCardDataState({
-    isDemoData: isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing,
+    isDemoData: isDemoMode, isFailed, consecutiveFailures, isLoading, isRefreshing,
     hasData: effectiveReports.length > 0,
   })
 

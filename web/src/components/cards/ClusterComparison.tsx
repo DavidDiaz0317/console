@@ -4,7 +4,7 @@ import { useClusters, useGPUNodes } from '../../hooks/useMCP'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { Skeleton } from '../ui/Skeleton'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 
 interface ClusterComparisonProps {
@@ -18,11 +18,13 @@ export function ClusterComparison({ config }: ClusterComparisonProps) {
   const { deduplicatedClusters: rawClusters, isLoading: clustersLoading } = useClusters()
   const { nodes: gpuNodes } = useGPUNodes()
   const [selectedClusters, setSelectedClusters] = useState<string[]>(config?.clusters || [])
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   // Report loading state to CardWrapper for skeleton/refresh behavior
   const { showSkeleton, showEmptyState } = useCardLoadingState({
     isLoading: clustersLoading,
     hasAnyData: rawClusters.length > 0,
+    isDemoData: isDemoMode,
   })
   const {
     selectedClusters: globalSelectedClusters,

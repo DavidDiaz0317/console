@@ -1,3 +1,4 @@
+// DEMO_EXEMPT: arcade game — no demo data needed, always shows game content
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { Play, RotateCcw, Pause, Trophy, Apple, Zap } from 'lucide-react'

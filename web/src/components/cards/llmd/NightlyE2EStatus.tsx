@@ -836,7 +836,7 @@ function StatBox({ label, value, color }: { label: string; value: string; color:
 
 export function NightlyE2EStatus() {
   const { t } = useTranslation(['cards', 'common'])
-  const { guides, isDemoFallback, isFailed, consecutiveFailures, isLoading } = useNightlyE2EData()
+  const { guides, isDemoFallback: isDemoMode, isFailed, consecutiveFailures, isLoading } = useNightlyE2EData()
   const { shouldSummarize } = useAIMode()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [hoveredRun, setHoveredRun] = useState<NightlyRun | null>(null)
@@ -860,7 +860,7 @@ export function NightlyE2EStatus() {
     hasAnyData: guides.length > 0,
     isFailed,
     consecutiveFailures,
-    isDemoData: isDemoFallback,
+    isDemoData: isDemoMode,
     errorMessage: isFailed ? 'Failed to load nightly E2E status' : undefined,
   })
 

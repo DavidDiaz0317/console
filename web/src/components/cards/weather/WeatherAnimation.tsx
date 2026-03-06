@@ -2,6 +2,15 @@ import { Sun, Cloud, CloudRain, CloudSnow, CloudFog } from 'lucide-react'
 import type { WeatherCondition } from './types'
 import { useTranslation } from 'react-i18next'
 
+/** Demo weather data used when live location data is unavailable */
+export const DEMO_WEATHER_CONDITION: WeatherCondition = {
+  type: 'partly_cloudy',
+  icon: Cloud,
+  label: 'Partly Cloudy',
+  dayGradient: 'from-blue-300 via-slate-300 to-blue-200',
+  nightGradient: 'from-slate-800 via-slate-700 to-slate-600',
+}
+
 // WMO Weather interpretation codes to condition mapping
 export function getWeatherCondition(code: number): WeatherCondition {
   // Clear

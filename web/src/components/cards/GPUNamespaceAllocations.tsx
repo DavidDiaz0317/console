@@ -8,7 +8,7 @@ import { CardControls } from '../ui/CardControls'
 import { Pagination } from '../ui/Pagination'
 import { Skeleton } from '../ui/Skeleton'
 import { useCardData, commonComparators } from '../../lib/cards/cardHooks'
-import { useCardLoadingState, useForceLive } from './CardDataContext'
+import { useCardLoadingState, useForceLive, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 
 interface GPUNamespaceAllocationsProps {
@@ -55,12 +55,14 @@ export function GPUNamespaceAllocations({ config: _config }: GPUNamespaceAllocat
   const { nodes: gpuNodes, isLoading: gpuLoading } = useGPUNodes()
   const { pods: allPods, isLoading: podsLoading } = useAllPods(undefined, undefined, forceLive)
   const { drillToGPUNamespace } = useDrillDownActions()
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   const isLoading = (gpuLoading && gpuNodes.length === 0) || (podsLoading && allPods.length === 0)
 
   useCardLoadingState({
     isLoading: gpuLoading || podsLoading,
     hasAnyData: gpuNodes.length > 0 || allPods.length > 0,
+    isDemoData: isDemoMode,
   })
 
   // Compute per-namespace GPU allocations

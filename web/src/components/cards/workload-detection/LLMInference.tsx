@@ -48,7 +48,7 @@ export function LLMInference({ config: _config }: LLMInferenceProps) {
   const gpuClusterNames = useMemo(() => new Set(gpuNodes.map(n => n.cluster)), [gpuNodes])
   const llmdClusters = useLLMdClusters(deduplicatedClusters, gpuClusterNames)
 
-  const { servers, isLoading, isRefreshing, lastRefresh, refetch, isFailed, consecutiveFailures, error } = useCachedLLMdServers(llmdClusters)
+  const { servers, isLoading, isRefreshing, lastRefresh, refetch, isFailed, consecutiveFailures, error, isDemoFallback: isDemoMode } = useCachedLLMdServers(llmdClusters)
 
   // Report loading state to CardWrapper for skeleton/refresh behavior
   useCardLoadingState({
@@ -56,6 +56,7 @@ export function LLMInference({ config: _config }: LLMInferenceProps) {
     hasAnyData: servers.length > 0,
     isFailed,
     consecutiveFailures,
+    isDemoData: isDemoMode,
   })
 
   // Card-specific component filter (not handled by useCardData)

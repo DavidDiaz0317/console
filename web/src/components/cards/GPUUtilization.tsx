@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { TrendingUp, Clock, Server } from 'lucide-react'
 import { CardClusterFilter } from '../../lib/cards'
 import { Skeleton, SkeletonStats } from '../ui/Skeleton'
-import { useCardLoadingState } from './CardDataContext'
+import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import {
   AreaChart,
   Area,
@@ -51,6 +51,7 @@ export function GPUUtilization() {
     isLoading: hookLoading,
   } = useGPUNodes()
   const { deduplicatedClusters: clusters } = useClusters()
+  const { shouldUseDemoData: isDemoMode } = useCardDemoState({ requires: 'agent' })
 
   // Only show skeleton when no cached data exists
   const isLoading = hookLoading && gpuNodes.length === 0
@@ -60,6 +61,7 @@ export function GPUUtilization() {
   useCardLoadingState({
     isLoading: hookLoading,
     hasAnyData: gpuNodes.length > 0,
+    isDemoData: isDemoMode,
   })
   const [timeRange, setTimeRange] = useState<TimeRange>('1h')
   const [localClusterFilter, setLocalClusterFilter] = useState<string[]>([])

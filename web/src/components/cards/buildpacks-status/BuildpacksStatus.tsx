@@ -99,7 +99,7 @@ export function BuildpacksStatus({ config }: BuildpacksStatusProps) {
     hasAnyData: allImages.length > 0,
     isFailed,
     consecutiveFailures,
-    isDemoData,
+    isDemoData, // isDemoMode: true when live buildpack data is unavailable
   })
 
   const allBuilds = allImages

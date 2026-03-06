@@ -254,13 +254,13 @@ export function ParetoFrontier({ config }: ParetoFrontierProps) {
   const chartRef = useRef<ReactECharts>(null)
 
   // ---- Data ----
-  const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
+  const { data: liveReports, isDemoFallback: isDemoMode, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(
-    () => (isDemoFallback ? generateBenchmarkReports() : (liveReports ?? [])),
-    [isDemoFallback, liveReports],
+    () => (isDemoMode ? generateBenchmarkReports() : (liveReports ?? [])),
+    [isDemoMode, liveReports],
   )
   useReportCardDataState({
-    isDemoData: isDemoFallback,
+    isDemoData: isDemoMode,
     isFailed,
     consecutiveFailures,
     isLoading,

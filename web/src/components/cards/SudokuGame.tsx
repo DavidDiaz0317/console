@@ -1,3 +1,4 @@
+// DEMO_EXEMPT: puzzle game — no demo data needed, always shows game content
 import { useState, useEffect, useCallback } from 'react'
 import {
   Play, Pause, Lightbulb, Pencil, Undo2, Redo2,

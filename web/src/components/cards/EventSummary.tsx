@@ -14,7 +14,7 @@ export function EventSummary() {
     events,
     isLoading,
     isRefreshing,
-    isDemoFallback,
+    isDemoFallback: isDemoMode,
     refetch,
     isFailed,
     consecutiveFailures,
@@ -25,7 +25,7 @@ export function EventSummary() {
   // Report state to CardWrapper for refresh animation
   const { showSkeleton, showEmptyState } = useCardLoadingState({
     isLoading,
-    isDemoData: isDemoFallback,
+    isDemoData: isDemoMode,
     hasAnyData: events.length > 0,
     isFailed: isFailed && events.length === 0,
     consecutiveFailures,

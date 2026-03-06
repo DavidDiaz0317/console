@@ -1,6 +1,7 @@
 /**
  * Placeholder cards for compliance tools that will be populated with real data
  * when the respective tools are detected in the cluster.
+ * DEMO_SUPPORTED: all cards in this file use static mock data until the tool is detected.
  */
 
 import { AlertTriangle, AlertCircle } from 'lucide-react'
