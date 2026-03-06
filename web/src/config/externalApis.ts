@@ -74,6 +74,17 @@ export const K8S_DOCS = {
 } as const
 
 /**
+ * Google Fonts API
+ * 
+ * SECURITY: Safe - Public Google Fonts CDN (no credentials required)
+ * Used to lazy-load theme fonts that are not bundled in the default CSS.
+ * Can be overridden via VITE_GOOGLE_FONTS_URL environment variable.
+ */
+export const FONTS_API = {
+  css2Url: import.meta.env.VITE_GOOGLE_FONTS_URL || 'https://fonts.googleapis.com/css2',
+} as const
+
+/**
  * KC Agent Configuration
  * Local agent URL for API key management
  */
