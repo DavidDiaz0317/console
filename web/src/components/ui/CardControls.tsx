@@ -91,16 +91,19 @@ export function CardControls<T extends string = string>({
           {limitOpen && (
             <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[80px] py-1">
               {LIMIT_OPTIONS.map(option => (
-                <button
+                <div
                   key={String(option.value)}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => { onLimitChange(option.value); setLimitOpen(false) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onLimitChange(option.value); setLimitOpen(false) } }}
                   className={cn(
-                    'w-full px-3 py-1.5 text-left text-xs hover:bg-secondary/50 transition-colors',
+                    'w-full px-3 py-1.5 text-left text-xs hover:bg-secondary/50 transition-colors cursor-pointer',
                     limit === option.value ? 'text-primary bg-primary/10' : 'text-foreground'
                   )}
                 >
                   {option.label}
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -121,16 +124,19 @@ export function CardControls<T extends string = string>({
             {sortOpen && (
               <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[100px] py-1">
                 {sortOptions.map(option => (
-                  <button
+                  <div
                     key={option.value}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => { onSortChange(option.value); setSortOpen(false) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSortChange(option.value); setSortOpen(false) } }}
                     className={cn(
-                      'w-full px-3 py-1.5 text-left text-xs hover:bg-secondary/50 transition-colors',
+                      'w-full px-3 py-1.5 text-left text-xs hover:bg-secondary/50 transition-colors cursor-pointer',
                       sortBy === option.value ? 'text-primary bg-primary/10' : 'text-foreground'
                     )}
                   >
                     {option.label}
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

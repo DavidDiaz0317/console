@@ -141,7 +141,7 @@ export function Login() {
               />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">KubeStellar</h1>
-                <p className="text-sm text-muted-foreground">KubeStellar Console</p>
+                <span className="text-sm text-muted-foreground">KubeStellar Console</span>
               </div>
             </div>
           </div>

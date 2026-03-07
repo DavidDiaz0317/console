@@ -149,9 +149,9 @@ export function AiGenerationPanel<T>({
               rows={4}
               className="w-full text-sm px-3 py-2 rounded-md bg-secondary border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-purple-500/50"
             />
-            <p className="text-2xs text-muted-foreground/50 mt-1">
+            <span className="text-2xs text-muted-foreground/50 mt-1">
               Press Cmd+Enter to generate
-            </p>
+            </span>
           </div>
 
           {/* Error display */}

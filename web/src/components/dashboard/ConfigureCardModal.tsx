@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Sparkles, Loader2, Settings, ToggleLeft } from 'lucide-react'
+import { Sparkles, Loader2, Settings, ToggleLeft, Check, AlertTriangle } from 'lucide-react'
 import { useClusters } from '../../hooks/useMCP'
 import { useTokenUsage } from '../../hooks/useTokenUsage'
 import { cn } from '../../lib/cn'
@@ -852,9 +852,9 @@ export function ConfigureCardModal({ isOpen, card, onClose, onSave, onCreateCard
               ))}
 
               {fields.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <span className="text-sm text-muted-foreground text-center py-4 block">
                   {t('dashboard.configure.noSettings')}
-                </p>
+                </span>
               )}
             </div>
           )}
@@ -875,21 +875,19 @@ export function ConfigureCardModal({ isOpen, card, onClose, onSave, onCreateCard
                         : 'border-border'
                     )}>
                       {behaviors[behavior.key] && (
-                        <svg className="w-3 h-3 text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
+                        <Check className="w-3 h-3 text-foreground" />
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{t(`cardConfig.behaviorLabels.${behavior.key}`, behavior.label)}</p>
-                      <p className="text-xs text-muted-foreground">{wrapAbbreviations(behavior.description)}</p>
+                      <span className="text-sm font-medium text-foreground block">{t(`cardConfig.behaviorLabels.${behavior.key}`, behavior.label)}</span>
+                      <span className="text-xs text-muted-foreground">{wrapAbbreviations(behavior.description)}</span>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
+                <span className="text-sm text-muted-foreground text-center py-8 block">
                   {t('dashboard.configure.noBehaviors')}
-                </p>
+                </span>
               )}
             </div>
           )}
@@ -901,9 +899,9 @@ export function ConfigureCardModal({ isOpen, card, onClose, onSave, onCreateCard
                   <Sparkles className="w-4 h-4 text-purple-400" />
                   <span className="text-sm font-medium text-purple-300">{t('dashboard.configure.aiPoweredConfig')}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {t('dashboard.configure.aiConfigDescription')}
-                </p>
+                </span>
               </div>
 
               {/* Applied changes feedback */}
@@ -930,9 +928,7 @@ export function ConfigureCardModal({ isOpen, card, onClose, onSave, onCreateCard
               {aiError && (
                 <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                   <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
                     <span className="text-sm text-yellow-300">{aiError}</span>
                   </div>
                 </div>

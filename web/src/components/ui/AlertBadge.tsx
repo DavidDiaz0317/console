@@ -329,10 +329,13 @@ export function AlertBadge() {
                 >
                   All ({stats.firing})
                 </button>
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSeverityFilter('critical')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSeverityFilter('critical') } }}
                   aria-label={`Filter by critical alerts (${stats.critical})`}
-                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
                     severityFilter === 'critical'
                       ? 'bg-red-500/20 text-red-400'
                       : 'text-muted-foreground hover:text-foreground'
@@ -340,11 +343,14 @@ export function AlertBadge() {
                 >
                   <span className="w-2 h-2 rounded-full bg-red-500" />
                   {stats.critical}
-                </button>
-                <button
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSeverityFilter('warning')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSeverityFilter('warning') } }}
                   aria-label={`Filter by warning alerts (${stats.warning})`}
-                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
                     severityFilter === 'warning'
                       ? 'bg-orange-500/20 text-orange-400'
                       : 'text-muted-foreground hover:text-foreground'
@@ -352,11 +358,14 @@ export function AlertBadge() {
                 >
                   <span className="w-2 h-2 rounded-full bg-orange-500" />
                   {stats.warning}
-                </button>
-                <button
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSeverityFilter('info')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSeverityFilter('info') } }}
                   aria-label={`Filter by info alerts (${stats.info})`}
-                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                  className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors cursor-pointer ${
                     severityFilter === 'info'
                       ? 'bg-blue-500/20 text-blue-400'
                       : 'text-muted-foreground hover:text-foreground'
@@ -364,16 +373,19 @@ export function AlertBadge() {
                 >
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                   {stats.info}
-                </button>
+                </div>
               </div>
             )}
 
             {/* Selection Controls - only show when there are unacknowledged alerts */}
             {unacknowledgedDisplayedIds.length > 0 && (
               <div className="p-2 border-b border-border flex items-center justify-between">
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={allSelected ? handleDeselectAll : handleSelectAll}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (allSelected) { handleDeselectAll() } else { handleSelectAll() } } }}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   title={allSelected ? 'Deselect all' : 'Select all'}
                 >
                   {allSelected ? (
@@ -384,7 +396,7 @@ export function AlertBadge() {
                     <Square className="w-4 h-4" />
                   )}
                   <span>{allSelected ? 'Deselect All' : 'Select All'}</span>
-                </button>
+                </div>
 
                 {selectedAlertIds.size > 0 && (
                   <button

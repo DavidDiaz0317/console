@@ -1083,10 +1083,10 @@ export function CardFactoryModal({ isOpen, onClose, onCardCreated }: CardFactory
               {existingCards.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <Wand2 className="w-8 h-8 text-muted-foreground/40 mb-2" />
-                  <p className="text-sm text-muted-foreground">{t('dashboard.cardFactory.noCustomCards')}</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">
+                  <span className="text-sm text-muted-foreground">{t('dashboard.cardFactory.noCustomCards')}</span>
+                  <span className="text-xs text-muted-foreground/70 mt-1">
                     {t('dashboard.cardFactory.useDeclarativeOrCode')}
-                  </p>
+                  </span>
                 </div>
               ) : (
                 existingCards.map(card => (
@@ -1236,7 +1236,7 @@ function T1Preview({ result }: { result: AiCardT1Result }) {
         </StatusBadge>
       </div>
       {result.description && (
-        <p className="text-xs text-muted-foreground mb-3">{result.description}</p>
+        <span className="text-xs text-muted-foreground mb-3">{result.description}</span>
       )}
       {result.columns && result.columns.length > 0 && (
         <div className="text-xs">

@@ -13,14 +13,8 @@ interface CloudProviderIconProps {
 // AWS EKS icon - blue hexagon with K
 const AWSIcon: React.FC<{ size: number; className?: string }> = ({ size, className }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className}>
-    <defs>
-      <linearGradient id="eksGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6B7AE8" />
-        <stop offset="100%" stopColor="#4B5BD4" />
-      </linearGradient>
-    </defs>
     {/* Outer hexagon */}
-    <polygon points="12,1 22,6 22,18 12,23 2,18 2,6" fill="url(#eksGradient)" />
+    <polygon points="12,1 22,6 22,18 12,23 2,18 2,6" fill="#5E6FDC" />
     {/* Inner white hexagon cutout */}
     <polygon points="12,5 18,8 18,16 12,19 6,16 6,8" fill="white" />
     {/* K letter */}
@@ -36,43 +30,37 @@ const GCPIcon: React.FC<{ size: number; className?: string }> = ({ size, classNa
     {/* 3D cube icon - outer hexagon frame */}
     <polygon points="12,5 17,7.5 17,12.5 12,15 7,12.5 7,7.5" stroke="white" strokeWidth="1.2" fill="none" />
     {/* Cube top connector */}
-    <line x1="12" y1="5" x2="12" y2="3" stroke="white" strokeWidth="1.2" />
+    <path d="M12,5 L12,3" stroke="white" strokeWidth="1.2" />
     {/* Inner cube */}
     <polygon points="12,8 15,9.5 15,12 12,13.5 9,12 9,9.5" stroke="white" strokeWidth="1" fill="none" />
-    {/* Cube center vertical line */}
-    <line x1="12" y1="8" x2="12" y2="10.5" stroke="white" strokeWidth="1" />
-    {/* Cube bottom lines */}
-    <line x1="12" y1="13.5" x2="12" y2="17" stroke="white" strokeWidth="1.2" />
-    <line x1="9" y1="12" x2="6" y2="14" stroke="white" strokeWidth="1" />
-    <line x1="15" y1="12" x2="18" y2="14" stroke="white" strokeWidth="1" />
+    {/* Cube center vertical path */}
+    <path d="M12,8 L12,10.5" stroke="white" strokeWidth="1" />
+    {/* Cube bottom paths */}
+    <path d="M12,13.5 L12,17" stroke="white" strokeWidth="1.2" />
+    <path d="M9,12 L6,14" stroke="white" strokeWidth="1" />
+    <path d="M15,12 L18,14" stroke="white" strokeWidth="1" />
   </svg>
 )
 
 // Azure AKS icon - purple gradient 3D cubes pattern
 const AzureIcon: React.FC<{ size: number; className?: string }> = ({ size, className }) => (
   <svg viewBox="0 0 16 16" width={size} height={size} className={className}>
-    <defs>
-      <linearGradient id="aksGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#B77AF4" />
-        <stop offset="100%" stopColor="#773ADC" />
-      </linearGradient>
-    </defs>
     {/* Top row - 2 cubes */}
-    <path fill="url(#aksGradient1)" d="M5.5 2l-2.2.4v3l2.2.5 2.2-.9V2.8L5.5 2z"/>
+    <path fill="#9558E0" d="M5.5 2l-2.2.4v3l2.2.5 2.2-.9V2.8L5.5 2z"/>
     <path fill="#341A6E" d="M3.3 2.4v3l2.2.5V2l-2.2.4zm.9 2.8l-.6-.1V2.8l.6-.1v2.5zm1 .2l-.7-.1V2.6l.7-.1v2.9z"/>
-    <path fill="url(#aksGradient1)" d="M10.3 2l-2.2.4v3l2.2.5 2.2-.9V2.8L10.3 2z"/>
+    <path fill="#9558E0" d="M10.3 2l-2.2.4v3l2.2.5 2.2-.9V2.8L10.3 2z"/>
     <path fill="#341A6E" d="M8.1 2.5v3l2.2.5V2l-2.2.4zm.9 2.8l-.6-.1V2.8l.6-.1v2.5zm1 .2l-.7-.1V2.6l.7-.1v2.9z"/>
     {/* Middle row - 3 cubes */}
-    <path fill="url(#aksGradient1)" d="M3.2 6.2l-2.2.4v3l2.2.5 2.2-.9V7L3.2 6.2z"/>
+    <path fill="#9558E0" d="M3.2 6.2l-2.2.4v3l2.2.5 2.2-.9V7L3.2 6.2z"/>
     <path fill="#341A6E" d="M1 6.6v3l2.2.5V6.2L1 6.6zm.9 2.8l-.6-.1V6.9l.6-.1v2.6zm1 .2l-.7-.1V6.8l.7-.1v2.9z"/>
-    <path fill="url(#aksGradient1)" d="M8 6.2l-2.2.4v3l2.2.5 2.2-.9V6.9L8 6.2z"/>
+    <path fill="#9558E0" d="M8 6.2l-2.2.4v3l2.2.5 2.2-.9V6.9L8 6.2z"/>
     <path fill="#341A6E" d="M5.8 6.6v3l2.2.5V6.2l-2.2.4zm.9 2.8l-.6-.1V6.9l.6-.1v2.6zm1 .2l-.7-.1V6.8l.7-.1v2.9z"/>
-    <path fill="url(#aksGradient1)" d="M12.8 6.2l-2.2.4v3l2.2.5 2.2-.9V7l-2.2-.8z"/>
+    <path fill="#9558E0" d="M12.8 6.2l-2.2.4v3l2.2.5 2.2-.9V7l-2.2-.8z"/>
     <path fill="#341A6E" d="M10.6 6.6v3l2.2.5V6.2l-2.2.4zm1 2.8l-.6-.1V6.9l.6-.1v2.6zm1 .2l-.7-.1V6.8l.7-.1v2.9z"/>
     {/* Bottom row - 2 cubes */}
-    <path fill="url(#aksGradient1)" d="M5.5 10.4l-2.2.4v3l2.2.5 2.2-.9v-2.3l-2.2-.7z"/>
+    <path fill="#9558E0" d="M5.5 10.4l-2.2.4v3l2.2.5 2.2-.9v-2.3l-2.2-.7z"/>
     <path fill="#341A6E" d="M3.2 10.8v3l2.2.5v-4l-2.2.5zm1 2.8l-.6-.1v-2.3l.6-.1v2.5zm1 .2l-.7-.1v-2.7l.7-.1v2.9z"/>
-    <path fill="url(#aksGradient1)" d="M10.3 10.4l-2.2.4v3l2.2.5 2.2-.9v-2.3l-2.2-.7z"/>
+    <path fill="#9558E0" d="M10.3 10.4l-2.2.4v3l2.2.5 2.2-.9v-2.3l-2.2-.7z"/>
     <path fill="#341A6E" d="M8 10.9v3l2.2.5v-3.9l-2.2.4zm1 2.8l-.6-.1v-2.3l.6-.1v2.5zm1 .2l-.7-.1v-2.7l.7-.1v2.9z"/>
   </svg>
 )
@@ -126,13 +114,13 @@ const AlibabaIcon: React.FC<{ size: number; className?: string }> = ({ size, cla
     <rect x="5" y="14" width="3" height="3" fill="#FF6A00" rx="0.5" />
     {/* Top-left node */}
     <rect x="5" y="7" width="3" height="3" fill="#FF6A00" rx="0.5" />
-    {/* Connecting lines */}
-    <line x1="12" y1="7" x2="12" y2="10" stroke="#FF6A00" strokeWidth="1" />
-    <line x1="14" y1="11" x2="16" y2="9" stroke="#FF6A00" strokeWidth="1" />
-    <line x1="14" y1="13" x2="16" y2="15" stroke="#FF6A00" strokeWidth="1" />
-    <line x1="12" y1="14" x2="12" y2="17" stroke="#FF6A00" strokeWidth="1" />
-    <line x1="10" y1="13" x2="8" y2="15" stroke="#FF6A00" strokeWidth="1" />
-    <line x1="10" y1="11" x2="8" y2="9" stroke="#FF6A00" strokeWidth="1" />
+    {/* Connecting paths */}
+    <path d="M12,7 L12,10" stroke="#FF6A00" strokeWidth="1" />
+    <path d="M14,11 L16,9" stroke="#FF6A00" strokeWidth="1" />
+    <path d="M14,13 L16,15" stroke="#FF6A00" strokeWidth="1" />
+    <path d="M12,14 L12,17" stroke="#FF6A00" strokeWidth="1" />
+    <path d="M10,13 L8,15" stroke="#FF6A00" strokeWidth="1" />
+    <path d="M10,11 L8,9" stroke="#FF6A00" strokeWidth="1" />
   </svg>
 )
 
@@ -181,14 +169,8 @@ const RancherIcon: React.FC<{ size: number; className?: string }> = ({ size, cla
 // CoreWeave icon - blue rounded rect with stylized CW wave mark
 const CoreWeaveIcon: React.FC<{ size: number; className?: string }> = ({ size, className }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} className={className}>
-    <defs>
-      <linearGradient id="cwGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#3B5BFF" />
-        <stop offset="100%" stopColor="#2741E7" />
-      </linearGradient>
-    </defs>
     {/* Background */}
-    <rect width="24" height="24" rx="4" fill="url(#cwGradient)" />
+    <rect width="24" height="24" rx="4" fill="#3250F3" />
     {/* Stylized double-wave / CW mark */}
     <path
       d="M4 14 C6 10, 8 10, 10 14 C12 18, 14 18, 16 14"
@@ -240,15 +222,15 @@ const MinikubeIcon: React.FC<{ size: number; className?: string }> = ({ size, cl
     <circle cx="12" cy="16" r="4" fill="none" stroke="#326CE5" strokeWidth="1.5" />
     <circle cx="12" cy="16" r="1" fill="#326CE5" />
     {/* Helm spokes */}
-    <line x1="12" y1="12" x2="12" y2="14.5" stroke="#326CE5" strokeWidth="1" />
-    <line x1="12" y1="17.5" x2="12" y2="20" stroke="#326CE5" strokeWidth="1" />
-    <line x1="8" y1="16" x2="10.5" y2="16" stroke="#326CE5" strokeWidth="1" />
-    <line x1="13.5" y1="16" x2="16" y2="16" stroke="#326CE5" strokeWidth="1" />
+    <path d="M12,12 L12,14.5" stroke="#326CE5" strokeWidth="1" />
+    <path d="M12,17.5 L12,20" stroke="#326CE5" strokeWidth="1" />
+    <path d="M8,16 L10.5,16" stroke="#326CE5" strokeWidth="1" />
+    <path d="M13.5,16 L16,16" stroke="#326CE5" strokeWidth="1" />
     {/* Diagonal spokes */}
-    <line x1="9.2" y1="13.2" x2="10.8" y2="14.8" stroke="#326CE5" strokeWidth="1" />
-    <line x1="13.2" y1="17.2" x2="14.8" y2="18.8" stroke="#326CE5" strokeWidth="1" />
-    <line x1="14.8" y1="13.2" x2="13.2" y2="14.8" stroke="#326CE5" strokeWidth="1" />
-    <line x1="10.8" y1="17.2" x2="9.2" y2="18.8" stroke="#326CE5" strokeWidth="1" />
+    <path d="M9.2,13.2 L10.8,14.8" stroke="#326CE5" strokeWidth="1" />
+    <path d="M13.2,17.2 L14.8,18.8" stroke="#326CE5" strokeWidth="1" />
+    <path d="M14.8,13.2 L13.2,14.8" stroke="#326CE5" strokeWidth="1" />
+    <path d="M10.8,17.2 L9.2,18.8" stroke="#326CE5" strokeWidth="1" />
   </svg>
 )
 

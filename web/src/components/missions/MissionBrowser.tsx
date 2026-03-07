@@ -1304,17 +1304,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                 {/* Inline add path form */}
                 {node.id === 'local' && addingPath && (
                   <div className="ml-6 mt-1 mb-2">
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      const val = newPathValue.trim()
-                      if (val && !watchedPaths.includes(val)) {
-                        const updated = [...watchedPaths, val]
-                        setWatchedPaths(updated)
-                        saveWatchedPaths(updated)
-                      }
-                      setNewPathValue('')
-                      setAddingPath(false)
-                    }} className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                       <input
                         type="text"
                         value={newPathValue}
@@ -1322,11 +1312,33 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                         placeholder="/path/to/missions"
                         className="flex-1 px-2 py-1 text-xs bg-secondary border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/40"
                         autoFocus
-                        onKeyDown={(e) => { if (e.key === 'Escape') { setAddingPath(false); setNewPathValue('') } }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') { setAddingPath(false); setNewPathValue('') }
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const val = newPathValue.trim()
+                            if (val && !watchedPaths.includes(val)) {
+                              const updated = [...watchedPaths, val]
+                              setWatchedPaths(updated)
+                              saveWatchedPaths(updated)
+                            }
+                            setNewPathValue('')
+                            setAddingPath(false)
+                          }
+                        }}
                       />
-                      <button type="submit" className="p-1 text-xs text-green-400 hover:text-green-300"><CheckCircle className="w-3.5 h-3.5" /></button>
+                      <button type="button" onClick={() => {
+                        const val = newPathValue.trim()
+                        if (val && !watchedPaths.includes(val)) {
+                          const updated = [...watchedPaths, val]
+                          setWatchedPaths(updated)
+                          saveWatchedPaths(updated)
+                        }
+                        setNewPathValue('')
+                        setAddingPath(false)
+                      }} className="p-1 text-xs text-green-400 hover:text-green-300"><CheckCircle className="w-3.5 h-3.5" /></button>
                       <button type="button" onClick={() => { setAddingPath(false); setNewPathValue('') }} className="p-1 text-xs text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
-                    </form>
+                    </div>
                   </div>
                 )}
 

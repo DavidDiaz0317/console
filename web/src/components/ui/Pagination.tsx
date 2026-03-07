@@ -146,29 +146,35 @@ export function Pagination({
           >
             <ChevronsLeft className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={!canGoPrevious}
-            className="p-1.5 rounded hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-            title={t('pagination.previousPage')}
+          <div
+            role="button"
+            tabIndex={canGoPrevious ? 0 : -1}
+            onClick={canGoPrevious ? () => onPageChange(currentPage - 1) : undefined}
+            onKeyDown={canGoPrevious ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPageChange(currentPage - 1) } } : undefined}
+            aria-disabled={!canGoPrevious}
             aria-label={t('pagination.previousPage')}
+            title={t('pagination.previousPage')}
+            className={`p-1.5 rounded text-muted-foreground transition-colors ${canGoPrevious ? 'hover:bg-secondary hover:text-foreground cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
           >
             <ChevronLeft className="w-4 h-4" />
-          </button>
+          </div>
 
           <span className="px-3 py-1 text-foreground">
             {currentPage} / {totalPages || 1}
           </span>
 
-          <button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={!canGoNext}
-            className="p-1.5 rounded hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-            title={t('pagination.nextPage')}
+          <div
+            role="button"
+            tabIndex={canGoNext ? 0 : -1}
+            onClick={canGoNext ? () => onPageChange(currentPage + 1) : undefined}
+            onKeyDown={canGoNext ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPageChange(currentPage + 1) } } : undefined}
+            aria-disabled={!canGoNext}
             aria-label={t('pagination.nextPage')}
+            title={t('pagination.nextPage')}
+            className={`p-1.5 rounded text-muted-foreground transition-colors ${canGoNext ? 'hover:bg-secondary hover:text-foreground cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
           >
             <ChevronRight className="w-4 h-4" />
-          </button>
+          </div>
           <button
             onClick={() => onPageChange(totalPages)}
             disabled={!canGoNext}
