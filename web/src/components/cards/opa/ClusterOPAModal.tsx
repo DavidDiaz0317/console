@@ -223,7 +223,7 @@ Please proceed with applying this policy.`,
 
   return (
     <>
-      <BaseModal isOpen={isOpen} onClose={onClose} size="lg" closeOnEscape={!hasChildModalOpen}>
+      <BaseModal isOpen={isOpen} onClose={onClose} size="lg" closeOnEscape={!hasChildModalOpen} closeOnBackdrop={false}>
         <BaseModal.Header
           title="OPA Gatekeeper"
           description={clusterName}
@@ -490,7 +490,7 @@ Please proceed with applying this policy.`,
       </BaseModal>
 
       {/* YAML Editor Modal */}
-      <BaseModal isOpen={showYamlEditor} onClose={() => setShowYamlEditor(false)} size="lg">
+      <BaseModal isOpen={showYamlEditor} onClose={() => setShowYamlEditor(false)} size="lg" closeOnBackdrop={false}>
         <BaseModal.Header
           title={editingPolicy ? `Edit: ${editingPolicy.name}` : 'Create Policy'}
           description="Edit the YAML and apply to cluster"
