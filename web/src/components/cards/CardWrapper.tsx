@@ -850,6 +850,15 @@ export function CardWrapper({
                       role="menu"
                       aria-label={t('cardWrapper.cardMenuTooltip')}
                       style={{ top: menuPosition.top, right: menuPosition.right }}
+                      onKeyDown={e => {
+                        if (e.key === 'Escape') { setShowMenu(false); menuButtonRef.current?.focus(); return }
+                        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+                        e.preventDefault()
+                        const items = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')
+                        const idx = Array.from(items).indexOf(document.activeElement as HTMLElement)
+                        if (e.key === 'ArrowDown') items[Math.min(idx + 1, items.length - 1)]?.focus()
+                        else items[Math.max(idx - 1, 0)]?.focus()
+                      }}
                     >
                       <button
                         onClick={() => {

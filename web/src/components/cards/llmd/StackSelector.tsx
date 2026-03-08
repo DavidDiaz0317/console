@@ -210,6 +210,7 @@ export function StackSelector() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const triggerButtonRef = useRef<HTMLButtonElement>(null)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -335,7 +336,10 @@ export function StackSelector() {
     <div className="relative" ref={dropdownRef}>
       {/* Trigger button */}
       <button
+        ref={triggerButtonRef}
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
         className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all ${
           isOpen
             ? 'bg-secondary border-border'
@@ -394,6 +398,9 @@ export function StackSelector() {
       {isOpen && (
         <div
           className="absolute top-full left-0 mt-1 w-[36rem] bg-secondary border border-border rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
+          onKeyDown={e => {
+            if (e.key === 'Escape') { setIsOpen(false); triggerButtonRef.current?.focus(); return }
+          }}
         >
             {/* Header with search */}
             <div className="border-b border-border">
@@ -448,6 +455,17 @@ export function StackSelector() {
                     placeholder={t('common.searchStacks')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        const listEl = dropdownRef.current?.querySelector<HTMLElement>('[role="listbox"]')
+                        listEl?.querySelectorAll<HTMLElement>('button')[0]?.focus()
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setIsOpen(false)
+                        triggerButtonRef.current?.focus()
+                      }
+                    }}
                     className="w-full pl-8 pr-8 py-1.5 text-sm bg-background/50 border border-border rounded focus:outline-none focus:border-border text-white placeholder-muted-foreground"
                   />
                   {searchQuery && (
@@ -484,7 +502,24 @@ export function StackSelector() {
             </div>
 
             {/* Stack list */}
-            <div className="max-h-[28rem] min-h-[100px] overflow-y-auto overscroll-contain scroll-enhanced">
+            <div
+              role="listbox"
+              aria-label="LLM-d stacks"
+              className="max-h-[28rem] min-h-[100px] overflow-y-auto overscroll-contain scroll-enhanced"
+              onKeyDown={e => {
+                if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+                e.preventDefault()
+                const items = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('button')
+                const idx = Array.from(items).indexOf(document.activeElement as HTMLElement)
+                if (e.key === 'ArrowDown') items[Math.min(idx + 1, items.length - 1)]?.focus()
+                else if (e.key === 'ArrowUp') {
+                  if (idx <= 0) { searchInputRef.current?.focus(); return }
+                  items[idx - 1]?.focus()
+                }
+                else if (e.key === 'Home') items[0]?.focus()
+                else if (e.key === 'End') items[items.length - 1]?.focus()
+              }}
+            >
               {filteredAndSortedStacks.length > 0 ? (
                 Object.entries(stacksByCluster).sort(([a], [b]) => a.localeCompare(b)).map(([cluster, clusterStacks]) => (
                   <div key={cluster}>

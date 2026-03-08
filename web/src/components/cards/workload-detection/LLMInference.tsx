@@ -211,11 +211,27 @@ export function LLMInference({ config: _config }: LLMInferenceProps) {
               <ChevronDown className="w-3 h-3" />
             </button>
             {showComponentFilter && (
-              <div className="absolute top-full right-0 mt-1 w-40 rounded-lg bg-card border border-border shadow-lg z-50">
+              <div
+                role="listbox"
+                aria-label="Filter by component type"
+                className="absolute top-full right-0 mt-1 w-40 rounded-lg bg-card border border-border shadow-lg z-50"
+                onKeyDown={e => {
+                  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+                  e.preventDefault()
+                  const items = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('button')
+                  const idx = Array.from(items).indexOf(document.activeElement as HTMLElement)
+                  if (e.key === 'ArrowDown') items[Math.min(idx + 1, items.length - 1)]?.focus()
+                  else if (e.key === 'ArrowUp') items[Math.max(idx - 1, 0)]?.focus()
+                  else if (e.key === 'Home') items[0]?.focus()
+                  else if (e.key === 'End') items[items.length - 1]?.focus()
+                }}
+              >
                 <div className="p-1">
                   {COMPONENT_FILTERS.map(opt => (
                     <button
                       key={opt.value}
+                      role="option"
+                      aria-selected={componentFilter === opt.value}
                       onClick={() => {
                         setComponentFilter(opt.value)
                         setShowComponentFilter(false)

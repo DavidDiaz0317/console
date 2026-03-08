@@ -110,13 +110,28 @@ export function ClusterSelect({
       {isOpen && dropdownPos && createPortal(
         <div
           ref={dropdownRef}
+          role="listbox"
+          aria-label={placeholder}
           className="fixed max-h-48 overflow-y-auto rounded-lg bg-card border border-border shadow-lg z-50"
           style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
           onMouseDown={e => e.stopPropagation()}
+          onKeyDown={e => {
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+            e.preventDefault()
+            const items = dropdownRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])')
+            if (!items || items.length === 0) return
+            const idx = Array.from(items).indexOf(document.activeElement as HTMLElement)
+            if (e.key === 'ArrowDown') items[Math.min(idx + 1, items.length - 1)]?.focus()
+            else if (e.key === 'ArrowUp') items[Math.max(idx - 1, 0)]?.focus()
+            else if (e.key === 'Home') items[0]?.focus()
+            else if (e.key === 'End') items[items.length - 1]?.focus()
+          }}
         >
           <div className="p-1">
             {/* Empty option */}
             <button
+              role="option"
+              aria-selected={!value}
               onClick={() => { onChange(''); setIsOpen(false) }}
               className={cn(
                 'w-full px-2 py-1.5 text-xs text-left rounded transition-colors',
@@ -140,6 +155,8 @@ export function ClusterSelect({
               return (
                 <button
                   key={cluster.name}
+                  role="option"
+                  aria-selected={value === cluster.name}
                   onClick={() => {
                     if (!isUnreachable) {
                       onChange(cluster.name)
