@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useToast } from '../ui/Toast'
 import { useDemoMode } from '../../hooks/useDemoMode'
+import { ConfirmDialog } from '../../lib/modals'
 
 interface UserManagementProps {
   config?: Record<string, unknown>
@@ -78,6 +79,7 @@ export function UserManagement({ config: _config }: UserManagementProps) {
   const [selectedCluster, setSelectedCluster] = useState<string>('')
   const [selectedNamespace, setSelectedNamespace] = useState<string>('')
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
+  const [deleteConfirmUserId, setDeleteConfirmUserId] = useState<string | null>(null)
 
   const { drillToRBAC } = useDrillDownActions()
   const { user: currentUser } = useAuth()
@@ -302,7 +304,13 @@ export function UserManagement({ config: _config }: UserManagementProps) {
   }
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm(t('userManagement.confirmDelete'))) return
+    setDeleteConfirmUserId(userId)
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!deleteConfirmUserId) return
+    const userId = deleteConfirmUserId
+    setDeleteConfirmUserId(null)
     try {
       await deleteUser(userId)
       showToast('User deleted successfully', 'success')
@@ -535,6 +543,17 @@ export function UserManagement({ config: _config }: UserManagementProps) {
           needsPagination={consoleUserNeedsPagination && consoleUserItemsPerPage !== 'unlimited'}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirmUserId !== null}
+        onClose={() => setDeleteConfirmUserId(null)}
+        onConfirm={confirmDeleteUser}
+        title={t('userManagement.deleteUser')}
+        message={t('userManagement.confirmDelete')}
+        confirmLabel={t('common:actions.delete')}
+        cancelLabel={t('common:actions.cancel')}
+        variant="danger"
+      />
     </div>
   )
 }

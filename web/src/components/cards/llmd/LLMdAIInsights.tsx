@@ -6,7 +6,7 @@
  */
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Lightbulb, AlertTriangle, TrendingUp, Gauge, MessageSquare, ChevronRight, Sparkles, Settings2, Zap } from 'lucide-react'
+import { Brain, Lightbulb, AlertTriangle, TrendingUp, Gauge, MessageSquare, ChevronRight, Sparkles, Settings2, Zap, Loader2 } from 'lucide-react'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { useOptionalStack } from '../../../contexts/StackContext'
 import { useCardDemoState, useReportCardDataState } from '../CardDataContext'
@@ -330,6 +330,7 @@ export function LLMdAIInsights() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'ai'; message: string }>>([])
+  const [isChatLoading, setIsChatLoading] = useState(false)
 
   // Generate insights based on demo mode or real stack
   const insights = useMemo(() => {
@@ -347,57 +348,62 @@ export function LLMdAIInsights() {
   // Handle chat submission
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!chatInput.trim()) return
+    if (!chatInput.trim() || isChatLoading) return
 
     const userMessage = chatInput
     setChatHistory(prev => [...prev, { role: 'user', message: userMessage }])
     setChatInput('')
+    setIsChatLoading(true)
 
-    // Generate contextual responses based on stack state
-    await new Promise(resolve => setTimeout(resolve, PROGRESS_SIMULATION_MS))
+    try {
+      // Generate contextual responses based on stack state
+      await new Promise(resolve => setTimeout(resolve, PROGRESS_SIMULATION_MS))
 
-    let response: string
-    const stack = stackContext?.selectedStack
-    const messageLower = userMessage.toLowerCase()
+      let response: string
+      const stack = stackContext?.selectedStack
+      const messageLower = userMessage.toLowerCase()
 
-    if (shouldUseDemoData) {
-      // Demo mode responses
-      const responses: Record<string, string> = {
-        'scale': 'Based on current load patterns, I recommend scaling up to 4 prefill replicas during peak hours (10am-2pm) and scaling down to 2 during off-peak.',
-        'cache': 'KV cache utilization is averaging 72% with occasional spikes to 87%. Consider enabling prefix caching for repeated prompt patterns.',
-        'performance': 'Current TTFT is 420ms. To optimize, consider enabling disaggregated serving - this could reduce TTFT to ~280ms.',
-        'default': 'I can help analyze your LLM-d stack. Try asking about scaling recommendations, cache optimization, or performance tuning.',
-      }
-      const keyword = Object.keys(responses).find(k => messageLower.includes(k)) || 'default'
-      response = responses[keyword]
-    } else if (stack) {
-      // Live mode responses based on actual stack
-      if (messageLower.includes('scale') || messageLower.includes('replica')) {
-        if (stack.autoscaler) {
-          const curReplicas = stack.autoscaler.currentReplicas ?? 0
-          const maxReplicas = stack.autoscaler.maxReplicas ?? 0
-          response = `Your stack "${stack.name}" is using ${stack.autoscaler.type} autoscaling with ${curReplicas}/${maxReplicas} replicas. ${maxReplicas > 0 && curReplicas >= maxReplicas * 0.8 ? 'Consider increasing maxReplicas for more headroom.' : 'Current scaling configuration looks healthy.'}`
-        } else {
-          response = `Stack "${stack.name}" has ${stack.totalReplicas} manual replicas. Consider enabling Variant Autoscaling (WVA) for automatic scaling based on queue depth and KV cache pressure.`
+      if (shouldUseDemoData) {
+        // Demo mode responses
+        const responses: Record<string, string> = {
+          'scale': 'Based on current load patterns, I recommend scaling up to 4 prefill replicas during peak hours (10am-2pm) and scaling down to 2 during off-peak.',
+          'cache': 'KV cache utilization is averaging 72% with occasional spikes to 87%. Consider enabling prefix caching for repeated prompt patterns.',
+          'performance': 'Current TTFT is 420ms. To optimize, consider enabling disaggregated serving - this could reduce TTFT to ~280ms.',
+          'default': 'I can help analyze your LLM-d stack. Try asking about scaling recommendations, cache optimization, or performance tuning.',
         }
-      } else if (messageLower.includes('disaggregat') || messageLower.includes('prefill') || messageLower.includes('decode')) {
-        if (stack.hasDisaggregation) {
-          const pCount = stack.components.prefill.reduce((s, c) => s + c.replicas, 0)
-          const dCount = stack.components.decode.reduce((s, c) => s + c.replicas, 0)
-          response = `Stack "${stack.name}" uses P/D disaggregation with ${pCount} prefill and ${dCount} decode replicas. This optimizes TTFT by separating compute-intensive prefill from memory-bound decode.`
+        const keyword = Object.keys(responses).find(k => messageLower.includes(k)) || 'default'
+        response = responses[keyword]
+      } else if (stack) {
+        // Live mode responses based on actual stack
+        if (messageLower.includes('scale') || messageLower.includes('replica')) {
+          if (stack.autoscaler) {
+            const curReplicas = stack.autoscaler.currentReplicas ?? 0
+            const maxReplicas = stack.autoscaler.maxReplicas ?? 0
+            response = `Your stack "${stack.name}" is using ${stack.autoscaler.type} autoscaling with ${curReplicas}/${maxReplicas} replicas. ${maxReplicas > 0 && curReplicas >= maxReplicas * 0.8 ? 'Consider increasing maxReplicas for more headroom.' : 'Current scaling configuration looks healthy.'}`
+          } else {
+            response = `Stack "${stack.name}" has ${stack.totalReplicas} manual replicas. Consider enabling Variant Autoscaling (WVA) for automatic scaling based on queue depth and KV cache pressure.`
+          }
+        } else if (messageLower.includes('disaggregat') || messageLower.includes('prefill') || messageLower.includes('decode')) {
+          if (stack.hasDisaggregation) {
+            const pCount = stack.components.prefill.reduce((s, c) => s + c.replicas, 0)
+            const dCount = stack.components.decode.reduce((s, c) => s + c.replicas, 0)
+            response = `Stack "${stack.name}" uses P/D disaggregation with ${pCount} prefill and ${dCount} decode replicas. This optimizes TTFT by separating compute-intensive prefill from memory-bound decode.`
+          } else {
+            response = `Stack "${stack.name}" uses unified serving (${stack.totalReplicas} replicas). Disaggregation could reduce TTFT by 30-50% for large models by separating prefill and decode phases.`
+          }
+        } else if (messageLower.includes('health') || messageLower.includes('status')) {
+          response = `Stack "${stack.name}" is ${stack.status}. ${stack.readyReplicas}/${stack.totalReplicas} replicas ready. Model: ${stack.model || 'Unknown'}. ${stack.status !== 'healthy' ? 'Check pod logs for issues.' : 'All systems operational.'}`
         } else {
-          response = `Stack "${stack.name}" uses unified serving (${stack.totalReplicas} replicas). Disaggregation could reduce TTFT by 30-50% for large models by separating prefill and decode phases.`
+          response = `I can help with your "${stack.name}" stack (${stack.model || 'model'}). Ask about scaling, disaggregation, health status, or optimization opportunities.`
         }
-      } else if (messageLower.includes('health') || messageLower.includes('status')) {
-        response = `Stack "${stack.name}" is ${stack.status}. ${stack.readyReplicas}/${stack.totalReplicas} replicas ready. Model: ${stack.model || 'Unknown'}. ${stack.status !== 'healthy' ? 'Check pod logs for issues.' : 'All systems operational.'}`
       } else {
-        response = `I can help with your "${stack.name}" stack (${stack.model || 'model'}). Ask about scaling, disaggregation, health status, or optimization opportunities.`
+        response = 'No stack selected. Select a stack from the stack selector to get contextual insights.'
       }
-    } else {
-      response = 'No stack selected. Select a stack from the stack selector to get contextual insights.'
-    }
 
-    setChatHistory(prev => [...prev, { role: 'ai', message: response }])
+      setChatHistory(prev => [...prev, { role: 'ai', message: response }])
+    } finally {
+      setIsChatLoading(false)
+    }
   }
 
   const insightCounts = {
@@ -506,12 +512,14 @@ export function LLMdAIInsights() {
             onChange={e => setChatInput(e.target.value)}
             placeholder={t('llmdAIInsights.scalePlaceholder')}
             className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-purple-500"
+            disabled={isChatLoading}
           />
           <button
             type="submit"
-            className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
+            disabled={isChatLoading}
+            className="px-3 py-2 bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Zap size={16} />
+            {isChatLoading ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
           </button>
         </form>
       </div>

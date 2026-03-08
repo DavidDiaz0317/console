@@ -37,6 +37,8 @@ import { SolutionCard } from './SolutionCard'
 import { MissionDetailView } from './MissionDetailView'
 import { ImproveMissionDialog } from './ImproveMissionDialog'
 import { useTranslation } from 'react-i18next'
+import { useToast } from '../ui/Toast'
+import { ConfirmDialog } from '../../lib/modals'
 import {
   TreeNodeItem, DirectoryListing, RecommendationCard, EmptyState, MissionFetchErrorBanner,
   getMissionSlug, getMissionShareUrl, updateNodeInTree,
@@ -113,6 +115,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
   const { clusterContext } = useClusterContext()
   const clusterContextRef = useRef(clusterContext)
   clusterContextRef.current = clusterContext
+  const { showToast } = useToast()
 
   // Navigation state
   const [searchQuery, setSearchQuery] = useState('')
@@ -166,6 +169,8 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
   const [addingPath, setAddingPath] = useState(false)
   const [newRepoValue, setNewRepoValue] = useState('')
   const [newPathValue, setNewPathValue] = useState('')
+  const [confirmRemoveRepo, setConfirmRemoveRepo] = useState<string | null>(null)
+  const [confirmRemovePath, setConfirmRemovePath] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -1282,6 +1287,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                         const updated = [...watchedRepos, val]
                         setWatchedRepos(updated)
                         saveWatchedRepos(updated)
+                        showToast(`Repository "${val}" added`, 'success')
                       }
                       setNewRepoValue('')
                       setAddingRepo(false)
@@ -1311,6 +1317,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                         const updated = [...watchedPaths, val]
                         setWatchedPaths(updated)
                         saveWatchedPaths(updated)
+                        showToast(`Path "${val}" added`, 'success')
                       }
                       setNewPathValue('')
                       setAddingPath(false)
@@ -1345,11 +1352,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                         />
                       </div>
                       <button
-                        onClick={() => {
-                          const updated = watchedRepos.filter(r => r !== child.path)
-                          setWatchedRepos(updated)
-                          saveWatchedRepos(updated)
-                        }}
+                        onClick={() => setConfirmRemoveRepo(child.path)}
                         className="p-2 min-h-11 min-w-11 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
                         title="Remove from watched"
                       >
@@ -1372,11 +1375,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                         />
                       </div>
                       <button
-                        onClick={() => {
-                          const updated = watchedPaths.filter(p => p !== child.path)
-                          setWatchedPaths(updated)
-                          saveWatchedPaths(updated)
-                        }}
+                        onClick={() => setConfirmRemovePath(child.path)}
                         className="p-2 min-h-11 min-w-11 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0"
                         title="Remove from watched"
                       >
@@ -1821,6 +1820,44 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
         </div>
       </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmRemoveRepo !== null}
+        onClose={() => setConfirmRemoveRepo(null)}
+        onConfirm={() => {
+          if (confirmRemoveRepo) {
+            const updated = watchedRepos.filter(r => r !== confirmRemoveRepo)
+            setWatchedRepos(updated)
+            saveWatchedRepos(updated)
+            showToast(`Repository "${confirmRemoveRepo}" removed`, 'info')
+            setConfirmRemoveRepo(null)
+          }
+        }}
+        title="Remove Repository"
+        message={`Remove "${confirmRemoveRepo}" from watched repositories?`}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={confirmRemovePath !== null}
+        onClose={() => setConfirmRemovePath(null)}
+        onConfirm={() => {
+          if (confirmRemovePath) {
+            const updated = watchedPaths.filter(p => p !== confirmRemovePath)
+            setWatchedPaths(updated)
+            saveWatchedPaths(updated)
+            showToast(`Path "${confirmRemovePath}" removed`, 'info')
+            setConfirmRemovePath(null)
+          }
+        }}
+        title="Remove Path"
+        message={`Remove "${confirmRemovePath}" from watched paths?`}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }
