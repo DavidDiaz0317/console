@@ -337,7 +337,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
           <div className="border-l border-border/50 pl-2">
             {deployments.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('deployments')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('deployments')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('deployments') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="purple" icon={<Layers className="w-3 h-3" />}>Deploy</StatusBadge>
                   <span className="text-muted-foreground">({deployments.length})</span>
@@ -390,7 +390,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {podsByDeployment.standalone.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('pods')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('pods')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('pods') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="blue" icon={<Box className="w-3 h-3" />}>{t('common.pod')}</StatusBadge>
                   <span className="text-muted-foreground">Standalone ({podsByDeployment.standalone.length})</span>
@@ -417,7 +417,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {services.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('services')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('services')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('services') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="cyan" icon={<Network className="w-3 h-3" />}>Svc</StatusBadge>
                   <span className="text-muted-foreground">({services.length})</span>
@@ -444,7 +444,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {jobs.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('jobs')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('jobs')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('jobs') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="yellow" icon={<Briefcase className="w-3 h-3" />}>Job</StatusBadge>
                   <span className="text-muted-foreground">({jobs.length})</span>
@@ -471,7 +471,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {hpas.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('hpas')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('hpas')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('hpas') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="purple" icon={<Activity className="w-3 h-3" />}>HPA</StatusBadge>
                   <span className="text-muted-foreground">({hpas.length})</span>
@@ -498,7 +498,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {serviceAccounts.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('serviceaccounts')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('serviceaccounts')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('serviceaccounts') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="cyan" icon={<User className="w-3 h-3" />}>SA</StatusBadge>
                   <span className="text-muted-foreground">({serviceAccounts.length})</span>
@@ -525,7 +525,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {pvcs.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('pvcs')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('pvcs')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('pvcs') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="green" icon={<HardDrive className="w-3 h-3" />}>PVC</StatusBadge>
                   <span className="text-muted-foreground">({pvcs.length})</span>
@@ -553,7 +553,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {configmaps.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('configmaps')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('configmaps')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('configmaps') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="orange" icon={<Settings className="w-3 h-3" />}>CM</StatusBadge>
                   <span className="text-muted-foreground">({configmaps.length})</span>
@@ -580,7 +580,7 @@ export function NamespaceResources({ clusterName, namespace, onClose }: Namespac
 
             {secrets.length > 0 && (
               <div className="mb-1">
-                <button onClick={() => toggleType('secrets')} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11">
+                <button onClick={() => toggleType('secrets')} disabled={isInitialLoading} className="flex items-center gap-1.5 py-2 hover:bg-card/30 rounded px-2 w-full text-left min-h-11 disabled:opacity-50 disabled:cursor-not-allowed">
                   {expandedTypes.has('secrets') ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                   <StatusBadge color="purple" icon={<Lock className="w-3 h-3" />}>Secret</StatusBadge>
                   <span className="text-muted-foreground">({secrets.length})</span>

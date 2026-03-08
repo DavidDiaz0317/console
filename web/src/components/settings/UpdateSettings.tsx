@@ -119,6 +119,7 @@ export function UpdateSettings() {
   const [triggerError, setTriggerError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState(ESTIMATED_UPDATE_SECS)
   const [hasGithubToken, setHasGithubToken] = useState(() => Boolean(localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN)))
+  const [isReloading, setIsReloading] = useState(false)
   const triggerGuardRef = useRef(false) // prevents rapid double-clicks from firing multiple triggers
 
   // Track visual spinning for Check Now button (ensures 1 full rotation like cards)
@@ -531,14 +532,18 @@ export function UpdateSettings() {
                 <p className="text-sm text-green-400">{updateProgress.message}</p>
                 <button
                   data-testid="update-refresh-button"
-                  onClick={() => window.location.reload()}
-                  className="text-xs text-green-400/80 hover:text-green-300 underline underline-offset-2 mt-1"
+                  onClick={() => { setIsReloading(true); window.location.reload() }}
+                  disabled={isReloading}
+                  className="text-xs text-green-400/80 hover:text-green-300 underline underline-offset-2 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t('settings.updates.refreshToLoad')}
+                  {isReloading
+                    ? <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />{t('settings.updates.refreshToLoad')}</span>
+                    : t('settings.updates.refreshToLoad')
+                  }
                 </button>
               </div>
             </div>
-            <button data-testid="update-done-dismiss" onClick={dismissProgress} className="text-green-400/60 hover:text-green-400">
+            <button data-testid="update-done-dismiss" onClick={dismissProgress} disabled={isReloading} className="text-green-400/60 hover:text-green-400 disabled:opacity-50 disabled:cursor-not-allowed">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -556,7 +561,7 @@ export function UpdateSettings() {
                 )}
               </div>
             </div>
-            <button data-testid="update-failed-dismiss" onClick={dismissProgress} className="text-red-400/60 hover:text-red-400 shrink-0 ml-2">
+            <button data-testid="update-failed-dismiss" onClick={dismissProgress} disabled={isUpdating} className="text-red-400/60 hover:text-red-400 shrink-0 ml-2 disabled:opacity-50 disabled:cursor-not-allowed">
               <X className="w-4 h-4" />
             </button>
           </div>

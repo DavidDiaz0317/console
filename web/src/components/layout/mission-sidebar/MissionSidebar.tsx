@@ -49,6 +49,7 @@ export function MissionSidebar() {
   const [showBrowser, setShowBrowser] = useState(false)
   const [newMissionPrompt, setNewMissionPrompt] = useState('')
   const [showSavedToast, setShowSavedToast] = useState<string | null>(null)
+  const [isViewingLibrary, setIsViewingLibrary] = useState(false)
   const [viewingMission, setViewingMission] = useState<MissionExport | null>(null)
   const [viewingMissionRaw, setViewingMissionRaw] = useState(false)
   const newMissionInputRef = useRef<HTMLTextAreaElement>(null)
@@ -92,8 +93,9 @@ export function MissionSidebar() {
       initialPrompt: mission.resolution?.summary || mission.description,
     })
     setShowBrowser(false)
+    setIsViewingLibrary(false)
     setShowSavedToast(mission.title)
-    setTimeout(() => setShowSavedToast(null), SAVED_TOAST_MS)
+    setTimeout(() => { setShowSavedToast(null); setIsViewingLibrary(false) }, SAVED_TOAST_MS)
   }, [saveMission])
 
   /** Convert a saved Mission to MissionExport for the detail view */
@@ -416,7 +418,7 @@ export function MissionSidebar() {
             <p className="text-xs font-medium text-green-400 truncate">Saved to library</p>
             <p className="text-2xs text-muted-foreground truncate">{showSavedToast}</p>
           </div>
-          <button onClick={() => { setActiveMission(null); setShowSavedToast(null) }} className="text-2xs text-green-400 hover:underline flex-shrink-0">{t('common.view')}</button>
+          <button onClick={() => { setIsViewingLibrary(true); setActiveMission(null); setShowSavedToast(null) }} disabled={isViewingLibrary} className="text-2xs text-green-400 hover:underline flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">{t('common.view')}</button>
         </div>
       )}
 
