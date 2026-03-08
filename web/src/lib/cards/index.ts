@@ -17,8 +17,6 @@ export {
   useCardFilters,
   useCardSort,
   useCardData,
-  useCardCollapse,
-  useCardCollapseAll,
   useCardFlash,
   commonComparators,
   // Variant hooks
@@ -35,7 +33,6 @@ export {
   type UseCardFiltersResult,
   type UseCardSortResult,
   type UseCardDataResult,
-  type UseCardCollapseResult,
   type CardFlashType,
   type UseCardFlashOptions,
   type UseCardFlashResult,
@@ -49,6 +46,13 @@ export {
   type StatusFilterConfig,
   type UseStatusFilterResult,
 } from './cardHooks'
+
+// Card Collapse
+export {
+  useCardCollapse,
+  useCardCollapseAll,
+  type UseCardCollapseResult,
+} from './cardCollapse'
 
 // Card UI Components
 export {
