@@ -221,7 +221,7 @@ export function StatsOverview({
             </div>
           )}
           {isDemoData && (
-            <StatusBadge color="yellow" size="xs" variant="outline" rounded="full" icon={<FlaskConical className="w-2.5 h-2.5" />}>
+            <StatusBadge color="yellow" size="xs" variant="outline" rounded="full" icon={<FlaskConical className="w-2.5 h-2.5" />} title={t('statsOverview.demoTooltip')}>
               {t('statsOverview.demo')}
             </StatusBadge>
           )}

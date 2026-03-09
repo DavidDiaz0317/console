@@ -1932,7 +1932,8 @@
     "configureStats": "Configure stats",
     "demo": "Demo",
     "notAvailable": "Not available",
-    "updated": "Updated {{time}}"
+    "updated": "Updated {{time}}",
+    "demoTooltip": "Mostrando datos de demostración de muestra — conecte clústeres para ver métricas en vivo"
   },
   "refresh": {
     "failed": "Failed"

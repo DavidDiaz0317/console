@@ -1932,7 +1932,8 @@
     "configureStats": "Configure stats",
     "demo": "Demo",
     "notAvailable": "Not available",
-    "updated": "Updated {{time}}"
+    "updated": "Updated {{time}}",
+    "demoTooltip": "显示示例演示数据 — 连接集群以查看实时指标"
   },
   "refresh": {
     "failed": "Failed"

@@ -21,6 +21,7 @@ import { CARD_T1_SYSTEM_PROMPT, CARD_T2_SYSTEM_PROMPT, CARD_INLINE_ASSIST_PROMPT
 import { generateSampleData, detectFieldFormat } from '../../lib/ai/sampleData'
 import { useAIMode } from '../../hooks/useAIMode'
 import { StatusBadge } from '../ui/StatusBadge'
+import { wrapAbbreviations } from '../shared/TechnicalAcronym'
 
 interface CardFactoryModalProps {
   isOpen: boolean
@@ -1175,7 +1176,7 @@ function TemplateDropdown<T extends { name: string }>({
               onClick={() => { onSelect(tpl); setOpen(false) }}
               className="w-full text-left px-3 py-1.5 rounded-md text-xs text-foreground hover:bg-secondary transition-colors"
             >
-              {tpl.name}
+              {wrapAbbreviations(tpl.name)}
             </button>
           ))}
         </div>

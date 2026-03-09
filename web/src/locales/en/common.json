@@ -1943,7 +1943,8 @@
     "configureStats": "Configure stats",
     "demo": "Demo",
     "notAvailable": "Not available",
-    "updated": "Updated {{time}}"
+    "updated": "Updated {{time}}",
+    "demoTooltip": "Showing sample demo data — connect clusters to see live metrics"
   },
   "refresh": {
     "failed": "Failed"

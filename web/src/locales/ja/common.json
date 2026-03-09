@@ -1932,7 +1932,8 @@
     "configureStats": "Configure stats",
     "demo": "Demo",
     "notAvailable": "Not available",
-    "updated": "Updated {{time}}"
+    "updated": "Updated {{time}}",
+    "demoTooltip": "サンプルのデモデータを表示しています — ライブメトリクスを表示するにはクラスターを接続してください"
   },
   "refresh": {
     "failed": "Failed"

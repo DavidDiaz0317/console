@@ -881,7 +881,7 @@ export function ConfigureCardModal({ isOpen, card, onClose, onSave, onCreateCard
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{t(`cardConfig.behaviorLabels.${behavior.key}`, behavior.label)}</p>
+                      <p className="text-sm font-medium text-foreground">{wrapAbbreviations(t(`cardConfig.behaviorLabels.${behavior.key}`, behavior.label))}</p>
                       <p className="text-xs text-muted-foreground">{wrapAbbreviations(behavior.description)}</p>
                     </div>
                   </div>
