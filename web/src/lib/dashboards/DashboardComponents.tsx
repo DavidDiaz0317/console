@@ -12,6 +12,7 @@ import { CardWrapper } from '../../components/cards/CardWrapper'
 import { CARD_COMPONENTS, DEMO_DATA_CARDS } from '../../components/cards/cardRegistry'
 import { formatCardTitle } from '../../lib/formatCardTitle'
 import { useMobile } from '../../hooks/useMobile'
+import { DashboardHealthIndicator } from '../../components/dashboard/DashboardHealthIndicator'
 
 // ============================================================================
 // Icon Resolver
@@ -154,6 +155,8 @@ export interface DashboardHeaderProps {
   isFetching?: boolean
   /** Extra controls */
   extra?: ReactNode
+  /** Show system health indicator badge (default: true) */
+  showHealthIndicator?: boolean
 }
 
 export function DashboardHeader({
@@ -166,6 +169,7 @@ export function DashboardHeader({
   onRefresh,
   isFetching,
   extra,
+  showHealthIndicator = true,
 }: DashboardHeaderProps) {
   const Icon = getIcon(icon)
 
@@ -190,6 +194,7 @@ export function DashboardHeader({
             <Hourglass className="w-3 h-3" />
             <span>Updating</span>
           </span>
+          {showHealthIndicator && <DashboardHealthIndicator size="sm" />}
         </div>
         <div className="flex items-center gap-3">
           {onAutoRefreshChange && (

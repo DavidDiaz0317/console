@@ -1,8 +1,9 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, Plus, Check } from 'lucide-react'
+import { LayoutDashboard, Plus, Check, CheckCircle, AlertTriangle, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Dashboard } from '../../hooks/useDashboards'
+import { useDashboardContext } from '../../hooks/useDashboardContext'
 
 interface DashboardDropZoneProps {
   dashboards: Dashboard[]
@@ -18,14 +19,35 @@ export function DashboardDropZone({
   onCreateDashboard,
 }: DashboardDropZoneProps) {
   const { t } = useTranslation()
+  const { health } = useDashboardContext()
   // Filter out current dashboard (handle null/undefined dashboards)
   const otherDashboards = (dashboards || []).filter((d) => d.id !== currentDashboardId)
 
   if (!isDragging) return null
 
+  const HealthIcon = health.status === 'critical'
+    ? AlertCircle
+    : health.status === 'warning'
+    ? AlertTriangle
+    : CheckCircle
+  const healthColor = health.status === 'critical'
+    ? 'text-red-400'
+    : health.status === 'warning'
+    ? 'text-yellow-400'
+    : 'text-green-400'
+
   return (
     <div className="fixed right-6 top-24 z-50 animate-fade-in-up">
       <div className="glass rounded-xl border border-border/50 p-4 w-64 shadow-2xl">
+        {/* System health status */}
+        <div
+          className="flex items-center gap-2 mb-3 pb-2 border-b border-border/30"
+          aria-label={`System health: ${health.message}`}
+        >
+          <HealthIcon className={cn('w-3 h-3 shrink-0', healthColor)} />
+          <span className={cn('text-xs', healthColor)}>{health.message}</span>
+        </div>
+
         <div className="flex items-center gap-2 mb-3 text-sm font-medium text-foreground">
           <LayoutDashboard className="w-4 h-4 text-purple-400" />
           {t('dashboard.dropZone.moveToDashboard')}

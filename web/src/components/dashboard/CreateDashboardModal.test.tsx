@@ -6,4 +6,10 @@ describe('CreateDashboardModal Component', () => {
     expect(CreateDashboardModalModule.CreateDashboardModal).toBeDefined()
     expect(typeof CreateDashboardModalModule.CreateDashboardModal).toBe('function')
   })
+
+  it('includes DashboardHealthIndicator in the modal header', () => {
+    // Verify the component renders DashboardHealthIndicator for system health awareness
+    const src = CreateDashboardModalModule.CreateDashboardModal.toString()
+    expect(src).toContain('DashboardHealthIndicator')
+  })
 })

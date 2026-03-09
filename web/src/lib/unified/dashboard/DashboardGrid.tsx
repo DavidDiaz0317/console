@@ -24,9 +24,11 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { AlertCircle, AlertTriangle } from 'lucide-react'
 import type { DashboardCardPlacement, DashboardFeatures } from '../types'
 import { UnifiedCard } from '../card'
 import { getCardConfig } from '../../../config/cards'
+import { useDashboardContextOptional } from '../../../hooks/useDashboardContext'
 
 /** Viewport width breakpoint below which small cards are clamped to wider minimum */
 const NARROW_VIEWPORT_BREAKPOINT_PX = 1024
@@ -61,6 +63,8 @@ export function DashboardGrid({
   className = '',
 }: DashboardGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const dashboardContext = useDashboardContextOptional()
+  const health = dashboardContext?.health
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -107,6 +111,28 @@ export function DashboardGrid({
   // Enable drag-drop if configured and we have a reorder handler
   const enableDragDrop = features?.dragDrop !== false && !!onReorder
 
+  // Health alert banner shown when system has issues (only when health state is available)
+  const healthBanner = health && health.status !== 'healthy' ? (
+    <div
+      className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg text-xs border ${
+        health.status === 'critical'
+          ? 'bg-red-500/10 border-red-500/30 text-red-400'
+          : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+      }`}
+      role="alert"
+      aria-label={`Dashboard health: ${health.message}`}
+    >
+      {health.status === 'critical'
+        ? <AlertCircle className="w-3 h-3 shrink-0" />
+        : <AlertTriangle className="w-3 h-3 shrink-0" />
+      }
+      <span className="font-medium">{health.message}</span>
+      {health.details.length > 0 && (
+        <span className="text-muted-foreground truncate">— {health.details.join(', ')}</span>
+      )}
+    </div>
+  ) : null
+
   // Render grid content
   const gridContent = (
     <div className={`grid grid-cols-1 md:grid-cols-12 gap-4 ${className}`}>
@@ -128,34 +154,42 @@ export function DashboardGrid({
   // Wrap with DnD context if drag-drop is enabled
   if (enableDragDrop) {
     return (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={cards.map((c) => c.id)}
-          strategy={rectSortingStrategy}
+      <>
+        {healthBanner}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
-          {gridContent}
-        </SortableContext>
+          <SortableContext
+            items={cards.map((c) => c.id)}
+            strategy={rectSortingStrategy}
+          >
+            {gridContent}
+          </SortableContext>
 
-        {/* Drag overlay */}
-        <DragOverlay>
-          {activeCard && (
-            <DashboardCardWrapper
-              placement={activeCard}
-              isDraggable={false}
-              isOverlay={true}
-            />
-          )}
-        </DragOverlay>
-      </DndContext>
+          {/* Drag overlay */}
+          <DragOverlay>
+            {activeCard && (
+              <DashboardCardWrapper
+                placement={activeCard}
+                isDraggable={false}
+                isOverlay={true}
+              />
+            )}
+          </DragOverlay>
+        </DndContext>
+      </>
     )
   }
 
-  return gridContent
+  return (
+    <>
+      {healthBanner}
+      {gridContent}
+    </>
+  )
 }
 
 /**

@@ -5,6 +5,7 @@ import { BaseModal } from '../../lib/modals'
 import { Button } from '../ui/Button'
 import { DASHBOARD_TEMPLATES, TEMPLATE_CATEGORIES, DashboardTemplate } from './templates'
 import { FOCUS_DELAY_MS } from '../../lib/constants/network'
+import { DashboardHealthIndicator } from './DashboardHealthIndicator'
 
 interface CreateDashboardModalProps {
   isOpen: boolean
@@ -73,6 +74,7 @@ export function CreateDashboardModal({
         icon={LayoutDashboard}
         onClose={onClose}
         showBack={false}
+        extra={<DashboardHealthIndicator size="sm" />}
       />
 
       <BaseModal.Content>
