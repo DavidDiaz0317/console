@@ -79,7 +79,13 @@ export function AlertBadge() {
   const [searchQuery, setSearchQuery] = useState('')
   const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'all'>('all')
   const [selectedAlertIds, setSelectedAlertIds] = useState<Set<string>>(new Set())
+  const [clusterFilter, setClusterFilter] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Reset cluster filter when alert dropdown closes
+  useEffect(() => {
+    if (!isOpen) setClusterFilter([])
+  }, [isOpen])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -142,6 +148,11 @@ export function AlertBadge() {
       result = result.filter(a => a.severity === severityFilter)
     }
 
+    // Apply cluster filter (multi-cluster: filter to selected clusters only)
+    if (clusterFilter.length > 0) {
+      result = result.filter(a => a.cluster != null && clusterFilter.includes(a.cluster))
+    }
+
     // Sort by severity and time
     return result.sort((a, b) => {
       const severityOrder: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 }
@@ -149,10 +160,24 @@ export function AlertBadge() {
       if (severityDiff !== 0) return severityDiff
       return new Date(b.firedAt).getTime() - new Date(a.firedAt).getTime()
     })
-  }, [activeAlerts, searchQuery, severityFilter])
+  }, [activeAlerts, searchQuery, severityFilter, clusterFilter])
 
   // Show all filtered alerts (scrollable container handles overflow)
   const displayedAlerts = filteredAlerts
+
+  // Distinct cluster names present in active alerts (sorted) — used for multi-cluster filtering
+  const availableAlertClusters = useMemo(
+    () => [...new Set(activeAlerts.map(a => a.cluster).filter((c): c is string => c != null))].sort(),
+    [activeAlerts]
+  )
+
+  const toggleClusterFilter = useCallback(
+    (cluster: string) =>
+      setClusterFilter(prev =>
+        prev.includes(cluster) ? prev.filter(c => c !== cluster) : [...prev, cluster]
+      ),
+    []
+  )
 
   const handleAlertClick = (alert: Alert) => {
     close()
@@ -365,6 +390,37 @@ export function AlertBadge() {
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                   {stats.info}
                 </button>
+              </div>
+            )}
+
+            {/* Cluster Filter - only shown when alerts span multiple clusters */}
+            {stats.firing > 0 && availableAlertClusters.length >= 2 && (
+              <div className="p-2 border-b border-border flex items-center gap-2 flex-wrap">
+                <Server className="w-3 h-3 text-muted-foreground shrink-0" />
+                <button
+                  onClick={() => setClusterFilter([])}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    clusterFilter.length === 0
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t('clusterFilter.allClusters')}
+                </button>
+                {availableAlertClusters.map(cluster => (
+                  <button
+                    key={cluster}
+                    onClick={() => toggleClusterFilter(cluster)}
+                    className={`px-2 py-1 text-xs rounded transition-colors truncate max-w-[120px] ${
+                      clusterFilter.includes(cluster)
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={cluster}
+                  >
+                    {cluster}
+                  </button>
+                ))}
               </div>
             )}
 
