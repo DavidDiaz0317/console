@@ -273,7 +273,8 @@ describe('usePods', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-      expect(result.current.pods.length).toBeGreaterThan(0)
+      // getDemoPods() returns exactly 10 items (sorted by restarts, limited to 10)
+      expect(result.current.pods).toHaveLength(10)
       expect(result.current.error).toBe('Failed to fetch pods')
     })
   })
@@ -350,6 +351,43 @@ describe('useDeployments', () => {
     await waitFor(() => expect(result.current.deployments).toHaveLength(1))
     expect(result.current.deployments[0].name).toBe('deploy-1')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('returns deployment data from local agent HTTP endpoint (first tier)', async () => {
+    const agentDeploy = makeDeployment({ name: 'agent-deploy' })
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ deployments: [agentDeploy] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useDeployments('prod-cluster'))
+
+    await waitFor(() => expect(result.current.deployments).toHaveLength(1))
+    expect(result.current.deployments[0].name).toBe('agent-deploy')
+    expect(result.current.isLoading).toBe(false)
+    // Agent endpoint was called with cluster param
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/deployments?')
+    expect(calledUrl).toContain('cluster=prod-cluster')
+  })
+
+  it('falls back to kubectl proxy when agent HTTP endpoint returns non-ok', async () => {
+    const proxyDeploy = makeDeployment({ name: 'proxy-deploy' })
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockGetDeployments.mockResolvedValueOnce([proxyDeploy])
+
+    // Agent HTTP endpoint responds non-ok — hook falls back to kubectl proxy
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useDeployments('prod-cluster'))
+
+    await waitFor(() => expect(result.current.deployments).toHaveLength(1))
+    expect(result.current.deployments[0].name).toBe('proxy-deploy')
+    expect(mockGetDeployments).toHaveBeenCalledWith('prod-cluster', undefined)
   })
 
   it('passes cluster and namespace params in REST fallback URL', async () => {
@@ -517,8 +555,10 @@ describe('useDeploymentIssues', () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
-      // Falls back to demo data (non-empty)
-      expect(result.current.issues.length).toBeGreaterThan(0)
+      // getDemoDeploymentIssues() returns exactly 2 items
+      expect(result.current.issues).toHaveLength(2)
+      expect(result.current.issues[0].name).toBe('api-gateway')
+      expect(result.current.issues[1].name).toBe('worker-service')
     })
   })
 
@@ -825,6 +865,44 @@ describe('shared workload cache reset', () => {
     await waitFor(() => {
       expect(result.current.pods).toEqual([])
       expect(result.current.isLoading).toBe(true)
+    })
+  })
+
+  it('cache reset clears data across multiple simultaneously subscribed hooks', async () => {
+    const pod = makePod()
+    const issue = {
+      name: 'bad-deploy',
+      namespace: 'default',
+      cluster: 'test',
+      replicas: 3,
+      readyReplicas: 1,
+    }
+
+    // First call is for usePods (SSE), second for useDeploymentIssues (SSE)
+    mockFetchSSE
+      .mockResolvedValueOnce([pod])
+      .mockResolvedValueOnce([issue])
+      .mockImplementation(() => new Promise(() => {}))
+
+    const { result: podsResult } = renderHook(() => hooks.usePods())
+    const { result: issuesResult } = renderHook(() => hooks.useDeploymentIssues())
+
+    await waitFor(() => {
+      expect(podsResult.current.pods).toHaveLength(1)
+      expect(issuesResult.current.issues).toHaveLength(1)
+    })
+
+    // Fire the shared cache reset — both hooks should clear simultaneously
+    expect(triggerWorkloadsCacheReset).toBeDefined()
+    await act(async () => {
+      triggerWorkloadsCacheReset!()
+    })
+
+    await waitFor(() => {
+      expect(podsResult.current.pods).toEqual([])
+      expect(podsResult.current.isLoading).toBe(true)
+      expect(issuesResult.current.issues).toEqual([])
+      expect(issuesResult.current.isLoading).toBe(true)
     })
   })
 })
