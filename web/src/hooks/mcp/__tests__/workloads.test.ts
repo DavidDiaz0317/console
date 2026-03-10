@@ -308,19 +308,18 @@ describe('usePods', () => {
     // Allow the initial fetch (triggered by useEffect) to complete
     await act(async () => { await vi.advanceTimersByTimeAsync(10) })
 
-    const callsAfterMount = mockFetchSSE.mock.calls.length
-    expect(callsAfterMount).toBeGreaterThanOrEqual(1)
+    // Exactly 1 call after mount
+    expect(mockFetchSSE).toHaveBeenCalledTimes(1)
 
-    // Advance by one polling interval — should trigger one more call
+    // Advance by one polling interval — exactly 1 more call (2 total)
     await act(async () => { await vi.advanceTimersByTimeAsync(120_000) })
-    expect(mockFetchSSE.mock.calls.length).toBeGreaterThan(callsAfterMount)
+    expect(mockFetchSSE).toHaveBeenCalledTimes(2)
 
     unmount()
-    const callsAfterUnmount = mockFetchSSE.mock.calls.length
 
-    // No more calls after unmount
+    // No more calls after unmount — still 2 total after another full interval
     await act(async () => { await vi.advanceTimersByTimeAsync(120_000) })
-    expect(mockFetchSSE.mock.calls.length).toBe(callsAfterUnmount)
+    expect(mockFetchSSE).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -388,6 +387,26 @@ describe('useDeployments', () => {
     await waitFor(() => expect(result.current.deployments).toHaveLength(1))
     expect(result.current.deployments[0].name).toBe('proxy-deploy')
     expect(mockGetDeployments).toHaveBeenCalledWith('prod-cluster', undefined)
+  })
+
+  it('resolves kubectl proxy context from clusterCacheRef when available', async () => {
+    const proxyDeploy = makeDeployment({ name: 'proxy-ctx-deploy' })
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockGetDeployments.mockResolvedValueOnce([proxyDeploy])
+
+    // Populate clusterCacheRef so context lookup resolves to a named context
+    mockClusterCacheRef.clusters = [{ name: 'alpha', context: 'ctx-alpha' }]
+
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+    }) as typeof fetch
+
+    renderHook(() => hooks.useDeployments('alpha', 'apps'))
+
+    await waitFor(() => expect(mockGetDeployments).toHaveBeenCalled())
+    // Context should be resolved to 'ctx-alpha', not raw cluster name 'alpha'
+    expect(mockGetDeployments).toHaveBeenCalledWith('ctx-alpha', 'apps')
   })
 
   it('passes cluster and namespace params in REST fallback URL', async () => {
@@ -581,7 +600,7 @@ describe('useDeploymentIssues', () => {
 // ============================================================================
 
 describe('useHPAs', () => {
-  it('returns hpas from API response', async () => {
+  it('returns hpas from API response when no cluster is provided', async () => {
     const hpa = {
       name: 'app-hpa',
       namespace: 'default',
@@ -599,6 +618,23 @@ describe('useHPAs', () => {
     expect(result.current.hpas[0].name).toBe('app-hpa')
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
+  })
+
+  it('returns hpas from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentHpa = { name: 'agent-hpa', namespace: 'default', cluster: 'prod', reference: 'Deployment/app', minReplicas: 1, maxReplicas: 5, currentReplicas: 2 }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ hpas: [agentHpa] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useHPAs('prod', 'default'))
+
+    await waitFor(() => expect(result.current.hpas).toHaveLength(1))
+    expect(result.current.hpas[0].name).toBe('agent-hpa')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/hpas?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on API failure', async () => {
@@ -630,7 +666,7 @@ describe('useHPAs', () => {
 // ============================================================================
 
 describe('useJobs', () => {
-  it('returns jobs from SSE response when agent is unavailable', async () => {
+  it('returns jobs from SSE response when no cluster is provided', async () => {
     const job = {
       name: 'batch-job',
       namespace: 'default',
@@ -646,6 +682,23 @@ describe('useJobs', () => {
     expect(result.current.jobs[0].name).toBe('batch-job')
     expect(result.current.isLoading).toBe(false)
     expect(result.current.error).toBeNull()
+  })
+
+  it('returns jobs from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentJob = { name: 'agent-job', namespace: 'default', cluster: 'prod', status: 'Running', completions: '0/1' }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ jobs: [agentJob] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useJobs('prod', 'default'))
+
+    await waitFor(() => expect(result.current.jobs).toHaveLength(1))
+    expect(result.current.jobs[0].name).toBe('agent-job')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/jobs?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on SSE failure', async () => {
@@ -666,11 +719,11 @@ describe('useJobs', () => {
     const { result } = renderHook(() => hooks.useJobs())
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-    const initialCallCount = mockFetchSSE.mock.calls.length
+    expect(mockFetchSSE).toHaveBeenCalledTimes(1)
 
     await act(async () => { result.current.refetch() })
 
-    await waitFor(() => expect(mockFetchSSE.mock.calls.length).toBeGreaterThan(initialCallCount))
+    await waitFor(() => expect(mockFetchSSE).toHaveBeenCalledTimes(2))
   })
 })
 
@@ -679,7 +732,7 @@ describe('useJobs', () => {
 // ============================================================================
 
 describe('useReplicaSets', () => {
-  it('returns replicasets from API response', async () => {
+  it('returns replicasets from API response when no cluster is provided', async () => {
     const rs = {
       name: 'app-rs-abc123',
       namespace: 'default',
@@ -694,6 +747,23 @@ describe('useReplicaSets', () => {
     await waitFor(() => expect(result.current.replicasets).toHaveLength(1))
     expect(result.current.replicasets[0].name).toBe('app-rs-abc123')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('returns replicasets from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentRs = { name: 'agent-rs', namespace: 'default', cluster: 'prod', replicas: 2, readyReplicas: 2 }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ replicasets: [agentRs] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useReplicaSets('prod', 'default'))
+
+    await waitFor(() => expect(result.current.replicasets).toHaveLength(1))
+    expect(result.current.replicasets[0].name).toBe('agent-rs')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/replicasets?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on API failure', async () => {
@@ -714,7 +784,7 @@ describe('useReplicaSets', () => {
 // ============================================================================
 
 describe('useStatefulSets', () => {
-  it('returns statefulsets from API response', async () => {
+  it('returns statefulsets from API response when no cluster is provided', async () => {
     const sts = {
       name: 'db-sts',
       namespace: 'default',
@@ -730,6 +800,23 @@ describe('useStatefulSets', () => {
     await waitFor(() => expect(result.current.statefulsets).toHaveLength(1))
     expect(result.current.statefulsets[0].name).toBe('db-sts')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('returns statefulsets from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentSts = { name: 'agent-sts', namespace: 'default', cluster: 'prod', replicas: 1, readyReplicas: 1, status: 'Running' }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ statefulsets: [agentSts] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useStatefulSets('prod', 'default'))
+
+    await waitFor(() => expect(result.current.statefulsets).toHaveLength(1))
+    expect(result.current.statefulsets[0].name).toBe('agent-sts')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/statefulsets?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on API failure', async () => {
@@ -750,7 +837,7 @@ describe('useStatefulSets', () => {
 // ============================================================================
 
 describe('useDaemonSets', () => {
-  it('returns daemonsets from API response', async () => {
+  it('returns daemonsets from API response when no cluster is provided', async () => {
     const ds = {
       name: 'node-agent-ds',
       namespace: 'kube-system',
@@ -767,6 +854,23 @@ describe('useDaemonSets', () => {
     await waitFor(() => expect(result.current.daemonsets).toHaveLength(1))
     expect(result.current.daemonsets[0].name).toBe('node-agent-ds')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('returns daemonsets from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentDs = { name: 'agent-ds', namespace: 'kube-system', cluster: 'prod', desiredScheduled: 2, currentScheduled: 2, ready: 2, status: 'Running' }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ daemonsets: [agentDs] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useDaemonSets('prod', 'kube-system'))
+
+    await waitFor(() => expect(result.current.daemonsets).toHaveLength(1))
+    expect(result.current.daemonsets[0].name).toBe('agent-ds')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/daemonsets?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on API failure', async () => {
@@ -787,7 +891,7 @@ describe('useDaemonSets', () => {
 // ============================================================================
 
 describe('useCronJobs', () => {
-  it('returns cronjobs from API response', async () => {
+  it('returns cronjobs from API response when no cluster is provided', async () => {
     const cj = {
       name: 'daily-report',
       namespace: 'default',
@@ -803,6 +907,23 @@ describe('useCronJobs', () => {
     await waitFor(() => expect(result.current.cronjobs).toHaveLength(1))
     expect(result.current.cronjobs[0].name).toBe('daily-report')
     expect(result.current.isLoading).toBe(false)
+  })
+
+  it('returns cronjobs from agent HTTP endpoint when cluster is provided and agent is available', async () => {
+    const agentCj = { name: 'agent-cronjob', namespace: 'default', cluster: 'prod', schedule: '*/5 * * * *', suspend: false, active: 0 }
+    mockIsAgentUnavailable.mockReturnValue(false)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ cronjobs: [agentCj] }),
+    }) as typeof fetch
+
+    const { result } = renderHook(() => hooks.useCronJobs('prod', 'default'))
+
+    await waitFor(() => expect(result.current.cronjobs).toHaveLength(1))
+    expect(result.current.cronjobs[0].name).toBe('agent-cronjob')
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('/cronjobs?')
+    expect(calledUrl).toContain('cluster=prod')
   })
 
   it('returns error on API failure', async () => {
