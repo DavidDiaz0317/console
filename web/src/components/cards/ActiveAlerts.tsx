@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   Bell,
@@ -27,6 +28,8 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useDemoMode } from '../../hooks/useDemoMode'
 import { isBrowserNotifVerified, setBrowserNotifVerified } from '../../lib/notificationStatus'
+import { ROUTES } from '../../config/routes'
+import { scrollToCard } from '../../lib/scrollToCard'
 
 // Severity color map — defined at module level to avoid re-creation on each render
 const SEVERITY_COLORS: Record<AlertSeverity, string> = {
@@ -108,6 +111,7 @@ export function ActiveAlerts() {
   })
   const { open } = useDrillDown()
   const { missions, setActiveMission, openSidebar } = useMissions()
+  const navigate = useNavigate()
 
   const [showAcknowledged, setShowAcknowledged] = useState(false)
 
@@ -241,6 +245,14 @@ export function ActiveAlerts() {
   })
 
   const handleAlertClick = (alert: Alert) => {
+    // PVC alerts → navigate to Storage dashboard and highlight the relevant card
+    if (alert.resourceKind === 'PVC') {
+      const targetCard = alert.ruleName?.includes('Orphan') ? 'storage_overview' : 'pvc_status'
+      navigate(ROUTES.STORAGE)
+      // scrollToCard polls for the element, so it works after route transition
+      scrollToCard(targetCard)
+      return
+    }
     if (alert.cluster) {
       open({
         type: 'cluster',

@@ -3587,6 +3587,36 @@ export function useCachedK8sServiceAccounts(
 /** Polling interval for storage analysis (2 minutes) */
 const STORAGE_ANALYSIS_POLL_MS = 120_000
 
+/** Demo storage analysis showing orphaned and pending PVCs for alert evaluation */
+const DEMO_STORAGE_ANALYSIS: StorageAnalysis[] = [
+  {
+    cluster: 'scooter-cks',
+    totalPVCs: 22,
+    boundPVCs: 19,
+    pendingPVCs: 1,
+    totalClaimedBytes: 107_374_182_400, // ~100 GiB
+    orphanedPVCs: [
+      { name: 'data-old-pipeline-0', namespace: 'ml-training', capacityBytes: 53_687_091_200, storageClass: 'cephfs', age: '45d' },
+      { name: 'logs-etl-worker', namespace: 'data-eng', capacityBytes: 10_737_418_240, storageClass: 'cephfs', age: '30d' },
+      { name: 'scratch-notebook-user3', namespace: 'jupyter', capacityBytes: 5_368_709_120, storageClass: 'gp3', age: '12d' },
+    ],
+    pendingPVCDetails: [
+      { name: 'model-cache-gpu-node-4', namespace: 'inference', storageClass: 'local-nvme', pendingSince: new Date(Date.now() - 900_000).toISOString(), pendingSeconds: 900 },
+    ],
+  },
+  {
+    cluster: 'platform-eval',
+    totalPVCs: 8,
+    boundPVCs: 7,
+    pendingPVCs: 0,
+    totalClaimedBytes: 42_949_672_960, // ~40 GiB
+    orphanedPVCs: [
+      { name: 'backup-postgres-old', namespace: 'databases', capacityBytes: 21_474_836_480, storageClass: 'gp3', age: '60d' },
+    ],
+    pendingPVCDetails: [],
+  },
+]
+
 /**
  * Hook to fetch and cache cross-referenced storage analysis.
  * Detects orphaned PVCs and stuck-pending PVCs server-side.
@@ -3598,7 +3628,7 @@ export function useCachedStorageAnalysis(): CachedHookResult<StorageAnalysis[]> 
     key,
     category: 'default' as RefreshCategory,
     initialData: [] as StorageAnalysis[],
-    demoData: [] as StorageAnalysis[],
+    demoData: DEMO_STORAGE_ANALYSIS,
     refreshInterval: STORAGE_ANALYSIS_POLL_MS,
     fetcher: async () => {
       const resp = await fetchAPI<{ analysis: StorageAnalysis[]; source: string }>('storage/analysis')

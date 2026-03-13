@@ -10,6 +10,7 @@ import { getSeverityIcon } from '../../types/alerts'
 import type { Alert, AlertSeverity } from '../../types/alerts'
 import { CardAIActions } from '../../lib/cards/CardComponents'
 import { ROUTES } from '../../config/routes'
+import { scrollToCard } from '../../lib/scrollToCard'
 import { TRANSITION_DELAY_MS } from '../../lib/constants/network'
 import { useModalState } from '../../lib/modals'
 import { Button } from './Button'
@@ -163,6 +164,13 @@ export function AlertBadge() {
 
   const handleAlertClick = (alert: Alert) => {
     close()
+    // PVC alerts → navigate to Storage dashboard and highlight the relevant card
+    if (alert.resourceKind === 'PVC') {
+      const targetCard = alert.ruleName?.includes('Orphan') ? 'storage_overview' : 'pvc_status'
+      navigate(ROUTES.STORAGE)
+      scrollToCard(targetCard)
+      return
+    }
     if (alert.cluster) {
       openDrillDown({
         type: 'cluster',

@@ -7,7 +7,9 @@ const STORAGE_KEY = 'kubestellar-snoozed-alerts'
 // Snooze duration options in milliseconds
 export const SNOOZE_DURATIONS = {
   '5m': 5 * 60 * 1000,
+  '10m': 10 * 60 * 1000,
   '15m': 15 * 60 * 1000,
+  '30m': 30 * 60 * 1000,
   '1h': 60 * 60 * 1000,
   '4h': 4 * 60 * 60 * 1000,
   '24h': 24 * 60 * 60 * 1000,

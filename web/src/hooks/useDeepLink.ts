@@ -34,6 +34,8 @@ interface DeepLinkParams {
   drilldown?: DeepLinkDrilldown
   action?: DeepLinkAction
   card?: string
+  /** Override route path (e.g. '/storage') instead of using current pathname */
+  path?: string
   cluster?: string
   namespace?: string
   node?: string
@@ -47,7 +49,8 @@ interface DeepLinkParams {
  * Build a deep link URL for notifications
  */
 export function buildDeepLinkURL(params: DeepLinkParams): string {
-  const base = window.location.origin + window.location.pathname
+  const pathname = params.path || window.location.pathname
+  const base = window.location.origin + pathname
   const searchParams = new URLSearchParams()
 
   if (params.drilldown) searchParams.set('drilldown', params.drilldown)

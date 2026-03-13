@@ -165,6 +165,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   clustersRef.current = mcpData.clusters
   const storageAnalysesRef = useRef(mcpData.storageAnalyses)
   storageAnalysesRef.current = mcpData.storageAnalyses
+  /** Track desktop notification dedup keys — prevents repeated popups for the same firing alert */
+  const sentDesktopNotificationsRef = useRef<Set<string>>(new Set())
   const rulesRef = useRef(rules)
   rulesRef.current = rules
 
@@ -815,8 +817,10 @@ Please provide:
             'Node'
           )
 
-          // Send browser notification with deep link to GPU node
-          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+          // Send browser notification with deep link to GPU node (once per firing condition)
+          const notifKey = `gpu_health::${cluster.name}`
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && !sentDesktopNotificationsRef.current.has(notifKey)) {
+            sentDesktopNotificationsRef.current.add(notifKey)
             const firstNode = failedNodes[0]
             sendNotificationWithDeepLink(
               `GPU Health Alert: ${cluster.name}`,
@@ -830,6 +834,7 @@ Please provide:
           }
         } else {
           // Auto-resolve if all nodes are healthy
+          sentDesktopNotificationsRef.current.delete(`gpu_health::${cluster.name}`)
           setAlerts(prev => {
             const firingAlert = prev.find(
               a =>
@@ -880,8 +885,10 @@ Please provide:
             'Cluster'
           )
 
-          // Send browser notification with deep link
-          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+          // Send browser notification once per firing condition
+          const notifKey = `disk_pressure::${cluster.name}`
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && !sentDesktopNotificationsRef.current.has(notifKey)) {
+            sentDesktopNotificationsRef.current.add(notifKey)
             sendNotificationWithDeepLink(
               `Disk Pressure: ${cluster.name}`,
               diskPressureIssue,
@@ -890,6 +897,7 @@ Please provide:
           }
         } else {
           // Auto-resolve if DiskPressure clears
+          sentDesktopNotificationsRef.current.delete(`disk_pressure::${cluster.name}`)
           setAlerts(prev => {
             const firingAlert = prev.find(
               a =>
@@ -1010,8 +1018,10 @@ Please provide:
             'WorkflowRun'
           )
 
-          // Send browser notification with deep link to nightly card
-          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+          // Send browser notification once per failed run
+          const notifKey = `nightly_e2e::${guide.acronym}::${run.runNumber}`
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && !sentDesktopNotificationsRef.current.has(notifKey)) {
+            sentDesktopNotificationsRef.current.add(notifKey)
             sendNotificationWithDeepLink(
               `Nightly E2E Failed: ${guide.acronym} (${guide.platform})`,
               `Run #${run.runNumber} failed — ${guide.guide}`,
@@ -1056,15 +1066,19 @@ Please provide:
             'PVC'
           )
 
-          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+          const notifKey = `pvc_pending::${analysis.cluster}`
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && !sentDesktopNotificationsRef.current.has(notifKey)) {
+            sentDesktopNotificationsRef.current.add(notifKey)
             sendNotificationWithDeepLink(
               `PVC Pending: ${analysis.cluster}`,
               `${pendingPVCs.length} PVC(s) stuck in Pending state`,
-              { card: 'pvc_status' }
+              { card: 'pvc_status', path: '/storage' }
             )
           }
         } else {
-          // Auto-resolve
+          // Auto-resolve and clear notification dedup so it fires again if condition recurs
+          const notifKey = `pvc_pending::${analysis.cluster}`
+          sentDesktopNotificationsRef.current.delete(notifKey)
           setAlerts(prev => {
             const firingAlert = prev.find(
               a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === analysis.cluster
@@ -1108,15 +1122,19 @@ Please provide:
             'PVC'
           )
 
-          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+          const notifKey = `pvc_orphaned::${analysis.cluster}`
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && !sentDesktopNotificationsRef.current.has(notifKey)) {
+            sentDesktopNotificationsRef.current.add(notifKey)
             sendNotificationWithDeepLink(
               `Orphaned PVCs: ${analysis.cluster}`,
               `${orphaned.length} PVC(s) not mounted by any pod (${totalClaimedGiB.toFixed(0)} GiB wasted)`,
-              { card: 'storage_overview' }
+              { card: 'storage_overview', path: '/storage' }
             )
           }
         } else {
-          // Auto-resolve
+          // Auto-resolve and clear notification dedup so it fires again if condition recurs
+          const notifKey = `pvc_orphaned::${analysis.cluster}`
+          sentDesktopNotificationsRef.current.delete(notifKey)
           setAlerts(prev => {
             const firingAlert = prev.find(
               a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === analysis.cluster
