@@ -492,6 +492,37 @@ func getDemoWorkloads() []v1alpha1.Workload {
 	}
 }
 
+func getDemoStorageAnalysis() []k8s.StorageAnalysis {
+	const (
+		bytesPerGiB             = 1024 * 1024 * 1024
+		orphanedPVCCapacity1    = 300 * bytesPerGiB
+		orphanedPVCCapacity2    = 2000 * bytesPerGiB
+		orphanedPVCCapacity3    = 50 * bytesPerGiB
+		pendingPVCDuration      = 1800 // 30 minutes
+		totalClaimedDemo        = 4500 * bytesPerGiB
+		demoPVCTotal            = 25
+		demoPVCBound            = 22
+		demoPVCPending          = 3
+	)
+	return []k8s.StorageAnalysis{
+		{
+			Cluster:           "demo-cluster",
+			TotalPVCs:         demoPVCTotal,
+			BoundPVCs:         demoPVCBound,
+			PendingPVCs:       demoPVCPending,
+			TotalClaimedBytes: totalClaimedDemo,
+			OrphanedPVCs: []k8s.OrphanedPVC{
+				{Name: "model-cache-old", Namespace: "ml-training", Capacity: "300Gi", CapacityBytes: orphanedPVCCapacity1, StorageClass: "ceph-rbd", Age: "45d"},
+				{Name: "backup-data-2024", Namespace: "data-pipeline", Capacity: "2000Gi", CapacityBytes: orphanedPVCCapacity2, StorageClass: "ceph-rbd", Age: "120d"},
+				{Name: "test-scratch", Namespace: "ci-cd", Capacity: "50Gi", CapacityBytes: orphanedPVCCapacity3, StorageClass: "gp3", Age: "30d"},
+			},
+			PendingPVCDetails: []k8s.PendingPVC{
+				{Name: "new-model-store", Namespace: "ml-inference", StorageClass: "ceph-rbd", PendingSince: "2026-03-13T10:00:00Z", PendingSeconds: pendingPVCDuration},
+			},
+		},
+	}
+}
+
 // Helper function to return demo data response
 func demoResponse(c *fiber.Ctx, key string, data interface{}) error {
 	return c.JSON(fiber.Map{key: data, "source": "demo"})

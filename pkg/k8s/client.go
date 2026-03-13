@@ -513,6 +513,36 @@ type PV struct {
 	Labels        map[string]string `json:"labels,omitempty"`
 }
 
+// StorageAnalysis represents a cross-referenced analysis of PVC usage for a cluster
+type StorageAnalysis struct {
+	Cluster           string        `json:"cluster"`
+	TotalPVCs         int           `json:"totalPVCs"`
+	BoundPVCs         int           `json:"boundPVCs"`
+	PendingPVCs       int           `json:"pendingPVCs"`
+	TotalClaimedBytes int64         `json:"totalClaimedBytes"`
+	OrphanedPVCs      []OrphanedPVC `json:"orphanedPVCs"`
+	PendingPVCDetails []PendingPVC  `json:"pendingPVCDetails"`
+}
+
+// OrphanedPVC represents a PVC not mounted by any running pod
+type OrphanedPVC struct {
+	Name          string `json:"name"`
+	Namespace     string `json:"namespace"`
+	Capacity      string `json:"capacity,omitempty"`
+	CapacityBytes int64  `json:"capacityBytes"`
+	StorageClass  string `json:"storageClass,omitempty"`
+	Age           string `json:"age,omitempty"`
+}
+
+// PendingPVC represents a PVC stuck in Pending state
+type PendingPVC struct {
+	Name           string `json:"name"`
+	Namespace      string `json:"namespace"`
+	StorageClass   string `json:"storageClass,omitempty"`
+	PendingSince   string `json:"pendingSince"`
+	PendingSeconds int64  `json:"pendingSeconds"`
+}
+
 // ReplicaSet represents a Kubernetes ReplicaSet
 type ReplicaSet struct {
 	Name          string            `json:"name"`
@@ -3792,6 +3822,110 @@ func (m *MultiClusterClient) GetPVs(ctx context.Context, contextName string) ([]
 	}
 
 	return result, nil
+}
+
+// pvcPendingThresholdSeconds is the minimum time a PVC must be Pending before it is flagged (5 minutes).
+const pvcPendingThresholdSeconds = 300
+
+// GetStorageAnalysis cross-references PVCs with running pods to detect orphaned and stuck PVCs.
+func (m *MultiClusterClient) GetStorageAnalysis(ctx context.Context, contextName string) (*StorageAnalysis, error) {
+	client, err := m.GetClient(contextName)
+	if err != nil {
+		return nil, err
+	}
+
+	// List all PVCs
+	pvcs, err := client.CoreV1().PersistentVolumeClaims("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list PVCs: %w", err)
+	}
+
+	// List running pods and collect mounted PVC references (namespace/name)
+	pods, err := client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+		FieldSelector: "status.phase=Running",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list pods: %w", err)
+	}
+
+	// Build set of mounted PVCs: "namespace/name"
+	mountedPVCs := make(map[string]bool)
+	for _, pod := range pods.Items {
+		for _, vol := range pod.Spec.Volumes {
+			if vol.PersistentVolumeClaim != nil {
+				key := pod.Namespace + "/" + vol.PersistentVolumeClaim.ClaimName
+				mountedPVCs[key] = true
+			}
+		}
+	}
+
+	now := time.Now()
+	analysis := &StorageAnalysis{
+		Cluster:           contextName,
+		OrphanedPVCs:      make([]OrphanedPVC, 0),
+		PendingPVCDetails: make([]PendingPVC, 0),
+	}
+
+	for _, pvc := range pvcs.Items {
+		analysis.TotalPVCs++
+
+		// Parse capacity
+		var capBytes int64
+		var capStr string
+		if pvc.Status.Capacity != nil {
+			if storage, ok := pvc.Status.Capacity[corev1.ResourceStorage]; ok {
+				capBytes = storage.Value()
+				capStr = storage.String()
+			}
+		}
+		// For Pending PVCs, use requested size since status.capacity is empty
+		if capBytes == 0 && pvc.Spec.Resources.Requests != nil {
+			if storage, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]; ok {
+				capBytes = storage.Value()
+				capStr = storage.String()
+			}
+		}
+		analysis.TotalClaimedBytes += capBytes
+
+		switch pvc.Status.Phase {
+		case corev1.ClaimBound:
+			analysis.BoundPVCs++
+			// Check if orphaned (Bound but not mounted by any running pod)
+			key := pvc.Namespace + "/" + pvc.Name
+			if !mountedPVCs[key] {
+				analysis.OrphanedPVCs = append(analysis.OrphanedPVCs, OrphanedPVC{
+					Name:          pvc.Name,
+					Namespace:     pvc.Namespace,
+					Capacity:      capStr,
+					CapacityBytes: capBytes,
+					StorageClass:  derefString(pvc.Spec.StorageClassName),
+					Age:           formatAge(pvc.CreationTimestamp.Time),
+				})
+			}
+		case corev1.ClaimPending:
+			analysis.PendingPVCs++
+			pendingSeconds := int64(now.Sub(pvc.CreationTimestamp.Time).Seconds())
+			if pendingSeconds >= pvcPendingThresholdSeconds {
+				analysis.PendingPVCDetails = append(analysis.PendingPVCDetails, PendingPVC{
+					Name:           pvc.Name,
+					Namespace:      pvc.Namespace,
+					StorageClass:   derefString(pvc.Spec.StorageClassName),
+					PendingSince:   pvc.CreationTimestamp.Time.Format(time.RFC3339),
+					PendingSeconds: pendingSeconds,
+				})
+			}
+		}
+	}
+
+	return analysis, nil
+}
+
+// derefString safely dereferences a *string, returning "" if nil.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // GetReplicaSets returns all ReplicaSets in a namespace or all namespaces if namespace is empty

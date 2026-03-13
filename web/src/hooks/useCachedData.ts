@@ -57,6 +57,7 @@ import type {
   K8sRoleBinding,
   K8sServiceAccountInfo,
   GPUHealthCronJobStatus,
+  StorageAnalysis,
 } from './useMCP'
 import type { ProwJob, ProwStatus } from './useProw'
 import type { LLMdServer, LLMdStatus, LLMdModel } from './useLLMd'
@@ -3571,6 +3572,42 @@ export function useCachedK8sServiceAccounts(
 
   return {
     serviceAccounts: result.data,
+    data: result.data,
+    isLoading: result.isLoading,
+    isRefreshing: result.isRefreshing,
+    isDemoFallback: result.isDemoFallback,
+    error: result.error,
+    isFailed: result.isFailed,
+    consecutiveFailures: result.consecutiveFailures,
+    lastRefresh: result.lastRefresh,
+    refetch: result.refetch,
+  }
+}
+
+/** Polling interval for storage analysis (2 minutes) */
+const STORAGE_ANALYSIS_POLL_MS = 120_000
+
+/**
+ * Hook to fetch and cache cross-referenced storage analysis.
+ * Detects orphaned PVCs and stuck-pending PVCs server-side.
+ */
+export function useCachedStorageAnalysis(): CachedHookResult<StorageAnalysis[]> & { analyses: StorageAnalysis[] } {
+  const key = 'storageAnalysis:all'
+
+  const result = useCache({
+    key,
+    category: 'default' as RefreshCategory,
+    initialData: [] as StorageAnalysis[],
+    demoData: [] as StorageAnalysis[],
+    refreshInterval: STORAGE_ANALYSIS_POLL_MS,
+    fetcher: async () => {
+      const resp = await fetchAPI<{ analysis: StorageAnalysis[]; source: string }>('storage/analysis')
+      return resp.analysis || []
+    },
+  })
+
+  return {
+    analyses: result.data,
     data: result.data,
     isLoading: result.isLoading,
     isRefreshing: result.isRefreshing,

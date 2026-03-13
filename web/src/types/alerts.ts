@@ -9,6 +9,8 @@ export type AlertConditionType =
   | 'disk_pressure'
   | 'weather_alerts'
   | 'nightly_e2e_failure'
+  | 'pvc_pending'
+  | 'pvc_orphaned'
   | 'custom'
 
 // Alert severity levels
@@ -225,6 +227,30 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
     channels: [{ type: 'browser', enabled: true, config: {} }],
     aiDiagnose: true,
   },
+  {
+    name: 'PVC Stuck Pending',
+    description: 'Alert when a PVC is stuck in Pending state for more than 5 minutes',
+    enabled: true,
+    condition: {
+      type: 'pvc_pending' as AlertConditionType,
+      duration: 300, // 5 minutes
+    },
+    severity: 'warning' as AlertSeverity,
+    channels: [{ type: 'browser' as AlertChannelType, enabled: true, config: {} }],
+    aiDiagnose: true,
+  },
+  {
+    name: 'Orphaned PVCs',
+    description: 'Alert when PVCs are Bound but not mounted by any running pod',
+    enabled: true,
+    condition: {
+      type: 'pvc_orphaned' as AlertConditionType,
+      threshold: 1,
+    },
+    severity: 'warning' as AlertSeverity,
+    channels: [{ type: 'browser' as AlertChannelType, enabled: true, config: {} }],
+    aiDiagnose: true,
+  },
 ]
 
 // Helper to get severity color
@@ -282,6 +308,10 @@ export function formatCondition(condition: AlertCondition): string {
       return condition.weatherCondition?.replace(/_/g, ' ') || 'Weather alert'
     case 'nightly_e2e_failure':
       return 'Nightly E2E workflow run failed'
+    case 'pvc_pending':
+      return `PVC pending > ${((condition.duration || 300) / 60).toFixed(0)} min`
+    case 'pvc_orphaned':
+      return `Orphaned PVCs detected (not mounted by any pod)`
     case 'custom':
       return condition.customQuery || 'Custom condition'
     default:

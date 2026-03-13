@@ -19,6 +19,7 @@ import {
   useCachedEvents,
   useCachedDeployments,
   useCachedDeploymentIssues,
+  useCachedStorageAnalysis,
 } from '../../hooks/useCachedData'
 import {
   useClusters,
@@ -932,8 +933,49 @@ function useActiveAlerts() {
   return useDemoDataHook(DEMO_ACTIVE_ALERTS)
 }
 
+/** Bytes per GiB for storage capacity display */
+const STORAGE_OVERVIEW_BYTES_PER_GIB = 1024 * 1024 * 1024
+
 function useStorageOverview() {
-  return useDemoDataHook([DEMO_STORAGE_OVERVIEW])
+  const { isDemoMode: demoMode } = useDemoMode()
+  const { analyses, isLoading, isDemoFallback } = useCachedStorageAnalysis()
+
+  const aggregated = useMemo(() => {
+    if (demoMode || isDemoFallback || !(analyses || []).length) {
+      return DEMO_STORAGE_OVERVIEW
+    }
+    let totalPVCs = 0
+    let boundPVCs = 0
+    let pendingPVCs = 0
+    let totalClaimedBytes = 0
+    let orphanedCount = 0
+
+    for (const a of (analyses || [])) {
+      totalPVCs += a.totalPVCs || 0
+      boundPVCs += a.boundPVCs || 0
+      pendingPVCs += a.pendingPVCs || 0
+      totalClaimedBytes += a.totalClaimedBytes || 0
+      orphanedCount += (a.orphanedPVCs || []).length
+    }
+
+    const totalClaimedGiB = Math.round(totalClaimedBytes / STORAGE_OVERVIEW_BYTES_PER_GIB)
+    return {
+      totalCapacity: totalClaimedGiB,
+      used: totalClaimedGiB,
+      pvcs: totalPVCs,
+      unbound: pendingPVCs + orphanedCount,
+      boundPVCs,
+      pendingPVCs,
+      orphanedCount,
+    }
+  }, [analyses, demoMode, isDemoFallback])
+
+  return {
+    data: [aggregated],
+    isLoading,
+    error: null,
+    refetch: () => {},
+  }
 }
 
 function useNetworkOverview() {

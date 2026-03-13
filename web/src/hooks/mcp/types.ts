@@ -609,3 +609,35 @@ export interface HelmHistoryEntry {
   app_version: string
   description: string
 }
+
+/** PVC that is Bound but not mounted by any running pod */
+export interface OrphanedPVC {
+  name: string
+  namespace: string
+  cluster?: string
+  capacity?: string
+  capacityBytes: number
+  storageClass?: string
+  age?: string
+}
+
+/** PVC stuck in Pending state beyond threshold */
+export interface PendingPVCDetail {
+  name: string
+  namespace: string
+  cluster?: string
+  storageClass?: string
+  pendingSince: string
+  pendingSeconds: number
+}
+
+/** Cross-referenced storage analysis for a cluster */
+export interface StorageAnalysis {
+  cluster: string
+  totalPVCs: number
+  boundPVCs: number
+  pendingPVCs: number
+  totalClaimedBytes: number
+  orphanedPVCs: OrphanedPVC[]
+  pendingPVCDetails: PendingPVCDetail[]
+}

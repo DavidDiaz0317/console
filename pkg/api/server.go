@@ -612,6 +612,7 @@ func (s *Server) setupRoutes() {
 	api.Get("/mcp/serviceaccounts", mcpHandlers.GetServiceAccounts)
 	api.Get("/mcp/pvcs", mcpHandlers.GetPVCs)
 	api.Get("/mcp/pvs", mcpHandlers.GetPVs)
+	api.Get("/mcp/storage/analysis", mcpHandlers.GetStorageAnalysis)
 	api.Get("/mcp/resourcequotas", mcpHandlers.GetResourceQuotas)
 	api.Post("/mcp/resourcequotas", mcpHandlers.CreateOrUpdateResourceQuota)
 	api.Delete("/mcp/resourcequotas", mcpHandlers.DeleteResourceQuota)

@@ -146,6 +146,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     gpuNodes: [],
     podIssues: [],
     clusters: [],
+    storageAnalyses: [],
     isLoading: true,
     error: null,
   })
@@ -162,6 +163,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   podIssuesRef.current = mcpData.podIssues
   const clustersRef = useRef(mcpData.clusters)
   clustersRef.current = mcpData.clusters
+  const storageAnalysesRef = useRef(mcpData.storageAnalyses)
+  storageAnalysesRef.current = mcpData.storageAnalyses
   const rulesRef = useRef(rules)
   rulesRef.current = rules
 
@@ -1028,6 +1031,111 @@ Please provide:
     [createAlert]
   )
 
+  /** Bytes per GiB for orphaned PVC capacity reporting */
+  const BYTES_PER_GIB = 1024 * 1024 * 1024
+
+  // Evaluate PVC Pending condition — reads from storageAnalysesRef
+  const evaluatePVCPending = useCallback(
+    (rule: AlertRule) => {
+      const analyses = storageAnalysesRef.current
+      for (const analysis of (analyses || [])) {
+        const pendingPVCs = (analysis.pendingPVCDetails || [])
+        if (pendingPVCs.length > 0) {
+          const pvcNames = (pendingPVCs || []).map(p => `${p.namespace}/${p.name}`).join(', ')
+          createAlert(
+            rule,
+            `${analysis.cluster}: ${pendingPVCs.length} PVC(s) stuck Pending: ${pvcNames}`,
+            {
+              clusterName: analysis.cluster,
+              pendingCount: pendingPVCs.length,
+              pvcs: pendingPVCs,
+            },
+            analysis.cluster,
+            undefined,
+            pvcNames,
+            'PVC'
+          )
+
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+            sendNotificationWithDeepLink(
+              `PVC Pending: ${analysis.cluster}`,
+              `${pendingPVCs.length} PVC(s) stuck in Pending state`,
+              { card: 'pvc_status' }
+            )
+          }
+        } else {
+          // Auto-resolve
+          setAlerts(prev => {
+            const firingAlert = prev.find(
+              a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === analysis.cluster
+            )
+            if (firingAlert) {
+              return prev.map(a =>
+                a.id === firingAlert.id
+                  ? { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() }
+                  : a
+              )
+            }
+            return prev
+          })
+        }
+      }
+    },
+    [createAlert]
+  )
+
+  // Evaluate Orphaned PVC condition — reads from storageAnalysesRef
+  const evaluatePVCOrphaned = useCallback(
+    (rule: AlertRule) => {
+      const analyses = storageAnalysesRef.current
+      for (const analysis of (analyses || [])) {
+        const orphaned = (analysis.orphanedPVCs || [])
+        const threshold = rule.condition.threshold || 1
+        if (orphaned.length >= threshold) {
+          const totalClaimedGiB = (orphaned || []).reduce((sum, p) => sum + (p.capacityBytes || 0), 0) / BYTES_PER_GIB
+          createAlert(
+            rule,
+            `${analysis.cluster}: ${orphaned.length} orphaned PVC(s) claiming ${totalClaimedGiB.toFixed(0)} GiB`,
+            {
+              clusterName: analysis.cluster,
+              orphanedCount: orphaned.length,
+              totalClaimedGiB: Math.round(totalClaimedGiB),
+              pvcs: orphaned.slice(0, 10), // Limit details to first 10
+            },
+            analysis.cluster,
+            undefined,
+            `${orphaned.length} orphaned PVCs`,
+            'PVC'
+          )
+
+          if (rule.channels?.some(ch => ch.type === 'browser' && ch.enabled)) {
+            sendNotificationWithDeepLink(
+              `Orphaned PVCs: ${analysis.cluster}`,
+              `${orphaned.length} PVC(s) not mounted by any pod (${totalClaimedGiB.toFixed(0)} GiB wasted)`,
+              { card: 'storage_overview' }
+            )
+          }
+        } else {
+          // Auto-resolve
+          setAlerts(prev => {
+            const firingAlert = prev.find(
+              a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === analysis.cluster
+            )
+            if (firingAlert) {
+              return prev.map(a =>
+                a.id === firingAlert.id
+                  ? { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() }
+                  : a
+              )
+            }
+            return prev
+          })
+        }
+      }
+    },
+    [createAlert]
+  )
+
   // Evaluate alert conditions — uses refs so callback identity is stable
   const isEvaluatingRef = useRef(false)
   const evaluateConditions = useCallback(() => {
@@ -1064,6 +1172,12 @@ Please provide:
           case 'nightly_e2e_failure':
             evaluateNightlyE2EFailure(rule)
             break
+          case 'pvc_pending':
+            evaluatePVCPending(rule)
+            break
+          case 'pvc_orphaned':
+            evaluatePVCOrphaned(rule)
+            break
           default:
             break
         }
@@ -1072,7 +1186,7 @@ Please provide:
       isEvaluatingRef.current = false
       setIsEvaluating(false)
     }
-  }, [evaluateGPUUsage, evaluateGPUHealthCronJob, evaluateNodeReady, evaluatePodCrash, evaluateDiskPressure, evaluateMemoryPressure, evaluateWeatherAlerts, evaluateNightlyE2EFailure])
+  }, [evaluateGPUUsage, evaluateGPUHealthCronJob, evaluateNodeReady, evaluatePodCrash, evaluateDiskPressure, evaluateMemoryPressure, evaluateWeatherAlerts, evaluateNightlyE2EFailure, evaluatePVCPending, evaluatePVCOrphaned])
 
   // Stable ref for evaluateConditions so the interval never resets
   const evaluateConditionsRef = useRef(evaluateConditions)

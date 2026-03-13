@@ -1312,6 +1312,65 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 	return c.Status(503).JSON(fiber.Map{"error": "No cluster access available"})
 }
 
+// GetStorageAnalysis returns cross-referenced storage analysis from clusters
+func (h *MCPHandlers) GetStorageAnalysis(c *fiber.Ctx) error {
+	// Demo mode: return demo data immediately
+	if isDemoMode(c) {
+		return demoResponse(c, "analysis", getDemoStorageAnalysis())
+	}
+
+	cluster := c.Query("cluster")
+
+	if h.k8sClient != nil {
+		if cluster == "" {
+			clusters, _, err := h.k8sClient.HealthyClusters(c.Context())
+			if err != nil {
+				log.Printf("internal error: %v", err)
+				return c.Status(500).JSON(fiber.Map{"error": "internal server error"})
+			}
+
+			var wg sync.WaitGroup
+			var mu sync.Mutex
+			allAnalyses := make([]k8s.StorageAnalysis, 0)
+			clusterTimeout := mcpDefaultTimeout
+
+			for _, cl := range clusters {
+				wg.Add(1)
+				go func(clusterName string) {
+					defer wg.Done()
+					ctx, cancel := context.WithTimeout(c.Context(), clusterTimeout)
+					defer cancel()
+
+					analysis, err := h.k8sClient.GetStorageAnalysis(ctx, clusterName)
+					if err == nil && analysis != nil {
+						mu.Lock()
+						allAnalyses = append(allAnalyses, *analysis)
+						mu.Unlock()
+					}
+				}(cl.Name)
+			}
+
+			waitWithDeadline(&wg, maxResponseDeadline)
+			return c.JSON(fiber.Map{"analysis": allAnalyses, "source": "k8s"})
+		}
+
+		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
+		defer cancel()
+
+		analysis, err := h.k8sClient.GetStorageAnalysis(ctx, cluster)
+		if err != nil {
+			log.Printf("internal error: %v", err)
+			return c.Status(500).JSON(fiber.Map{"error": "internal server error"})
+		}
+		if analysis == nil {
+			return c.JSON(fiber.Map{"analysis": []k8s.StorageAnalysis{}, "source": "k8s"})
+		}
+		return c.JSON(fiber.Map{"analysis": []k8s.StorageAnalysis{*analysis}, "source": "k8s"})
+	}
+
+	return c.Status(503).JSON(fiber.Map{"error": "No cluster access available"})
+}
+
 // GetResourceQuotas returns resource quotas from clusters
 func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 	// Demo mode: return demo data immediately
