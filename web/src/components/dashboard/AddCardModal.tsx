@@ -281,7 +281,9 @@ const CARD_CATALOG = {
   ],
   'Orchestration': [
     { type: 'keda_status', title: 'KEDA', description: 'KEDA autoscaler status, scaled object metrics, and trigger queue depths', visualization: 'status' },
-    { type: 'openfeature_status', title: 'OpenFeature', description: 'OpenFeature provider health, flag evaluations, and cache performance', visualization: 'status' },
+  ],
+  'Streaming & Messaging': [
+    { type: 'strimzi_status', title: 'Strimzi', description: 'Strimzi Kafka cluster health, topic status, and consumer group lag', visualization: 'status' },
   ],
 } as const
 
@@ -325,6 +327,7 @@ const CATEGORY_LOCALE_KEYS: Record<string, string> = {
   'Misc': 'misc',
   'Runtime': 'runtime',
   'Orchestration': 'orchestration',
+  'Streaming & Messaging': 'streamingMessaging',
 }
 
 interface CardSuggestion {

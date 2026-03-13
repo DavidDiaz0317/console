@@ -206,6 +206,8 @@ export const CARD_TITLES: Record<string, string> = {
   provider_health: 'Provider Health',
   // CoreDNS
   coredns_status: 'CoreDNS',
+  // Strimzi Kafka operator
+  strimzi_status: 'Strimzi',
 
   // Multi-cluster insights cards
   cross_cluster_event_correlation: 'Cross-Cluster Event Correlation',
@@ -217,8 +219,6 @@ export const CARD_TITLES: Record<string, string> = {
   deployment_rollout_tracker: 'Deployment Rollout Tracker',
   // KEDA
   keda_status: 'KEDA',
-  // OpenFeature
-  openfeature_status: 'OpenFeature',
 
 }
 
@@ -349,6 +349,7 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   ml_jobs: 'Machine learning training and batch job status.',
   ml_notebooks: 'Jupyter notebook server status and resource usage.',
   provider_health: 'Health and status of AI and cloud infrastructure providers.',
+  strimzi_status: 'Strimzi Kafka cluster health, topic status, and consumer group lag.',
 
   // Games
   sudoku_game: 'Classic Sudoku puzzle game with multiple difficulty levels.',
@@ -386,22 +387,6 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   deployment_rollout_tracker: 'Tracks deployment rollout progress across clusters.',
   // KEDA
   keda_status: 'KEDA autoscaler status, scaled object metrics, and trigger queue depths.',
-  // OpenFeature
-  openfeature_status: 'OpenFeature provider health, flag evaluations, and cache performance.',
-}
-
-/** Per-card metadata for search, filtering, and icon display. */
-export const CARD_METADATA: Record<string, { category: string; icon: string; keywords: string[] }> = {
-  keda_status: {
-    category: 'operators',
-    icon: 'keda',
-    keywords: ['keda', 'autoscaler', 'scaledobject', 'trigger', 'queue'],
-  },
-  openfeature_status: {
-    category: 'operators',
-    icon: 'openfeature',
-    keywords: ['openfeature', 'feature', 'flag', 'flagd', 'toggle', 'feature-flag'],
-  },
 }
 
 /**

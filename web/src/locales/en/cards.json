@@ -279,7 +279,7 @@
     "fluentd_status": "Fluentd",
     "lima_status": "Lima",
     "keda_status": "KEDA",
-    "openfeature_status": "OpenFeature"
+    "strimzi_status": "Strimzi"
   },
   "descriptions": {
     "cluster_health": "Overall health status of all connected Kubernetes clusters.",
@@ -451,7 +451,7 @@
     "fluentd_status": "Log pipeline status, buffer utilization, and output plugin health.",
     "lima_status": "Lima virtual machine instances and resource usage.",
     "keda_status": "KEDA autoscaler status, scaled object metrics, and trigger queue depths.",
-    "openfeature_status": "OpenFeature provider health, flag evaluations, and cache performance."
+    "strimzi_status": "Strimzi Kafka cluster health, topic status, and consumer group lag."
   },
   "categories": {
     "core": "Core",
@@ -490,7 +490,8 @@
     "namespaces": "Namespaces",
     "securityEvents": "Security & Events",
     "runtime": "Runtime",
-    "orchestration": "Orchestration"
+    "orchestration": "Orchestration",
+    "streamingMessaging": "Streaming & Messaging"
   },
   "addCard": {
     "title": "Add Card",
@@ -2769,27 +2770,25 @@
     "queue": "queue",
     "target": "target"
   },
-  "openFeature": {
+  "strimziStatus": {
+    "fetchError": "Failed to fetch Strimzi status",
+    "notInstalled": "Strimzi Not Detected",
+    "notInstalledHint": "No Strimzi operator or Kafka pods found. Deploy Strimzi to monitor Kafka clusters.",
     "healthy": "Healthy",
     "degraded": "Degraded",
-    "unhealthy": "Unhealthy",
-    "notInstalled": "OpenFeature not detected",
-    "notInstalledHint": "No OpenFeature operator or flagd pods found. Deploy OpenFeature to manage feature flags.",
-    "fetchError": "Failed to fetch OpenFeature status",
-    "providers": "Providers",
-    "featureFlags": "Feature Flags",
-    "flags": "Flags",
-    "enabled": "Enabled",
-    "disabled": "Disabled",
-    "evaluations": "Evaluations",
-    "evals": "evals",
-    "cache": "cache",
-    "cacheHitRate": "Cache Hit Rate",
-    "errorRate": "Error Rate",
-    "totalEvaluations": "Total Evaluations",
-    "providerStatus": "Provider Status",
-    "highErrorRate": "High error rate: {{rate}}%",
-    "learnMore": "Learn more at openfeature.dev",
+    "brokers": "Brokers",
+    "topics": "Topics",
+    "totalLag": "Total Lag",
+    "kafkaTopics": "Kafka Topics",
+    "consumerGroups": "Consumer Groups",
+    "topicStatus_active": "Active",
+    "topicStatus_inactive": "Inactive",
+    "topicStatus_error": "Error",
+    "topicPartitionsRf": "{{count}} partitions \u00b7 RF {{rf}}",
+    "groupStatus_ok": "OK",
+    "groupStatus_warning": "Warning",
+    "groupStatus_error": "Error",
+    "lag": "lag",
     "syncedJustNow": "just now",
     "syncedMinutesAgo": "{{count}}m ago",
     "syncedHoursAgo": "{{count}}h ago",
