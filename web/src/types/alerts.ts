@@ -232,11 +232,11 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
     description: 'Alert when a PVC is stuck in Pending state for more than 5 minutes',
     enabled: true,
     condition: {
-      type: 'pvc_pending' as AlertConditionType,
+      type: 'pvc_pending',
       duration: 300, // 5 minutes
     },
-    severity: 'warning' as AlertSeverity,
-    channels: [{ type: 'browser' as AlertChannelType, enabled: true, config: {} }],
+    severity: 'warning',
+    channels: [{ type: 'browser', enabled: true, config: {} }],
     aiDiagnose: true,
   },
   {
@@ -244,11 +244,11 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
     description: 'Alert when PVCs are Bound but not mounted by any running pod',
     enabled: true,
     condition: {
-      type: 'pvc_orphaned' as AlertConditionType,
+      type: 'pvc_orphaned',
       threshold: 1,
     },
-    severity: 'warning' as AlertSeverity,
-    channels: [{ type: 'browser' as AlertChannelType, enabled: true, config: {} }],
+    severity: 'warning',
+    channels: [{ type: 'browser', enabled: true, config: {} }],
     aiDiagnose: true,
   },
 ]

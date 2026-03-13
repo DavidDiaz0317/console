@@ -69,6 +69,10 @@ function deduplicateAlerts(alerts: Alert[], rules: AlertRule[]): Alert[] {
 // Local storage keys
 const ALERT_RULES_KEY = 'kc_alert_rules'
 const ALERTS_KEY = 'kc_alerts'
+/** Maximum number of orphaned PVC details included in an alert payload */
+const MAX_ORPHANED_PVC_DETAILS = 10
+/** Bytes per GiB for orphaned PVC capacity reporting */
+const BYTES_PER_GIB = 1024 * 1024 * 1024
 
 // Load from localStorage
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -1041,9 +1045,6 @@ Please provide:
     [createAlert]
   )
 
-  /** Bytes per GiB for orphaned PVC capacity reporting */
-  const BYTES_PER_GIB = 1024 * 1024 * 1024
-
   // Evaluate PVC Pending condition — reads from storageAnalysesRef
   const evaluatePVCPending = useCallback(
     (rule: AlertRule) => {
@@ -1114,7 +1115,7 @@ Please provide:
               clusterName: analysis.cluster,
               orphanedCount: orphaned.length,
               totalClaimedGiB: Math.round(totalClaimedGiB),
-              pvcs: orphaned.slice(0, 10), // Limit details to first 10
+              pvcs: orphaned.slice(0, MAX_ORPHANED_PVC_DETAILS),
             },
             analysis.cluster,
             undefined,

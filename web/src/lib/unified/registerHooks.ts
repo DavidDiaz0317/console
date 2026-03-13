@@ -973,6 +973,7 @@ function useStorageOverview() {
   return {
     data: [aggregated],
     isLoading,
+    isDemoData: demoMode || isDemoFallback,
     error: null,
     refetch: () => {},
   }
