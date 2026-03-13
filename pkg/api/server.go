@@ -982,8 +982,9 @@ func LoadConfigFromEnv() Config {
 		DevUserAvatar: getEnvOrDefault("DEV_USER_AVATAR", ""),
 		// GitHub token for dev mode profile fetching
 		GitHubToken: os.Getenv("GITHUB_TOKEN"),
-		// Feature request/feedback configuration
-		FeedbackGitHubToken: os.Getenv("FEEDBACK_GITHUB_TOKEN"),
+		// Feature request/feedback configuration — LoadFeedbackConfigFromEnv
+		// checks both the settings file and FEEDBACK_GITHUB_TOKEN env var.
+		FeedbackGitHubToken: handlers.LoadFeedbackConfigFromEnv().GitHubToken,
 		GitHubWebhookSecret: os.Getenv("GITHUB_WEBHOOK_SECRET"),
 		FeedbackRepoOwner:   getEnvOrDefault("FEEDBACK_REPO_OWNER", "kubestellar"),
 		FeedbackRepoName:    getEnvOrDefault("FEEDBACK_REPO_NAME", "console"),

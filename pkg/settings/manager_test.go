@@ -83,6 +83,8 @@ func TestManager_GetAllSaveAll_RoundTrip(t *testing.T) {
 		"openai": {APIKey: "sk-openai-test-key-456"},
 	}
 	all.GitHubToken = "ghp_test_token_789"
+	all.FeedbackGitHubToken = "ghp_feedback_round_trip_456"
+	all.FeedbackGitHubTokenSource = GitHubTokenSourceSettings
 	all.Notifications = NotificationSecrets{
 		SlackWebhookURL: "https://hooks.slack.com/services/T00/B00/xxx",
 		EmailSMTPHost:   "smtp.example.com",
@@ -107,6 +109,9 @@ func TestManager_GetAllSaveAll_RoundTrip(t *testing.T) {
 	}
 	if contains(raw, "ghp_test_token_789") {
 		t.Error("GitHub token found in plaintext on disk")
+	}
+	if contains(raw, "ghp_feedback_round_trip_456") {
+		t.Error("feedback GitHub token found in plaintext on disk")
 	}
 	if contains(raw, "secret-password") {
 		t.Error("SMTP password found in plaintext on disk")
@@ -152,11 +157,153 @@ func TestManager_GetAllSaveAll_RoundTrip(t *testing.T) {
 	if got.GitHubToken != "ghp_test_token_789" {
 		t.Errorf("githubToken = %q, want %q", got.GitHubToken, "ghp_test_token_789")
 	}
+	if got.FeedbackGitHubToken != "ghp_feedback_round_trip_456" {
+		t.Errorf("feedbackGithubToken = %q, want %q", got.FeedbackGitHubToken, "ghp_feedback_round_trip_456")
+	}
+	if got.FeedbackGitHubTokenSource != GitHubTokenSourceSettings {
+		t.Errorf("feedbackGithubTokenSource = %q, want %q", got.FeedbackGitHubTokenSource, GitHubTokenSourceSettings)
+	}
 	if got.Notifications.SlackWebhookURL != "https://hooks.slack.com/services/T00/B00/xxx" {
 		t.Errorf("slackWebhookURL = %q", got.Notifications.SlackWebhookURL)
 	}
 	if got.Notifications.EmailPassword != "secret-password" {
 		t.Errorf("emailPassword = %q, want %q", got.Notifications.EmailPassword, "secret-password")
+	}
+}
+
+func TestManager_FeedbackGitHubToken_RoundTrip(t *testing.T) {
+	sm := newTestManager(t)
+
+	all := DefaultAllSettings()
+	all.FeedbackGitHubToken = "ghp_feedback_test_abc123"
+	all.FeedbackGitHubTokenSource = GitHubTokenSourceSettings
+
+	if err := sm.SaveAll(all); err != nil {
+		t.Fatalf("SaveAll failed: %v", err)
+	}
+
+	// Verify the token is not stored in plaintext on disk
+	data, err := os.ReadFile(sm.settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	if contains(string(data), "ghp_feedback_test_abc123") {
+		t.Error("feedback GitHub token found in plaintext on disk")
+	}
+
+	// Reload and verify decryption
+	sm2 := &SettingsManager{
+		settingsPath: sm.settingsPath,
+		keyPath:      sm.keyPath,
+	}
+	if err := sm2.init(); err != nil {
+		t.Fatalf("second init failed: %v", err)
+	}
+
+	got, err := sm2.GetAll()
+	if err != nil {
+		t.Fatalf("GetAll failed: %v", err)
+	}
+	if got.FeedbackGitHubToken != "ghp_feedback_test_abc123" {
+		t.Errorf("feedbackGithubToken = %q, want %q", got.FeedbackGitHubToken, "ghp_feedback_test_abc123")
+	}
+	if got.FeedbackGitHubTokenSource != GitHubTokenSourceSettings {
+		t.Errorf("feedbackGithubTokenSource = %q, want %q", got.FeedbackGitHubTokenSource, GitHubTokenSourceSettings)
+	}
+}
+
+func TestManager_FeedbackGitHubToken_EnvFallback(t *testing.T) {
+	sm := newTestManager(t)
+
+	// Set env var for fallback
+	const testEnvToken = "ghp_env_feedback_token_xyz"
+	t.Setenv("FEEDBACK_GITHUB_TOKEN", testEnvToken)
+
+	// No feedback token saved in settings — should fall back to env
+	all, err := sm.GetAll()
+	if err != nil {
+		t.Fatalf("GetAll failed: %v", err)
+	}
+	if all.FeedbackGitHubToken != testEnvToken {
+		t.Errorf("feedbackGithubToken = %q, want %q", all.FeedbackGitHubToken, testEnvToken)
+	}
+	if all.FeedbackGitHubTokenSource != GitHubTokenSourceEnv {
+		t.Errorf("feedbackGithubTokenSource = %q, want %q", all.FeedbackGitHubTokenSource, GitHubTokenSourceEnv)
+	}
+}
+
+func TestManager_FeedbackGitHubToken_SettingsOverridesEnv(t *testing.T) {
+	sm := newTestManager(t)
+
+	// Set env var
+	t.Setenv("FEEDBACK_GITHUB_TOKEN", "ghp_env_should_be_overridden")
+
+	// Save a user-configured token via settings
+	all := DefaultAllSettings()
+	all.FeedbackGitHubToken = "ghp_settings_token_wins"
+	all.FeedbackGitHubTokenSource = GitHubTokenSourceSettings
+	if err := sm.SaveAll(all); err != nil {
+		t.Fatalf("SaveAll failed: %v", err)
+	}
+
+	// Reload — settings token should take priority over env
+	got, err := sm.GetAll()
+	if err != nil {
+		t.Fatalf("GetAll failed: %v", err)
+	}
+	if got.FeedbackGitHubToken != "ghp_settings_token_wins" {
+		t.Errorf("feedbackGithubToken = %q, want %q", got.FeedbackGitHubToken, "ghp_settings_token_wins")
+	}
+	if got.FeedbackGitHubTokenSource != GitHubTokenSourceSettings {
+		t.Errorf("feedbackGithubTokenSource = %q, want %q", got.FeedbackGitHubTokenSource, GitHubTokenSourceSettings)
+	}
+}
+
+func TestManager_FeedbackGitHubToken_ClearToken(t *testing.T) {
+	sm := newTestManager(t)
+
+	// Save a token
+	all := DefaultAllSettings()
+	all.FeedbackGitHubToken = "ghp_to_be_cleared"
+	all.FeedbackGitHubTokenSource = GitHubTokenSourceSettings
+	if err := sm.SaveAll(all); err != nil {
+		t.Fatalf("SaveAll failed: %v", err)
+	}
+
+	// Clear it
+	all.FeedbackGitHubToken = ""
+	all.FeedbackGitHubTokenSource = ""
+	if err := sm.SaveAll(all); err != nil {
+		t.Fatalf("SaveAll (clear) failed: %v", err)
+	}
+
+	// Verify it's cleared
+	got, err := sm.GetAll()
+	if err != nil {
+		t.Fatalf("GetAll failed: %v", err)
+	}
+	if got.FeedbackGitHubToken != "" {
+		t.Errorf("feedbackGithubToken should be empty after clear, got %q", got.FeedbackGitHubToken)
+	}
+	if sm.settings.Encrypted.FeedbackGitHubToken != nil {
+		t.Error("encrypted FeedbackGitHubToken should be nil after clear")
+	}
+}
+
+func TestManager_FeedbackGitHubToken_EnvSourceNotPersisted(t *testing.T) {
+	sm := newTestManager(t)
+
+	// Save with env source — should NOT be persisted to encrypted storage
+	all := DefaultAllSettings()
+	all.FeedbackGitHubToken = "ghp_env_token_ephemeral"
+	all.FeedbackGitHubTokenSource = GitHubTokenSourceEnv
+	if err := sm.SaveAll(all); err != nil {
+		t.Fatalf("SaveAll failed: %v", err)
+	}
+
+	// Encrypted field should be nil (env tokens are not persisted)
+	if sm.settings.Encrypted.FeedbackGitHubToken != nil {
+		t.Error("env-sourced feedback token should not be encrypted to disk")
 	}
 }
 
@@ -174,6 +321,9 @@ func TestManager_SaveAll_EmptySecrets(t *testing.T) {
 	}
 	if sm.settings.Encrypted.GitHubToken != nil {
 		t.Error("empty githubToken should not be encrypted")
+	}
+	if sm.settings.Encrypted.FeedbackGitHubToken != nil {
+		t.Error("empty feedbackGithubToken should not be encrypted")
 	}
 	if sm.settings.Encrypted.Notifications != nil {
 		t.Error("empty notifications should not be encrypted")

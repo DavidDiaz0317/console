@@ -212,7 +212,6 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
   const handleSaveGithubToken = async () => {
     if (!githubToken.trim()) return
 
-    setGithubTokenTesting(true)
     const isValid = await testGithubToken(githubToken.trim())
 
     if (isValid) {
@@ -235,7 +234,6 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
       // Trigger system updates check with the new token
       forceVersionCheck()
     }
-    setGithubTokenTesting(false)
   }
 
   const handleClearGithubToken = () => {
@@ -255,7 +253,6 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
   const handleSaveFeedbackGithubToken = async () => {
     if (!feedbackGithubToken.trim()) return
 
-    setFeedbackGithubTokenTesting(true)
     const isValid = await testFeedbackGithubToken(feedbackGithubToken.trim())
     if (isValid) {
       localStorage.setItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN, encodeToken(feedbackGithubToken.trim()))
@@ -267,7 +264,6 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
       setFeedbackGithubTokenSaved(true)
       setTimeout(() => setFeedbackGithubTokenSaved(false), UI_FEEDBACK_TIMEOUT_MS)
     }
-    setFeedbackGithubTokenTesting(false)
   }
 
   const handleClearFeedbackGithubToken = () => {
@@ -391,7 +387,7 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
 
             <div>
               <label htmlFor="feedback-github-token" className="block text-sm text-muted-foreground mb-2">
-                Feedback GitHub Token (FEEDBACK_GITHUB_TOKEN)
+                {t('settings.github.feedbackTokenLabel')}
               </label>
               <div className="flex gap-2">
                 <input
@@ -412,27 +408,31 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
                   ) : (
                     <Save className="w-4 h-4" />
                   )}
-                  {feedbackGithubTokenTesting ? 'Testing...' : feedbackGithubTokenSaved ? 'Saved!' : 'Save & Test'}
+                  {feedbackGithubTokenTesting ? t('settings.github.testing') : feedbackGithubTokenSaved ? t('settings.github.saved') : t('settings.github.saveAndTest')}
                 </button>
                 {hasFeedbackGithubToken && (
                   <button
                     onClick={handleClearFeedbackGithubToken}
                     className="px-4 py-2 rounded-lg text-red-400 hover:bg-red-500/10"
                   >
-                    Clear
+                    {t('settings.github.clear')}
                   </button>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Used by the feedback / bug submission integration. This should stay separate from the main GitHub Activity token.
-                {isFeedbackEnvToken ? ' Currently sourced from .env.' : ''}
+                {t('settings.github.feedbackTokenHelper')}
+                {isFeedbackEnvToken ? t('settings.github.feedbackTokenEnvSource') : ''}
               </p>
               {feedbackGithubTokenError && (
                 <p className="text-xs text-red-400 mt-2">{feedbackGithubTokenError}</p>
               )}
               {hasFeedbackGithubToken && feedbackGithubRateLimit && !feedbackGithubTokenError && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  {feedbackGithubRateLimit.remaining.toLocaleString()}/{feedbackGithubRateLimit.limit.toLocaleString()} requests remaining · resets at {feedbackGithubRateLimit.reset.toLocaleTimeString()}
+                  {t('settings.github.feedbackRateLimit', {
+                    remaining: feedbackGithubRateLimit.remaining.toLocaleString(),
+                    limit: feedbackGithubRateLimit.limit.toLocaleString(),
+                    time: feedbackGithubRateLimit.reset.toLocaleTimeString(),
+                  })}
                 </p>
               )}
             </div>

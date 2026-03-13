@@ -122,7 +122,7 @@ type AllSettings struct {
 const (
 	// GitHubTokenSourceSettings means the token was saved by the user via UI.
 	GitHubTokenSourceSettings = "settings"
-	// GitHubTokenSourceEnv means the token was auto-detected from FEEDBACK_GITHUB_TOKEN.
+	// GitHubTokenSourceEnv means the token was auto-detected from an environment variable.
 	GitHubTokenSourceEnv = "env"
 )
 
