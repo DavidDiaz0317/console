@@ -2492,6 +2492,11 @@ const getDemoPVCs = (): PVC[] => [
   { name: 'data-postgres-0', namespace: 'production', cluster: 'eks-prod-us-east-1', status: 'Bound', storageClass: 'gp3', capacity: '100Gi', accessModes: ['ReadWriteOnce'], age: '30d' },
   { name: 'redis-data-0', namespace: 'data', cluster: 'gke-staging', status: 'Bound', storageClass: 'standard', capacity: '50Gi', accessModes: ['ReadWriteOnce'], age: '14d' },
   { name: 'ml-scratch', namespace: 'ml-workloads', cluster: 'vllm-gpu-cluster', status: 'Pending', storageClass: 'fast-nvme', capacity: '500Gi', accessModes: ['ReadWriteMany'], age: '1h' },
+  // Orphaned PVCs — Bound but not mounted by any running pod (matched by DEMO_STORAGE_ANALYSIS)
+  { name: 'data-old-pipeline-0', namespace: 'ml-training', cluster: 'eks-prod-us-east-1', status: 'Bound', storageClass: 'gp3', capacity: '50Gi', accessModes: ['ReadWriteOnce'], age: '45d' },
+  { name: 'logs-etl-worker', namespace: 'data-eng', cluster: 'eks-prod-us-east-1', status: 'Bound', storageClass: 'gp3', capacity: '10Gi', accessModes: ['ReadWriteOnce'], age: '30d' },
+  { name: 'backup-postgres-old', namespace: 'databases', cluster: 'gke-staging', status: 'Bound', storageClass: 'standard', capacity: '20Gi', accessModes: ['ReadWriteOnce'], age: '60d' },
+  { name: 'scratch-notebook-user3', namespace: 'jupyter', cluster: 'vllm-gpu-cluster', status: 'Bound', storageClass: 'fast-nvme', capacity: '5Gi', accessModes: ['ReadWriteOnce'], age: '12d' },
 ]
 
 const getDemoNamespaces = (): string[] =>
@@ -3587,31 +3592,42 @@ export function useCachedK8sServiceAccounts(
 /** Polling interval for storage analysis (2 minutes) */
 const STORAGE_ANALYSIS_POLL_MS = 120_000
 
-/** Demo storage analysis showing orphaned and pending PVCs for alert evaluation */
+/** Demo storage analysis showing orphaned and pending PVCs for alert evaluation.
+ *  Cluster names and PVC names MUST match getDemoPVCs() for orphan badges to appear on individual rows. */
 const DEMO_STORAGE_ANALYSIS: StorageAnalysis[] = [
   {
-    cluster: 'scooter-cks',
+    cluster: 'eks-prod-us-east-1',
     totalPVCs: 22,
     boundPVCs: 19,
     pendingPVCs: 1,
     totalClaimedBytes: 107_374_182_400, // ~100 GiB
     orphanedPVCs: [
-      { name: 'data-old-pipeline-0', namespace: 'ml-training', capacityBytes: 53_687_091_200, storageClass: 'cephfs', age: '45d' },
-      { name: 'logs-etl-worker', namespace: 'data-eng', capacityBytes: 10_737_418_240, storageClass: 'cephfs', age: '30d' },
-      { name: 'scratch-notebook-user3', namespace: 'jupyter', capacityBytes: 5_368_709_120, storageClass: 'gp3', age: '12d' },
+      { name: 'data-old-pipeline-0', namespace: 'ml-training', capacityBytes: 53_687_091_200, storageClass: 'gp3', age: '45d' },
+      { name: 'logs-etl-worker', namespace: 'data-eng', capacityBytes: 10_737_418_240, storageClass: 'gp3', age: '30d' },
     ],
     pendingPVCDetails: [
       { name: 'model-cache-gpu-node-4', namespace: 'inference', storageClass: 'local-nvme', pendingSince: new Date(Date.now() - 900_000).toISOString(), pendingSeconds: 900 },
     ],
   },
   {
-    cluster: 'platform-eval',
+    cluster: 'gke-staging',
     totalPVCs: 8,
     boundPVCs: 7,
     pendingPVCs: 0,
     totalClaimedBytes: 42_949_672_960, // ~40 GiB
     orphanedPVCs: [
-      { name: 'backup-postgres-old', namespace: 'databases', capacityBytes: 21_474_836_480, storageClass: 'gp3', age: '60d' },
+      { name: 'backup-postgres-old', namespace: 'databases', capacityBytes: 21_474_836_480, storageClass: 'standard', age: '60d' },
+    ],
+    pendingPVCDetails: [],
+  },
+  {
+    cluster: 'vllm-gpu-cluster',
+    totalPVCs: 5,
+    boundPVCs: 4,
+    pendingPVCs: 0,
+    totalClaimedBytes: 5_368_709_120, // ~5 GiB
+    orphanedPVCs: [
+      { name: 'scratch-notebook-user3', namespace: 'jupyter', capacityBytes: 5_368_709_120, storageClass: 'fast-nvme', age: '12d' },
     ],
     pendingPVCDetails: [],
   },

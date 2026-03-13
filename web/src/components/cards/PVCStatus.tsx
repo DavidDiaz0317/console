@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { CheckCircle, AlertTriangle, Clock, ChevronRight } from 'lucide-react'
+import { CheckCircle, AlertTriangle, Clock, ChevronRight, Unplug } from 'lucide-react'
 import type { PVC } from '../../hooks/useMCP'
-import { useCachedPVCs } from '../../hooks/useCachedData'
+import { useCachedPVCs, useCachedStorageAnalysis } from '../../hooks/useCachedData'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useDemoMode } from '../../hooks/useDemoMode'
 import { useCardLoadingState } from './CardDataContext'
@@ -72,8 +72,22 @@ function getStatusColor(status: string) {
 function PVCStatusInternal() {
   const { t } = useTranslation()
   const { pvcs, isLoading, error, consecutiveFailures, isFailed, isDemoFallback } = useCachedPVCs()
+  const { analyses: storageAnalyses } = useCachedStorageAnalysis()
   const { drillToPVC } = useDrillDownActions()
   const { isDemoMode: demoMode } = useDemoMode()
+
+  // Build a set of orphaned PVC keys (cluster::namespace/name) from storage analysis
+  const orphanedPVCKeys = useMemo(() => {
+    const keys = new Set<string>()
+    for (const analysis of (storageAnalyses || [])) {
+      for (const orphan of (analysis.orphanedPVCs || [])) {
+        keys.add(`${analysis.cluster}::${orphan.namespace}/${orphan.name}`)
+      }
+    }
+    return keys
+  }, [storageAnalyses])
+
+  const orphanedCount = orphanedPVCKeys.size
 
   // Report card data state
   const { showSkeleton, showEmptyState } = useCardLoadingState({
@@ -215,7 +229,7 @@ function PVCStatusInternal() {
       />
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className={`grid ${orphanedCount > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mb-4`}>
         <div className="p-2 rounded-lg bg-secondary/50 text-center">
           <div className="text-lg font-bold text-foreground">{stats.total}</div>
           <div className="text-xs text-muted-foreground">{t('common.total')}</div>
@@ -232,6 +246,12 @@ function PVCStatusInternal() {
           <div className="text-lg font-bold text-red-400">{stats.failed}</div>
           <div className="text-xs text-muted-foreground">{t('common.failed')}</div>
         </div>
+        {orphanedCount > 0 && (
+          <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center" title="Bound PVCs not mounted by any running pod">
+            <div className="text-lg font-bold text-orange-400">{orphanedCount}</div>
+            <div className="text-xs text-orange-400/80">Orphaned</div>
+          </div>
+        )}
       </div>
 
       {/* PVC List */}
@@ -241,7 +261,10 @@ function PVCStatusInternal() {
             {error ? 'Failed to load PVCs' : 'No PVCs found'}
           </div>
         ) : (
-          displayPVCs.map(pvc => (
+          displayPVCs.map(pvc => {
+            const isOrphaned = orphanedPVCKeys.has(`${pvc.cluster}::${pvc.namespace}/${pvc.name}`)
+            const hasIssue = pvc.status !== 'Bound' || isOrphaned
+            return (
             <div
               key={`${pvc.cluster}-${pvc.namespace}-${pvc.name}`}
               onClick={() => drillToPVC(pvc.cluster || '', pvc.namespace || '', pvc.name, {
@@ -250,10 +273,10 @@ function PVCStatusInternal() {
                 storageClass: pvc.storageClass,
                 age: pvc.age,
               })}
-              className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors cursor-pointer group"
+              className={`flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer group ${isOrphaned ? 'bg-orange-500/5 border border-orange-500/20 hover:bg-orange-500/10' : 'bg-secondary/30 hover:bg-secondary/50'}`}
             >
               <div className="flex items-center gap-2 min-w-0">
-                {getStatusIcon(pvc.status)}
+                {isOrphaned ? <Unplug className="w-3 h-3 text-orange-400" /> : getStatusIcon(pvc.status)}
                 {pvc.cluster && <ClusterBadge cluster={pvc.cluster} size="sm" />}
                 <div className="min-w-0">
                   <div className="text-sm text-foreground truncate group-hover:text-purple-400">{pvc.name}</div>
@@ -269,18 +292,29 @@ function PVCStatusInternal() {
                     {pvc.storageClass}
                   </span>
                 )}
-                <span className={getStatusColor(pvc.status)}>{pvc.status}</span>
-                {pvc.status !== 'Bound' && (
+                {isOrphaned && (
+                  <span className="px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 font-medium" title="Bound but not mounted by any running pod">
+                    Orphaned
+                  </span>
+                )}
+                <span className={isOrphaned ? 'text-orange-400' : getStatusColor(pvc.status)}>{pvc.status}</span>
+                {hasIssue && (
                   <CardAIActions
                     resource={{ kind: 'PersistentVolumeClaim', name: pvc.name, namespace: pvc.namespace, cluster: pvc.cluster, status: pvc.status }}
-                    issues={[{ name: `PVC ${pvc.status}`, message: `PersistentVolumeClaim is in ${pvc.status} state${pvc.storageClass ? ` (storageClass: ${pvc.storageClass})` : ''}` }]}
+                    issues={[{
+                      name: isOrphaned ? 'Orphaned PVC' : `PVC ${pvc.status}`,
+                      message: isOrphaned
+                        ? `PVC is Bound but not mounted by any running pod — may be wasting storage${pvc.storageClass ? ` (storageClass: ${pvc.storageClass})` : ''}`
+                        : `PersistentVolumeClaim is in ${pvc.status} state${pvc.storageClass ? ` (storageClass: ${pvc.storageClass})` : ''}`,
+                    }]}
                   />
                 )}
                 <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-          ))
-        )}
+            )
+          }))
+        }
       </div>
 
       {/* Pagination */}
