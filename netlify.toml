@@ -105,7 +105,9 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# HTML files must always revalidate to pick up new chunk references after deploys
+# HTML files and the SPA root must always revalidate to pick up new chunk
+# references after deploys. The root "/" is covered explicitly because Netlify
+# may serve index.html at "/" without the .html extension and miss the /*.html rule.
 [[headers]]
   for = "/*.html"
   [headers.values]
@@ -113,6 +115,11 @@
 
 [[headers]]
   for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/"
   [headers.values]
     Cache-Control = "no-cache"
 

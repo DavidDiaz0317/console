@@ -23,6 +23,10 @@ interface State {
  * causing "Failed to fetch dynamically imported module" or
  * "MIME type text/html" errors. This boundary catches those and
  * auto-reloads once to pick up fresh chunk references.
+ *
+ * Recovery flow:
+ * 1. First chunk error → auto-reload (sessionStorage timestamp set, no error UI shown)
+ * 2. Chunk error within RELOAD_THROTTLE_MS of last reload → recovery failed, show error UI
  */
 export class ChunkErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -31,10 +35,17 @@ export class ChunkErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State | null {
-    if (isChunkLoadError(error)) {
-      return { hasChunkError: true }
+    if (!isChunkLoadError(error)) {
+      return null
     }
-    return null
+    // Only show the error UI if a reload has already been attempted within
+    // the throttle window (i.e., auto-reload failed to fix the problem).
+    // On the first occurrence we stay silent here and let componentDidCatch
+    // trigger the reload — no error UI flash before the reload.
+    const lastReload = sessionStorage.getItem(CHUNK_RELOAD_TS_KEY)
+    const now = Date.now()
+    const alreadyRetried = !!lastReload && now - parseInt(lastReload) <= RELOAD_THROTTLE_MS
+    return { hasChunkError: alreadyRetried }
   }
 
   componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
@@ -42,10 +53,10 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       throw error
     }
 
-    console.warn('[ChunkErrorBoundary] Stale chunk detected, will reload:', error.message)
+    console.warn('[ChunkErrorBoundary] Stale chunk detected:', error.message)
     emitError('chunk_load', error.message)
 
-    // Auto-reload once. Use sessionStorage to prevent infinite loops.
+    // Auto-reload once. Use sessionStorage timestamp to prevent infinite loops.
     const lastReload = sessionStorage.getItem(CHUNK_RELOAD_TS_KEY)
     const now = Date.now()
     if (!lastReload || now - parseInt(lastReload) > RELOAD_THROTTLE_MS) {
