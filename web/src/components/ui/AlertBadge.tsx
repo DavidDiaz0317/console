@@ -21,24 +21,27 @@ const MINS_PER_HOUR = 60
 /** Number of hours in a day, used for relative-time formatting */
 const HOURS_PER_DAY = 24
 
+interface AnimationState {
+  isAnimating: boolean
+  direction: 'up' | 'down'
+}
+
 // Animated counter component for the badge - exported for future use
 export function AnimatedCounter({ value, className }: { value: number; className?: string }) {
   const { t: _t } = useTranslation()
   const [displayValue, setDisplayValue] = useState(value)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [direction, setDirection] = useState<'up' | 'down'>('up')
+  const [animation, setAnimation] = useState<AnimationState>({ isAnimating: false, direction: 'up' })
   const prevValueRef = useRef(value)
 
   useEffect(() => {
     if (value !== prevValueRef.current) {
-      setDirection(value > prevValueRef.current ? 'up' : 'down')
-      setIsAnimating(true)
+      setAnimation({ isAnimating: true, direction: value > prevValueRef.current ? 'up' : 'down' })
       // Wait for exit animation, then update value
       const timer = setTimeout(() => {
         setDisplayValue(value)
         prevValueRef.current = value
         // Reset animation after enter completes
-        setTimeout(() => setIsAnimating(false), TRANSITION_DELAY_MS)
+        setTimeout(() => setAnimation(prev => ({ ...prev, isAnimating: false })), TRANSITION_DELAY_MS)
       }, 150)
       return () => clearTimeout(timer)
     }
@@ -49,8 +52,8 @@ export function AnimatedCounter({ value, className }: { value: number; className
   return (
     <span
       className={`inline-block transition-all duration-200 ${className} ${
-        isAnimating
-          ? direction === 'up'
+        animation.isAnimating
+          ? animation.direction === 'up'
             ? 'animate-roll-up'
             : 'animate-roll-down'
           : ''
