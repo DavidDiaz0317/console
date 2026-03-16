@@ -562,6 +562,23 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
     ],
   },
 
+  // Multi-Tenancy template
+  {
+    id: 'multi-tenancy',
+    name: 'Multi-Tenancy',
+    description: 'Monitor and configure tenant isolation with OVN, KubeFlex, K3s, and KubeVirt',
+    icon: '\u{1F3E2}',
+    category: 'security',
+    cards: [
+      { card_type: 'tenant_isolation_setup', position: { w: 12, h: 3 } },
+      { card_type: 'multi_tenancy_overview', position: { w: 6, h: 3 } },
+      { card_type: 'ovn_status', position: { w: 6, h: 3 } },
+      { card_type: 'kubeflex_status', position: { w: 6, h: 3 } },
+      { card_type: 'k3s_status', position: { w: 6, h: 3 } },
+      { card_type: 'kubevirt_status', position: { w: 6, h: 3 } },
+    ],
+  },
+
   // Secrets & Certificates templates
   {
     id: 'secrets-management',

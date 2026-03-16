@@ -283,6 +283,14 @@ const CARD_CATALOG = {
     { type: 'kubectl', title: 'Kubectl', description: 'Interactive kubectl terminal with AI assistance, YAML editor, and command history', visualization: 'table' },
     // stock_market_ticker — registered via unified descriptor system (auto-merged below)
   ],
+  'Multi-Tenancy': [
+    { type: 'tenant_isolation_setup', title: 'Tenant Isolation Setup', description: 'AI-powered multi-tenancy setup wizard', visualization: 'status' },
+    { type: 'multi_tenancy_overview', title: 'Multi-Tenancy Overview', description: 'Aggregated tenant isolation status', visualization: 'status' },
+    { type: 'ovn_status', title: 'OVN-Kubernetes', description: 'OVN network and UDN status', visualization: 'status' },
+    { type: 'kubeflex_status', title: 'KubeFlex', description: 'Control plane management', visualization: 'status' },
+    { type: 'k3s_status', title: 'K3s', description: 'Lightweight Kubernetes clusters', visualization: 'status' },
+    { type: 'kubevirt_status', title: 'KubeVirt', description: 'Virtual machine management', visualization: 'status' },
+  ],
   'Orchestration': [
     { type: 'keda_status', title: 'KEDA', description: 'KEDA autoscaler status, scaled object metrics, and trigger queue depths', visualization: 'status' },
     { type: 'kubevela_status', title: 'KubeVela', description: 'KubeVela application delivery, component status, and workflow progress', visualization: 'status' },

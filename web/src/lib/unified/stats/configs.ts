@@ -23,6 +23,7 @@ import {
   DASHBOARD_STAT_BLOCKS,
   OPERATORS_STAT_BLOCKS,
   DEPLOY_STAT_BLOCKS,
+  MULTI_TENANCY_STAT_BLOCKS,
   StatBlockConfig,
 } from '../../../components/ui/StatsBlockDefinitions'
 
@@ -162,6 +163,12 @@ export const DEPLOY_STATS_CONFIG = createConfig(
   DEPLOY_STAT_BLOCKS
 )
 
+export const MULTI_TENANCY_STATS_CONFIG = createConfig(
+  'multi-tenancy',
+  'Isolation Status',
+  MULTI_TENANCY_STAT_BLOCKS
+)
+
 // ============================================================================
 // Config lookup
 // ============================================================================
@@ -183,6 +190,7 @@ export type StatsConfigType =
   | 'dashboard'
   | 'operators'
   | 'deploy'
+  | 'multi-tenancy'
 
 const CONFIGS: Record<StatsConfigType, UnifiedStatsSectionConfig> = {
   clusters: CLUSTERS_STATS_CONFIG,
@@ -201,6 +209,7 @@ const CONFIGS: Record<StatsConfigType, UnifiedStatsSectionConfig> = {
   dashboard: DASHBOARD_STATS_CONFIG,
   operators: OPERATORS_STATS_CONFIG,
   deploy: DEPLOY_STATS_CONFIG,
+  'multi-tenancy': MULTI_TENANCY_STATS_CONFIG,
 }
 
 /**

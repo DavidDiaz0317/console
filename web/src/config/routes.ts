@@ -85,6 +85,9 @@ export const ROUTES = {
   FROM_HEADLAMP: '/from-headlamp',
   WHITE_LABEL: '/white-label',
 
+  // Multi-Tenancy
+  MULTI_TENANCY: '/multi-tenancy',
+
   // Dev / test routes
   TEST_UNIFIED_CARD: '/test/unified-card',
   TEST_UNIFIED_STATS: '/test/unified-stats',

@@ -35,6 +35,7 @@ import { aiAgentsDashboardConfig } from './ai-agents'
 import { llmdBenchmarksDashboardConfig } from './llmd-benchmarks'
 import { clusterAdminDashboardConfig } from './cluster-admin'
 import { insightsDashboardConfig } from './insights'
+import { multiTenancyDashboardConfig } from './multi-tenancy'
 
 /**
  * Registry of all unified dashboard configurations
@@ -69,6 +70,7 @@ export const DASHBOARD_CONFIGS: DashboardConfigRegistry = {
   'llm-d-benchmarks': llmdBenchmarksDashboardConfig,
   'cluster-admin': clusterAdminDashboardConfig,
   insights: insightsDashboardConfig,
+  'multi-tenancy': multiTenancyDashboardConfig,
 }
 
 /**
@@ -173,4 +175,5 @@ export {
   llmdBenchmarksDashboardConfig,
   clusterAdminDashboardConfig,
   insightsDashboardConfig,
+  multiTenancyDashboardConfig,
 }

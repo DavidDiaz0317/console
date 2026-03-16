@@ -78,6 +78,7 @@ const DASHBOARD_NAMES: Record<DashboardStatsType, string> = {
   'ai-agents': 'AI Agents',
   'cluster-admin': 'Cluster Admin',
   insights: 'Insights',
+  'multi-tenancy': 'Multi-Tenancy',
 }
 
 const DASHBOARD_ROUTES: Record<DashboardStatsType, string> = {
@@ -100,6 +101,7 @@ const DASHBOARD_ROUTES: Record<DashboardStatsType, string> = {
   'ai-agents': '/ai-agents',
   'cluster-admin': '/cluster-admin',
   insights: '/insights',
+  'multi-tenancy': '/multi-tenancy',
 }
 
 const ALL_STATS_DASHBOARD_TYPES: DashboardStatsType[] = [

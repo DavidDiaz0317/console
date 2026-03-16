@@ -68,6 +68,7 @@ const LLMdBenchmarks = lazy(() => import('./components/llmd-benchmarks/LLMdBench
 const ClusterAdmin = lazy(() => import('./components/cluster-admin/ClusterAdmin').then(m => ({ default: m.ClusterAdmin })))
 const CICD = lazy(() => import('./components/cicd/CICD').then(m => ({ default: m.CICD })))
 const Insights = lazy(() => import('./components/insights/Insights').then(m => ({ default: m.Insights })))
+const MultiTenancy = lazy(() => import('./components/multi-tenancy/MultiTenancy').then(m => ({ default: m.MultiTenancy })))
 const Marketplace = lazy(() => import('./components/marketplace/Marketplace').then(m => ({ default: m.Marketplace })))
 const MiniDashboard = lazy(() => import('./components/widget/MiniDashboard').then(m => ({ default: m.MiniDashboard })))
 const FromLens = lazy(() => import('./pages/FromLens').then(m => ({ default: m.FromLens })))
@@ -113,6 +114,7 @@ const DASHBOARD_CHUNKS: Record<string, () => Promise<unknown>> = {
   'cluster-admin': () => import('./components/cluster-admin/ClusterAdmin'),
   'ci-cd': () => import('./components/cicd/CICD'),
   'insights': () => import('./components/insights/Insights'),
+  'multi-tenancy': () => import('./components/multi-tenancy/MultiTenancy'),
   'marketplace': () => import('./components/marketplace/Marketplace'),
 }
 
@@ -329,6 +331,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/ai-agents': 'AI Agents',
   '/ci-cd': 'CI/CD',
   '/llm-d-benchmarks': 'llm-d Benchmarks',
+  '/multi-tenancy': 'Multi-Tenancy',
   '/arcade': 'Arcade',
   '/marketplace': 'Marketplace',
   '/missions': 'Missions',
@@ -499,6 +502,7 @@ function App() {
           <Route path="/cluster-admin" element={<ClusterAdmin />} />
           <Route path="/ci-cd" element={<CICD />} />
           <Route path="/insights" element={<Insights />} />
+          <Route path="/multi-tenancy" element={<MultiTenancy />} />
           <Route path="/marketplace" element={<Marketplace />} />
           {/* Dev test routes for unified framework validation */}
           <Route path="/test/unified-card" element={<UnifiedCardTest />} />

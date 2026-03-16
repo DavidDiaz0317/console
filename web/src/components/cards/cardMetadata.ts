@@ -226,6 +226,13 @@ export const CARD_TITLES: Record<string, string> = {
   // KEDA
   keda_status: 'KEDA',
 
+  // Multi-tenancy
+  ovn_status: 'OVN-Kubernetes',
+  kubeflex_status: 'KubeFlex',
+  k3s_status: 'K3s',
+  kubevirt_status: 'KubeVirt',
+  multi_tenancy_overview: 'Multi-Tenancy Overview',
+  tenant_isolation_setup: 'Tenant Isolation Setup',
 }
 
 // Short descriptions shown via info icon tooltip in the card header
@@ -401,6 +408,14 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   deployment_rollout_tracker: 'Tracks deployment rollout progress across clusters.',
   // KEDA
   keda_status: 'KEDA autoscaler status, scaled object metrics, and trigger queue depths.',
+
+  // Multi-tenancy
+  ovn_status: 'OVN-Kubernetes network status, User Defined Networks, and tenant isolation.',
+  kubeflex_status: 'KubeFlex controller status, control planes per tenant, and CP health.',
+  k3s_status: 'K3s lightweight Kubernetes server pods, agent connections, and cluster health.',
+  kubevirt_status: 'KubeVirt VM status, running/stopped/migrating VMs, and data-plane isolation.',
+  multi_tenancy_overview: 'Aggregated view of tenant isolation across OVN, KubeFlex, K3s, and KubeVirt.',
+  tenant_isolation_setup: 'AI-powered multi-tenancy setup wizard with component detection and one-click configuration.',
 }
 
 /**

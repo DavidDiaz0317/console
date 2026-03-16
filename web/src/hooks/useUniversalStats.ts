@@ -406,6 +406,28 @@ export function useUniversalStats() {
         return { value: '83%', sublabel: 'SOC 2', isClickable: false, isDemo: true }
 
       // ══════════════════════════════════════════
+      // Multi-tenancy stats (demo data — real values
+      // will come from pod label detection in the
+      // multi-tenancy dashboard page component)
+      // ══════════════════════════════════════════
+      case 'tenants':
+        return { value: 4, sublabel: 'active tenants', isClickable: false, isDemo: true }
+      case 'isolation_score': {
+        const MULTI_TENANCY_DEMO_ISOLATION_SCORE = 67
+        return { value: `${MULTI_TENANCY_DEMO_ISOLATION_SCORE}%`, sublabel: '2/3 layers', isClickable: false, isDemo: true }
+      }
+      case 'control_planes':
+        return { value: 3, sublabel: 'KubeFlex CPs', isClickable: false, isDemo: true }
+      case 'vms':
+        return { value: 2, sublabel: 'KubeVirt VMs', isClickable: false, isDemo: true }
+      case 'udn_networks':
+        return { value: 5, sublabel: 'UDN-attached', isClickable: false, isDemo: true }
+      case 'components': {
+        const MULTI_TENANCY_DEMO_COMPONENTS_PCT = 75
+        return { value: `${MULTI_TENANCY_DEMO_COMPONENTS_PCT}%`, sublabel: '3/4 ready', isClickable: false, isDemo: true }
+      }
+
+      // ══════════════════════════════════════════
       default:
         return undefined
     }

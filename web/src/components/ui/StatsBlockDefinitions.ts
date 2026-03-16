@@ -53,6 +53,7 @@ export type DashboardStatsType =
   | 'ai-agents'
   | 'cluster-admin'
   | 'insights'
+  | 'multi-tenancy'
 
 /**
  * Default stat blocks for the Clusters dashboard
@@ -316,6 +317,18 @@ export const CLUSTER_ADMIN_STAT_BLOCKS: StatBlockConfig[] = [
 ]
 
 /**
+ * Default stat blocks for the Multi-Tenancy dashboard
+ */
+export const MULTI_TENANCY_STAT_BLOCKS: StatBlockConfig[] = [
+  { id: 'tenants', name: 'Tenants', icon: 'Users', visible: true, color: 'purple' },
+  { id: 'isolation_score', name: 'Isolation', icon: 'Shield', visible: true, color: 'green', displayMode: 'gauge' },
+  { id: 'control_planes', name: 'Control Planes', icon: 'Layers', visible: true, color: 'blue' },
+  { id: 'vms', name: 'VMs', icon: 'Monitor', visible: true, color: 'orange' },
+  { id: 'udn_networks', name: 'UDN Networks', icon: 'Network', visible: true, color: 'cyan' },
+  { id: 'components', name: 'Components', icon: 'CheckCircle2', visible: true, color: 'green', displayMode: 'ring' },
+]
+
+/**
  * Get all stat blocks across all dashboard types
  */
 export const ALL_STAT_BLOCKS: StatBlockConfig[] = (() => {
@@ -338,6 +351,7 @@ export const ALL_STAT_BLOCKS: StatBlockConfig[] = (() => {
     ...DEPLOY_STAT_BLOCKS,
     ...KAGENTI_STAT_BLOCKS,
     ...CLUSTER_ADMIN_STAT_BLOCKS,
+    ...MULTI_TENANCY_STAT_BLOCKS,
   ]
 
   // Deduplicate by ID
@@ -415,6 +429,8 @@ export function getDefaultStatBlocks(dashboardType: DashboardStatsType): StatBlo
       return CLUSTER_ADMIN_STAT_BLOCKS
     case 'insights':
       return INSIGHTS_STAT_BLOCKS
+    case 'multi-tenancy':
+      return MULTI_TENANCY_STAT_BLOCKS
     default:
       return []
   }
@@ -464,6 +480,11 @@ export const STAT_DISPLAY_MODE_DEFAULTS: Record<string, StatDisplayMode> = {
 
   // Pods — trend over time
   'pods:total_pods': 'sparkline',
+
+  // Multi-tenancy — isolation score as gauge, components as ring, tenants as sparkline
+  'multi-tenancy:isolation_score': 'gauge',
+  'multi-tenancy:components': 'ring',
+  'multi-tenancy:tenants': 'sparkline',
 }
 
 /**
