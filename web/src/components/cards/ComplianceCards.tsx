@@ -901,14 +901,12 @@ export function ComplianceScore({ config: _config }: CardConfig) {
     }
 
     if (scores.length === 0) {
-      // No real compliance data — show placeholder with demo indicator
+      // No real compliance data — agent is running but no tools detected.
+      // Return empty state (score 0, no breakdown). Demo mode hooks inject their own
+      // fake scores before reaching this path, so usingFallback is never true in demo mode.
       return {
-        score: 85,
-        breakdown: [
-          { name: 'CIS', value: 82 },
-          { name: 'NSA', value: 79 },
-          { name: 'PCI', value: 71 },
-        ],
+        score: 0,
+        breakdown: [] as Array<{ name: string; value: number }>,
         usingFallback: true,
       }
     }
@@ -934,10 +932,14 @@ export function ComplianceScore({ config: _config }: CardConfig) {
     return totalPolicies > 0 ? { totalPolicies, totalViolations, enforcingCount, auditCount } : undefined
   }, [kyvernoStatuses, selectedClusters])
 
-  // Mark as demo data when hooks report demo OR when using hardcoded fallback values
-  const isDemoData = ksDemoData || kyDemoData || usingFallback
+  // Mark as demo data only when hooks explicitly report demo mode.
+  // usingFallback means no tools are installed — that is a real (empty) live state, not demo.
+  const isDemoData = ksDemoData || kyDemoData
 
-  useCardLoadingState({ isLoading, hasAnyData: true, isDemoData })
+  // hasAnyData: true only when compliance tools provide real data.
+  // When usingFallback (no tools detected), report no data so CardWrapper shows a
+  // loading skeleton while fetching and an empty state after loading completes.
+  useCardLoadingState({ isLoading, hasAnyData: !usingFallback, isDemoData })
 
   const scoreCtx = getScoreContext(score)
 
@@ -952,6 +954,19 @@ export function ComplianceScore({ config: _config }: CardConfig) {
     }
     return Array.from(clusters)
   }, [kubescapeStatuses, kyvernoStatuses])
+
+  // No compliance tools detected after loading — show informational empty state.
+  // This is a live (non-demo) empty state: the agent is running but neither
+  // Kubescape nor Kyverno is installed in any reachable cluster.
+  if (usingFallback && !isLoading && !isDemoData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+        <Shield className="w-8 h-8 mb-2 opacity-50" />
+        <p className="text-sm">No compliance tools detected</p>
+        <p className="text-xs mt-1">Install Kubescape or Kyverno to track compliance</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">
