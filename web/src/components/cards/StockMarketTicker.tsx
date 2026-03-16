@@ -14,6 +14,7 @@ import { useCardLoadingState } from './CardDataContext'
 import { useCache } from '../../lib/cache'
 import { useTranslation } from 'react-i18next'
 import { FETCH_EXTERNAL_TIMEOUT_MS } from '../../lib/constants'
+import { useToast } from '../ui/Toast'
 import type { TFunction } from 'i18next'
 
 // Stock search result interface
@@ -525,6 +526,7 @@ function StockRow({
 
 export function StockMarketTicker({ config }: StockMarketTickerProps) {
   const { t } = useTranslation(['cards', 'common'])
+  const { showToast } = useToast()
   const symbols = config?.symbols || DEFAULT_SYMBOLS
   const dataSource = config?.dataSource || 'Yahoo Finance'
 
@@ -624,10 +626,11 @@ export function StockMarketTicker({ config }: StockMarketTickerProps) {
       console.error('Stock search error:', error)
       setStockSearchResults([])
       setShowStockDropdown(false)
+      showToast(`Failed to search for "${query}". Check your network connection or try a different symbol.`, 'error')
     } finally {
       setIsSearching(false)
     }
-  }, [])
+  }, [showToast])
 
   // Debounced stock search
   useEffect(() => {

@@ -7,6 +7,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useToast } from '../ui/Toast'
 
 // Types
 type Difficulty = 'easy' | 'medium' | 'hard' | 'expert'
@@ -211,6 +212,7 @@ function isComplete(board: Cell[][], solution: number[][]): boolean {
 
 export function SudokuGame({ config: _config }: SudokuGameProps) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null)
   const [pencilMode, setPencilMode] = useState(false)
@@ -248,6 +250,7 @@ export function SudokuGame({ config: _config }: SudokuGameProps) {
         setGameState(parsed)
       } catch (e) {
         console.error('Failed to load saved game:', e)
+        showToast('Could not restore your previous game (corrupted save data). Starting a new game.', 'warning')
       }
     }
 
@@ -257,9 +260,10 @@ export function SudokuGame({ config: _config }: SudokuGameProps) {
         setBestTimes(JSON.parse(savedBestTimes) as BestTimes)
       } catch (e) {
         console.error('Failed to load best times:', e)
+        showToast('Could not load your best times from storage. Your previous records may not be displayed.', 'warning')
       }
     }
-  }, [])
+  }, [showToast])
 
   // Timer
   useEffect(() => {

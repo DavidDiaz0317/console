@@ -10,6 +10,7 @@ import { WEATHER_API } from '../../../config/externalApis'
 import { useCardLoadingState } from '../CardDataContext'
 import { useCache } from '../../../lib/cache'
 import { FETCH_EXTERNAL_TIMEOUT_MS } from '../../../lib/constants'
+import { useToast } from '../../ui/Toast'
 import type {
   GeocodingResult,
   ForecastDay,
@@ -76,6 +77,7 @@ const INITIAL_WEATHER: WeatherData = { current: null, forecast: [], hourly: [] }
 
 export function Weather({ config }: { config?: WeatherConfig }) {
   const { t } = useTranslation('common')
+  const { showToast } = useToast()
   const [units, setUnits] = useState<'F' | 'C'>(config?.units || 'F')
   const [forecastLength, setForecastLength] = useState<2 | 7 | 14>(config?.forecastLength || 7)
   const [showSettings, setShowSettings] = useState(false)
@@ -227,10 +229,11 @@ export function Weather({ config }: { config?: WeatherConfig }) {
       console.error('City search error:', error)
       setCitySearchResults([])
       setShowCityDropdown(false)
+      showToast(`Failed to search for cities matching "${query}". Check your network connection.`, 'error')
     } finally {
       setIsSearching(false)
     }
-  }, [])
+  }, [showToast])
 
   // Debounced city search
   useEffect(() => {
