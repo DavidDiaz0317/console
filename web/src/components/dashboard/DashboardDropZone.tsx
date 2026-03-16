@@ -1,8 +1,9 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, Plus, Check } from 'lucide-react'
+import { LayoutDashboard, Plus, Check, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Dashboard } from '../../hooks/useDashboards'
+import { useDashboardHealth } from '../../hooks/useDashboardHealth'
 
 interface DashboardDropZoneProps {
   dashboards: Dashboard[]
@@ -18,10 +19,14 @@ export function DashboardDropZone({
   onCreateDashboard,
 }: DashboardDropZoneProps) {
   const { t } = useTranslation()
+  const health = useDashboardHealth()
   // Filter out current dashboard (handle null/undefined dashboards)
   const otherDashboards = (dashboards || []).filter((d) => d.id !== currentDashboardId)
 
   if (!isDragging) return null
+
+  const HealthIcon = health.status === 'critical' ? AlertCircle : health.status === 'warning' ? AlertTriangle : CheckCircle
+  const healthColor = health.status === 'critical' ? 'text-red-400' : health.status === 'warning' ? 'text-yellow-400' : 'text-green-400'
 
   return (
     <div className="fixed right-6 top-24 z-50 animate-fade-in-up">
@@ -29,6 +34,16 @@ export function DashboardDropZone({
         <div className="flex items-center gap-2 mb-3 text-sm font-medium text-foreground">
           <LayoutDashboard className="w-4 h-4 text-purple-400" />
           {t('dashboard.dropZone.moveToDashboard')}
+        </div>
+
+        {/* Health status indicator */}
+        <div className={cn('flex items-center gap-1.5 mb-3 px-2 py-1.5 rounded-lg text-xs border', {
+          'bg-red-500/10 border-red-500/20': health.status === 'critical',
+          'bg-yellow-500/10 border-yellow-500/20': health.status === 'warning',
+          'bg-green-500/10 border-green-500/20': health.status === 'healthy',
+        })}>
+          <HealthIcon className={cn('w-3 h-3 shrink-0', healthColor)} />
+          <span className={healthColor}>{health.message}</span>
         </div>
 
         {otherDashboards.length === 0 ? (

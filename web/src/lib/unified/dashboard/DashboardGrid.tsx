@@ -24,9 +24,11 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { AlertTriangle, AlertCircle } from 'lucide-react'
 import type { DashboardCardPlacement, DashboardFeatures } from '../types'
 import { UnifiedCard } from '../card'
 import { getCardConfig } from '../../../config/cards'
+import { useDashboardHealth } from '../../../hooks/useDashboardHealth'
 
 /** Viewport width breakpoint below which small cards are clamped to wider minimum */
 const NARROW_VIEWPORT_BREAKPOINT_PX = 1024
@@ -46,6 +48,8 @@ export interface DashboardGridProps {
   isLoading?: boolean
   /** Additional className */
   className?: string
+  /** Whether to show a health banner above the grid when issues are detected */
+  showHealthBanner?: boolean
 }
 
 /**
@@ -59,8 +63,10 @@ export function DashboardGrid({
   onConfigureCard,
   isLoading = false,
   className = '',
+  showHealthBanner = false,
 }: DashboardGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const health = useDashboardHealth()
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -107,9 +113,34 @@ export function DashboardGrid({
   // Enable drag-drop if configured and we have a reorder handler
   const enableDragDrop = features?.dragDrop !== false && !!onReorder
 
+  // Health banner: show when showHealthBanner is enabled and there are issues
+  const healthBanner = showHealthBanner && health.status !== 'healthy' && (
+    <div
+      className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border text-sm ${
+        health.status === 'critical'
+          ? 'bg-red-500/10 border-red-500/30 text-red-400'
+          : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+      }`}
+      role="alert"
+      aria-label={`Dashboard health: ${health.message}`}
+    >
+      {health.status === 'critical' ? (
+        <AlertCircle className="w-4 h-4 shrink-0" />
+      ) : (
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+      )}
+      <span className="font-medium">{health.message}</span>
+      {health.details.length > 0 && (
+        <span className="text-xs opacity-75">— {health.details.join(', ')}</span>
+      )}
+    </div>
+  )
+
   // Render grid content
   const gridContent = (
-    <div className={`grid grid-cols-1 md:grid-cols-12 gap-4 ${className}`}>
+    <>
+      {healthBanner}
+      <div className={`grid grid-cols-1 md:grid-cols-12 gap-4 ${className}`}>
       {cards.map((placement) => (
         <DashboardCardWrapper
           key={placement.id}
@@ -123,6 +154,7 @@ export function DashboardGrid({
         />
       ))}
     </div>
+    </>
   )
 
   // Wrap with DnD context if drag-drop is enabled

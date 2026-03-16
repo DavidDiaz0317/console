@@ -6,7 +6,7 @@ import {
   FolderOpen, AlertCircle, AlertTriangle, AlertOctagon, Package, Ship, Settings, Clock,
   MoreHorizontal, Database, Workflow, Globe, Network, ArrowRightLeft, CircleDot,
   ShieldAlert, ShieldOff, User, Info, Percent, ClipboardList, Sparkles, Activity,
-  List, DollarSign, ChevronDown, ChevronRight, FlaskConical,
+  List, DollarSign, ChevronDown, ChevronRight, FlaskConical, CheckCircle,
 } from 'lucide-react'
 import { Button } from './Button'
 import { StatusBadge } from './StatusBadge'
@@ -21,6 +21,7 @@ import { isInClusterMode } from '../../hooks/useBackendHealth'
 import { useDemoMode } from '../../hooks/useDemoMode'
 import { useIsModeSwitching } from '../../lib/unified/demo'
 import { useStatHistory, MIN_SPARKLINE_POINTS } from '../../hooks/useStatHistory'
+import { useDashboardHealth } from '../../hooks/useDashboardHealth'
 
 // Icon mapping for dynamic rendering
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -416,6 +417,8 @@ interface StatsOverviewProps {
   showConfigButton?: boolean
   /** Whether the stats are demo data (shows yellow border + badge) */
   isDemoData?: boolean
+  /** Whether to show the system health indicator next to the title */
+  showHealthIndicator?: boolean
 }
 
 /**
@@ -435,6 +438,7 @@ export function StatsOverview({
   title,
   showConfigButton = true,
   isDemoData = false,
+  showHealthIndicator = false,
 }: StatsOverviewProps) {
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('statsOverview.title')
@@ -442,6 +446,7 @@ export function StatsOverview({
   const { status: agentStatus } = useLocalAgent()
   const { isDemoMode } = useDemoMode()
   const isModeSwitching = useIsModeSwitching()
+  const health = useDashboardHealth()
 
   // When demo mode is OFF and agent is confirmed disconnected, force skeleton display
   // Don't force skeleton during 'connecting' - show cached data to prevent flicker
@@ -522,6 +527,28 @@ export function StatsOverview({
             <StatusBadge color="yellow" size="xs" variant="outline" rounded="full" icon={<FlaskConical className="w-2.5 h-2.5" />}>
               {t('statsOverview.demo')}
             </StatusBadge>
+          )}
+          {showHealthIndicator && (
+            <span
+              className={`inline-flex items-center gap-1 text-xs rounded border px-1.5 py-0.5 font-medium ${
+                health.status === 'critical'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                  : health.status === 'warning'
+                  ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                  : 'bg-green-500/10 border-green-500/30 text-green-400'
+              }`}
+              title={[health.message, ...health.details].join('\n')}
+              aria-label={`System health: ${health.message}`}
+            >
+              {health.status === 'critical' ? (
+                <AlertCircle className="w-3 h-3" />
+              ) : health.status === 'warning' ? (
+                <AlertTriangle className="w-3 h-3" />
+              ) : (
+                <CheckCircle className="w-3 h-3" />
+              )}
+              <span>{health.message}</span>
+            </span>
           )}
           {lastUpdated && (
             <span className="text-xs text-muted-foreground/60">

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, FileText, Layout, ChevronRight, Check, ChevronDown } from 'lucide-react'
+import { LayoutDashboard, FileText, Layout, ChevronRight, Check, ChevronDown, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react'
 import { BaseModal } from '../../lib/modals'
 import { Button } from '../ui/Button'
 import { DASHBOARD_TEMPLATES, TEMPLATE_CATEGORIES, DashboardTemplate } from './templates'
 import { FOCUS_DELAY_MS } from '../../lib/constants/network'
+import { useDashboardHealth } from '../../hooks/useDashboardHealth'
 
 interface CreateDashboardModalProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function CreateDashboardModal({
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { t } = useTranslation()
+  const health = useDashboardHealth()
 
   // Reset state when modal opens
   useEffect(() => {
@@ -76,6 +78,34 @@ export function CreateDashboardModal({
       />
 
       <BaseModal.Content>
+        {/* System health status indicator */}
+        {health.status !== 'healthy' && (
+          <div
+            className={`flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border text-xs ${
+              health.status === 'critical'
+                ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+            }`}
+            role="alert"
+          >
+            {health.status === 'critical' ? (
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span className="font-medium">{health.message}</span>
+            {health.details.length > 0 && (
+              <span className="opacity-75">— {health.details.join(', ')}</span>
+            )}
+          </div>
+        )}
+        {health.status === 'healthy' && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border bg-green-500/10 border-green-500/20 text-green-400 text-xs">
+            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{health.message}</span>
+          </div>
+        )}
+
         {/* Dashboard name input */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-foreground mb-2">

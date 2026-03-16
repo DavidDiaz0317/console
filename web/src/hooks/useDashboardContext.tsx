@@ -27,6 +27,11 @@ interface DashboardContextType {
   pendingRestoreCard: PendingRestoreCard | null
   setPendingRestoreCard: (card: PendingRestoreCard | null) => void
   clearPendingRestoreCard: () => void
+
+  // Health alert dismissal — allows components to dismiss the health alert banner
+  isHealthAlertDismissed: boolean
+  dismissHealthAlert: () => void
+  resetHealthAlert: () => void
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null)
@@ -36,6 +41,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [pendingOpenAddCardModal, setPendingOpenAddCardModalState] = useState(false)
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false)
   const [pendingRestoreCard, setPendingRestoreCardState] = useState<PendingRestoreCard | null>(null)
+  const [isHealthAlertDismissed, setIsHealthAlertDismissed] = useState(false)
 
   const openAddCardModal = useCallback(() => {
     setIsAddCardModalOpen(true)
@@ -65,6 +71,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setPendingRestoreCardState(null)
   }, [])
 
+  const dismissHealthAlert = useCallback(() => {
+    setIsHealthAlertDismissed(true)
+  }, [])
+
+  const resetHealthAlert = useCallback(() => {
+    setIsHealthAlertDismissed(false)
+  }, [])
+
   return (
     <DashboardContext.Provider
       value={{
@@ -79,6 +93,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         pendingRestoreCard,
         setPendingRestoreCard,
         clearPendingRestoreCard,
+        isHealthAlertDismissed,
+        dismissHealthAlert,
+        resetHealthAlert,
       }}
     >
       {children}
