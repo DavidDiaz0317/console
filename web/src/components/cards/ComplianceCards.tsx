@@ -880,6 +880,29 @@ export function ComplianceScore({ config: _config }: CardConfig) {
   const minChecked = Math.min(ksChecked, kyChecked)
   const allChecked = minChecked >= totalChecking && totalChecking > 0
 
+  /** Telemetry coverage: clusters that failed to report are excluded from totals */
+  const coverageData = useMemo(() => {
+    const allClusterNames = new Set<string>([
+      ...Object.keys(kubescapeStatuses),
+      ...Object.keys(kyvernoStatuses),
+    ])
+    const totalClusters = allClusterNames.size
+    const errorClusters = Array.from(allClusterNames).filter(cluster => {
+      const ks = kubescapeStatuses[cluster]
+      const ky = kyvernoStatuses[cluster]
+      return !!(ks?.error || ky?.error)
+    })
+    const reportingClusters = totalClusters - errorClusters.length
+    const coverageRatio = totalClusters > 0 ? reportingClusters / totalClusters : 1
+    return {
+      totalClusters,
+      reportingClusters,
+      errorClusters,
+      coverageRatio,
+      isPartial: errorClusters.length > 0,
+    }
+  }, [kubescapeStatuses, kyvernoStatuses])
+
   // Compute composite score from available tools
   const { score, breakdown, usingFallback } = useMemo(() => {
     const scores: Array<{ name: string; value: number }> = []
@@ -1000,6 +1023,31 @@ export function ComplianceScore({ config: _config }: CardConfig) {
         </div>
       )}
 
+      {/* Partial data warning when some clusters failed to report */}
+      {coverageData.isPartial && !isDemoData && !isLoading && (
+        <div className="flex items-start gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs">
+          <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-yellow-400 font-medium">Partial Data — Incomplete Coverage</p>
+            <p className="text-muted-foreground">
+              {coverageData.errorClusters.length} of {coverageData.totalClusters} cluster(s) failed to report.
+              Score is based on {coverageData.reportingClusters} of {coverageData.totalClusters} clusters.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Demo data label */}
+      {isDemoData && (
+        <div className="flex items-start gap-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs">
+          <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-blue-400 font-medium">Demo / Mock Data</p>
+            <p className="text-muted-foreground">Displaying simulated data. Connect clusters with compliance tools for live scores.</p>
+          </div>
+        </div>
+      )}
+
       {/* Context description */}
       <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground bg-secondary/20 rounded-md px-2 py-1.5">
         <Info className="w-3 h-3 flex-shrink-0 mt-0.5 text-muted-foreground/60" />
@@ -1090,6 +1138,8 @@ export function ComplianceScore({ config: _config }: CardConfig) {
               frameworks: kubescapeAgg.frameworks || [],
             } : undefined}
             kyvernoData={kyvernoBreakdownData}
+            coverageData={coverageData.isPartial ? coverageData : undefined}
+            isDemoData={isDemoData}
           />
         </>
       )}

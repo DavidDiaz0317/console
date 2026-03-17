@@ -3,10 +3,11 @@
  *
  * Opens when clicking the ComplianceScore card gauge.
  * Shows tabs for each tool (Kubescape, Kyverno) with pass/fail counts.
+ * Displays a Partial Data warning when some clusters failed to report.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Shield } from 'lucide-react'
+import { Shield, AlertTriangle, Info } from 'lucide-react'
 import { BaseModal } from '../../../lib/modals/BaseModal'
 import { StatusBadge } from '../../ui/StatusBadge'
 import { getScoreContext } from '../../../lib/constants/compliance'
@@ -15,6 +16,14 @@ import { emitModalOpened, emitModalTabViewed, emitModalClosed } from '../../../l
 interface ToolBreakdown {
   name: string
   value: number
+}
+
+interface CoverageData {
+  totalClusters: number
+  reportingClusters: number
+  errorClusters: string[]
+  coverageRatio: number
+  isPartial: boolean
 }
 
 interface ComplianceScoreBreakdownModalProps {
@@ -34,6 +43,10 @@ interface ComplianceScoreBreakdownModalProps {
     enforcingCount: number
     auditCount: number
   }
+  /** Coverage data: present when some clusters failed to report (partial telemetry) */
+  coverageData?: CoverageData
+  /** True when displaying demo/mock data instead of live cluster data */
+  isDemoData?: boolean
 }
 
 const MODAL_TYPE = 'compliance_score'
@@ -42,7 +55,7 @@ const MODAL_TYPE = 'compliance_score'
 const MAX_TOP_FAILING = 5
 
 export function ComplianceScoreBreakdownModal({
-  isOpen, onClose, score, breakdown, kubescapeData, kyvernoData,
+  isOpen, onClose, score, breakdown, kubescapeData, kyvernoData, coverageData, isDemoData,
 }: ComplianceScoreBreakdownModalProps) {
   const toolNames = breakdown.map(b => b.name)
   const [activeTab, setActiveTab] = useState(toolNames[0] || 'Overview')
@@ -102,6 +115,38 @@ export function ComplianceScoreBreakdownModal({
         <BaseModal.Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />
       )}
       <BaseModal.Content>
+        {/* Partial data / incomplete coverage warning */}
+        {coverageData?.isPartial && !isDemoData && (
+          <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-yellow-400 font-medium">Partial Data — Incomplete Telemetry Coverage</p>
+              <p className="text-muted-foreground">
+                Score is computed from {coverageData.reportingClusters} of {coverageData.totalClusters} cluster(s).{' '}
+                {coverageData.errorClusters.length} cluster(s) failed to report and are excluded from the calculation.
+              </p>
+              {coverageData.errorClusters.length > 0 && (
+                <p className="text-muted-foreground">
+                  Failed clusters: <span className="text-yellow-400/80">{coverageData.errorClusters.join(', ')}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Demo data source label */}
+        {isDemoData && (
+          <div className="flex items-start gap-2 p-3 mb-4 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs">
+            <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-blue-400 font-medium">Data Source: Demo / Mock Data</p>
+              <p className="text-muted-foreground">
+                This score is based on simulated data. Connect clusters with Kubescape or Kyverno for live compliance scores.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'Overview' && (
           <OverviewTab score={score} breakdown={breakdown} scoreCtx={scoreCtx} />
         )}

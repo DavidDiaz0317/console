@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, AlertTriangle } from 'lucide-react'
 import { useClusters } from '../../hooks/useMCP'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
@@ -138,6 +138,27 @@ export function Compliance() {
   const kubescapeIsDemo = explicitDemoMode && (kubescape.isDemoData || !realData.kubescapeInstalled)
   const trivyIsDemo = explicitDemoMode && (trivy.isDemoData || !realData.trivyInstalled)
 
+  // Cluster telemetry coverage: clusters that returned errors are excluded from totals
+  const coverageData = useMemo(() => {
+    const allClusterNames = new Set<string>([
+      ...Object.keys(kyverno.statuses),
+      ...Object.keys(kubescape.statuses),
+    ])
+    const totalClusters = allClusterNames.size
+    const errorClusters = Array.from(allClusterNames).filter(cluster => {
+      const ks = kubescape.statuses[cluster]
+      const ky = kyverno.statuses[cluster]
+      return !!(ks?.error || ky?.error)
+    })
+    const reportingClusters = totalClusters - errorClusters.length
+    return {
+      totalClusters,
+      reportingClusters,
+      errorClusters,
+      isPartial: errorClusters.length > 0,
+    }
+  }, [kyverno.statuses, kubescape.statuses])
+
   // Stats value getter for the configurable StatsOverview component
   const getDashboardStatValue = useCallback((blockId: string): StatBlockValue => {
     switch (blockId) {
@@ -257,6 +278,26 @@ export function Compliance() {
           <div className="flex-1">
             <p className="text-sm font-medium text-red-400">Error loading compliance data</p>
             <p className="text-xs text-muted-foreground mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Partial Data / Incomplete Coverage Warning */}
+      {coverageData.isPartial && !allDemo && !isLoading && (
+        <div className="mb-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-yellow-400">Partial Data — Incomplete Telemetry Coverage</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {coverageData.errorClusters.length} of {coverageData.totalClusters} cluster(s) failed to report.
+              The compliance score is based on data from {coverageData.reportingClusters} of {coverageData.totalClusters} cluster(s) only,
+              and may not reflect the full environment.
+            </p>
+            {coverageData.errorClusters.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Unreporting clusters: <span className="text-yellow-400/80">{coverageData.errorClusters.join(', ')}</span>
+              </p>
+            )}
           </div>
         </div>
       )}
