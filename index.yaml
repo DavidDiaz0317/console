@@ -21,8 +21,54 @@ entries:
           email: andy@clubanderson.com
       artifacthub.io/prerelease: "false"
     apiVersion: v2
+    appVersion: v0.3.17-nightly.20260317
+    created: "2026-03-17T05:52:25.8003502Z"
+    description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
+    digest: 640c9a53088328292b71e7d804af30d92afc898c9764d442eee24073e329d84b
+    home: https://kubestellar.io/docs/console
+    icon: https://raw.githubusercontent.com/kubestellar/console/main/web/public/kubestellar-logo.svg
+    keywords:
+    - kubernetes
+    - dashboard
+    - monitoring
+    - cncf
+    - ai
+    - missions
+    - kubestellar
+    - multi-cluster
+    maintainers:
+    - email: andy@clubanderson.com
+      name: Andy Anderson
+      url: https://github.com/clubanderson
+    name: kubestellar-console
+    sources:
+    - https://github.com/kubestellar/console
+    type: application
+    urls:
+    - https://kubestellar.github.io/console/kubestellar-console-0.3.17-nightly.20260317.tgz
+    version: 0.3.17-nightly.20260317
+  - annotations:
+      artifacthub.io/containsSecurityUpdates: "false"
+      artifacthub.io/description: Kubernetes dashboard with 30+ dashboards, 150+ monitoring
+        cards, AI-guided install missions for 186 CNCF projects, and an AI mission
+        explorer. Connects to live clusters via kubeconfig.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: Website
+          url: https://kubestellar.io
+        - name: Source
+          url: https://github.com/kubestellar/console
+        - name: Live Demo
+          url: https://console.kubestellar.io
+        - name: Documentation
+          url: https://kubestellar.io/docs/console
+      artifacthub.io/maintainers: |
+        - name: Andy Anderson
+          email: andy@clubanderson.com
+      artifacthub.io/prerelease: "false"
+    apiVersion: v2
     appVersion: v0.3.17-nightly.20260316
-    created: "2026-03-16T05:59:46.463550575Z"
+    created: "2026-03-17T05:52:25.799528726Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 577bd63f52645e57aeddadfa7f3d015ed45bf81bf43f28e65158ad695e0b1026
     home: https://kubestellar.io/docs/console
@@ -68,7 +114,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: v0.3.17-nightly.20260315
-    created: "2026-03-16T05:59:46.46174063Z"
+    created: "2026-03-17T05:52:25.798710017Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 7861d1696c15b7465011f0229f8da2d343be36f4fd5d23803dcf7c558db425c9
     home: https://kubestellar.io/docs/console
@@ -114,7 +160,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: v0.3.16
-    created: "2026-03-16T05:59:46.460951905Z"
+    created: "2026-03-17T05:52:25.7978868Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 41a2fabac7ad68b0ab1974592c4f02909460daa171592debe01ef8865598fe6d
     home: https://kubestellar.io/docs/console
@@ -160,7 +206,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: v0.3.16-nightly.20260314
-    created: "2026-03-16T05:59:46.460191072Z"
+    created: "2026-03-17T05:52:25.796988091Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 31dc46b8afe3a8ac8fc7433d933aae3e2e233f8140b54d35037940d5fd879cc1
     home: https://kubestellar.io/docs/console
@@ -206,7 +252,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: v0.3.16-nightly.20260313
-    created: "2026-03-16T05:59:46.459400633Z"
+    created: "2026-03-17T05:52:25.796100634Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 9e0c99d6a3831168c38637ebd7b582c0058acd21a80bcfb5e08eb6ed6139f7ec
     home: https://kubestellar.io/docs/console
@@ -252,7 +298,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: v0.3.16-nightly.20260312
-    created: "2026-03-16T05:59:46.458721473Z"
+    created: "2026-03-17T05:52:25.795331448Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: a0aa8286da890335d8fc597282a52b48c0dcc06c31c1d6bcd90d14a023bf6824
     home: https://kubestellar.io/docs/console
@@ -279,7 +325,7 @@ entries:
     version: 0.3.16-nightly.20260312
   - apiVersion: v2
     appVersion: v0.3.16-nightly.20260311
-    created: "2026-03-16T05:59:46.458056058Z"
+    created: "2026-03-17T05:52:25.79354281Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 642ff31d1a4c60ba69784fdd809696962231efe5a5e8b9a59711b602ae0b281f
     home: https://kubestellar.io/docs/console
@@ -300,7 +346,7 @@ entries:
     version: 0.3.16-nightly.20260311
   - apiVersion: v2
     appVersion: v0.3.16-nightly.20260310
-    created: "2026-03-16T05:59:46.457489789Z"
+    created: "2026-03-17T05:52:25.792921991Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: c208f48a45472c79773bef091123820959d1186cc7ffe12017281fe820b2be10
     home: https://kubestellar.io/docs/console
@@ -321,7 +367,7 @@ entries:
     version: 0.3.16-nightly.20260310
   - apiVersion: v2
     appVersion: v0.3.16-nightly.20260309
-    created: "2026-03-16T05:59:46.456883606Z"
+    created: "2026-03-17T05:52:25.792376252Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: cb506b78b383d98fa0779ae2cfce9d86fa0c0b068e76c43b8d18963337280f6b
     home: https://kubestellar.io/docs/console
@@ -342,7 +388,7 @@ entries:
     version: 0.3.16-nightly.20260309
   - apiVersion: v2
     appVersion: v0.3.16-nightly.20260308
-    created: "2026-03-16T05:59:46.456287661Z"
+    created: "2026-03-17T05:52:25.791800206Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: d2dd7b09485d868f76a2fc556bf60ecb61dcb02d6979f1fa3e4399c5a5d34661
     home: https://kubestellar.io/docs/console
@@ -363,7 +409,7 @@ entries:
     version: 0.3.16-nightly.20260308
   - apiVersion: v2
     appVersion: v0.3.15
-    created: "2026-03-16T05:59:46.455407126Z"
+    created: "2026-03-17T05:52:25.791232085Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 768d4abda5ee14c3cad828cb91b318410965c0c175899f43a99d915c35e7ebf1
     home: https://kubestellar.io/docs/console
@@ -384,7 +430,7 @@ entries:
     version: 0.3.15
   - apiVersion: v2
     appVersion: v0.3.15-nightly.20260307
-    created: "2026-03-16T05:59:46.45416314Z"
+    created: "2026-03-17T05:52:25.790673231Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 0012ef914e21f7fd43b80acfd2f6d0c9186fa08e794545ada5e35b9d67b7623d
     home: https://kubestellar.io/docs/console
@@ -405,7 +451,7 @@ entries:
     version: 0.3.15-nightly.20260307
   - apiVersion: v2
     appVersion: v0.3.15-nightly.20260227
-    created: "2026-03-16T05:59:46.45355385Z"
+    created: "2026-03-17T05:52:25.790120719Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: d0faa967898d114a31867d10f7c58d84f6dae99b125243a1e64b9fcd5138c9c5
     home: https://kubestellar.io/docs/console
@@ -426,7 +472,7 @@ entries:
     version: 0.3.15-nightly.20260227
   - apiVersion: v2
     appVersion: v0.3.15-nightly.20260226
-    created: "2026-03-16T05:59:46.452982311Z"
+    created: "2026-03-17T05:52:25.789563278Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 57651f503b6329faa29ad10cdc2e781cbac75ab0f64655540d97077edeee9fc8
     home: https://kubestellar.io/docs/console
@@ -447,7 +493,7 @@ entries:
     version: 0.3.15-nightly.20260226
   - apiVersion: v2
     appVersion: v0.3.15-nightly.20260225
-    created: "2026-03-16T05:59:46.452432293Z"
+    created: "2026-03-17T05:52:25.789038378Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: a4549116586682ff0da1569d33663b6363ecd415a7c5f1c45ed701be31a29930
     home: https://kubestellar.io/docs/console
@@ -468,7 +514,7 @@ entries:
     version: 0.3.15-nightly.20260225
   - apiVersion: v2
     appVersion: v0.3.14
-    created: "2026-03-16T05:59:46.451864701Z"
+    created: "2026-03-17T05:52:25.788465177Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 01eaf133c42eb6995265fb62ecd5199caecb1f7fed852f8988cb18c2e7c9a51b
     home: https://kubestellar.io/docs/console
@@ -489,7 +535,7 @@ entries:
     version: 0.3.14
   - apiVersion: v2
     appVersion: v0.3.14-nightly.20260224
-    created: "2026-03-16T05:59:46.451320463Z"
+    created: "2026-03-17T05:52:25.787830683Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 66913517d7fc666a75741852d1e4d178cd5013f6b893a72dc6a9073ddb6e1a3f
     home: https://kubestellar.io/docs/console
@@ -510,7 +556,7 @@ entries:
     version: 0.3.14-nightly.20260224
   - apiVersion: v2
     appVersion: v0.3.13
-    created: "2026-03-16T05:59:46.450707396Z"
+    created: "2026-03-17T05:52:25.786186208Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 4eee8383aae4f40d7ab5535194742aa95d1c39cf8af0b6d83b35c8b3004e8047
     home: https://kubestellar.io/docs/console
@@ -531,7 +577,7 @@ entries:
     version: 0.3.13
   - apiVersion: v2
     appVersion: v0.3.12
-    created: "2026-03-16T05:59:46.45017439Z"
+    created: "2026-03-17T05:52:25.78557687Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: af6d96ecd4afa04a6a380923f5af384806bfc534e4e4d8048214b8858ff8d17e
     home: https://kubestellar.io/docs/console
@@ -552,7 +598,7 @@ entries:
     version: 0.3.12
   - apiVersion: v2
     appVersion: v0.3.11
-    created: "2026-03-16T05:59:46.4496403Z"
+    created: "2026-03-17T05:52:25.78505735Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 3553aaf4301aecf65f7ef657f4a366eee7ceacb76feabb10241653dd03c17132
     home: https://kubestellar.io/docs/console
@@ -573,7 +619,7 @@ entries:
     version: 0.3.11
   - apiVersion: v2
     appVersion: v0.3.11-nightly.20260219
-    created: "2026-03-16T05:59:46.449076386Z"
+    created: "2026-03-17T05:52:25.784524304Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 4abcacb55151955b9bc3f1e2b5a57d9fa4fe8c622bfcced24518856c7e5d2e8e
     home: https://kubestellar.io/docs/console
@@ -594,7 +640,7 @@ entries:
     version: 0.3.11-nightly.20260219
   - apiVersion: v2
     appVersion: v0.3.11-nightly.20260218
-    created: "2026-03-16T05:59:46.44799603Z"
+    created: "2026-03-17T05:52:25.783911059Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 11380d9b63eb70c2e45a3bdca6475c6a7a3348972a46964b255704d51319671b
     home: https://kubestellar.io/docs/console
@@ -615,7 +661,7 @@ entries:
     version: 0.3.11-nightly.20260218
   - apiVersion: v2
     appVersion: v0.3.11-nightly.20260217
-    created: "2026-03-16T05:59:46.447157181Z"
+    created: "2026-03-17T05:52:25.78338677Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 78fee46d75bc8f507884f2cd21d1312dc51bf10afab5a5f0e6e1656c5a26eb94
     home: https://kubestellar.io/docs/console
@@ -636,7 +682,7 @@ entries:
     version: 0.3.11-nightly.20260217
   - apiVersion: v2
     appVersion: v0.3.11-nightly.20260216
-    created: "2026-03-16T05:59:46.446541559Z"
+    created: "2026-03-17T05:52:25.782828457Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 2c99429991ffe6463e43800fa5e9fa69a360d66869aa83abcc4a46e45b19f37d
     home: https://kubestellar.io/docs/console
@@ -657,7 +703,7 @@ entries:
     version: 0.3.11-nightly.20260216
   - apiVersion: v2
     appVersion: v0.3.11-nightly.20260215
-    created: "2026-03-16T05:59:46.445942679Z"
+    created: "2026-03-17T05:52:25.782267018Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: ae9840ec24d8c36dca8850f98f38b02c21c6541588e8136bc0bcea6bdccf3b3b
     home: https://kubestellar.io/docs/console
@@ -678,7 +724,7 @@ entries:
     version: 0.3.11-nightly.20260215
   - apiVersion: v2
     appVersion: v0.3.10
-    created: "2026-03-16T05:59:46.445370008Z"
+    created: "2026-03-17T05:52:25.781665275Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 11fbff08554c1f0535585c010c3f74b58d5b954bc1bd7f067095b03bf3836979
     home: https://kubestellar.io/docs/console
@@ -699,7 +745,7 @@ entries:
     version: 0.3.10
   - apiVersion: v2
     appVersion: v0.3.10-nightly.20260214
-    created: "2026-03-16T05:59:46.44474012Z"
+    created: "2026-03-17T05:52:25.781061928Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 714605c96b0dc85bc70f6d20930d92d76b4c1a1a35af04155937a8a534248248
     home: https://kubestellar.io/docs/console
@@ -720,7 +766,7 @@ entries:
     version: 0.3.10-nightly.20260214
   - apiVersion: v2
     appVersion: v0.3.10-nightly.20260213
-    created: "2026-03-16T05:59:46.443874631Z"
+    created: "2026-03-17T05:52:25.779103533Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 59e078542077833a8d68c83e08b8dbc6231b2a3f195ce1defcbfcdca4d1599d3
     home: https://kubestellar.io/docs/console
@@ -741,7 +787,7 @@ entries:
     version: 0.3.10-nightly.20260213
   - apiVersion: v2
     appVersion: v0.3.10-nightly.20260212
-    created: "2026-03-16T05:59:46.443010104Z"
+    created: "2026-03-17T05:52:25.778202209Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: 625dfa3f5544a3b35c948e593c8b31d38e7eeacf006757999175002331f281e9
     home: https://kubestellar.io/docs/console
@@ -762,7 +808,7 @@ entries:
     version: 0.3.10-nightly.20260212
   - apiVersion: v2
     appVersion: v0.3.9
-    created: "2026-03-16T05:59:46.464558982Z"
+    created: "2026-03-17T05:52:25.800774201Z"
     description: KubeStellar Console - AI-powered multi-cluster Kubernetes dashboard
     digest: daf71ef15ab0bc82c01772124fa4732b5ca1989982aaf9cbc83fc96b3f927545
     home: https://kubestellar.io/docs/console
@@ -781,4 +827,4 @@ entries:
     urls:
     - https://kubestellar.github.io/console/kubestellar-console-0.3.9.tgz
     version: 0.3.9
-generated: "2026-03-16T05:59:46.442241156Z"
+generated: "2026-03-17T05:52:25.777056971Z"
