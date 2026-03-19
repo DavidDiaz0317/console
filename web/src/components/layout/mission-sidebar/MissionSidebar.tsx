@@ -42,7 +42,7 @@ import { MISSION_FILE_FETCH_TIMEOUT_MS } from '../../missions/browser/missionCac
 
 export function MissionSidebar() {
   const { t } = useTranslation(['common'])
-  const { missions, activeMission, isSidebarOpen, isSidebarMinimized, isFullScreen, setActiveMission, closeSidebar, dismissMission, minimizeSidebar, expandSidebar, setFullScreen, selectedAgent, startMission, saveMission, runSavedMission, openSidebar } = useMissions()
+  const { missions, activeMission, isSidebarOpen, isSidebarMinimized, isFullScreen, setActiveMission, closeSidebar, dismissMission, minimizeSidebar, expandSidebar, setFullScreen, selectedAgent, startMission, saveMission, runSavedMission, openSidebar, agentsLoading } = useMissions()
   const { isMobile } = useMobile()
   const [collapsedMissions, setCollapsedMissions] = useState<Set<string>>(new Set())
   const [fontSize, setFontSize] = useState<FontSize>('base')
@@ -563,6 +563,13 @@ export function MissionSidebar() {
 
       {missions.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          {agentsLoading ? (
+            <>
+              <Loader2 className="w-10 h-10 animate-spin text-primary/50 mb-4" />
+              <p className="text-muted-foreground">{t('missionSidebar.loadingAgents', 'Loading agents...')}</p>
+            </>
+          ) : (
+            <>
           <AgentIcon provider={getAgentProvider(selectedAgent)} className="w-12 h-12 opacity-50 mb-4" />
           <p className="text-muted-foreground">{t('missionSidebar.noActiveMissions')}</p>
           <p className="text-xs text-muted-foreground/70 mt-1">
@@ -589,6 +596,8 @@ export function MissionSidebar() {
               Browse Missions
             </button>
           </div>
+            </>
+          )}
         </div>
       ) : activeMission ? (
         <div className={cn(

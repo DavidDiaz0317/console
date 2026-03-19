@@ -7,7 +7,7 @@
  * the 4 individual technology hooks (no direct fetch).
  */
 import { useMemo, useState } from 'react'
-import { Network, Layers, Box, Monitor, Shield, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react'
+import { Network, Layers, Box, Monitor, Shield, CheckCircle, XCircle, AlertTriangle, Users, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useMultiTenancyOverview } from './useMultiTenancyOverview'
 import { DEMO_MULTI_TENANCY_OVERVIEW } from './demoData'
@@ -115,7 +115,28 @@ export function MultiTenancyOverview() {
     isLoading: data.isLoading,
     hasAnyData: (data.components || []).length > 0,
     isDemoData: data.isDemoData,
+    isFailed: liveData.isFailed,
+    consecutiveFailures: liveData.consecutiveFailures,
   })
+
+  if (liveData.isFailed && !data.isLoading && (data.components || []).length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center min-h-card gap-2">
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-red-400">
+              {t('cards:multiTenancy.errorLoading', 'Error loading multi-tenancy data')}
+            </p>
+            <p className="text-2xs text-muted-foreground">
+              {t('cards:multiTenancy.errorRetry', 'Failed to fetch component status')}
+              {liveData.consecutiveFailures > 0 && ` (${liveData.consecutiveFailures} attempts)`}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (showSkeleton) {
     return (

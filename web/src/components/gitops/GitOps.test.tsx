@@ -16,10 +16,12 @@ vi.mock('../../lib/dashboards/DashboardPage', () => ({
   ),
 }))
 
+const mockUseMCPClusters = vi.hoisted(() => vi.fn(() => ({
+  clusters: [], isRefreshing: false, refetch: vi.fn(), isLoading: false, error: null,
+})))
+
 vi.mock('../../hooks/useMCP', () => ({
-  useClusters: () => ({
-    clusters: [], isRefreshing: false, refetch: vi.fn(),
-  }),
+  useClusters: (...args: unknown[]) => mockUseMCPClusters(...args),
   useHelmReleases: () => ({ releases: [] }),
   useOperatorSubscriptions: () => ({ subscriptions: [] }),
 }))
@@ -75,5 +77,15 @@ describe('GitOps Component', () => {
   it('renders the integration info section', () => {
     renderGitOps()
     expect(screen.getByText('gitops.integrationTitle')).toBeInTheDocument()
+  })
+
+  it('renders gracefully during loading state', () => {
+    mockUseMCPClusters.mockReturnValueOnce({ clusters: [], isRefreshing: true, refetch: vi.fn(), isLoading: true, error: null })
+    expect(() => renderGitOps()).not.toThrow()
+  })
+
+  it('renders gracefully when cluster fetch errors', () => {
+    mockUseMCPClusters.mockReturnValueOnce({ clusters: [], isRefreshing: false, refetch: vi.fn(), isLoading: false, error: 'Connection refused' })
+    expect(() => renderGitOps()).not.toThrow()
   })
 })

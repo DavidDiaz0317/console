@@ -39,6 +39,10 @@ export interface MultiTenancyOverviewData {
   totalLevels: number
   isLoading: boolean
   isDemoData: boolean
+  /** True if any sub-hook has encountered fetch errors */
+  isFailed: boolean
+  /** Highest consecutive failure count across sub-hooks */
+  consecutiveFailures: number
 }
 
 export function useMultiTenancyOverview(): MultiTenancyOverviewData {
@@ -57,6 +61,14 @@ export function useMultiTenancyOverview(): MultiTenancyOverviewData {
   const isLoading = ovnResult.loading || kubeflexResult.loading || k3sResult.loading || kubevirtResult.loading
   // Demo when ALL hooks are returning demo fallback data (useCache in demo mode)
   const isDemoData = ovnResult.isDemoData && kubeflexResult.isDemoData && k3sResult.isDemoData && kubevirtResult.isDemoData
+  // Failed when ANY sub-hook has reported errors (error = isFailed && !hasAnyData in sub-hooks)
+  const isFailed = Boolean(ovnResult.error || kubeflexResult.error || k3sResult.error || kubevirtResult.error)
+  const consecutiveFailures = Math.max(
+    ovnResult.consecutiveFailures,
+    kubeflexResult.consecutiveFailures,
+    k3sResult.consecutiveFailures,
+    kubevirtResult.consecutiveFailures,
+  )
 
   const components: ComponentStatus[] = useMemo(() => [
     { name: 'OVN-K8s', detected: ovn.detected, health: ovn.health, icon: 'network' },
@@ -102,5 +114,7 @@ export function useMultiTenancyOverview(): MultiTenancyOverviewData {
     totalLevels: TOTAL_ISOLATION_LEVELS,
     isLoading,
     isDemoData,
+    isFailed,
+    consecutiveFailures,
   }
 }

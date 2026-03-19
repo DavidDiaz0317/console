@@ -5,10 +5,15 @@ import { render, screen } from '@testing-library/react'
 import '../../test/utils/setupMocks'
 
 vi.mock('../../lib/modals', () => {
-  const BaseModal: any = ({ children }: any) => <div data-testid='mock-base-modal'>{children}</div>
-  BaseModal.Header = ({ title }: any) => <div>{title}</div>
-  BaseModal.Content = ({ children }: any) => <div>{children}</div>
-  BaseModal.Footer = ({ children }: any) => <div>{children}</div>
+  type BaseModalWithSubComponents = React.FC<{ children: React.ReactNode }> & {
+    Header: React.FC<{ title: string }>
+    Content: React.FC<{ children: React.ReactNode }>
+    Footer: React.FC<{ children: React.ReactNode }>
+  }
+  const BaseModal: BaseModalWithSubComponents = ({ children }) => <div data-testid='mock-base-modal'>{children}</div>
+  BaseModal.Header = ({ title }) => <div>{title}</div>
+  BaseModal.Content = ({ children }) => <div>{children}</div>
+  BaseModal.Footer = ({ children }) => <div>{children}</div>
   return { BaseModal }
 })
 
@@ -59,5 +64,27 @@ describe('SyncDialog Component', () => {
   it('renders the app name in the dialog', () => {
     render(<SyncDialog {...defaultProps} />)
     expect(screen.getByText('GitOps Sync: test-app')).toBeInTheDocument()
+  })
+
+  it('renders loading state when fetch is pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => { /* never resolves — simulates in-flight request */ }))
+    )
+    expect(() => render(<SyncDialog {...defaultProps} />)).not.toThrow()
+  })
+
+  it('renders gracefully when fetch returns an error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: 'Internal Server Error' }),
+        })
+      )
+    )
+    expect(() => render(<SyncDialog {...defaultProps} />)).not.toThrow()
   })
 })

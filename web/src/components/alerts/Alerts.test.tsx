@@ -23,10 +23,12 @@ vi.mock('../../hooks/useAlerts', () => ({
   useAlertRules: () => ({ rules: [] }),
 }))
 
+const mockUseClusters = vi.hoisted(() => vi.fn(() => ({
+  isRefreshing: false, refetch: vi.fn(), error: null, isLoading: false,
+})))
+
 vi.mock('../../hooks/useMCP', () => ({
-  useClusters: () => ({
-    isRefreshing: false, refetch: vi.fn(), error: null,
-  }),
+  useClusters: (...args: unknown[]) => mockUseClusters(...args),
 }))
 
 vi.mock('../../hooks/useDrillDown', () => ({
@@ -68,5 +70,10 @@ describe('Alerts Component', () => {
     renderAlerts()
     const page = screen.getByTestId('dashboard-page')
     expect(page).toHaveAttribute('data-subtitle')
+  })
+
+  it('renders gracefully during loading state', () => {
+    mockUseClusters.mockReturnValueOnce({ isRefreshing: false, refetch: vi.fn(), error: null, isLoading: true })
+    expect(() => renderAlerts()).not.toThrow()
   })
 })

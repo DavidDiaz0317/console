@@ -1060,3 +1060,18 @@ describe('saveMission', () => {
     expect(MockWebSocket.lastInstance).toBeNull()
   })
 })
+
+
+// ── agentsLoading ─────────────────────────────────────────────────────────────
+
+describe('agentsLoading', () => {
+  it('exposes agentsLoading as a boolean in context', () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+    expect(typeof result.current.agentsLoading).toBe('boolean')
+  })
+
+  it('starts with agentsLoading false when no WebSocket connection is pending', () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+    expect(result.current.agentsLoading).toBe(false)
+  })
+})

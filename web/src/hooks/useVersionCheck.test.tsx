@@ -563,3 +563,30 @@ describe('toggle-sensitive polling', () => {
     expect(callsAfterToggle).toBeGreaterThan(callsBeforeToggle)
   })
 })
+
+// ── isLoading / loading state ─────────────────────────────────────────────────
+
+describe('isLoading state', () => {
+  it('exposes isLoading as a boolean', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: (_k: string) => null },
+      json: async () => [],
+    }))
+    const { result } = renderHook(() => useVersionCheck(), { wrapper })
+    expect(typeof result.current.isLoading).toBe('boolean')
+    vi.unstubAllGlobals()
+  })
+
+  it('isLoading is false when no check is in progress', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: (_k: string) => null },
+      json: async () => [],
+    }))
+    const { result } = renderHook(() => useVersionCheck(), { wrapper })
+    await act(async () => { /* allow any microtasks to flush */ })
+    expect(result.current.isLoading).toBe(false)
+    vi.unstubAllGlobals()
+  })
+})

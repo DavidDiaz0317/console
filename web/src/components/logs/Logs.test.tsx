@@ -35,10 +35,13 @@ vi.mock('../../hooks/useMCP', () => ({
   }),
 }))
 
+const mockUseCachedEvents = vi.hoisted(() => vi.fn(() => ({
+  events: [], isLoading: false, isRefreshing: false, lastRefresh: null, refetch: vi.fn(),
+  isFailed: false, consecutiveFailures: 0, error: null, isDemoFallback: false, data: [],
+})))
+
 vi.mock('../../hooks/useCachedData', () => ({
-  useCachedEvents: () => ({
-    events: [], isLoading: false, isRefreshing: false, lastRefresh: null, refetch: vi.fn(),
-  }),
+  useCachedEvents: (...args: unknown[]) => mockUseCachedEvents(...args),
 }))
 
 vi.mock('../../hooks/useGlobalFilters', () => ({
@@ -88,5 +91,13 @@ describe('Logs Component', () => {
     renderLogs()
     const page = screen.getByTestId('dashboard-page')
     expect(page.getAttribute('data-subtitle')).toBeTruthy()
+  })
+
+  it('renders gracefully when events fail to load', () => {
+    mockUseCachedEvents.mockReturnValueOnce({
+      events: [], isLoading: false, isRefreshing: false, lastRefresh: null, refetch: vi.fn(),
+      isFailed: true, consecutiveFailures: 3, error: 'Network error', isDemoFallback: false, data: [],
+    })
+    expect(() => renderLogs()).not.toThrow()
   })
 })
