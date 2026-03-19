@@ -10,7 +10,7 @@ import type {
 import type { GPUHealthCheckResult } from '../hooks/mcp/types'
 import type { NightlyGuideStatus } from '../lib/llmd/nightlyE2EDemoData'
 import type { AlertsMCPData } from './AlertsDataFetcher'
-import { STORAGE_KEY_AUTH_TOKEN, FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants'
+import { STORAGE_KEY_AUTH_TOKEN, FETCH_DEFAULT_TIMEOUT_MS, STORAGE_KEY_NOTIFIED_ALERT_KEYS } from '../lib/constants'
 import { INITIAL_FETCH_DELAY_MS, POLL_INTERVAL_SLOW_MS, SECONDARY_FETCH_DELAY_MS } from '../lib/constants/network'
 import { PRESET_ALERT_RULES } from '../types/alerts'
 import { sendNotificationWithDeepLink } from '../hooks/useDeepLink'
@@ -69,6 +69,28 @@ function deduplicateAlerts(alerts: Alert[], rules: AlertRule[]): Alert[] {
 // Local storage keys
 const ALERT_RULES_KEY = 'kc_alert_rules'
 const ALERTS_KEY = 'kc_alerts'
+
+/** Load persisted notification dedup map from localStorage (key → timestamp) */
+function loadNotifiedAlertKeys(): Map<string, number> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_NOTIFIED_ALERT_KEYS)
+    if (stored) {
+      return new Map(JSON.parse(stored) as [string, number][])
+    }
+  } catch {
+    // Ignore corrupt data
+  }
+  return new Map()
+}
+
+/** Persist notification dedup map to localStorage */
+function saveNotifiedAlertKeys(keys: Map<string, number>): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_NOTIFIED_ALERT_KEYS, JSON.stringify([...keys.entries()]))
+  } catch {
+    // localStorage full or unavailable
+  }
+}
 
 // Load from localStorage
 function loadFromStorage<T>(key: string, defaultValue: T): T {
@@ -172,7 +194,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   // when clusters flap between reachable/unreachable states.
   /** Minimum time (ms) between repeat notifications for the same alert */
   const NOTIFICATION_COOLDOWN_MS = 300_000 // 5 minutes
-  const notifiedAlertKeysRef = useRef<Map<string, number>>(new Map())
+  const notifiedAlertKeysRef = useRef<Map<string, number>>(loadNotifiedAlertKeys())
 
   // CronJob health results cache — fetched async, read synchronously by evaluator
   const cronJobResultsRef = useRef<Record<string, GPUHealthCheckResult[]>>({})
@@ -1284,6 +1306,7 @@ Please provide:
         }
       }
     } finally {
+      saveNotifiedAlertKeys(notifiedAlertKeysRef.current)
       isEvaluatingRef.current = false
       setIsEvaluating(false)
     }

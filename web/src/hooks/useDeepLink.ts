@@ -96,7 +96,7 @@ async function getNotificationSW(): Promise<ServiceWorkerRegistration | null> {
  *
  * Uses the Service Worker showNotification API when available, which
  * properly focuses/opens the browser on macOS when clicked. Falls back
- * to the standard Notification API on browsers without SW support.
+ * to the standard Notification API only when SW is unavailable (never both).
  */
 export function sendNotificationWithDeepLink(
   title: string,
@@ -110,7 +110,8 @@ export function sendNotificationWithDeepLink(
 
   const url = buildDeepLinkURL(params)
 
-  // Try Service Worker notification first (reliable on macOS)
+  // Use SW OR standard Notification — never both.
+  // Sending both creates duplicate notifications on every alert.
   getNotificationSW().then((reg) => {
     if (reg) {
       reg.showNotification(title, {
@@ -120,13 +121,23 @@ export function sendNotificationWithDeepLink(
         data: { url },
         ...options,
       })
+    } else {
+      sendStandardNotification(title, body, url, options)
     }
+  }).catch(() => {
+    sendStandardNotification(title, body, url, options)
   })
 
-  // Return a standard Notification as fallback / for callers that
-  // need a reference. If the SW path succeeds, this one is redundant
-  // but harmless (the SW notification takes precedence on most browsers).
-  // On browsers without SW support, this is the only notification.
+  return null
+}
+
+/** Standard Notification API fallback (only used when SW is unavailable) */
+function sendStandardNotification(
+  title: string,
+  body: string,
+  url: string,
+  options?: NotificationOptions
+): void {
   const notification = new Notification(title, {
     body,
     icon: '/kubestellar-logo.svg',
@@ -138,8 +149,6 @@ export function sendNotificationWithDeepLink(
     event.preventDefault()
     notification.close()
 
-    // On macOS, window.focus() alone is unreliable from notification context.
-    // Use window.open() as a more reliable fallback to bring browser forward.
     try {
       const opened = window.open(url, '_self')
       if (opened) {
@@ -153,8 +162,6 @@ export function sendNotificationWithDeepLink(
       window.location.href = url
     }
   }
-
-  return notification
 }
 
 /**

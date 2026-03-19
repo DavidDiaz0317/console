@@ -59,6 +59,9 @@ export const STORAGE_KEY_DEMO_CTA_DISMISSED = 'kc-demo-cta-dismissed'
 export const STORAGE_KEY_ADOPTER_NUDGE_DISMISSED = 'kc-adopter-nudge-dismissed'
 export const STORAGE_KEY_FIRST_AGENT_CONNECT = 'kc-first-agent-connect'
 
+// ── Notification dedup ────────────────────────────────────────────────
+export const STORAGE_KEY_NOTIFIED_ALERT_KEYS = 'kc-notified-alert-keys'
+
 // ── Component-specific cache ───────────────────────────────────────────
 export const STORAGE_KEY_OPA_CACHE = 'opa-statuses-cache'
 export const STORAGE_KEY_OPA_CACHE_TIME = 'opa-statuses-cache-time'
