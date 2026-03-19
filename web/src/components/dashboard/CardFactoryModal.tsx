@@ -365,6 +365,295 @@ const T2_TEMPLATES: T2Template[] = [
   )
 }`,
   },
+  {
+    name: 'Auto-Refresh Timer',
+    title: 'Live Refresh Demo',
+    description: 'Demonstrates setInterval for periodic data refresh',
+    width: 4,
+    source: `export default function TimerCard({ config }) {
+  const [tick, setTick] = useState(0)
+  const [items, setItems] = useState([
+    { id: 1, name: 'api-gateway', latency: 42 },
+    { id: 2, name: 'auth-service', latency: 18 },
+    { id: 3, name: 'data-pipeline', latency: 95 },
+    { id: 4, name: 'cache-layer', latency: 7 },
+  ])
+
+  // Refresh interval in ms — setInterval is safe in the Card Factory sandbox.
+  // The sandbox clamps intervals to a 1-second minimum and auto-cleans on unmount.
+  const REFRESH_MS = 3000
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+      setItems(prev => prev.map(item => ({
+        ...item,
+        latency: Math.max(1, item.latency + Math.floor(Math.random() * 21) - 10),
+      })))
+    }, REFRESH_MS)
+    return () => clearInterval(timer)
+  }, [])
+
+  const WARN_THRESHOLD = 50
+  const HIGH_THRESHOLD = 80
+
+  return (
+    <div className="h-full flex flex-col p-1">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Timer className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-medium text-foreground">Service Latency</span>
+        </div>
+        <span className="text-2xs text-muted-foreground">tick #{tick}</span>
+      </div>
+      <div className="flex-1 space-y-2">
+        {items.map(item => {
+          const color = item.latency > HIGH_THRESHOLD ? 'text-red-400' : item.latency > WARN_THRESHOLD ? 'text-yellow-400' : 'text-green-400'
+          const barColor = item.latency > HIGH_THRESHOLD ? 'bg-red-400/30' : item.latency > WARN_THRESHOLD ? 'bg-yellow-400/30' : 'bg-green-400/30'
+          const BAR_MAX = 120
+          const barWidth = Math.min(100, (item.latency / BAR_MAX) * 100)
+          return (
+            <div key={item.id} className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground w-24 truncate">{item.name}</span>
+              <div className="flex-1 h-4 bg-secondary/30 rounded-full overflow-hidden">
+                <div className={\`h-full \${barColor} rounded-full transition-all duration-500\`} style={{ width: \`\${barWidth}%\` }} />
+              </div>
+              <span className={\`text-xs font-mono w-10 text-right \${color}\`}>{item.latency}ms</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}`,
+  },
+  {
+    name: 'Image from URL',
+    title: 'Image Viewer',
+    description: 'Display and auto-refresh an image from any URL or API endpoint',
+    width: 6,
+    source: `export default function ImageCard({ config }) {
+  const [url, setUrl] = useState(config?.url || '')
+  const [editUrl, setEditUrl] = useState('')
+  const [editing, setEditing] = useState(!config?.url)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Auto-refresh interval (0 = disabled). Sandbox clamps to 1s minimum.
+  const REFRESH_INTERVAL_MS = config?.refreshMs || 0
+
+  useEffect(() => {
+    if (REFRESH_INTERVAL_MS > 0 && url) {
+      const timer = setInterval(() => setRefreshKey(k => k + 1), REFRESH_INTERVAL_MS)
+      return () => clearInterval(timer)
+    }
+  }, [REFRESH_INTERVAL_MS, url])
+
+  const handleSet = () => {
+    if (editUrl.trim()) {
+      setUrl(editUrl.trim())
+      setEditing(false)
+      setError(null)
+      setLoading(true)
+    }
+  }
+
+  if (editing || !url) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 p-4">
+        <Image className="w-8 h-8 text-purple-400/50" />
+        <p className="text-xs text-muted-foreground text-center">Enter an image URL or API endpoint</p>
+        <div className="flex gap-2 w-full max-w-sm">
+          <input
+            type="text"
+            value={editUrl}
+            onChange={e => setEditUrl(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSet()}
+            placeholder="https://example.com/image.png"
+            className="flex-1 text-xs px-2 py-1.5 rounded bg-secondary/50 border border-border text-foreground"
+          />
+          <button onClick={handleSet} className="text-xs px-3 py-1.5 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+            Load
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-full flex flex-col p-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Image className="w-3.5 h-3.5 text-purple-400" />
+          <span className="text-xs text-muted-foreground truncate max-w-[200px]">{url}</span>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => setRefreshKey(k => k + 1)} className="p-1 rounded hover:bg-secondary/50" title="Refresh">
+            <RefreshCw className="w-3 h-3 text-muted-foreground" />
+          </button>
+          <button onClick={() => { setEditing(true); setEditUrl(url) }} className="p-1 rounded hover:bg-secondary/50" title="Change URL">
+            <Settings className="w-3 h-3 text-muted-foreground" />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 flex items-center justify-center overflow-auto rounded bg-secondary/10">
+        {error ? (
+          <div className="flex flex-col items-center gap-2 p-4">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <p className="text-xs text-red-400">Failed to load image</p>
+            <button onClick={() => { setError(null); setLoading(true); setRefreshKey(k => k + 1) }}
+              className="text-xs text-purple-400 hover:underline">Retry</button>
+          </div>
+        ) : (
+          <>
+            {loading && <Loader2 className="w-5 h-5 text-purple-400 animate-spin absolute" />}
+            <img
+              key={refreshKey}
+              src={url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now()}
+              alt="Card image"
+              className="max-w-full max-h-full object-contain"
+              onLoad={() => setLoading(false)}
+              onError={() => { setError(true); setLoading(false) }}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}`,
+  },
+  {
+    name: 'Port Forward Tracker',
+    title: 'Port Forwards',
+    description: 'Track and manage kubectl port-forward sessions',
+    width: 6,
+    source: `export default function PortForwardCard({ config }) {
+  const STORAGE_KEY = 'kc-port-forwards'
+  const [forwards, setForwards] = useState(() => {
+    try {
+      const saved = window?.localStorage?.getItem?.(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [adding, setAdding] = useState(false)
+  const [form, setForm] = useState({ namespace: 'default', resource: '', localPort: '', remotePort: '', protocol: 'TCP' })
+  const [copied, setCopied] = useState(null)
+
+  // Persist forwards
+  useEffect(() => {
+    try { window?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify(forwards)) } catch {}
+  }, [forwards])
+
+  const addForward = () => {
+    if (!form.resource || !form.localPort || !form.remotePort) return
+    setForwards(prev => [...prev, {
+      id: Date.now(),
+      ...form,
+      active: true,
+      addedAt: new Date().toLocaleString(),
+    }])
+    setForm({ namespace: 'default', resource: '', localPort: '', remotePort: '', protocol: 'TCP' })
+    setAdding(false)
+  }
+
+  const toggleActive = (id) => {
+    setForwards(prev => prev.map(f => f.id === id ? { ...f, active: !f.active } : f))
+  }
+
+  const removeForward = (id) => {
+    setForwards(prev => prev.filter(f => f.id !== id))
+  }
+
+  const getCommand = (f) =>
+    \`kubectl port-forward -n \${f.namespace} \${f.resource} \${f.localPort}:\${f.remotePort}\`
+
+  const copyCommand = (f) => {
+    try {
+      navigator?.clipboard?.writeText?.(getCommand(f))
+      setCopied(f.id)
+      setTimeout(() => setCopied(null), 2000)
+    } catch {}
+  }
+
+  return (
+    <div className="h-full flex flex-col p-1">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Cable className="w-4 h-4 text-purple-400" />
+          <span className="text-sm font-medium text-foreground">Port Forwards</span>
+          <span className="text-2xs px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
+            {forwards.filter(f => f.active).length} active
+          </span>
+        </div>
+        <button onClick={() => setAdding(!adding)}
+          className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+          {adding ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+          {adding ? 'Cancel' : 'Add'}
+        </button>
+      </div>
+
+      {adding && (
+        <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded bg-secondary/20 border border-border/50">
+          <input placeholder="Namespace" value={form.namespace}
+            onChange={e => setForm(p => ({...p, namespace: e.target.value}))}
+            className="text-xs px-2 py-1 rounded bg-secondary/50 border border-border text-foreground" />
+          <input placeholder="pod/name or svc/name" value={form.resource}
+            onChange={e => setForm(p => ({...p, resource: e.target.value}))}
+            className="text-xs px-2 py-1 rounded bg-secondary/50 border border-border text-foreground" />
+          <input placeholder="Local port" value={form.localPort} type="number"
+            onChange={e => setForm(p => ({...p, localPort: e.target.value}))}
+            className="text-xs px-2 py-1 rounded bg-secondary/50 border border-border text-foreground" />
+          <input placeholder="Remote port" value={form.remotePort} type="number"
+            onChange={e => setForm(p => ({...p, remotePort: e.target.value}))}
+            className="text-xs px-2 py-1 rounded bg-secondary/50 border border-border text-foreground" />
+          <button onClick={addForward}
+            className="col-span-2 text-xs py-1.5 rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+            Add Port Forward
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto space-y-1.5">
+        {forwards.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <Cable className="w-6 h-6 opacity-30" />
+            <p className="text-xs">No port forwards configured</p>
+            <p className="text-2xs">Click Add to track a kubectl port-forward session</p>
+          </div>
+        ) : forwards.map(f => (
+          <div key={f.id} className={\`flex items-center gap-2 px-2 py-1.5 rounded \${f.active ? 'bg-green-500/10 border border-green-500/20' : 'bg-secondary/20 border border-border/30'}\`}>
+            <button onClick={() => toggleActive(f.id)} title={f.active ? 'Mark inactive' : 'Mark active'}>
+              {f.active
+                ? <CircleDot className="w-3.5 h-3.5 text-green-400" />
+                : <Circle className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-foreground truncate">{f.resource}</span>
+                <span className="text-2xs text-muted-foreground">({f.namespace})</span>
+              </div>
+              <span className="text-2xs text-muted-foreground font-mono">
+                :{f.localPort} → :{f.remotePort}
+              </span>
+            </div>
+            <button onClick={() => copyCommand(f)} title="Copy kubectl command"
+              className="p-1 rounded hover:bg-secondary/50">
+              {copied === f.id
+                ? <Check className="w-3 h-3 text-green-400" />
+                : <Copy className="w-3 h-3 text-muted-foreground" />}
+            </button>
+            <button onClick={() => removeForward(f.id)} title="Remove"
+              className="p-1 rounded hover:bg-secondary/50">
+              <Trash2 className="w-3 h-3 text-muted-foreground hover:text-red-400" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}`,
+  },
 ]
 
 // ============================================================================
