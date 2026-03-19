@@ -103,9 +103,9 @@ export function sendNotificationWithDeepLink(
   body: string,
   params: DeepLinkParams,
   options?: NotificationOptions
-): Notification | null {
+): void {
   if (!('Notification' in window) || Notification.permission !== 'granted') {
-    return null
+    return
   }
 
   const url = buildDeepLinkURL(params)
@@ -127,8 +127,6 @@ export function sendNotificationWithDeepLink(
   }).catch(() => {
     sendStandardNotification(title, body, url, options)
   })
-
-  return null
 }
 
 /** Standard Notification API fallback (only used when SW is unavailable) */
@@ -276,8 +274,8 @@ export function useDeepLink() {
     body: string,
     params: DeepLinkParams,
     options?: NotificationOptions
-  ) => {
-    return sendNotificationWithDeepLink(title, body, params, options)
+  ): void => {
+    sendNotificationWithDeepLink(title, body, params, options)
   }, [])
 
   return {

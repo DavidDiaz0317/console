@@ -70,6 +70,12 @@ function deduplicateAlerts(alerts: Alert[], rules: AlertRule[]): Alert[] {
 const ALERT_RULES_KEY = 'kc_alert_rules'
 const ALERTS_KEY = 'kc_alerts'
 
+/** Minimum time (ms) between repeat notifications for the same alert */
+const NOTIFICATION_COOLDOWN_MS = 300_000 // 5 minutes
+
+/** Maximum age (ms) for dedup entries — evict stale entries older than this */
+const NOTIFICATION_DEDUP_MAX_AGE_MS = 86_400_000 // 24 hours
+
 /** Load persisted notification dedup map from localStorage (key → timestamp) */
 function loadNotifiedAlertKeys(): Map<string, number> {
   try {
@@ -83,9 +89,13 @@ function loadNotifiedAlertKeys(): Map<string, number> {
   return new Map()
 }
 
-/** Persist notification dedup map to localStorage */
+/** Persist notification dedup map to localStorage, pruning entries older than NOTIFICATION_DEDUP_MAX_AGE_MS */
 function saveNotifiedAlertKeys(keys: Map<string, number>): void {
   try {
+    const now = Date.now()
+    for (const [key, ts] of keys) {
+      if (now - ts > NOTIFICATION_DEDUP_MAX_AGE_MS) keys.delete(key)
+    }
     localStorage.setItem(STORAGE_KEY_NOTIFIED_ALERT_KEYS, JSON.stringify([...keys.entries()]))
   } catch {
     // localStorage full or unavailable
@@ -192,8 +202,6 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   // from sending repeated macOS notifications on every evaluation cycle.
   // Keys are NOT cleared on resolve — a cooldown period prevents re-notification
   // when clusters flap between reachable/unreachable states.
-  /** Minimum time (ms) between repeat notifications for the same alert */
-  const NOTIFICATION_COOLDOWN_MS = 300_000 // 5 minutes
   const notifiedAlertKeysRef = useRef<Map<string, number>>(loadNotifiedAlertKeys())
 
   // CronJob health results cache — fetched async, read synchronously by evaluator
