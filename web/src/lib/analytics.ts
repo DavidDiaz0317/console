@@ -1008,27 +1008,36 @@ const GLOBAL_RELOAD_THROTTLE_MS = 30_000 // 30 seconds
  * If the error message indicates a stale-chunk failure, auto-reload once
  * (same throttle logic as ChunkErrorBoundary). Returns true when the error
  * IS a chunk error so the caller skips emitting a duplicate 'runtime' event.
+ *
+ * Error emission is deferred: only emit a hard 'chunk_load' error when recovery
+ * has already been attempted and failed. For the first occurrence (about to
+ * auto-reload), emit a soft informational event instead — this prevents
+ * recoverable stale-deploy events from triggering the error threshold.
  */
 function tryChunkReloadRecovery(msg: string): boolean {
   if (!isChunkLoadMessage(msg)) return false
-  // Only emit chunk_load from the global handler if ChunkErrorBoundary
-  // hasn't already reported this same error message (prevents double-counting)
-  if (!wasAlreadyReported(msg)) {
-    emitError('chunk_load', msg)
-  }
   try {
     const lastReload = sessionStorage.getItem(CHUNK_RELOAD_TS_KEY)
     const now = Date.now()
     if (!lastReload || now - parseInt(lastReload) > GLOBAL_RELOAD_THROTTLE_MS) {
+      // First occurrence — attempt auto-reload recovery.
+      // Emit a soft informational event (not an error); if recovery succeeds,
+      // ksc_chunk_reload_recovery with result=success is emitted on the next load.
+      if (!wasAlreadyReported(msg)) {
+        emitStaleChunkDetected(msg)
+      }
       sessionStorage.setItem(CHUNK_RELOAD_TS_KEY, String(now))
       window.location.reload()
       return true
     }
-    // Already reloaded recently — recovery failed
+    // Already reloaded recently — recovery failed. Now emit the hard error.
+    if (!wasAlreadyReported(msg)) {
+      emitError('chunk_load', msg)
+    }
     sessionStorage.removeItem(CHUNK_RELOAD_TS_KEY)
     emitChunkReloadRecoveryFailed(msg)
   } catch {
-    // sessionStorage unavailable — chunk_load was already emitted above
+    // sessionStorage unavailable — best-effort
   }
   // Always return true when the error IS a chunk error — prevents the caller
   // from also emitting a 'runtime' error for the same event (double reporting).
@@ -1088,6 +1097,19 @@ export function emitSessionExpired() {
 export function emitChunkReloadRecoveryFailed(errorDetail: string) {
   send('ksc_chunk_reload_recovery', {
     recovery_result: 'failed',
+    recovery_page: window.location.pathname,
+    error_detail: errorDetail.slice(0, ERROR_DETAIL_MAX_LEN),
+  })
+}
+
+/**
+ * Emit a soft informational event when a stale chunk is detected and auto-reload
+ * recovery will be attempted. This is NOT counted as an error — it signals that
+ * a stale deploy was detected and the app is self-healing. The hard 'chunk_load'
+ * error is only emitted if recovery subsequently fails.
+ */
+export function emitStaleChunkDetected(errorDetail: string) {
+  send('ksc_stale_chunk_detected', {
     recovery_page: window.location.pathname,
     error_detail: errorDetail.slice(0, ERROR_DETAIL_MAX_LEN),
   })

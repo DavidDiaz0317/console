@@ -1,7 +1,7 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react'
 import { RefreshCw } from 'lucide-react'
 import i18next from 'i18next'
-import { emitError, emitChunkReloadRecoveryFailed, markErrorReported } from '../lib/analytics'
+import { emitError, emitChunkReloadRecoveryFailed, emitStaleChunkDetected, markErrorReported } from '../lib/analytics'
 import { isChunkLoadError, CHUNK_RELOAD_TS_KEY } from '../lib/chunkErrors'
 
 // Reload throttle interval in milliseconds to prevent infinite reload loops
@@ -45,17 +45,22 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     console.warn('[ChunkErrorBoundary] Stale chunk detected, will reload:', error.message)
     // Mark as reported so the global handler's tryChunkReloadRecovery skips it (prevents double-counting)
     markErrorReported(error.message)
-    emitError('chunk_load', error.message)
 
     // Auto-reload once. Use sessionStorage to prevent infinite loops.
     const lastReload = sessionStorage.getItem(CHUNK_RELOAD_TS_KEY)
     const now = Date.now()
     if (!lastReload || now - parseInt(lastReload) > RELOAD_THROTTLE_MS) {
+      // First occurrence — attempt auto-reload recovery. Emit a soft informational
+      // event (not an error) since we expect recovery to succeed on the next load.
+      // The ksc_chunk_reload_recovery success event will be emitted after the reload.
+      emitStaleChunkDetected(error.message)
       sessionStorage.setItem(CHUNK_RELOAD_TS_KEY, String(now))
       window.location.reload()
     } else {
       // Auto-reload already happened within the throttle window but chunks
-      // are still stale — recovery failed, user sees manual reload UI
+      // are still stale — recovery failed, user sees manual reload UI.
+      // Only now emit the hard chunk_load error since recovery was unsuccessful.
+      emitError('chunk_load', error.message)
       sessionStorage.removeItem(CHUNK_RELOAD_TS_KEY)
       emitChunkReloadRecoveryFailed(error.message)
     }
