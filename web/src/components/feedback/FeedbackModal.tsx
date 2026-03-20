@@ -20,6 +20,14 @@ interface FeedbackModalProps {
   initialType?: FeedbackType
 }
 
+const DRAFT_KEY = 'feedback-modal-draft'
+
+interface DraftState {
+  type: FeedbackType
+  title: string
+  description: string
+}
+
 export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: FeedbackModalProps) {
   const { showToast } = useToast()
   const { t } = useTranslation(['common'])
@@ -30,6 +38,31 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const { awardCoins } = useRewards()
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY)
+      if (saved) {
+        const draft: DraftState = JSON.parse(saved)
+        setType(draft.type)
+        setTitle(draft.title)
+        setDescription(draft.description)
+      }
+    } catch {
+      // ignore malformed draft
+    }
+  }, [])
+
+  // Autosave draft to localStorage whenever form content changes
+  useEffect(() => {
+    if (title || description) {
+      const draft: DraftState = { type, title, description }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    } else {
+      localStorage.removeItem(DRAFT_KEY)
+    }
+  }, [type, title, description])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,6 +85,8 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
       const action = type === 'bug' ? 'bug_report' : 'feature_suggestion'
       awardCoins(action as 'bug_report' | 'feature_suggestion', { title, type })
 
+      // Clear draft on successful submit
+      localStorage.removeItem(DRAFT_KEY)
       setSuccess(true)
     } catch (err) {
       console.error('Failed to submit feedback:', err)
@@ -65,6 +100,7 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
     if ((title.trim() !== '' || description.trim() !== '') && !window.confirm(t('common:common.discardUnsavedChanges', 'Discard unsaved changes?'))) {
       return
     }
+    localStorage.removeItem(DRAFT_KEY)
     setSuccess(false)
     setTitle('')
     setDescription('')
@@ -163,6 +199,13 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
             </div>
           ) : (
             <>
+              {/* Draft restore notice */}
+              {(title || description) && (
+                <div className="flex items-center gap-2 p-2 mb-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-muted-foreground">
+                  <span>Draft restored.</span>
+                </div>
+              )}
+
               {/* Type selector */}
               <div className="flex gap-2 mb-4">
                 <button
