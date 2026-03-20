@@ -89,9 +89,36 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router') || id.includes('/scheduler/') || id.includes('/react-reconciler/')) {
             return 'react-vendor'
           }
-          // 3D engine — no longer in a separate chunk because shared deps
-          // (zustand, react-reconciler) create circular deps with vendor.
-          // Falls through to the vendor chunk instead.
+          // 3D engine + all its transitive dependencies.
+          // These packages are bundled together to avoid circular deps:
+          // @react-three/drei imports camera-controls, maath, meshline etc.
+          // which themselves depend on three — keeping them all in one chunk
+          // eliminates the three-vendor ↔ vendor cycle.
+          if (
+            id.includes('/three/') ||
+            id.includes('/@react-three/') ||
+            id.includes('/tunnel-rat/') ||
+            id.includes('/zustand/') ||
+            id.includes('/camera-controls/') ||
+            id.includes('/maath/') ||
+            id.includes('/meshline/') ||
+            id.includes('/stats-gl/') ||
+            id.includes('/three-mesh-bvh/') ||
+            id.includes('/three-stdlib/') ||
+            id.includes('/troika-three-text/') ||
+            id.includes('/troika-three-utils/') ||
+            id.includes('/@monogrid/') ||
+            id.includes('/@react-spring/three') ||
+            id.includes('/its-fine/') ||
+            id.includes('/react-use-measure/') ||
+            id.includes('/suspend-react/')
+          ) {
+            return 'three-vendor'
+          }
+          // Terminal emulator — only loaded when the pod-exec terminal is open.
+          if (id.includes('/@xterm/')) {
+            return 'terminal-vendor'
+          }
           // Charting libraries
           if (id.includes('/echarts/') || id.includes('/echarts-for-react/') || id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-')) {
             return 'charts-vendor'
