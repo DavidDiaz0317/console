@@ -64,10 +64,8 @@ test.describe('Navbar responsive layout', () => {
       // Alerts badge always visible
       await expect(nav.locator('[data-testid="alert-badge"], button[aria-label*="alert" i]').first()).toBeVisible()
 
-      // User profile dropdown always visible
-      await expect(
-        nav.locator('[data-testid="user-menu"], button[aria-label*="user" i], button[aria-label*="profile" i]').first()
-      ).toBeVisible()
+      // User profile dropdown always visible (button accessible name includes mocked username)
+      await expect(nav.getByRole('button', { name: /testuser/i })).toBeVisible()
     })
   }
 
@@ -86,11 +84,20 @@ test.describe('Navbar responsive layout', () => {
 
     const nav = page.locator('nav[data-tour="navbar"]')
     const overflowBtn = nav.getByRole('button', { name: /more options/i })
+
+    // FeatureRequest is part of the lg-only group and should be hidden in the main nav below lg
+    const featureRequestBtn = page.getByRole('button', { name: /feature request/i })
+    await expect(featureRequestBtn).toBeHidden()
+
     await overflowBtn.click()
 
-    // At least one item from the lg-hidden group should now be visible
+    // The overflow panel should now be visible
     const panel = page.locator('.fixed.bg-card').last()
     await expect(panel).toBeVisible()
+
+    // At least one item from the lg-hidden group (FeatureRequest) should now be visible in the panel
+    const panelFeatureRequestBtn = panel.getByRole('button', { name: /feature request/i })
+    await expect(panelFeatureRequestBtn).toBeVisible()
   })
 
   test('search bar is in main nav bar at sm+ (640px)', async ({ page }) => {

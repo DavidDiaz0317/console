@@ -37,6 +37,7 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
   const [description, setDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
   const { awardCoins } = useRewards()
 
   // Restore draft from localStorage on mount
@@ -44,10 +45,27 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
     try {
       const saved = localStorage.getItem(DRAFT_KEY)
       if (saved) {
-        const draft: DraftState = JSON.parse(saved)
-        setType(draft.type)
-        setTitle(draft.title)
-        setDescription(draft.description)
+        const parsed = JSON.parse(saved) as unknown
+
+        if (parsed && typeof parsed === 'object') {
+          const draft = parsed as Partial<DraftState>
+          const allowedTypes: FeedbackType[] = ['bug', 'feature']
+
+          const nextType: FeedbackType =
+            typeof draft.type === 'string' && allowedTypes.includes(draft.type as FeedbackType)
+              ? (draft.type as FeedbackType)
+              : initialType
+
+          const nextTitle = typeof draft.title === 'string' ? draft.title : ''
+          const nextDescription = typeof draft.description === 'string' ? draft.description : ''
+
+          setType(nextType)
+          setTitle(nextTitle)
+          setDescription(nextDescription)
+          if (nextTitle.trim() || nextDescription.trim()) {
+            setDraftRestored(true)
+          }
+        }
       }
     } catch {
       // ignore malformed draft
@@ -56,11 +74,15 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
 
   // Autosave draft to localStorage whenever form content changes
   useEffect(() => {
-    if (title || description) {
-      const draft: DraftState = { type, title, description }
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-    } else {
-      localStorage.removeItem(DRAFT_KEY)
+    try {
+      if (title || description) {
+        const draft: DraftState = { type, title, description }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      } else {
+        localStorage.removeItem(DRAFT_KEY)
+      }
+    } catch {
+      // ignore storage errors (quota exceeded, private mode, etc.)
     }
   }, [type, title, description])
 
@@ -86,7 +108,8 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
       awardCoins(action as 'bug_report' | 'feature_suggestion', { title, type })
 
       // Clear draft on successful submit
-      localStorage.removeItem(DRAFT_KEY)
+      try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+      setDraftRestored(false)
       setSuccess(true)
     } catch (err) {
       console.error('Failed to submit feedback:', err)
@@ -100,7 +123,8 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
     if ((title.trim() !== '' || description.trim() !== '') && !window.confirm(t('common:common.discardUnsavedChanges', 'Discard unsaved changes?'))) {
       return
     }
-    localStorage.removeItem(DRAFT_KEY)
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+    setDraftRestored(false)
     setSuccess(false)
     setTitle('')
     setDescription('')
@@ -200,7 +224,7 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
           ) : (
             <>
               {/* Draft restore notice */}
-              {(title || description) && (
+              {draftRestored && (
                 <div className="flex items-center gap-2 p-2 mb-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-muted-foreground">
                   <span>Draft restored.</span>
                 </div>
