@@ -269,7 +269,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const pendingRequests = useRef<Map<string, string>>(new Map()) // requestId -> missionId
   // Track last stream timestamp per mission to detect tool-use gaps (for creating new chat bubbles)
   const lastStreamTimestamp = useRef<Map<string, number>>(new Map()) // missionId -> timestamp
-  const STREAM_GAP_THRESHOLD_MS = 2000 // If >2s gap, create new message bubble
+  const STREAM_GAP_THRESHOLD_MS = 8000 // If >8s gap between stream chunks, create new message bubble (tool-use gap)
 
   // Maximum number of WebSocket send retries before giving up
   const WS_SEND_MAX_RETRIES = 3
