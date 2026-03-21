@@ -162,7 +162,7 @@ ENVEOF
 
     if [ "$FAILURES" -eq 0 ]; then
       # Check watchdog serves content (might be "Reconnecting..." page or actual app)
-      assert_page_has_content "http://localhost:8080" "" "watchdog" || FAILURES=$((FAILURES+1))
+      assert_page_has_content "http://localhost:8080" "</html>" "watchdog" || FAILURES=$((FAILURES+1))
 
       # Check backend on 8081
       assert_port_listening 8081 "backend" || echo -e "${YELLOW}  ⚠ Backend port 8081 not detected${NC}"

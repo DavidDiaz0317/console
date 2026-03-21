@@ -28,7 +28,7 @@ export default tseslint.config(
       // Encourages useReducer or single-object setState for related state
       'no-restricted-syntax': ['warn',
         {
-          selector: 'CallExpression[callee.name=/^set[A-Z]/] + CallExpression[callee.name=/^set[A-Z]/]',
+          selector: 'ExpressionStatement > CallExpression[callee.name=/^set[A-Z]/] + ExpressionStatement > CallExpression[callee.name=/^set[A-Z]/]',
           message: 'Consecutive setState calls may cause UI flicker. Consider batching with useReducer or a single state object.',
         },
       ],

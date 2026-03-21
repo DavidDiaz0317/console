@@ -17,9 +17,6 @@ concurrency:
   group: api-contract-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GO_VERSION: '1.23'
-
 jobs:
   api-contract:
     name: API Contract Verification
@@ -31,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: go.mod
 
       - name: Build backend
         run: go build -o console-server ./cmd/console

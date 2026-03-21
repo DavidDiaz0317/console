@@ -38,6 +38,7 @@ import { MissionChat } from './MissionChat'
 import { ClusterSelectionDialog } from '../../missions/ClusterSelectionDialog'
 import { useTranslation } from 'react-i18next'
 import { SAVED_TOAST_MS, FOCUS_DELAY_MS } from '../../../lib/constants/network'
+import { OPEN_INSTALL_EVENT } from '../../../lib/constants/events'
 import { MISSION_FILE_FETCH_TIMEOUT_MS } from '../../missions/browser/missionCache'
 import { isDemoMode } from '../../../lib/demoMode'
 
@@ -248,7 +249,7 @@ export function MissionSidebar() {
   // For install/deploy types in live mode, show cluster picker first.
   const handleRunMission = useCallback((missionId: string) => {
     if (isDemoMode()) {
-      window.dispatchEvent(new CustomEvent('open-install'))
+      window.dispatchEvent(new CustomEvent(OPEN_INSTALL_EVENT))
       return
     }
     const mission = missions.find(m => m.id === missionId)

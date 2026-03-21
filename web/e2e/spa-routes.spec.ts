@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
+import { ROUTES } from '../src/config/routes'
 
 /**
  * SPA Route Regression Tests
@@ -11,55 +12,19 @@ import { test, expect, Page } from '@playwright/test'
  * Run with: npx playwright test e2e/spa-routes.spec.ts
  */
 
-// All routes from web/src/config/routes.ts (excluding parameterized routes
-// that need dynamic IDs like /custom-dashboard/:id and /missions/:missionId)
-const ALL_ROUTES = [
-  { path: '/', name: 'Home' },
-  { path: '/login', name: 'Login' },
-  { path: '/settings', name: 'Settings' },
-  { path: '/users', name: 'Users' },
-  { path: '/clusters', name: 'Clusters' },
-  { path: '/nodes', name: 'Nodes' },
-  { path: '/namespaces', name: 'Namespaces' },
-  { path: '/deployments', name: 'Deployments' },
-  { path: '/pods', name: 'Pods' },
-  { path: '/services', name: 'Services' },
-  { path: '/workloads', name: 'Workloads' },
-  { path: '/operators', name: 'Operators' },
-  { path: '/helm', name: 'Helm' },
-  { path: '/logs', name: 'Logs' },
-  { path: '/events', name: 'Events' },
-  { path: '/compute', name: 'Compute' },
-  { path: '/storage', name: 'Storage' },
-  { path: '/network', name: 'Network' },
-  { path: '/alerts', name: 'Alerts' },
-  { path: '/history', name: 'History' },
-  { path: '/security', name: 'Security' },
-  { path: '/security-posture', name: 'Security Posture' },
-  { path: '/compliance', name: 'Compliance' },
-  { path: '/data-compliance', name: 'Data Compliance' },
-  { path: '/gitops', name: 'GitOps' },
-  { path: '/cost', name: 'Cost' },
-  { path: '/gpu-reservations', name: 'GPU Reservations' },
-  { path: '/arcade', name: 'Arcade' },
-  { path: '/deploy', name: 'Deploy' },
-  { path: '/ai-ml', name: 'AI/ML' },
-  { path: '/ai-agents', name: 'AI Agents' },
-  { path: '/ci-cd', name: 'CI/CD' },
-  { path: '/llm-d-benchmarks', name: 'LLM-D Benchmarks' },
-  { path: '/insights', name: 'Insights' },
-  { path: '/cluster-admin', name: 'Cluster Admin' },
-  { path: '/marketplace', name: 'Marketplace' },
-  { path: '/missions', name: 'Missions' },
-  { path: '/widget', name: 'Widget' },
-  { path: '/issue', name: 'Issue' },
-  { path: '/feedback', name: 'Feedback' },
-  { path: '/feature', name: 'Feature' },
-  { path: '/multi-tenancy', name: 'Multi-Tenancy' },
-  { path: '/from-lens', name: 'From Lens' },
-  { path: '/from-headlamp', name: 'From Headlamp' },
-  { path: '/white-label', name: 'White Label' },
-]
+// Derive the route list programmatically from routes.ts so this list
+// stays in sync automatically as routes are added or removed.
+// Parameterized routes (containing ':') and internal test/perf routes
+// are excluded because they require dynamic IDs or are not user-facing.
+const ALL_ROUTES = Object.entries(ROUTES)
+  .filter(([, path]) => !path.includes(':') && !path.startsWith('/__') && !path.startsWith('/test/'))
+  .map(([key, path]) => ({
+    path,
+    name: key
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' '),
+  }))
 
 async function setupDemoMode(page: Page) {
   await page.goto('/login')

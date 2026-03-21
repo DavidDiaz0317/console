@@ -99,6 +99,7 @@ async function setupMissionTest(page: Page) {
   await page.evaluate(() => {
     localStorage.setItem('token', 'test-token')
     localStorage.setItem('demo-user-onboarded', 'true')
+    localStorage.setItem('kc-demo-mode', 'true')
   })
 }
 
@@ -131,33 +132,41 @@ test.describe('Mission System Regression Tests', () => {
       await page.goto('/')
       await page.waitForLoadState('domcontentloaded')
 
-      // Open mission sidebar if present
+      // Open mission sidebar (this must exist for the regression test to be meaningful)
       const missionToggle = page.locator('[data-testid="mission-sidebar-toggle"]')
         .or(page.locator('button[aria-label*="mission" i]'))
         .or(page.locator('button:has-text("Missions")'))
 
-      if (await missionToggle.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-        await missionToggle.first().click()
+      const missionToggleButton = missionToggle.first()
+      await expect(
+        missionToggleButton,
+        'Mission sidebar toggle should be visible on the dashboard'
+      ).toBeVisible({ timeout: 5000 })
+      await missionToggleButton.click()
 
-        // Look for the completed mission
-        const completedMission = page.locator('text=Deploy App')
-          .or(page.locator('[data-testid*="mission"][data-testid*="completed"]'))
+      // Look for the completed mission
+      const completedMission = page.locator('text=Deploy App')
+        .or(page.locator('[data-testid*="mission"][data-testid*="completed"]'))
 
-        if (await completedMission.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-          await completedMission.first().click()
+      const completedMissionItem = completedMission.first()
+      await expect(
+        completedMissionItem,
+        'Completed mission entry should be visible in the mission sidebar'
+      ).toBeVisible({ timeout: 5000 })
+      await completedMissionItem.click()
 
-          // Verify output is shown (not empty, not stuck in loading)
-          await page.waitForTimeout(1000)
-          const sidebarContent = await page.locator('[data-testid="mission-sidebar"]')
-            .or(page.locator('[class*="mission"][class*="sidebar"]'))
-            .first()
-            .textContent()
-            .catch(() => '')
+      // Verify output is shown (not empty, not stuck in loading)
+      const sidebarLocator = page
+        .locator('[data-testid="mission-sidebar"]')
+        .or(page.locator('[class*="mission"][class*="sidebar"]'))
+        .first()
 
-          // The output should contain some text (regression: #2974 showed empty output)
-          expect(sidebarContent?.length).toBeGreaterThan(0)
-        }
-      }
+      await expect(sidebarLocator).toHaveText(/.+/, { timeout: 10000 })
+
+      const sidebarContent = await sidebarLocator.textContent().catch(() => '')
+
+      // The output should contain some text (regression: #2974 showed empty output)
+      expect(sidebarContent?.length).toBeGreaterThan(0)
     })
   })
 
@@ -166,33 +175,31 @@ test.describe('Mission System Regression Tests', () => {
       await page.goto('/')
       await page.waitForLoadState('domcontentloaded')
 
-      // Try to open mission browser
-      const browseButton = page.locator('[data-testid="mission-browse"]')
+      // Open mission browser deterministically via data-testid
+      const browseButton = page.getByTestId('mission-browse')
         .or(page.locator('button:has-text("Browse")'))
         .or(page.locator('a[href*="browse=missions"]'))
+      await expect(browseButton.first()).toBeVisible({ timeout: 10000 })
+      await browseButton.first().click()
 
-      if (await browseButton.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-        await browseButton.first().click()
-        await page.waitForTimeout(500)
+      // Wait for folder entries to be visible
+      const folderElements = page.locator('[data-testid*="folder"], [class*="tree-node"][class*="folder"]')
+      await expect(folderElements.first()).toBeVisible({ timeout: 10000 })
+      const count = await folderElements.count()
 
-        // Count folder entries with the same name
-        const folderElements = page.locator('[data-testid*="folder"], [class*="tree-node"][class*="folder"]')
-        const count = await folderElements.count()
-
-        // Collect folder names
-        const folderNames: string[] = []
-        for (let i = 0; i < count; i++) {
-          const name = await folderElements.nth(i).textContent()
-          if (name) folderNames.push(name.trim())
-        }
-
-        // Check for duplicates
-        const uniqueNames = new Set(folderNames)
-        expect(
-          folderNames.length,
-          `Duplicate folders detected: ${folderNames.join(', ')}`
-        ).toBe(uniqueNames.size)
+      // Collect folder names
+      const folderNames: string[] = []
+      for (let i = 0; i < count; i++) {
+        const name = await folderElements.nth(i).textContent()
+        if (name) folderNames.push(name.trim())
       }
+
+      // Check for duplicates
+      const uniqueNames = new Set(folderNames)
+      expect(
+        folderNames.length,
+        `Duplicate folders detected: ${folderNames.join(', ')}`
+      ).toBe(uniqueNames.size)
     })
   })
 

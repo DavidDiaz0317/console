@@ -20,6 +20,7 @@ import { useBackendHealth } from '../../hooks/useBackendHealth'
 import { useDeepLink } from '../../hooks/useDeepLink'
 import { cn } from '../../lib/cn'
 import { LOCAL_AGENT_HTTP_URL, FETCH_DEFAULT_TIMEOUT_MS } from '../../lib/constants'
+import { OPEN_INSTALL_EVENT } from '../../lib/constants/events'
 import { CLOSE_ANIMATION_MS, UI_FEEDBACK_TIMEOUT_MS, TOAST_DISMISS_MS } from '../../lib/constants/network'
 import { TourOverlay, TourPrompt } from '../onboarding/Tour'
 import { TourProvider } from '../../hooks/useTour'
@@ -107,8 +108,8 @@ export function Layout({ children }: LayoutProps) {
   // Allow any component to open the install dialog via a custom event
   useEffect(() => {
     const handler = () => setShowSetupDialog(true)
-    window.addEventListener('open-install', handler)
-    return () => window.removeEventListener('open-install', handler)
+    window.addEventListener(OPEN_INSTALL_EVENT, handler)
+    return () => window.removeEventListener(OPEN_INSTALL_EVENT, handler)
   }, [])
 
   const [restartState, setRestartState] = useState<'idle' | 'restarting' | 'waiting' | 'copied'>('idle')
