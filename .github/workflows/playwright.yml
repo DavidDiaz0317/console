@@ -11,6 +11,7 @@ on:
     paths:
       - 'web/**'
       - '.github/workflows/playwright.yml'
+  workflow_dispatch: {}
 
 concurrency:
   group: playwright-${{ github.ref }}
