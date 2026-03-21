@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { isDemoMode } from '../../lib/demoMode'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCardLoadingState } from './CardDataContext'
 import { CardSkeleton, CardSearchInput, CardPaginationFooter } from '../../lib/cards/CardComponents'
+import { useRBACFindings, type RBACFinding } from '../../hooks/useRBACFindings'
 
 // ---------------------------------------------------------------------------
 // Named constants — no magic numbers
@@ -28,22 +28,7 @@ const SKELETON_ROW_COUNT = 4
 /** Height (px) for each skeleton row placeholder */
 const SKELETON_ROW_HEIGHT_PX = 60
 
-/** Delay (ms) before demo data "finishes loading" */
-const DEMO_LOADING_DELAY_MS = 600
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface RBACFinding {
-  id: string
-  cluster: string
-  subject: string
-  subjectKind: 'User' | 'Group' | 'ServiceAccount'
-  risk: 'critical' | 'high' | 'medium' | 'low'
-  description: string
-  binding: string
-}
+// RBACFinding type is imported from useRBACFindings
 
 type RiskLevel = RBACFinding['risk']
 
@@ -67,49 +52,18 @@ const RISK_STYLES: Record<RiskLevel, RiskStyle> = {
 const RISK_LEVELS: readonly RiskLevel[] = ['critical', 'high', 'medium', 'low'] as const
 
 // ---------------------------------------------------------------------------
-// Demo data
-// ---------------------------------------------------------------------------
-
-const DEMO_FINDINGS: RBACFinding[] = [
-  { id: '1', cluster: 'prod-us-east', subject: 'dev-team', subjectKind: 'Group', risk: 'critical', description: 'cluster-admin binding — full cluster access', binding: 'ClusterRoleBinding/dev-admin' },
-  { id: '2', cluster: 'prod-us-east', subject: 'ci-bot', subjectKind: 'ServiceAccount', risk: 'high', description: 'Wildcard verb on secrets — can read all secrets', binding: 'ClusterRoleBinding/ci-secrets' },
-  { id: '3', cluster: 'staging', subject: 'default', subjectKind: 'ServiceAccount', risk: 'high', description: 'Default SA has elevated privileges', binding: 'ClusterRoleBinding/default-elevated' },
-  { id: '4', cluster: 'prod-eu-west', subject: 'monitoring', subjectKind: 'ServiceAccount', risk: 'medium', description: 'Wide list/watch on all namespaces', binding: 'ClusterRoleBinding/monitoring-wide' },
-  { id: '5', cluster: 'prod-us-east', subject: 'backup-operator', subjectKind: 'ServiceAccount', risk: 'medium', description: 'PV and PVC access across namespaces', binding: 'ClusterRoleBinding/backup-pvs' },
-  { id: '6', cluster: 'staging', subject: 'developer', subjectKind: 'User', risk: 'low', description: 'Edit role in staging namespace', binding: 'RoleBinding/dev-edit' },
-]
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function RBACExplorer() {
-  // ---- Data fetching simulation (demo) ------------------------------------
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [findings, setFindings] = useState<RBACFinding[]>([])
-
-  // Simulate an async fetch on mount (and on retry)
-  const loadData = useCallback(() => {
-    setIsLoading(true)
-    setError(null)
-    const timer = setTimeout(() => {
-      setFindings(DEMO_FINDINGS)
-      setIsLoading(false)
-    }, DEMO_LOADING_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Initial load
-  useEffect(() => {
-    return loadData()
-  }, [])
+  // ---- Live data via hook -------------------------------------------------
+  const { findings, isLoading, error, isDemoData, refetch } = useRBACFindings()
 
   // ---- Loading / error state reporting ------------------------------------
   const { showSkeleton, showEmptyState } = useCardLoadingState({
     isLoading,
     hasAnyData: (findings || []).length > 0,
-    isDemoData: isDemoMode(),
+    isDemoData,
     isFailed: !!error,
     errorMessage: error || undefined,
   })
@@ -202,7 +156,7 @@ export function RBACExplorer() {
         <p className="text-destructive">Failed to load RBAC data</p>
         <p className="text-xs text-muted-foreground/70 text-center max-w-xs">{error}</p>
         <button
-          onClick={loadData}
+          onClick={refetch}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
