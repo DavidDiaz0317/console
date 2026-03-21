@@ -32,13 +32,6 @@ export function AgentSetupDialog() {
     }
   }, [])
 
-  // Allow external triggers (e.g. from MissionChat saved state)
-  useEffect(() => {
-    const handler = () => setShow(true)
-    window.addEventListener('open-agent-setup', handler)
-    return () => window.removeEventListener('open-agent-setup', handler)
-  }, [])
-
   useEffect(() => {
     // Only show after initial connection check completes
     if (status === 'connecting') return

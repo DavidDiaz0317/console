@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useMissions, type Mission } from '../../../hooks/useMissions'
 import { useDemoMode } from '../../../hooks/useDemoMode'
-import { isNetlifyDeployment, setDemoMode } from '../../../lib/demoMode'
+import { isNetlifyDeployment, toggleDemoMode } from '../../../lib/demoMode'
 import { useResolutions, detectIssueSignature, type Resolution } from '../../../hooks/useResolutions'
 import { cn } from '../../../lib/cn'
 import { MAX_MESSAGE_SIZE_CHARS } from '../../../lib/constants'
@@ -693,14 +693,14 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
             ) : isDemoMode ? (
               <div className="flex flex-col gap-2">
                 <button
-                  onClick={() => window.dispatchEvent(new CustomEvent('open-agent-setup'))}
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-install'))}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   <Play className="w-4 h-4" />
-                  Install Agent &amp; Run Mission
+                  Install Agent
                 </button>
                 <button
-                  onClick={() => setDemoMode(false, true)}
+                  onClick={() => toggleDemoMode()}
                   className="text-xs text-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Already have the agent? Turn off demo mode
