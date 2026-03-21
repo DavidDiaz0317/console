@@ -11,7 +11,6 @@ import {
   Save,
   Maximize2,
   Play,
-  Rocket,
   Sparkles,
   ThumbsUp,
   ThumbsDown,
@@ -680,24 +679,9 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
         ) : mission.status === 'saved' ? (
           <div className="flex flex-col gap-2">
             {isDemoMode ? (
-              <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/25 p-3 flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Rocket className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                  <p className="text-xs font-medium text-yellow-300">
-                    Running missions requires a live cluster
-                  </p>
-                </div>
-                <p className="text-xs text-yellow-400/70">
-                  Install KubeStellar Console locally to connect your clusters and run this mission with AI.
-                </p>
-                <button
-                  onClick={() => setShowSetupDialog(true)}
-                  className="mt-1 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold bg-yellow-500 hover:bg-yellow-400 text-black rounded-lg transition-colors"
-                >
-                  <Rocket className="w-3.5 h-3.5" />
-                  Get KubeStellar Console
-                </button>
-              </div>
+              <p className="text-xs text-center text-muted-foreground px-2">
+                Mission imported. Install KubeStellar Console locally to run it against your clusters.
+              </p>
             ) : (
               <button
                 onClick={() => runSavedMission(mission.id)}
