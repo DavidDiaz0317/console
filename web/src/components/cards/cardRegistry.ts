@@ -210,6 +210,10 @@ const StrimziStatus = safeLazy(() => import('./strimzi_status'), 'StrimziStatus'
 const KubeVelaStatus = safeLazy(() => import('./kubevela_status'), 'KubeVelaStatus')
 // Karmada multi-cluster orchestration card
 const KarmadaStatus = safeLazy(() => import('./karmada_status'), 'KarmadaStatus')
+// Thanos distributed metrics card
+const ThanosStatus = safeLazy(() => import('./thanos_status'), 'ThanosStatus')
+// OpenFeature feature-flag management card
+const OpenFeatureStatus = safeLazy(() => import('./openfeature_status'), 'OpenFeatureStatus')
 
 // Multi-tenancy cards — share one chunk via barrel import
 const _multiTenancyBundle = import('./multi-tenancy').catch(() => undefined as never)
@@ -492,6 +496,10 @@ const RAW_CARD_COMPONENTS: Record<string, CardComponent> = {
   kubevela_status: KubeVelaStatus,
   // Karmada multi-cluster orchestration
   karmada_status: KarmadaStatus,
+  // Thanos distributed metrics
+  thanos_status: ThanosStatus,
+  // OpenFeature feature-flag management
+  openfeature_status: OpenFeatureStatus,
 
   // LLM-d stunning visualization cards
   llmd_flow: LLMdFlow,
@@ -852,6 +860,10 @@ const CARD_CHUNK_PRELOADERS: Record<string, () => Promise<unknown>> = {
   kubevela_status: () => import('./kubevela_status'),
   // Karmada multi-cluster orchestration
   karmada_status: () => import('./karmada_status'),
+  // Thanos distributed metrics
+  thanos_status: () => import('./thanos_status'),
+  // OpenFeature feature-flag management
+  openfeature_status: () => import('./openfeature_status'),
 }
 
 /**

@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"os"
 	"sync"
 	"testing"
 )
@@ -102,30 +101,39 @@ func TestInitializeProviders(t *testing.T) {
 	}
 	registryOnce = sync.Once{}
 
-	// Mock env to make at least one provider available
-	os.Setenv("ANTHROPIC_API_KEY", "test-key")
-	defer os.Unsetenv("ANTHROPIC_API_KEY")
-
-	// Mock other providers to not fail on missing keys if they check files
-	// Actually InitializeProviders registers them regardless of availability
-	// but fails if NONE are available.
-
+	// InitializeProviders registers CLI-based agents (claude-code, bob, codex, etc.).
+	// In CI environments none of those binaries are installed, so HasAvailableProviders
+	// returns false and InitializeProviders returns an error — that is expected behaviour.
+	// This test verifies that all expected provider names are registered regardless of
+	// binary availability, and separately checks the available-providers path only when
+	// at least one CLI tool happens to be present.
 	err := InitializeProviders()
-	if err != nil {
-		t.Fatalf("InitializeProviders failed: %v", err)
-	}
 
 	r := GetRegistry()
-	if !r.HasAvailableProviders() {
-		t.Error("Expected at least one available provider")
+	allProviders := r.List()
+
+	// The expected registered provider names (CLI-based, intentionally no API-only agents)
+	expectedNames := []string{"claude-code", "bob", "codex", "copilot-cli", "gemini-cli", "antigravity"}
+	registeredNames := make(map[string]bool, len(allProviders))
+	for _, p := range allProviders {
+		registeredNames[p.Name] = true
+	}
+	for _, name := range expectedNames {
+		if !registeredNames[name] {
+			t.Errorf("Expected provider %q to be registered", name)
+		}
 	}
 
-	// Verify claude is registered and available
-	p, err := r.Get("claude")
-	if err != nil {
-		t.Fatalf("Claude provider not registered: %v", err)
-	}
-	if !p.IsAvailable() {
-		t.Error("Claude provider should be available via env")
+	if r.HasAvailableProviders() {
+		// At least one CLI tool is installed — InitializeProviders must succeed
+		if err != nil {
+			t.Fatalf("InitializeProviders failed despite available provider: %v", err)
+		}
+	} else {
+		// No CLI tools present (typical CI) — InitializeProviders should return an error
+		if err == nil {
+			t.Error("Expected error from InitializeProviders when no providers are available")
+		}
+		t.Logf("No CLI agents installed (expected in CI): %v", err)
 	}
 }

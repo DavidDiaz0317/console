@@ -490,8 +490,8 @@ const T2_TEMPLATES: T2Template[] = [
           <span className="text-xs text-muted-foreground truncate max-w-[200px]">{url}</span>
         </div>
         <div className="flex gap-1">
-          <button onClick={() => setRefreshKey(k => k + 1)} className="p-1 rounded hover:bg-secondary/50" title="Refresh">
-            <RefreshCw className="w-3 h-3 text-muted-foreground" />
+          <button onClick={() => { setLoading(true); setRefreshKey(k => k + 1) }} className="p-1 rounded hover:bg-secondary/50" title="Refresh">
+            <RefreshCw className={cn('w-3 h-3 text-muted-foreground', loading && 'animate-spin')} />
           </button>
           <button onClick={() => { setEditing(true); setEditUrl(url) }} className="p-1 rounded hover:bg-secondary/50" title="Change URL">
             <Settings className="w-3 h-3 text-muted-foreground" />

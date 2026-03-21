@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { isDemoMode } from '../../lib/demoMode'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCardLoadingState } from './CardDataContext'
@@ -108,7 +109,7 @@ export function RBACExplorer() {
   const { showSkeleton, showEmptyState } = useCardLoadingState({
     isLoading,
     hasAnyData: (findings || []).length > 0,
-    isDemoData: true,
+    isDemoData: isDemoMode(),
     isFailed: !!error,
     errorMessage: error || undefined,
   })

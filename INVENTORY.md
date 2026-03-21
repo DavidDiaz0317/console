@@ -157,7 +157,7 @@ The Auto-QA workflow uses this file to verify component consistency.
 | WasmCloudStatus | web/src/components/cards/wasmcloud_status/index.ts | `wasmcloud_status` |
 | ThanosStatus | web/src/components/cards/thanos_status/index.tsx | `thanos_status` |
 | OpenFeatureStatus | web/src/components/cards/openfeature_status/index.ts | `openfeature_status` |
-| CrossplaneStatus | web/src/components/cards/crossplane-status/index.ts | `crossplane_status` |
+| CrossplaneManagedResources | web/src/components/cards/crossplane-status/CrossplaneManagedResources.tsx | `crossplane_managed_resources` |
 
 ## Multi-Tenancy Cards
 
