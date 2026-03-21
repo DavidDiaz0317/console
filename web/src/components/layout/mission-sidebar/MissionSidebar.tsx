@@ -554,7 +554,10 @@ export function MissionSidebar() {
           <p className="text-xs text-muted-foreground truncate mb-2">{showSavedToast}</p>
           {toastCountdown > 0 && (
             <p className="text-2xs text-muted-foreground/70 mb-2">
-              Your mission is ready. Click <strong className="text-foreground">Run</strong> below to start, or view its steps first.
+              {isDemoMode()
+                ? 'Use the button below to get started.'
+                : <>Your mission is ready. Click <strong className="text-foreground">Run</strong> below to start, or view its steps first.</>
+              }
             </p>
           )}
           <button

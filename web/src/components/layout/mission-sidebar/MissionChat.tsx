@@ -680,16 +680,18 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
         ) : mission.status === 'saved' ? (
           <div className="flex flex-col gap-2">
             {isNetlifyDeployment ? (
-              <p className="text-xs text-center text-muted-foreground px-2">
-                Mission imported.{' '}
+              <div className="flex flex-col gap-2">
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-install'))}
-                  className="underline hover:text-foreground transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
-                  Install KubeStellar Console locally
-                </button>{' '}
-                to run it against your clusters.
-              </p>
+                  <Play className="w-4 h-4" />
+                  Install KubeStellar Console
+                </button>
+                <p className="text-xs text-center text-muted-foreground px-2">
+                  Run this mission against your own clusters
+                </p>
+              </div>
             ) : isDemoMode ? (
               <div className="flex flex-col gap-2">
                 <button

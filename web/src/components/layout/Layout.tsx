@@ -25,6 +25,7 @@ import { TourOverlay, TourPrompt } from '../onboarding/Tour'
 import { TourProvider } from '../../hooks/useTour'
 import { SetupInstructionsDialog } from '../setup/SetupInstructionsDialog'
 import { InClusterAgentDialog } from '../setup/InClusterAgentDialog'
+import { AgentSetupDialog } from '../agent/AgentSetupDialog'
 import { KeepAliveOutlet } from './KeepAliveOutlet'
 import { UpdateProgressBanner } from '../updates/UpdateProgressBanner'
 import { useUpdateProgress } from '../../hooks/useUpdateProgress'
@@ -528,6 +529,9 @@ export function Layout({ children }: LayoutProps) {
         isOpen={showInClusterAgentDialog}
         onClose={() => setShowInClusterAgentDialog(false)}
       />
+
+      {/* Agent Setup Dialog — shown when agent not connected; also triggered by open-agent-setup event */}
+      <AgentSetupDialog />
 
       {/* Backend connection lost snackbar — fixed bottom center */}
       {showBackendBanner && (
