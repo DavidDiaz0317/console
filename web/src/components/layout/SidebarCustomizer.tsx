@@ -77,26 +77,23 @@ function SortableItem({ item, onRemove, renderIcon }: SortableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        'flex items-center gap-2 p-2 rounded-lg bg-secondary/30',
+        'flex items-center gap-2 p-2 rounded-lg bg-secondary/30 cursor-grab active:cursor-grabbing touch-none',
         item.isCustom && 'border border-purple-500/20',
         isDragging && 'shadow-lg'
       )}
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing touch-none"
-      >
-        <GripVertical className="w-4 h-4 text-muted-foreground" />
-      </button>
+      <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       {renderIcon(item.icon, 'w-4 h-4 text-muted-foreground')}
       <span className="flex-1 text-sm text-foreground">{item.name}</span>
       <span className="text-xs text-muted-foreground">{item.href}</span>
       {/* Allow removing any item except the main Dashboard (/) */}
       {item.href !== '/' && (
         <button
-          onClick={() => onRemove(item.id)}
+          onClick={(e) => { e.stopPropagation(); onRemove(item.id) }}
+          onPointerDown={(e) => e.stopPropagation()}
           className="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400"
           title={t('sidebar.removeFromSidebar')}
         >

@@ -44,7 +44,7 @@ interface SaveResolutionDialogProps {
 }
 
 /** Timeout for AI summary generation WebSocket request */
-const AI_SUMMARY_TIMEOUT_MS = 30_000
+const AI_SUMMARY_TIMEOUT_MS = 60_000
 
 /**
  * Detect whether an error message indicates an AI provider rate limit / quota error.
@@ -174,7 +174,7 @@ Return ONLY valid JSON, no markdown code blocks or explanation.`
 
     ws.onerror = () => {
       clearTimeout(timeout)
-      reject(new Error('WebSocket connection failed'))
+      reject(new Error('Could not reach the local agent — make sure kc-agent is running'))
     }
 
     ws.onclose = () => {

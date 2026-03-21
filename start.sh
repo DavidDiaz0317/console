@@ -254,8 +254,12 @@ cleanup() {
     echo ""
     echo "Shutting down console..."
     [ -n "$CONSOLE_PID" ] && kill "$CONSOLE_PID" 2>/dev/null || true
-    echo "  kc-agent continues running in the background (PID file: $INSTALL_DIR/kc-agent.pid)"
-    echo "  To stop it: kill \$(cat $INSTALL_DIR/kc-agent.pid)"
+    if [ -f "$INSTALL_DIR/kc-agent.pid" ] && kill -0 "$(cat "$INSTALL_DIR/kc-agent.pid")" 2>/dev/null; then
+        echo "  kc-agent continues running in the background (PID file: $INSTALL_DIR/kc-agent.pid)"
+        echo "  To stop it: kill \$(cat $INSTALL_DIR/kc-agent.pid)"
+    else
+        echo "  kc-agent has stopped."
+    fi
     exit 0
 }
 trap cleanup SIGINT SIGTERM

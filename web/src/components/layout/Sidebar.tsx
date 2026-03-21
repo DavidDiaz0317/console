@@ -108,9 +108,12 @@ export function Sidebar() {
   const dragCounter = useRef(0)
 
   // Cluster status counts (using deduplicated clusters to avoid double-counting same server with different contexts)
-  const healthyClusters = deduplicatedClusters.filter((c) => c.healthy === true && c.reachable !== false).length
-  const unhealthyClusters = deduplicatedClusters.filter((c) => c.healthy === false && c.reachable !== false).length
+  // A cluster is "offline" if reachable===false; "healthy" if reachable and healthy===true;
+  // everything else (unhealthy, still loading, unknown) counts as unhealthy so the three
+  // buckets always add up to the total cluster count.
   const unreachableClusters = deduplicatedClusters.filter((c) => c.reachable === false).length
+  const healthyClusters = deduplicatedClusters.filter((c) => c.healthy === true && c.reachable !== false).length
+  const unhealthyClusters = deduplicatedClusters.length - healthyClusters - unreachableClusters
 
   // Handle Add Card click - work with current dashboard
   const handleAddCardClick = () => {

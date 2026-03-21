@@ -1,6 +1,6 @@
 import {
   Folder, FolderOpen, FileJson, ChevronRight, ChevronDown,
-  Loader2, Globe, Github, HardDrive, Trash2,
+  Loader2, Globe, Github, HardDrive, Trash2, Plus,
 } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 import type { TreeNode } from './types'
@@ -13,6 +13,7 @@ export function TreeNodeItem({
   onToggle,
   onSelect,
   onRemove,
+  onAdd,
 }: {
   node: TreeNode
   depth: number
@@ -22,6 +23,8 @@ export function TreeNodeItem({
   onSelect: (node: TreeNode) => void
   /** Optional callback to remove a watched path/repo. When provided and the node is a watched child (source is 'local' or 'github'), a delete button is rendered. */
   onRemove?: (node: TreeNode) => void
+  /** Optional callback for the root-level add (+) button. Rendered in the header row when depth===0. */
+  onAdd?: () => void
 }) {
   const isExpanded = expandedNodes.has(node.id)
   const isSelected = selectedPath === node.id
@@ -39,9 +42,11 @@ export function TreeNodeItem({
     }
   }
 
+  const showHeaderActions = showRemoveButton || (depth === 0 && !!onAdd)
+
   return (
     <div>
-      <div className={showRemoveButton ? 'flex items-center' : undefined}>
+      <div className={showHeaderActions ? 'flex items-center' : undefined}>
         <button
           onClick={() => {
             if (isDir) onToggle(node)
@@ -52,7 +57,7 @@ export function TreeNodeItem({
             isSelected
               ? 'bg-purple-500/15 text-purple-400'
               : 'text-foreground hover:bg-secondary/50',
-            showRemoveButton && 'flex-1 min-w-0'
+            showHeaderActions && 'flex-1 min-w-0'
           )}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
@@ -80,6 +85,16 @@ export function TreeNodeItem({
           <span className="truncate flex-1">{node.name}</span>
           {depth === 0 && sourceIcon()}
         </button>
+        {/* Root-level add button — rendered in the header row so it stays anchored to the header */}
+        {depth === 0 && onAdd && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAdd() }}
+            className="p-2 min-h-11 min-w-11 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+            title="Add"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        )}
         {showRemoveButton && (
           <button
             onClick={(e) => {

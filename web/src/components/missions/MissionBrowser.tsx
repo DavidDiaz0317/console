@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Search, X, Upload, Filter, Grid3X3, List, Sparkles, CheckCircle,
-  Loader2, Plus, ExternalLink, RefreshCw,
+  Loader2, ExternalLink, RefreshCw,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { api } from '../../lib/api'
@@ -1274,47 +1274,29 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
           <div className="p-3 space-y-1">
             {treeNodes.map((node) => (
               <div key={node.id}>
-                <div className="flex items-center">
-                  <div className="flex-1 min-w-0">
-                    <TreeNodeItem
-                      node={node}
-                      depth={0}
-                      expandedNodes={expandedNodes}
-                      selectedPath={selectedPath}
-                      onToggle={toggleNode}
-                      onSelect={selectNode}
-                      onRemove={node.id === 'github' ? (child) => {
-                        const updated = watchedRepos.filter(r => r !== child.path)
-                        setWatchedRepos(updated)
-                        saveWatchedRepos(updated)
-                        showToast(`Removed repository "${child.path}"`, 'info')
-                      } : node.id === 'local' ? (child) => {
-                        const updated = watchedPaths.filter(p => p !== child.path)
-                        setWatchedPaths(updated)
-                        saveWatchedPaths(updated)
-                        showToast(`Removed path "${child.path}"`, 'info')
-                      } : undefined}
-                    />
-                  </div>
-                  {/* Add button for repos and local */}
-                  {node.id === 'github' && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setAddingRepo(!addingRepo) }}
-                      className="p-2 min-h-11 min-w-11 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                      title="Add repository to watch"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {node.id === 'local' && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setAddingPath(!addingPath) }}
-                      className="p-2 min-h-11 min-w-11 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-                      title="Add file path to watch"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                <div>
+                  <TreeNodeItem
+                    node={node}
+                    depth={0}
+                    expandedNodes={expandedNodes}
+                    selectedPath={selectedPath}
+                    onToggle={toggleNode}
+                    onSelect={selectNode}
+                    onRemove={node.id === 'github' ? (child) => {
+                      const updated = watchedRepos.filter(r => r !== child.path)
+                      setWatchedRepos(updated)
+                      saveWatchedRepos(updated)
+                      showToast(`Removed repository "${child.path}"`, 'info')
+                    } : node.id === 'local' ? (child) => {
+                      const updated = watchedPaths.filter(p => p !== child.path)
+                      setWatchedPaths(updated)
+                      saveWatchedPaths(updated)
+                      showToast(`Removed path "${child.path}"`, 'info')
+                    } : undefined}
+                    onAdd={node.id === 'github' ? () => setAddingRepo(!addingRepo)
+                      : node.id === 'local' ? () => setAddingPath(!addingPath)
+                      : undefined}
+                  />
                 </div>
 
                 {/* Inline add repo form */}

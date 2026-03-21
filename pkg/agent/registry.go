@@ -236,7 +236,7 @@ func InitializeProviders() error {
 	registry.Register(NewCopilotCLIProvider())
 	registry.Register(NewGeminiCLIProvider())
 	registry.Register(NewAntigravityProvider())
-	registry.Register(NewGHCopilotProvider())
+	// GHCopilot is deprecated — the gh-copilot extension runs but executes no commands
 
 	// NOTE: API-only agents (Claude API, OpenAI, Gemini) and IDE-based agents
 	// (Cursor, Windsurf, Cline, etc.) are intentionally not registered.

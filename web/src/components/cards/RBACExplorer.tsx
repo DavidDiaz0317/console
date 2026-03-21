@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { StatusBadge } from '../ui/StatusBadge'
@@ -100,9 +100,9 @@ export function RBACExplorer() {
   }, [])
 
   // Initial load
-  useState(() => {
-    loadData()
-  })
+  useEffect(() => {
+    return loadData()
+  }, [])
 
   // ---- Loading / error state reporting ------------------------------------
   const { showSkeleton, showEmptyState } = useCardLoadingState({

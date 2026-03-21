@@ -84,9 +84,9 @@ export function useConfigMaps(cluster?: string, namespace?: string) {
       setConfigMaps(data.configmaps || [])
       setError(null)
     } catch {
-      // On REST failure, fall back to demo ConfigMaps and suppress the error
-      // because ConfigMaps are optional for the MCP UI.
-      setConfigMaps(filterDemoConfigMaps(cluster, namespace))
+      // On REST failure, ConfigMaps are optional — suppress the error.
+      // In demo mode show demo data; in live mode return empty array.
+      setConfigMaps(isDemoMode() ? filterDemoConfigMaps(cluster, namespace) : [])
       setError(null)
     } finally {
       setIsLoading(false)
@@ -187,8 +187,9 @@ export function useSecrets(cluster?: string, namespace?: string) {
       setSecrets(data.secrets || [])
       setError(null)
     } catch {
-      // REST failed; fall back to demo secrets and don't show an error since secrets are optional.
-      setSecrets(filterDemoSecrets(cluster, namespace))
+      // On REST failure, secrets are optional — suppress the error.
+      // In demo mode show demo data; in live mode return empty array.
+      setSecrets(isDemoMode() ? filterDemoSecrets(cluster, namespace) : [])
       setError(null)
     } finally {
       setIsLoading(false)
@@ -263,9 +264,9 @@ export function useServiceAccounts(cluster?: string, namespace?: string) {
       setServiceAccounts(data.serviceAccounts || [])
       setError(null)
     } catch {
-      // On REST failure, populate demo service accounts and suppress errors
-      // since ServiceAccounts are optional for the MCP UI.
-      setServiceAccounts(filterDemoServiceAccounts(cluster, namespace))
+      // On REST failure, service accounts are optional — suppress the error.
+      // In demo mode show demo accounts; in live mode return empty array.
+      setServiceAccounts(isDemoMode() ? filterDemoServiceAccounts(cluster, namespace) : [])
       setError(null)
     } finally {
       setIsLoading(false)
