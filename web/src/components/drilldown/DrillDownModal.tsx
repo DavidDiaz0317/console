@@ -1,7 +1,7 @@
 import { useEffect, Suspense } from 'react'
 import { safeLazy } from '../../lib/safeLazy'
 import { useTranslation } from 'react-i18next'
-import { Box, Server, Layers, Rocket, FileText, Zap, Cpu, Lock, User, Bell, Ship, GitBranch, Settings, Shield, Package } from 'lucide-react'
+import { Box, Server, Layers, Rocket, FileText, Zap, Cpu, Lock, User, Bell, Ship, GitBranch, Settings, Shield, Package, DollarSign } from 'lucide-react'
 import { useDrillDown } from '../../hooks/useDrillDown'
 import { useMobile } from '../../hooks/useMobile'
 // Lazy load large components (>300 lines) for better performance
@@ -24,6 +24,7 @@ const HelmReleaseDrillDown = safeLazy(() => import('./views/HelmReleaseDrillDown
 const ConfigMapDrillDown = safeLazy(() => import('./views/ConfigMapDrillDown'), 'ConfigMapDrillDown')
 const BuildpackDrillDown = safeLazy(() => import('./views/BuildpackDrillDown'), 'BuildpackDrillDown')
 const RBACDrillDown = safeLazy(() => import('./views/RBACDrillDown'), 'RBACDrillDown')
+const CostDrillDown = safeLazy(() => import('./views/CostDrillDown'), 'CostDrillDown')
 
 const EventsDrillDown = safeLazy(() => import('./views/EventsDrillDown'), 'EventsDrillDown')
 
@@ -80,6 +81,7 @@ const getViewIcon = (type: string) => {
     case 'buildpack': return <Package className="w-4 h-4 text-blue-400" />
     case 'crd': return <Package className="w-4 h-4 text-purple-400" />
     case 'drift': return <GitBranch className="w-4 h-4 text-orange-400" />
+    case 'cost': return <DollarSign className="w-4 h-4 text-green-400" />
     // Multi-cluster summary views
     case 'all-clusters': return <Server className="w-4 h-4 text-blue-400" />
     case 'all-namespaces': return <Layers className="w-4 h-4 text-purple-400" />
@@ -207,6 +209,8 @@ export function DrillDownModal() {
         return <DriftDrillDown data={data} />
       case 'rbac':
         return <RBACDrillDown data={data} />
+      case 'cost':
+        return <CostDrillDown data={data} />
       // Multi-cluster summary views
       case 'all-clusters':
       case 'all-namespaces':
