@@ -169,14 +169,19 @@ export function ActiveAlerts() {
 
   const handleAlertClick = (alert: Alert) => {
     if (alert.cluster) {
-      drillToAlert(alert.cluster, alert.namespace, alert.ruleName, {
+      const alertKey =
+        alert.id ??
+        (alert.resource ? `${alert.ruleName}:${alert.resource}` : alert.ruleName)
+
+      drillToAlert(alert.cluster, alert.namespace, alertKey, {
         severity: alert.severity,
         state: alert.status,
         message: alert.message,
         startsAt: alert.firedAt,
-        labels: alert.details?.labels as Record<string, string> || {},
-        annotations: alert.details?.annotations as Record<string, string> || {},
+        labels: (alert.details?.labels as Record<string, string> | undefined) ?? {},
+        annotations: (alert.details?.annotations as Record<string, string> | undefined) ?? {},
         source: alert.details?.source as string,
+        ruleName: alert.ruleName,
       })
     }
   }
