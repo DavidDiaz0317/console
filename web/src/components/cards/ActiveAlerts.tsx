@@ -9,7 +9,7 @@ import {
 import { useAlerts } from '../../hooks/useAlerts'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useGlobalFilters, type SeverityLevel } from '../../hooks/useGlobalFilters'
-import { useDrillDown } from '../../hooks/useDrillDown'
+import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useMissions } from '../../hooks/useMissions'
 import type { Alert, AlertSeverity } from '../../types/alerts'
 import { CardControls } from '../ui/CardControls'
@@ -69,7 +69,7 @@ export function ActiveAlerts() {
     hasAnyData: true,
     isDemoData: isDemoMode,
   })
-  const { open } = useDrillDown()
+  const { drillToAlert } = useDrillDownActions()
   const { missions, setActiveMission, openSidebar } = useMissions()
 
   const [showAcknowledged, setShowAcknowledged] = useState(false)
@@ -169,10 +169,14 @@ export function ActiveAlerts() {
 
   const handleAlertClick = (alert: Alert) => {
     if (alert.cluster) {
-      open({
-        type: 'cluster',
-        title: alert.cluster,
-        data: { cluster: alert.cluster, alert },
+      drillToAlert(alert.cluster, alert.namespace, alert.ruleName, {
+        severity: alert.severity,
+        state: alert.status,
+        message: alert.message,
+        startsAt: alert.firedAt,
+        labels: alert.details?.labels as Record<string, string> || {},
+        annotations: alert.details?.annotations as Record<string, string> || {},
+        source: alert.details?.source as string,
       })
     }
   }
