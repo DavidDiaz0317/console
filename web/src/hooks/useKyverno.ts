@@ -356,7 +356,7 @@ export function useKyverno() {
   const fetchInProgress = useRef(false)
 
   const clusters = useMemo(() =>
-    allClusters.filter(c => c.reachable !== false).map(c => c.name),
+    allClusters.filter(c => c.reachable === true).map(c => c.name),
     [allClusters]
   )
 

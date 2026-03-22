@@ -129,7 +129,7 @@ function getReachableClusters(): string[] {
   // Use local agent's cluster cache - it has up-to-date reachability info
   if (clusterCacheRef.clusters.length > 0) {
     return clusterCacheRef.clusters
-      .filter(c => c.reachable !== false && !c.name.includes('/'))
+      .filter(c => c.reachable === true && !c.name.includes('/'))
       .map(c => c.name)
   }
   return []
@@ -146,7 +146,7 @@ async function fetchClusters(): Promise<string[]> {
   // Fall back to backend API
   const data = await fetchAPI<{ clusters: Array<{ name: string; reachable?: boolean }> }>('clusters')
   return (data.clusters || [])
-    .filter(c => c.reachable !== false && !c.name.includes('/'))
+    .filter(c => c.reachable === true && !c.name.includes('/'))
     .map(c => c.name)
 }
 
@@ -320,7 +320,7 @@ function getAgentClusters(): Array<{ name: string; context?: string }> {
   // Skip long context-path names (contain '/') — these are duplicates of short-named aliases
   // e.g. "default/api-fmaas-vllm-d-...:6443/..." duplicates "vllm-d"
   return clusterCacheRef.clusters
-    .filter(c => c.reachable !== false && !c.name.includes('/'))
+    .filter(c => c.reachable === true && !c.name.includes('/'))
     .map(c => ({ name: c.name, context: c.context }))
 }
 
@@ -1499,7 +1499,7 @@ async function fetchWorkloadsFromAgent(onProgress?: (partial: Workload[]) => voi
   if (isAgentUnavailable()) return null
 
   const clusters = clusterCacheRef.clusters
-    .filter(c => c.reachable !== false && !c.name.includes('/'))
+    .filter(c => c.reachable === true && !c.name.includes('/'))
   if (clusters.length === 0) return null
   const accumulated: Workload[] = []
 

@@ -225,7 +225,7 @@ export function useCertManager() {
 
   // Filter to reachable clusters
   const clusters = useMemo(() =>
-    allClusters.filter(c => c.reachable !== false).map(c => c.name),
+    allClusters.filter(c => c.reachable === true).map(c => c.name),
     [allClusters]
   )
 
