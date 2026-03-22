@@ -24,11 +24,10 @@ const HelmReleaseDrillDown = safeLazy(() => import('./views/HelmReleaseDrillDown
 const ConfigMapDrillDown = safeLazy(() => import('./views/ConfigMapDrillDown'), 'ConfigMapDrillDown')
 const BuildpackDrillDown = safeLazy(() => import('./views/BuildpackDrillDown'), 'BuildpackDrillDown')
 const RBACDrillDown = safeLazy(() => import('./views/RBACDrillDown'), 'RBACDrillDown')
-const CostDrillDown = safeLazy(() => import('./views/CostDrillDown'), 'CostDrillDown')
-
 const EventsDrillDown = safeLazy(() => import('./views/EventsDrillDown'), 'EventsDrillDown')
 
 // Keep smaller components as direct imports for immediate loading
+import { CostDrillDown } from './views/CostDrillDown'
 import { NamespaceDrillDown } from './views/NamespaceDrillDown'
 import { LogsDrillDown } from './views/LogsDrillDown'
 import { NodeDrillDown } from './views/NodeDrillDown'

@@ -26,8 +26,8 @@ export function CostDrillDown({ data }: Props) {
   const memory = data.memory as number | undefined
   const gpus = data.gpus as number | undefined
   const provider = data.provider as string | undefined
-  const costType = data.costType as string | undefined
-  const totalMonthly = data.totalMonthly as number | undefined
+  const costType = (data.costType ?? (data as { type?: unknown }).type) as string | undefined
+  const totalMonthly = (data.totalMonthly ?? (data as { totalCost?: unknown }).totalCost) as number | undefined
 
   const isClusterView = cluster !== 'all'
 
