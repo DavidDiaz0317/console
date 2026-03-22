@@ -15,6 +15,22 @@ import type { ClusterResourceTreeProps, TreeLens, SortByOption, NamespaceResourc
 import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../../ui/StatusBadge'
 
+/** Maximum items to cache per resource type per cluster, to prevent unbounded memory growth */
+const MAX_CACHED_PER_TYPE = 500
+
+/** Renders a "+N more" indicator when a list is truncated by the render limit */
+function TruncatedIndicator({ total, shown, indent }: { total: number; shown: number; indent: number }) {
+  if (shown >= total) return null
+  return (
+    <div
+      className="text-xs text-muted-foreground py-1 px-2"
+      style={{ paddingLeft: `${indent * 16 + 8}px` }}
+    >
+      +{total - shown} more
+    </div>
+  )
+}
+
 export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProps) {
   const { t } = useTranslation()
   const { deduplicatedClusters: clusters, isLoading } = useClusters()
@@ -32,6 +48,9 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
   const [limit, setLimit] = useState<number | 'unlimited'>(5)
   const [sortBy, setSortBy] = useState<SortByOption>('name')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+  // Effective render limit — applies to all resource lists inside the tree
+  const renderLimit = limit === 'unlimited' ? Infinity : limit
 
   // Local cluster filter via shared hook
   const {
@@ -116,9 +135,9 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
       setClusterDataCache(prev => {
         const next = new Map(prev)
         next.set(selectedCluster, {
-          nodes: allNodes.map(n => ({ name: n.name, status: n.status })),
-          namespaces: [...(allNamespaces || [])],
-          deployments: (allDeployments || []).map(d => ({
+          nodes: allNodes.slice(0, MAX_CACHED_PER_TYPE).map(n => ({ name: n.name, status: n.status })),
+          namespaces: [...(allNamespaces || [])].slice(0, MAX_CACHED_PER_TYPE),
+          deployments: (allDeployments || []).slice(0, MAX_CACHED_PER_TYPE).map(d => ({
             name: d.name,
             namespace: d.namespace,
             replicas: d.replicas,
@@ -126,45 +145,45 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
             status: d.status,
             image: d.image,
           })),
-          services: (allServices || []).map(s => ({
+          services: (allServices || []).slice(0, MAX_CACHED_PER_TYPE).map(s => ({
             name: s.name,
             namespace: s.namespace,
             type: s.type,
           })),
-          pvcs: (allPVCs || []).map(p => ({
+          pvcs: (allPVCs || []).slice(0, MAX_CACHED_PER_TYPE).map(p => ({
             name: p.name,
             namespace: p.namespace,
             status: p.status,
             capacity: p.capacity,
           })),
-          pods: (allPods || []).map(p => ({
+          pods: (allPods || []).slice(0, MAX_CACHED_PER_TYPE).map(p => ({
             name: p.name,
             namespace: p.namespace,
             status: p.status,
             restarts: p.restarts,
           })),
-          configmaps: (allConfigMaps || []).map(cm => ({
+          configmaps: (allConfigMaps || []).slice(0, MAX_CACHED_PER_TYPE).map(cm => ({
             name: cm.name,
             namespace: cm.namespace,
             dataCount: cm.dataCount || 0,
           })),
-          secrets: (allSecrets || []).map(s => ({
+          secrets: (allSecrets || []).slice(0, MAX_CACHED_PER_TYPE).map(s => ({
             name: s.name,
             namespace: s.namespace,
             type: s.type || 'Opaque',
           })),
-          serviceaccounts: (allServiceAccounts || []).map(sa => ({
+          serviceaccounts: (allServiceAccounts || []).slice(0, MAX_CACHED_PER_TYPE).map(sa => ({
             name: sa.name,
             namespace: sa.namespace,
           })),
-          jobs: (allJobs || []).map(j => ({
+          jobs: (allJobs || []).slice(0, MAX_CACHED_PER_TYPE).map(j => ({
             name: j.name,
             namespace: j.namespace,
             status: j.status,
             completions: j.completions,
             duration: j.duration,
           })),
-          hpas: (allHPAs || []).map(h => ({
+          hpas: (allHPAs || []).slice(0, MAX_CACHED_PER_TYPE).map(h => ({
             name: h.name,
             namespace: h.namespace,
             reference: h.reference,
@@ -172,28 +191,28 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
             maxReplicas: h.maxReplicas,
             currentReplicas: h.currentReplicas,
           })),
-          replicasets: (allReplicaSets || []).map(rs => ({
+          replicasets: (allReplicaSets || []).slice(0, MAX_CACHED_PER_TYPE).map(rs => ({
             name: rs.name,
             namespace: rs.namespace,
             replicas: rs.replicas,
             readyReplicas: rs.readyReplicas,
             ownerName: rs.ownerName,
           })),
-          statefulsets: (allStatefulSets || []).map(ss => ({
+          statefulsets: (allStatefulSets || []).slice(0, MAX_CACHED_PER_TYPE).map(ss => ({
             name: ss.name,
             namespace: ss.namespace,
             replicas: ss.replicas,
             readyReplicas: ss.readyReplicas,
             status: ss.status,
           })),
-          daemonsets: (allDaemonSets || []).map(ds => ({
+          daemonsets: (allDaemonSets || []).slice(0, MAX_CACHED_PER_TYPE).map(ds => ({
             name: ds.name,
             namespace: ds.namespace,
             desiredScheduled: ds.desiredScheduled,
             ready: ds.ready,
             status: ds.status,
           })),
-          cronjobs: (allCronJobs || []).map(cj => ({
+          cronjobs: (allCronJobs || []).slice(0, MAX_CACHED_PER_TYPE).map(cj => ({
             name: cj.name,
             namespace: cj.namespace,
             schedule: cj.schedule,
@@ -201,20 +220,20 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
             active: cj.active,
             lastSchedule: cj.lastSchedule,
           })),
-          ingresses: (allIngresses || []).map(ing => ({
+          ingresses: (allIngresses || []).slice(0, MAX_CACHED_PER_TYPE).map(ing => ({
             name: ing.name,
             namespace: ing.namespace,
             class: ing.class,
             hosts: ing.hosts || [],
             address: ing.address,
           })),
-          networkpolicies: (allNetworkPolicies || []).map(np => ({
+          networkpolicies: (allNetworkPolicies || []).slice(0, MAX_CACHED_PER_TYPE).map(np => ({
             name: np.name,
             namespace: np.namespace,
             policyTypes: np.policyTypes || [],
             podSelector: np.podSelector,
           })),
-          podIssues: (podIssues || []).map(p => ({
+          podIssues: (podIssues || []).slice(0, MAX_CACHED_PER_TYPE).map(p => ({
             name: p.name,
             namespace: p.namespace,
             status: p.status,
@@ -420,7 +439,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                       expandedNodes={expandedNodes}
                       toggleNode={toggleNode}
                     >
-                      {clusterData.nodes.map(node => (
+                      {clusterData.nodes.slice(0, renderLimit).map(node => (
                         <TreeNode
                           key={node.name}
                           id={`${clusterId}:node:${node.name}`}
@@ -434,6 +453,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                           toggleNode={toggleNode}
                         />
                       ))}
+                      <TruncatedIndicator total={clusterData.nodes.length} shown={renderLimit} indent={3} />
                     </TreeNode>
                   )}
 
@@ -449,7 +469,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                       expandedNodes={expandedNodes}
                       toggleNode={toggleNode}
                     >
-                      {visibleNs.map(ns => {
+                      {visibleNs.slice(0, renderLimit).map(ns => {
                         const nsId = `${clusterId}:ns:${ns}`
                         const nsData = namespaceResources.get(ns)!
                         const nsPodIssues = nsData.pods.filter(p => p.status !== 'Running' && p.status !== 'Succeeded').length
@@ -501,7 +521,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.deployments.map(dep => {
+                                {nsData.deployments.slice(0, renderLimit).map(dep => {
                                   const depId = `${nsId}:dep:${dep.name}`
                                   const depPods = getPodsForDeployment(namespaceResources, dep.name, ns)
                                   const isHealthy = dep.readyReplicas === dep.replicas
@@ -521,7 +541,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                       toggleNode={toggleNode}
                                     >
                                       {/* Pods under deployment */}
-                                      {depPods.length > 0 && depPods.map(pod => (
+                                      {depPods.length > 0 && depPods.slice(0, renderLimit).map(pod => (
                                         <TreeNode
                                           key={pod.name}
                                           id={`${depId}:pod:${pod.name}`}
@@ -536,9 +556,11 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                           toggleNode={toggleNode}
                                         />
                                       ))}
+                                      {depPods.length > renderLimit && <TruncatedIndicator total={depPods.length} shown={renderLimit} indent={6} />}
                                     </TreeNode>
                                   )
                                 })}
+                                <TruncatedIndicator total={nsData.deployments.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -556,7 +578,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.pods.map(pod => (
+                                {nsData.pods.slice(0, renderLimit).map(pod => (
                                   <TreeNode
                                     key={pod.name}
                                     id={`${nsId}:pod:${pod.name}`}
@@ -571,6 +593,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.pods.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -586,7 +609,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.services.map(svc => (
+                                {nsData.services.slice(0, renderLimit).map(svc => (
                                   <TreeNode
                                     key={svc.name}
                                     id={`${nsId}:svc:${svc.name}`}
@@ -601,6 +624,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.services.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -616,7 +640,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.pvcs.map(pvc => (
+                                {nsData.pvcs.slice(0, renderLimit).map(pvc => (
                                   <TreeNode
                                     key={pvc.name}
                                     id={`${nsId}:pvc:${pvc.name}`}
@@ -631,6 +655,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.pvcs.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -646,7 +671,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.configmaps.map(cm => (
+                                {nsData.configmaps.slice(0, renderLimit).map(cm => (
                                   <TreeNode
                                     key={cm.name}
                                     id={`${nsId}:cm:${cm.name}`}
@@ -660,6 +685,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.configmaps.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -675,7 +701,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.secrets.map(secret => (
+                                {nsData.secrets.slice(0, renderLimit).map(secret => (
                                   <TreeNode
                                     key={secret.name}
                                     id={`${nsId}:secret:${secret.name}`}
@@ -689,6 +715,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.secrets.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -704,7 +731,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.serviceaccounts.map(sa => (
+                                {nsData.serviceaccounts.slice(0, renderLimit).map(sa => (
                                   <TreeNode
                                     key={sa.name}
                                     id={`${nsId}:sa:${sa.name}`}
@@ -716,6 +743,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.serviceaccounts.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -731,7 +759,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.jobs.map(job => {
+                                {nsData.jobs.slice(0, renderLimit).map(job => {
                                   const isComplete = job.status === 'Complete'
                                   const isRunning = job.status === 'Running'
                                   return (
@@ -749,6 +777,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     />
                                   )
                                 })}
+                                <TruncatedIndicator total={nsData.jobs.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -764,7 +793,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.hpas.map(hpa => (
+                                {nsData.hpas.slice(0, renderLimit).map(hpa => (
                                   <TreeNode
                                     key={hpa.name}
                                     id={`${nsId}:hpa:${hpa.name}`}
@@ -778,6 +807,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.hpas.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -793,7 +823,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.replicasets.map(rs => {
+                                {nsData.replicasets.slice(0, renderLimit).map(rs => {
                                   const isHealthy = rs.readyReplicas === rs.replicas
                                   return (
                                     <TreeNode
@@ -810,6 +840,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     />
                                   )
                                 })}
+                                <TruncatedIndicator total={nsData.replicasets.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -825,7 +856,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.statefulsets.map(ss => {
+                                {nsData.statefulsets.slice(0, renderLimit).map(ss => {
                                   const isHealthy = ss.readyReplicas === ss.replicas
                                   return (
                                     <TreeNode
@@ -842,6 +873,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     />
                                   )
                                 })}
+                                <TruncatedIndicator total={nsData.statefulsets.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -857,7 +889,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.daemonsets.map(ds => {
+                                {nsData.daemonsets.slice(0, renderLimit).map(ds => {
                                   const isHealthy = ds.ready === ds.desiredScheduled
                                   return (
                                     <TreeNode
@@ -874,6 +906,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     />
                                   )
                                 })}
+                                <TruncatedIndicator total={nsData.daemonsets.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -889,7 +922,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.cronjobs.map(cj => (
+                                {nsData.cronjobs.slice(0, renderLimit).map(cj => (
                                   <TreeNode
                                     key={cj.name}
                                     id={`${nsId}:cj:${cj.name}`}
@@ -903,6 +936,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.cronjobs.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -918,7 +952,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.ingresses.map(ing => (
+                                {nsData.ingresses.slice(0, renderLimit).map(ing => (
                                   <TreeNode
                                     key={ing.name}
                                     id={`${nsId}:ing:${ing.name}`}
@@ -932,6 +966,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.ingresses.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
 
@@ -947,7 +982,7 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                 expandedNodes={expandedNodes}
                                 toggleNode={toggleNode}
                               >
-                                {nsData.networkpolicies.map(np => (
+                                {nsData.networkpolicies.slice(0, renderLimit).map(np => (
                                   <TreeNode
                                     key={np.name}
                                     id={`${nsId}:np:${np.name}`}
@@ -961,11 +996,13 @@ export function ClusterResourceTree({ config: _config }: ClusterResourceTreeProp
                                     toggleNode={toggleNode}
                                   />
                                 ))}
+                                <TruncatedIndicator total={nsData.networkpolicies.length} shown={renderLimit} indent={5} />
                               </TreeNode>
                             )}
                           </TreeNode>
                         )
                       })}
+                      <TruncatedIndicator total={visibleNs.length} shown={renderLimit} indent={3} />
                     </TreeNode>
                   )}
 
