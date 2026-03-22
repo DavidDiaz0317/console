@@ -104,14 +104,15 @@ export function ISO27001Audit({ config }: ISO27001AuditProps) {
     consecutiveFailures: cachedFailures,
   } = useCachedISO27001Audit(clusterConfig)
 
-  // 3. Switch between demo and live data
+  // 3. Switch between demo and live data (fall back to demo if fetch failed with no cache)
+  const useDemoData = isDemoMode || isDemoFallback
   const rawFindings = useMemo(
-    () => isDemoMode ? getDemoFindings() : cachedFindings,
-    [isDemoMode, cachedFindings]
+    () => useDemoData ? getDemoFindings() : cachedFindings,
+    [useDemoData, cachedFindings]
   )
-  const isLoading = isDemoMode ? false : cachedLoading
-  const isFailed = isDemoMode ? false : cachedFailed
-  const consecutiveFailures = isDemoMode ? 0 : cachedFailures
+  const isLoading = useDemoData ? false : cachedLoading
+  const isFailed = useDemoData ? false : cachedFailed
+  const consecutiveFailures = useDemoData ? 0 : cachedFailures
 
   // 4. Report card state
   const { showSkeleton, showEmptyState } = useCardLoadingState({

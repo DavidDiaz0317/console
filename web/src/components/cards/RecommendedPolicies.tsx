@@ -257,17 +257,17 @@ Deploy to ALL clusters with Kyverno installed. Proceed step by step.`,
 
 function RecommendedPoliciesInternal({ config: _config }: CardConfig) {
   const { t } = useTranslation('cards')
-  const { statuses: kyvernoStatuses, isLoading: kyvernoLoading, isRefreshing: kyvernoRefreshing, installed: kyvernoInstalled, isDemoData: kyvernoDemoData, clustersChecked: kyvernoChecked, totalClusters: kyvernoTotal } = useKyverno()
-  const { isLoading: kubescapeLoading, isRefreshing: kubescapeRefreshing, installed: kubescapeInstalled, isDemoData: kubescapeDemoData, clustersChecked: kubescapeChecked, totalClusters: kubescapeTotal } = useKubescape()
-  const { isLoading: trivyLoading, isRefreshing: trivyRefreshing, installed: trivyInstalled, isDemoData: trivyDemoData, clustersChecked: trivyChecked, totalClusters: trivyTotal } = useTrivy()
+  const { statuses: kyvernoStatuses, isLoading: kyvernoLoading, installed: kyvernoInstalled, isDemoData: kyvernoDemoData, clustersChecked: kyvernoChecked, totalClusters: kyvernoTotal } = useKyverno()
+  const { isLoading: kubescapeLoading, installed: kubescapeInstalled, isDemoData: kubescapeDemoData, clustersChecked: kubescapeChecked, totalClusters: kubescapeTotal } = useKubescape()
+  const { isLoading: trivyLoading, installed: trivyInstalled, isDemoData: trivyDemoData, clustersChecked: trivyChecked, totalClusters: trivyTotal } = useTrivy()
   const { deduplicatedClusters } = useClusters()
   const { startMission } = useMissions()
   const { selectedClusters } = useGlobalFilters()
   const { isDemoMode } = useDemoMode()
   const [expandedCategory, setExpandedCategory] = useState<RecommendationCategory | null>(null)
 
-  const isLoading = kyvernoLoading || kubescapeLoading || trivyLoading
-  const isRefreshing = kyvernoRefreshing || kubescapeRefreshing || trivyRefreshing
+  // Card is only "loading" when ALL tools are still loading — show partial results ASAP
+  const isLoading = kyvernoLoading && kubescapeLoading && trivyLoading
   const isDemoData = isDemoMode || kyvernoDemoData || kubescapeDemoData || trivyDemoData
 
   /** Combined progressive streaming progress across all three tools */
@@ -396,8 +396,8 @@ Deploy each policy to every cluster where it's missing. Proceed cluster by clust
 
   // No tools installed — prompt to get started (but only after scanning is complete)
   if (!kyvernoInstalled && !kubescapeInstalled && !trivyInstalled && !isDemoData) {
-    // Still scanning — show loading state instead of definitive empty state
-    if (isLoading || isRefreshing) {
+    // Still scanning — show loading state only while NO tool has finished yet
+    if (isLoading) {
       return (
         <div className="space-y-3">
           <div className="flex flex-col items-center justify-center py-6 text-center">
@@ -465,8 +465,8 @@ Deploy each policy to every cluster where it's missing. Proceed cluster by clust
         )}
       </div>
 
-      {/* Inline progress ring while still scanning */}
-      {!allChecked && (isLoading || isRefreshing) && totalChecking > 0 && (
+      {/* Inline progress ring while still scanning remaining tools */}
+      {!allChecked && !isLoading && (kyvernoLoading || kubescapeLoading || trivyLoading) && totalChecking > 0 && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <ProgressRing progress={minChecked / totalChecking} size={14} strokeWidth={1.5} />
           <span>{t('recommendedPolicies.scanningClusters')}</span>
