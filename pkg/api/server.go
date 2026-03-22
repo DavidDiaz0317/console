@@ -127,6 +127,8 @@ type Config struct {
 	BrandHostedDomain string // HOSTED_DOMAIN — domain for demo mode (default: "console.kubestellar.io")
 	// Watchdog support: when set, the backend listens on this port instead of Port
 	BackendPort int
+	// TLSEnabled indicates the watchdog is serving HTTPS — affects OAuth callback URLs
+	TLSEnabled bool
 }
 
 // Server represents the API server
@@ -1051,6 +1053,7 @@ func preCompressedStatic(root string) fiber.Handler {
 
 // In production (non-dev), frontend and backend are served from the same origin,
 // so we use FrontendURL. In dev mode, they run on separate ports.
+// When TLS is enabled on the watchdog, the scheme is https.
 func (s *Server) backendURL() string {
 	if !s.config.DevMode && s.config.FrontendURL != "" {
 		return s.config.FrontendURL
@@ -1059,7 +1062,11 @@ func (s *Server) backendURL() string {
 	if s.config.BackendPort > 0 {
 		port = s.config.BackendPort
 	}
-	return fmt.Sprintf("http://localhost:%d", port)
+	scheme := "http"
+	if s.config.TLSEnabled {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://localhost:%d", scheme, port)
 }
 
 // Start shuts down the temporary loading server and starts the real Fiber app.
@@ -1240,6 +1247,8 @@ func LoadConfigFromEnv() Config {
 		BrandHostedDomain: getEnvOrDefault("HOSTED_DOMAIN", "console.kubestellar.io"),
 		// Watchdog backend port override
 		BackendPort: backendPort,
+		// TLS enabled on watchdog (affects OAuth callback URL scheme)
+		TLSEnabled: os.Getenv("TLS_ENABLED") == "true",
 	}
 }
 

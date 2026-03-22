@@ -2,9 +2,16 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -35,12 +42,17 @@ const (
 	watchdogDefaultBackendPort  = 8081
 	watchdogDefaultListenPort   = 8080
 	watchdogStageFile           = "/tmp/.kc-startup-stage"
+	watchdogTLSDir              = "./data/tls"
+	watchdogTLSCertFile         = "./data/tls/localhost.crt"
+	watchdogTLSKeyFile          = "./data/tls/localhost.key"
+	watchdogCertValidity        = 365 * 24 * time.Hour // 1 year
 )
 
 // WatchdogConfig holds configuration for the watchdog reverse proxy.
 type WatchdogConfig struct {
 	ListenPort  int
 	BackendPort int
+	TLSEnabled  bool
 }
 
 // runWatchdog starts the watchdog reverse proxy. It proxies all traffic to the
@@ -65,6 +77,11 @@ func runWatchdog(cfg WatchdogConfig) error {
 
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(backendURL)
+
+	// Flush immediately so SSE events are not buffered. Without this the
+	// reverse proxy accumulates response bytes and only forwards them when
+	// its internal buffer fills, which defeats the purpose of server-sent events.
+	proxy.FlushInterval = -1
 
 	// Custom transport with managed connection pool and timeouts.
 	// DisableCompression prevents the Transport from adding Accept-Encoding: gzip
@@ -190,9 +207,21 @@ func runWatchdog(cfg WatchdogConfig) error {
 		srv.Shutdown(shutdownCtx)
 	}()
 
-	log.Printf("[Watchdog] Listening on %s, proxying to %s", addr, backendURL.String())
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("watchdog listen error: %w", err)
+	if cfg.TLSEnabled {
+		certFile, keyFile, err := ensureSelfSignedCert()
+		if err != nil {
+			return fmt.Errorf("watchdog TLS setup error: %w", err)
+		}
+		log.Printf("[Watchdog] HTTPS/HTTP2 on %s, proxying to %s", addr, backendURL.String())
+		log.Printf("[Watchdog] NOTE: Browser will show a certificate warning for the self-signed cert — click Advanced > Proceed to accept it")
+		if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("watchdog TLS listen error: %w", err)
+		}
+	} else {
+		log.Printf("[Watchdog] HTTP on %s, proxying to %s", addr, backendURL.String())
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("watchdog listen error: %w", err)
+		}
 	}
 	return nil
 }
@@ -282,4 +311,105 @@ func readStartupStage() string {
 // writePidFile writes the current process ID to the given file path.
 func writePidFile(path string) error {
 	return os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), watchdogPidFilePerms)
+}
+
+// ensureSelfSignedCert checks for existing TLS cert/key files and generates
+// new ones if they are missing or expired. Returns the paths to the cert and
+// key files. The certificate is a self-signed ECDSA P-256 cert valid for
+// localhost, 127.0.0.1, and ::1 with a 1-year validity period.
+func ensureSelfSignedCert() (certFile, keyFile string, err error) {
+	certFile = watchdogTLSCertFile
+	keyFile = watchdogTLSKeyFile
+
+	// Check if existing cert/key are present and not expired
+	if certValid(certFile) {
+		log.Printf("[Watchdog] Using existing TLS cert: %s", certFile)
+		return certFile, keyFile, nil
+	}
+
+	log.Printf("[Watchdog] Generating self-signed TLS certificate for localhost...")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(watchdogTLSDir, 0755); err != nil {
+		return "", "", fmt.Errorf("create TLS dir: %w", err)
+	}
+
+	// Generate ECDSA P-256 private key
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return "", "", fmt.Errorf("generate key: %w", err)
+	}
+
+	// Build X.509 certificate template
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return "", "", fmt.Errorf("generate serial: %w", err)
+	}
+
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"KubeStellar Console (self-signed)"},
+			CommonName:   "localhost",
+		},
+		NotBefore:             now,
+		NotAfter:              now.Add(watchdogCertValidity),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"localhost"},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+	}
+
+	// Self-sign the certificate
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return "", "", fmt.Errorf("create certificate: %w", err)
+	}
+
+	// Write cert PEM
+	certOut, err := os.Create(certFile)
+	if err != nil {
+		return "", "", fmt.Errorf("create cert file: %w", err)
+	}
+	defer certOut.Close()
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: certDER}); err != nil {
+		return "", "", fmt.Errorf("write cert PEM: %w", err)
+	}
+
+	// Write key PEM
+	keyDER, err := x509.MarshalECPrivateKey(privateKey)
+	if err != nil {
+		return "", "", fmt.Errorf("marshal key: %w", err)
+	}
+	keyOut, err := os.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return "", "", fmt.Errorf("create key file: %w", err)
+	}
+	defer keyOut.Close()
+	if err := pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}); err != nil {
+		return "", "", fmt.Errorf("write key PEM: %w", err)
+	}
+
+	log.Printf("[Watchdog] Generated self-signed TLS cert (valid until %s)", template.NotAfter.Format("2006-01-02"))
+	return certFile, keyFile, nil
+}
+
+// certValid returns true if the cert file exists and is not expired.
+func certValid(certFile string) bool {
+	data, err := os.ReadFile(certFile)
+	if err != nil {
+		return false
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return false
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false
+	}
+	// Consider cert invalid if it expires within 7 days
+	return time.Now().Add(7 * 24 * time.Hour).Before(cert.NotAfter)
 }

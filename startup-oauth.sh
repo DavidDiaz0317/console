@@ -19,8 +19,8 @@
 #
 # Setup:
 #   1. Create a GitHub OAuth App at https://github.com/settings/developers
-#      - Homepage URL: http://localhost:8080 (or http://localhost:5174 with --dev)
-#      - Callback URL: http://localhost:8080/auth/github/callback
+#      - Homepage URL: https://localhost:8080 (or http://localhost:5174 with --dev)
+#      - Callback URL: https://localhost:8080/auth/github/callback
 #   2. Create a .env file:
 #      GITHUB_CLIENT_ID=<your-client-id>
 #      GITHUB_CLIENT_SECRET=<your-client-secret>
@@ -182,8 +182,8 @@ if [ -z "$GITHUB_CLIENT_ID" ]; then
     echo ""
     echo "Or create a GitHub OAuth App at:"
     echo "  https://github.com/settings/developers"
-    echo "  Homepage URL: http://localhost:8080"
-    echo "  Callback URL: http://localhost:8080/auth/github/callback"
+    echo "  Homepage URL: https://localhost:8080"
+    echo "  Callback URL: https://localhost:8080/auth/github/callback"
     exit 1
 fi
 
@@ -201,13 +201,14 @@ fi
 # Environment
 unset CLAUDECODE  # Allow AI Missions to spawn claude-code even when started from a Claude Code session
 export SKIP_ONBOARDING=true
+export TLS_ENABLED=true
 if [ "$USE_DEV_SERVER" = true ]; then
     export DEV_MODE=true
     export FRONTEND_URL=http://localhost:5174
 else
     export DEV_MODE=false
-    # Frontend served by Go backend on same port — no separate Vite process needed
-    export FRONTEND_URL=http://localhost:8080
+    # Frontend served via watchdog with TLS — browser connects over HTTPS
+    export FRONTEND_URL=https://localhost:8080
 fi
 
 # Create data directory
@@ -377,8 +378,8 @@ if [ "$USE_DEV_SERVER" = true ]; then
     # Start watchdog first so users see a "waiting" page immediately
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
-        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
-        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
+        echo -e "${GREEN}Starting watchdog on port 8080 (HTTPS/HTTP2)...${NC}"
+        GOWORK=off go run ./cmd/console --watchdog --tls --backend-port "$BACKEND_LISTEN_PORT" &
         WATCHDOG_PID=$!
         sleep 1
     fi
@@ -402,10 +403,12 @@ if [ "$USE_DEV_SERVER" = true ]; then
     echo -e "${GREEN}=== Console is running in OAUTH + DEV mode ===${NC}"
     echo ""
     echo -e "  Frontend: ${CYAN}http://localhost:5174${NC}  (Vite HMR)"
-    echo -e "  Watchdog: ${CYAN}http://localhost:8080${NC}  (reverse proxy)"
+    echo -e "  Watchdog: ${CYAN}https://localhost:8080${NC}  (HTTPS/HTTP2 reverse proxy)"
     echo -e "  Backend:  ${CYAN}http://localhost:$BACKEND_LISTEN_PORT${NC}"
     echo -e "  Agent:    ${CYAN}http://localhost:8585${NC}"
     echo -e "  Auth:     GitHub OAuth (real login)"
+    echo ""
+    echo -e "  ${YELLOW}NOTE: Browser will show a certificate warning on first visit — click Advanced > Proceed to accept the self-signed cert${NC}"
 else
     # Production mode: pre-built frontend served by Go backend (fast load)
 
@@ -413,8 +416,8 @@ else
     # instead of a connection refused error
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
-        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
-        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
+        echo -e "${GREEN}Starting watchdog on port 8080 (HTTPS/HTTP2)...${NC}"
+        GOWORK=off go run ./cmd/console --watchdog --tls --backend-port "$BACKEND_LISTEN_PORT" &
         WATCHDOG_PID=$!
         sleep 1
     fi
@@ -438,10 +441,12 @@ else
     echo ""
     echo -e "${GREEN}=== Console is running in OAUTH mode ===${NC}"
     echo ""
-    echo -e "  Console:  ${CYAN}http://localhost:8080${NC}  (via watchdog)"
+    echo -e "  Console:  ${CYAN}https://localhost:8080${NC}  (HTTPS/HTTP2 via watchdog)"
     echo -e "  Backend:  ${CYAN}http://localhost:$BACKEND_LISTEN_PORT${NC}"
     echo -e "  Agent:    ${CYAN}http://localhost:8585${NC}"
     echo -e "  Auth:     GitHub OAuth (real login)"
+    echo ""
+    echo -e "  ${YELLOW}NOTE: Browser will show a certificate warning on first visit — click Advanced > Proceed to accept the self-signed cert${NC}"
 fi
 echo ""
 echo "Press Ctrl+C to stop"

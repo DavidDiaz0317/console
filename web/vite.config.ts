@@ -208,7 +208,7 @@ export default defineConfig(({ mode }) => ({
       const backendPort = process.env.BACKEND_LISTEN_PORT || '8081'
       const target = `http://localhost:${backendPort}`
       const wsTarget = `ws://localhost:${backendPort}`
-      const opts = { target, changeOrigin: true }
+      const opts = { target, changeOrigin: true, secure: false }
       return {
         '/api': { ...opts },
         '/health': { ...opts },
@@ -216,7 +216,7 @@ export default defineConfig(({ mode }) => ({
         '/auth/github/callback': { ...opts },
         '/auth/refresh': { ...opts },
         '/api/m': { ...opts },
-        '/ws': { target: wsTarget, ws: true },
+        '/ws': { target: wsTarget, ws: true, secure: false },
       }
     })(),
   },

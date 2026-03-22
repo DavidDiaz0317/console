@@ -45,6 +45,7 @@ const (
 	// githubHTTPTimeout is the timeout for HTTP requests to the GitHub API during auth.
 	githubHTTPTimeout = 10 * time.Second
 	// defaultOAuthCallbackURL is the fallback OAuth callback when no backend URL is configured.
+	// When TLS is enabled on the watchdog, BackendURL will carry the https:// scheme instead.
 	defaultOAuthCallbackURL = "http://localhost:8080/auth/github/callback"
 )
 
