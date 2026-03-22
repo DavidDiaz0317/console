@@ -356,6 +356,15 @@ if [ "$USE_DEV_SERVER" = true ]; then
     # Dev mode: Vite dev server with HMR (slower initial load, live reload on code changes)
     # NOTE: Do NOT pass --dev to the backend — that bypasses OAuth and creates "dev-user".
     # The --dev flag in startup-oauth.sh only controls using Vite dev server vs built assets.
+
+    # Start watchdog first so users see a "waiting" page immediately
+    if [ "$WATCHDOG_RUNNING" = false ]; then
+        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
+        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
+        WATCHDOG_PID=$!
+        sleep 1
+    fi
+
     if [ ! -d "web/node_modules" ]; then
         safe_npm_install web
     fi
@@ -363,14 +372,6 @@ if [ "$USE_DEV_SERVER" = true ]; then
     BACKEND_PORT=$BACKEND_LISTEN_PORT GOWORK=off go run ./cmd/console &
     BACKEND_PID=$!
     sleep 2
-
-    # Start watchdog if not already running
-    if [ "$WATCHDOG_RUNNING" = false ]; then
-        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
-        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
-        WATCHDOG_PID=$!
-        sleep 1
-    fi
 
     echo -e "${GREEN}Starting Vite dev server...${NC}"
     (cd web && npm run dev -- --port 5174) &
@@ -386,6 +387,16 @@ if [ "$USE_DEV_SERVER" = true ]; then
     echo -e "  Auth:     GitHub OAuth (real login)"
 else
     # Production mode: pre-built frontend served by Go backend (fast load)
+
+    # Start watchdog first so users see a "waiting" page during the build
+    # instead of a connection refused error
+    if [ "$WATCHDOG_RUNNING" = false ]; then
+        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
+        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
+        WATCHDOG_PID=$!
+        sleep 1
+    fi
+
     if [ ! -d "web/node_modules" ]; then
         safe_npm_install web
     fi
@@ -398,14 +409,6 @@ else
     BACKEND_PORT=$BACKEND_LISTEN_PORT GOWORK=off go run ./cmd/console &
     BACKEND_PID=$!
     sleep 2
-
-    # Start watchdog if not already running
-    if [ "$WATCHDOG_RUNNING" = false ]; then
-        echo -e "${GREEN}Starting watchdog on port 8080...${NC}"
-        GOWORK=off go run ./cmd/console --watchdog --backend-port "$BACKEND_LISTEN_PORT" &
-        WATCHDOG_PID=$!
-        sleep 1
-    fi
 
     echo ""
     echo -e "${GREEN}=== Console is running in OAUTH mode ===${NC}"
