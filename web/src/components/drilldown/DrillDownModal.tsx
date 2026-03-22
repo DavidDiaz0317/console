@@ -23,6 +23,7 @@ const ArgoAppDrillDown = safeLazy(() => import('./views/ArgoAppDrillDown'), 'Arg
 const HelmReleaseDrillDown = safeLazy(() => import('./views/HelmReleaseDrillDown'), 'HelmReleaseDrillDown')
 const ConfigMapDrillDown = safeLazy(() => import('./views/ConfigMapDrillDown'), 'ConfigMapDrillDown')
 const BuildpackDrillDown = safeLazy(() => import('./views/BuildpackDrillDown'), 'BuildpackDrillDown')
+const RBACDrillDown = safeLazy(() => import('./views/RBACDrillDown'), 'RBACDrillDown')
 
 const EventsDrillDown = safeLazy(() => import('./views/EventsDrillDown'), 'EventsDrillDown')
 
@@ -204,6 +205,8 @@ export function DrillDownModal() {
         return <CRDDrillDown data={data} />
       case 'drift':
         return <DriftDrillDown data={data} />
+      case 'rbac':
+        return <RBACDrillDown data={data} />
       // Multi-cluster summary views
       case 'all-clusters':
       case 'all-namespaces':
