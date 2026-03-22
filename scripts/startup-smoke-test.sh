@@ -61,7 +61,7 @@ wait_for_url() {
     fi
 
     local code
-    code=$(curl -sL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null) || code="000"
+    code=$(curl -ksL -o /dev/null -w "%{http_code}" --max-time 5 "$url" 2>/dev/null) || code="000"
     if [ "$code" != "000" ]; then
       echo -e "${GREEN}  ✓ ${url} is responding (HTTP ${code}, ${elapsed}s)${NC}"
       return 0
@@ -77,7 +77,7 @@ assert_page_has_content() {
   local label="${3:-page}"
 
   local body http_code
-  http_code=$(curl -sL -o /tmp/smoke-body -w "%{http_code}" --max-time 10 "$url" 2>/dev/null) || http_code="000"
+  http_code=$(curl -ksL -o /tmp/smoke-body -w "%{http_code}" --max-time 10 "$url" 2>/dev/null) || http_code="000"
   body=$(cat /tmp/smoke-body 2>/dev/null)
 
   if [ "$http_code" = "000" ]; then
@@ -165,11 +165,12 @@ ENVEOF
     PIDS_TO_KILL+=($!)
 
     # Wait for watchdog on 8080 (startup-oauth.sh builds frontend + compiles Go, ~3-4 min in CI)
-    wait_for_url "http://localhost:8080" 420 || { FAILURES=$((FAILURES+1)); }
+    # Use https:// because the watchdog now serves HTTPS/HTTP2
+    wait_for_url "https://localhost:8080" 420 || { FAILURES=$((FAILURES+1)); }
 
     if [ "$FAILURES" -eq 0 ]; then
       # Check watchdog serves content (might be "Reconnecting..." page or actual app)
-      assert_page_has_content "http://localhost:8080" "" "watchdog" || FAILURES=$((FAILURES+1))
+      assert_page_has_content "https://localhost:8080" "" "watchdog" || FAILURES=$((FAILURES+1))
 
       # Check backend on 8081
       assert_port_listening 8081 "backend" || echo -e "${YELLOW}  ⚠ Backend port 8081 not detected${NC}"
