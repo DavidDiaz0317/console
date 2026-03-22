@@ -75,14 +75,22 @@ type ClaudeCodeProvider struct {
 	version string
 }
 
-// NewClaudeCodeProvider creates a new Claude Code CLI provider
+// NewClaudeCodeProvider creates a new Claude Code CLI provider.
+// The provider is disabled by default and requires KC_ENABLE_CLAUDE_CODE=true
+// to activate. This prevents the console from silently scanning for or
+// invoking the local Claude Code CLI without explicit user opt-in (#3159).
 func NewClaudeCodeProvider() *ClaudeCodeProvider {
 	provider := &ClaudeCodeProvider{}
-	provider.detectCLI()
+	if os.Getenv("KC_ENABLE_CLAUDE_CODE") == "true" {
+		provider.detectCLI()
+	} else {
+		log.Printf("Claude Code provider disabled (set KC_ENABLE_CLAUDE_CODE=true to enable)")
+	}
 	return provider
 }
 
-// detectCLI checks if claude CLI is installed and gets its version
+// detectCLI checks if claude CLI is installed and gets its version.
+// Only called when explicitly opted in via KC_ENABLE_CLAUDE_CODE=true.
 func (c *ClaudeCodeProvider) detectCLI() {
 	// Try to find claude in PATH first
 	path, err := exec.LookPath("claude")
@@ -92,7 +100,6 @@ func (c *ClaudeCodeProvider) detectCLI() {
 			os.ExpandEnv("$HOME/.local/bin/claude"),
 			"/usr/local/bin/claude",
 			"/opt/homebrew/bin/claude",
-			os.ExpandEnv("$HOME/.claude/local/claude"),
 		}
 		for _, p := range commonPaths {
 			if _, statErr := os.Stat(p); statErr == nil {
@@ -139,6 +146,9 @@ func (c *ClaudeCodeProvider) DisplayName() string {
 func (c *ClaudeCodeProvider) Description() string {
 	if c.version != "" {
 		return fmt.Sprintf("Local CLI with MCP tools - %s", c.version)
+	}
+	if c.cliPath == "" {
+		return "Local Claude Code CLI (disabled — set KC_ENABLE_CLAUDE_CODE=true)"
 	}
 	return "Local Claude Code CLI with MCP tools and hooks"
 }
@@ -250,13 +260,13 @@ func (c *ClaudeCodeProvider) StreamChatWithProgress(ctx context.Context, req *Ch
 	// Build command with streaming JSON output
 	// -p (print mode) is required for stream-json
 	// --verbose is required for stream-json in print mode
-	// --dangerously-skip-permissions allows tool execution without prompts
+	// --allowedTools restricts tool access to Bash and Read only (no Write/Edit)
 	// --max-turns limits agentic loops (workaround for CLI bug with duplicate tool_use IDs)
 	args := []string{
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
-		"--dangerously-skip-permissions",
+		"--allowedTools", "Bash,Read",
 		"--max-turns", "25",
 		fullPrompt,
 	}
@@ -451,8 +461,7 @@ Provide a clear, concise analysis of what this output shows.`, lastToolOutput)
 		analysisArgs := []string{
 			"-p",
 			"--output-format", "stream-json",
-			"--tools", "", // Disable all tools for pure text analysis
-			"--dangerously-skip-permissions",
+			"--allowedTools", "", // Disable all tools for pure text analysis
 			analysisPrompt,
 		}
 
