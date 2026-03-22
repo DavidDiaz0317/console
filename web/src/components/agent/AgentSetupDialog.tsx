@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../lib/constants/network'
 import { copyToClipboard } from '../../lib/clipboard'
 import { isNetlifyDeployment } from '../../lib/demoMode'
+import { STORAGE_KEY_FIRST_AGENT_CONNECT } from '../../lib/constants/storage'
 
 const DISMISSED_KEY = 'kc-agent-setup-dismissed'
 const SNOOZED_KEY = 'kc-agent-setup-snoozed'
@@ -49,6 +50,10 @@ export function AgentSetupDialog() {
 
     // Don't show if already connected
     if (isConnected) return
+
+    // If the agent was ever connected, this is a transient disconnect — don't
+    // show the install modal. It's for first-time users who haven't installed.
+    if (safeGetItem(STORAGE_KEY_FIRST_AGENT_CONNECT)) return
 
     // Check if user previously dismissed permanently
     const dismissed = safeGetItem(DISMISSED_KEY)

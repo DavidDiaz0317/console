@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { isDemoModeForced } from './useDemoMode'
 import { setDemoMode } from '../lib/demoMode'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
-import { FETCH_DEFAULT_TIMEOUT_MS, TRANSITION_DELAY_MS } from '../lib/constants/network'
+import { TRANSITION_DELAY_MS } from '../lib/constants/network'
 import { emitAgentConnected, emitAgentDisconnected, emitAgentProvidersDetected, emitConversionStep } from '../lib/analytics'
 import { safeGetItem, safeSetItem } from '../lib/utils/localStorage'
 import { STORAGE_KEY_FIRST_AGENT_CONNECT } from '../lib/constants/storage'
@@ -42,7 +42,11 @@ export interface ConnectionEvent {
 
 const POLL_INTERVAL = 10000 // Check every 10 seconds when connected
 const DISCONNECTED_POLL_INTERVAL = 60000 // Check every 60 seconds when disconnected
-const FAILURE_THRESHOLD = 2 // Require 2 consecutive failures before disconnecting
+const FAILURE_THRESHOLD = 9 // Require 9 consecutive failures (~90s) before disconnecting
+// Short timeout for agent health checks — a healthy agent responds in <100ms.
+// Using the default 10s timeout causes false failures when the browser's
+// HTTP/1.1 connection pool (6 per origin) is saturated by concurrent requests.
+const AGENT_HEALTH_TIMEOUT_MS = 3000
 const SUCCESS_THRESHOLD = 2 // Require 2 consecutive successes before reconnecting (prevents flicker)
 const AGGRESSIVE_POLL_INTERVAL = 1000 // 1 second during aggressive detection burst
 const AGGRESSIVE_DETECT_DURATION = 10000 // 10 seconds of aggressive polling
@@ -214,7 +218,7 @@ class AgentManager {
       const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/health`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
+        signal: AbortSignal.timeout(AGENT_HEALTH_TIMEOUT_MS),
       })
 
       if (response.ok) {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 
 export type BackendStatus = 'connected' | 'disconnected' | 'connecting'
 
@@ -122,15 +123,41 @@ class BackendHealthManager {
         throw new Error(`Backend returned ${response.status}`)
       }
     } catch {
-      this.failureCount++
-      if (this.failureCount >= FAILURE_THRESHOLD) {
-        this.setState({
-          status: 'disconnected',
-          lastCheck: new Date(),
-        })
+      // Before counting a failure, try the kc-agent health endpoint on a
+      // different origin (port 8585). The main /health fetch can time out
+      // when the browser's HTTP/1.1 connection pool (6 per origin) is
+      // saturated by long-running kubectl proxy requests on port 8080.
+      // The agent endpoint uses a separate connection pool.
+      const agentAlive = await this.checkAgentHealth()
+      if (agentAlive) {
+        // Agent is reachable → backend is likely fine, just connection-starved.
+        // Don't increment failure count.
+        this.setState({ status: 'connected', lastCheck: new Date() })
+      } else {
+        this.failureCount++
+        if (this.failureCount >= FAILURE_THRESHOLD) {
+          this.setState({
+            status: 'disconnected',
+            lastCheck: new Date(),
+          })
+        }
       }
     } finally {
       this.isChecking = false
+    }
+  }
+
+  /** Probe kc-agent on a separate origin to disambiguate real backend
+   *  downtime from browser connection-pool exhaustion on the main origin. */
+  private async checkAgentHealth(): Promise<boolean> {
+    try {
+      const res = await fetch(`${LOCAL_AGENT_HTTP_URL}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS),
+      })
+      return res.ok
+    } catch {
+      return false
     }
   }
 
