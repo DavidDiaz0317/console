@@ -798,7 +798,10 @@ class CacheStore<T> {
       return
     }
 
-    const hasCachedData = this.state.data !== this.initialData || this.initialDataLoaded
+    // Treat empty cached data (equivalent to initialData) as "no cache" so the card
+    // shows a loading skeleton instead of "No items found" while we fetch fresh data.
+    const hasCachedData = (this.state.data !== this.initialData || this.initialDataLoaded)
+      && !isEquivalentToInitial(this.state.data, this.initialData)
 
     this.setState({
       isLoading: !hasCachedData,
