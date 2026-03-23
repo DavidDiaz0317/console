@@ -22,7 +22,7 @@ const HREF_TO_CONFIG_ID: Record<string, string> = {
   '/': 'main', '/compute': 'compute', '/security': 'security',
   '/gitops': 'gitops', '/storage': 'storage', '/network': 'network',
   '/events': 'events', '/workloads': 'workloads', '/operators': 'operators',
-  '/clusters': 'clusters', '/compliance': 'compliance', '/cost': 'cost',
+  '/clusters': 'clusters', '/compliance': 'compliance', '/security-posture': 'compliance', '/cost': 'cost',
   '/gpu-reservations': 'gpu', '/nodes': 'nodes', '/deployments': 'deployments',
   '/pods': 'pods', '/services': 'services', '/helm': 'helm',
   '/alerts': 'alerts', '/ai-ml': 'ai-ml', '/ci-cd': 'ci-cd',
@@ -59,12 +59,15 @@ const CARD_DATA_PREFETCH: Record<string, Array<{ key: string; fetcher: () => Pro
 /** Avoid re-triggering for the same link on repeated hover */
 let lastPrefetchedHref: string | null = null
 
-export function prefetchDashboard(href: string): void {
-  if (href === lastPrefetchedHref) return
-  lastPrefetchedHref = href
+/** Session-level set of cache keys already prefetched, to avoid API bursts on repeated hovers */
+const prefetchedCacheKeys = new Set<string>()
 
+export function prefetchDashboard(href: string): void {
   // Demo mode uses synchronous data — no fetching needed
   if (isDemoMode()) return
+
+  if (href === lastPrefetchedHref) return
+  lastPrefetchedHref = href
 
   // Layer 1: Route chunk
   const chunkId = hrefToChunkId(href)
@@ -82,13 +85,12 @@ export function prefetchDashboard(href: string): void {
     }).catch(() => {})
 
     // Layer 3: Data for cards with known fetchers
-    const seen = new Set<string>()
     for (const cardType of cardTypes) {
       const entries = CARD_DATA_PREFETCH[cardType]
       if (!entries) continue
       for (const entry of entries) {
-        if (seen.has(entry.key)) continue
-        seen.add(entry.key)
+        if (prefetchedCacheKeys.has(entry.key)) continue
+        prefetchedCacheKeys.add(entry.key)
         prefetchCache(entry.key, entry.fetcher, []).catch(() => {})
       }
     }

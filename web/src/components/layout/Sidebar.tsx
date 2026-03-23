@@ -307,6 +307,7 @@ export function Sidebar() {
             onClick={() => emitSidebarNavigated(item.href)}
             onDoubleClick={(e) => handleDoubleClick(item, e)}
             onMouseEnter={() => prefetchDashboard(item.href)}
+            onFocus={() => prefetchDashboard(item.href)}
             className={({ isActive }) => cn(
               'flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200',
               isActive

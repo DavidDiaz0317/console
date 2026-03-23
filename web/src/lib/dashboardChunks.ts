@@ -22,6 +22,7 @@ export const DASHBOARD_CHUNKS: Record<string, () => Promise<unknown>> = {
   'alerts': () => import('../components/alerts/Alerts'),
   'cost': () => import('../components/cost/Cost'),
   'compliance': () => import('../components/compliance/Compliance'),
+  'security-posture': () => import('../components/compliance/Compliance'),
   'operators': () => import('../components/operators/Operators'),
   'helm': () => import('../components/helm/HelmReleases'),
   'settings': () => import('../components/settings/Settings'),
