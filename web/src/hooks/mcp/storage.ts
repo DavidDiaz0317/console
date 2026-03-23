@@ -5,6 +5,7 @@ import { isDemoMode } from '../../lib/demoMode'
 import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { kubectlProxy } from '../../lib/kubectlProxy'
 import { REFRESH_INTERVAL_MS, getEffectiveInterval, LOCAL_AGENT_URL, clusterCacheRef } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 import type { PVC, PV, ResourceQuota, LimitRange, ResourceQuotaSpec } from './types'
 
@@ -311,10 +312,12 @@ export function usePVCs(cluster?: string, namespace?: string) {
 
     doFetch()
 
-    // Poll for PVC updates
-    const interval = setInterval(() => {
-      if (!cancelled) refetch(true)
-    }, getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for PVC updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `pvcs:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => { if (!cancelled) refetch(true) },
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`pvcs:${cacheKey}`, () => {
@@ -323,7 +326,7 @@ export function usePVCs(cluster?: string, namespace?: string) {
 
     return () => {
       cancelled = true
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cacheKey])
@@ -397,7 +400,12 @@ export function usePVs(cluster?: string) {
 
   useEffect(() => {
     refetch()
-    const interval = setInterval(refetch, getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for PV updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `pvs:${cluster || 'all'}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`pvs:${cluster || 'all'}`, () => {
@@ -405,7 +413,7 @@ export function usePVs(cluster?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cluster])
@@ -452,7 +460,12 @@ export function useResourceQuotas(cluster?: string, namespace?: string, forceLiv
 
   useEffect(() => {
     refetch()
-    const interval = setInterval(refetch, getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for resource quota updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `resourceQuotas:${cluster || 'all'}:${namespace || 'all'}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`resource-quotas:${cluster || 'all'}:${namespace || 'all'}`, () => {
@@ -460,7 +473,7 @@ export function useResourceQuotas(cluster?: string, namespace?: string, forceLiv
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cluster, namespace])
@@ -505,7 +518,12 @@ export function useLimitRanges(cluster?: string, namespace?: string) {
 
   useEffect(() => {
     refetch()
-    const interval = setInterval(refetch, getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for limit range updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `limitRanges:${cluster || 'all'}:${namespace || 'all'}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`limit-ranges:${cluster || 'all'}:${namespace || 'all'}`, () => {
@@ -513,7 +531,7 @@ export function useLimitRanges(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cluster, namespace])

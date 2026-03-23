@@ -7,6 +7,7 @@ import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { kubectlProxy } from '../../lib/kubectlProxy'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { REFRESH_INTERVAL_MS, MIN_REFRESH_INDICATOR_MS, getEffectiveInterval, LOCAL_AGENT_URL, clusterCacheRef, fetchWithRetry } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 import type { PodInfo, PodIssue, Deployment, DeploymentIssue, Job, HPA, ReplicaSet, StatefulSet, DaemonSet, CronJob } from './types'
 
@@ -372,8 +373,12 @@ export function usePods(cluster?: string, namespace?: string, sortBy: 'restarts'
   useEffect(() => {
     const hasCachedData = podsCache && podsCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll for pod updates
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for pod updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `pods:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`pods:${cacheKey}`, () => {
@@ -381,7 +386,7 @@ export function usePods(cluster?: string, namespace?: string, sortBy: 'restarts'
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
       sseAbortRef.current?.abort()
     }
@@ -505,8 +510,12 @@ export function useAllPods(cluster?: string, namespace?: string, forceLive = fal
   useEffect(() => {
     const hasCachedData = podsCache && podsCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll for pod updates
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for pod updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `allPods:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`allPods:${cacheKey}`, () => {
@@ -514,7 +523,7 @@ export function useAllPods(cluster?: string, namespace?: string, forceLive = fal
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
       sseAbortRef.current?.abort()
     }
@@ -698,8 +707,12 @@ export function usePodIssues(cluster?: string, namespace?: string) {
   useEffect(() => {
     const hasCachedData = podIssuesCache && podIssuesCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll every 30 seconds for pod issue updates
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for pod issue updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `podIssues:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`podIssues:${cacheKey}`, () => {
@@ -707,7 +720,7 @@ export function usePodIssues(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
       sseAbortRef.current?.abort()
     }
@@ -853,8 +866,12 @@ export function useDeploymentIssues(cluster?: string, namespace?: string) {
   useEffect(() => {
     const hasCachedData = deploymentIssuesCache && deploymentIssuesCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll every 30 seconds for deployment issues
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for deployment issues (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `deploymentIssues:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`deploymentIssues:${cacheKey}`, () => {
@@ -862,7 +879,7 @@ export function useDeploymentIssues(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
       sseAbortRef.current?.abort()
     }
@@ -1108,8 +1125,12 @@ export function useDeployments(cluster?: string, namespace?: string) {
     // If we have cached data, do a silent refresh
     const hasCachedData = deploymentsCache && deploymentsCache.key === cacheKey
     refetch(hasCachedData ? true : false)
-    // Poll every 30 seconds for deployment updates
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for deployment updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `deployments:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`deployments:${cacheKey}`, () => {
@@ -1117,7 +1138,7 @@ export function useDeployments(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cacheKey])

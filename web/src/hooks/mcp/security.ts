@@ -5,6 +5,7 @@ import { useDemoMode } from '../useDemoMode'
 import { registerRefetch, registerCacheReset } from '../../lib/modeTransition'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { MIN_REFRESH_INDICATOR_MS, REFRESH_INTERVAL_MS, getEffectiveInterval } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 import type { SecurityIssue, GitOpsDrift } from './types'
 
@@ -263,8 +264,12 @@ export function useGitOpsDrifts(cluster?: string, namespace?: string) {
       refetch(false)
     }
 
-    // Poll every 30 seconds
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for GitOps drifts (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `gitopsDrifts:${cluster || 'all'}:${namespace || 'all'}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`gitops-drifts:${cluster || 'all'}:${namespace || 'all'}`, () => {
@@ -272,7 +277,7 @@ export function useGitOpsDrifts(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cluster, namespace])

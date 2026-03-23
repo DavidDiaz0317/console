@@ -7,6 +7,7 @@ import { useDemoMode } from '../useDemoMode'
 import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { GPU_POLL_INTERVAL_MS, getEffectiveInterval, LOCAL_AGENT_URL, clusterCacheRef } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_EXTENDED_TIMEOUT_MS, MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 import type { GPUNode, NodeInfo, NVIDIAOperatorStatus } from './types'
 
@@ -320,10 +321,12 @@ export function useGPUNodes(cluster?: string) {
       fetchGPUNodes(cluster)
     }
 
-    // Poll GPU node data periodically
-    const pollInterval = setInterval(() => {
-      fetchGPUNodes(cluster, 'poll')
-    }, getEffectiveInterval(GPU_POLL_INTERVAL_MS))
+    // Poll GPU node data periodically (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `gpuNodes:${cluster || 'all'}`,
+      getEffectiveInterval(GPU_POLL_INTERVAL_MS),
+      () => fetchGPUNodes(cluster, 'poll'),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`gpu-nodes:${cluster || 'all'}`, () => {
@@ -332,7 +335,7 @@ export function useGPUNodes(cluster?: string) {
 
     return () => {
       gpuNodeSubscribers.delete(handleUpdate)
-      clearInterval(pollInterval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [cluster])

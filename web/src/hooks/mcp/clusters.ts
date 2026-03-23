@@ -25,6 +25,7 @@ import {
   setHealthCheckFailures,
 } from './shared'
 import type { ClusterCache } from './shared'
+import { subscribePolling } from './pollingManager'
 
 // Hook to get MCP status
 export function useMCPStatus() {
@@ -47,9 +48,13 @@ export function useMCPStatus() {
     }
 
     fetchStatus()
-    // Poll every 2 minutes
-    const interval = setInterval(fetchStatus, getEffectiveInterval(REFRESH_INTERVAL_MS))
-    return () => clearInterval(interval)
+    // Poll MCP status (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      'mcpStatus',
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      fetchStatus,
+    )
+    return () => unsubscribePolling()
   }, [])
 
   return { status, isLoading, error }
@@ -129,13 +134,16 @@ export function useClusters() {
   }, [])
 
   // Poll cluster data periodically to keep dashboard fresh
+  // (shared interval prevents duplicates across components)
   useEffect(() => {
-    const pollInterval = setInterval(() => {
-      fullFetchClusters()
-    }, getEffectiveInterval(CLUSTER_POLL_INTERVAL_MS))
+    const unsubscribePolling = subscribePolling(
+      'clusters',
+      getEffectiveInterval(CLUSTER_POLL_INTERVAL_MS),
+      () => fullFetchClusters(),
+    )
 
     return () => {
-      clearInterval(pollInterval)
+      unsubscribePolling()
     }
   }, [])
 

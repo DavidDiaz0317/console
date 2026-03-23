@@ -3,6 +3,7 @@ import { isNetlifyDeployment, isDemoMode } from '../../lib/demoMode'
 import { useDemoMode } from '../useDemoMode'
 import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { MIN_REFRESH_INDICATOR_MS, getEffectiveInterval } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 
 export interface CrossplaneManagedResource {
@@ -285,9 +286,11 @@ export function useCrossplaneManagedResources(cluster?: string) {
       refetch()
     }
 
-    const interval = setInterval(
+    // Poll for Crossplane managed resources (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `crossplaneManaged:${cluster || 'all'}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
       () => refetch(true),
-      getEffectiveInterval(REFRESH_INTERVAL_MS)
     )
 
     const unregister = registerRefetch(
@@ -296,7 +299,7 @@ export function useCrossplaneManagedResources(cluster?: string) {
     )
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregister()
     }
   }, [refetch, cluster])

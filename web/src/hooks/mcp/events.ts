@@ -6,6 +6,7 @@ import { useDemoMode } from '../useDemoMode'
 import { registerRefetch } from '../../lib/modeTransition'
 import { registerCacheReset } from '../../lib/modeTransition'
 import { REFRESH_INTERVAL_MS, MIN_REFRESH_INDICATOR_MS, getEffectiveInterval, LOCAL_AGENT_URL } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 import type { ClusterEvent } from './types'
 
@@ -206,14 +207,18 @@ export function useEvents(cluster?: string, namespace?: string, limit = 20) {
   useEffect(() => {
     const hasCachedData = eventsCache && eventsCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll every 30 seconds for events
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for events (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `events:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`events:${cacheKey}`, () => refetch(false))
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cacheKey])
@@ -349,14 +354,18 @@ export function useWarningEvents(cluster?: string, namespace?: string, limit = 2
   useEffect(() => {
     const hasCachedData = warningEventsCache && warningEventsCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
-    // Poll every 30 seconds for events
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for warning events (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `warningEvents:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`warning-events:${cacheKey}`, () => refetch(false))
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cacheKey])

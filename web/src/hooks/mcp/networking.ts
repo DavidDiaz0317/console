@@ -7,6 +7,7 @@ import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { kubectlProxy } from '../../lib/kubectlProxy'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { REFRESH_INTERVAL_MS, MIN_REFRESH_INDICATOR_MS, getEffectiveInterval, LOCAL_AGENT_URL, clusterCacheRef } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS, DEPLOY_ABORT_TIMEOUT_MS } from '../../lib/constants/network'
 import type { Service, Ingress, NetworkPolicy } from './types'
 
@@ -290,8 +291,12 @@ export function useServices(cluster?: string, namespace?: string) {
     const hasCachedData = servicesCache && servicesCache.key === cacheKey
     refetch(!!hasCachedData) // silent=true if we have cached data
 
-    // Poll every 30 seconds for service updates
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(REFRESH_INTERVAL_MS))
+    // Poll for service updates (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `services:${cacheKey}`,
+      getEffectiveInterval(REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`services:${cacheKey}`, () => {
@@ -299,7 +304,7 @@ export function useServices(cluster?: string, namespace?: string) {
     })
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cacheKey])

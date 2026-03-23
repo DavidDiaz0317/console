@@ -5,6 +5,7 @@ import { useDemoMode } from '../useDemoMode'
 import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { MIN_REFRESH_INDICATOR_MS, getEffectiveInterval } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS, SHORT_DELAY_MS, FOCUS_DELAY_MS } from '../../lib/constants/network'
 import type { HelmRelease, HelmHistoryEntry } from './types'
 
@@ -294,13 +295,18 @@ export function useHelmReleases(cluster?: string) {
       refetch()
     }
 
-    const interval = setInterval(() => refetch(true), getEffectiveInterval(HELM_REFRESH_INTERVAL_MS))
+    // Poll for Helm releases (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `helmReleases:${cluster || 'all'}`,
+      getEffectiveInterval(HELM_REFRESH_INTERVAL_MS),
+      () => refetch(true),
+    )
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`helm-releases:${cluster || 'all'}`, () => refetch(false))
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregisterRefetch()
     }
   }, [refetch, cluster])

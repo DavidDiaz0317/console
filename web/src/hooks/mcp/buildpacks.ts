@@ -4,6 +4,7 @@ import { useDemoMode } from '../useDemoMode'
 import { registerCacheReset, registerRefetch } from '../../lib/modeTransition'
 import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { MIN_REFRESH_INDICATOR_MS, getEffectiveInterval } from './shared'
+import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
 
 export interface BuildpackImage {
@@ -276,9 +277,11 @@ export function useBuildpackImages(cluster?: string) {
       refetch()
     }
 
-    const interval = setInterval(
+    // Poll for buildpack images (shared interval prevents duplicates across components)
+    const unsubscribePolling = subscribePolling(
+      `buildpackImages:${cluster || 'all'}`,
+      getEffectiveInterval(BUILDPACK_REFRESH_INTERVAL_MS),
       () => refetch(true),
-      getEffectiveInterval(BUILDPACK_REFRESH_INTERVAL_MS)
     )
 
     const unregister = registerRefetch(
@@ -287,7 +290,7 @@ export function useBuildpackImages(cluster?: string) {
     )
 
     return () => {
-      clearInterval(interval)
+      unsubscribePolling()
       unregister()
     }
   }, [refetch, cluster])
