@@ -1,3 +1,9 @@
+// FIRST: Prefetch card chunks immediately — before React, CSS, or anything else.
+// This reads the user's dashboard from localStorage and fires dynamic imports
+// so card JS downloads in parallel with all other initialization.
+import { prefetchCardChunksEarly } from './lib/prefetchCardChunksEarly'
+prefetchCardChunksEarly()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

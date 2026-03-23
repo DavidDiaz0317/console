@@ -13,7 +13,7 @@ import (
 const (
 	deviceTrackerPoll           = 60 * time.Second
 	deviceTrackerTimeout        = 30 * time.Second
-	deviceTrackerPerClusterTimeout = 5 * time.Second
+	deviceTrackerPerClusterTimeout = 15 * time.Second
 )
 
 // DeviceCounts tracks hardware device counts for a node
