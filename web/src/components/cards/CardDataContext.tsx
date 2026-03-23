@@ -203,25 +203,32 @@ export function useCardLoadingState(options: CardLoadingStateOptions) {
   const hasRealData = hasAnyData
   const hasData = !effectiveIsLoading || hasRealData
 
+  // Effective refreshing: explicit override from the hook, or inferred from loading+data state
+  const effectiveIsRefreshing = isRefreshingOverride ?? (effectiveIsLoading && hasData)
+
   // Report state to CardWrapper for refresh animation and status badges
   useReportCardDataState({
     isFailed: isFailed || loadingTimedOut,
     consecutiveFailures,
     errorMessage,
     isLoading: effectiveIsLoading && !hasData,
-    isRefreshing: isRefreshingOverride ?? (effectiveIsLoading && hasData),
+    isRefreshing: effectiveIsRefreshing,
     hasData,
     isDemoData,
     lastUpdated: lastUpdatedDate,
   })
 
+  // When refreshing with no data (stale empty cache), show skeleton instead
+  // of empty state — data is actively being fetched.
+  const isRefreshingWithNoData = effectiveIsRefreshing && !hasAnyData
+
   return {
     /** Whether the card has data to display (true once loading completes or has cached data) */
     hasData,
     /** Whether to show skeleton loading state (only when loading with no cached/real data) */
-    showSkeleton: effectiveIsLoading && !hasRealData,
+    showSkeleton: (effectiveIsLoading && !hasRealData) || isRefreshingWithNoData,
     /** Whether to show empty state (loading finished but no data exists) */
-    showEmptyState: !effectiveIsLoading && !hasAnyData,
+    showEmptyState: !effectiveIsLoading && !hasAnyData && !isRefreshingWithNoData,
     /** Whether data is being refreshed (has cache, fetching update) */
     isRefreshing: effectiveIsLoading && hasRealData,
   }
