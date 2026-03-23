@@ -10,8 +10,11 @@ RUN go mod download
 # Copy source
 COPY . .
 
+# Build args for version
+ARG APP_VERSION=dev
+
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -o console ./cmd/console
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X github.com/kubestellar/console/pkg/api.Version=${APP_VERSION}" -o console ./cmd/console
 
 # Build stage - Frontend
 FROM node:20-alpine AS frontend-builder

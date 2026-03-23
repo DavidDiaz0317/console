@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -21,7 +22,13 @@ func main() {
 	dbPath := flag.String("db", "", "Database path (default: ./data/console.db)")
 	watchdog := flag.Bool("watchdog", false, "Run as watchdog reverse proxy (serves fallback page when backend is down)")
 	backendPort := flag.Int("backend-port", watchdogDefaultBackendPort, "Backend port for watchdog to proxy to")
+	version := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("console version %s\n", api.Version)
+		os.Exit(0)
+	}
 
 	// Watchdog mode: lightweight reverse proxy, no DB/k8s/MCP initialization
 	if *watchdog {

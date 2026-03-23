@@ -40,6 +40,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
+      - -X github.com/kubestellar/console/pkg/api.Version={{.Version}}
 
 archives:
   - id: kc-agent

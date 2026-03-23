@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -41,6 +42,32 @@ const (
 // Version is the build version, injected via ldflags at build time.
 // Used in /health response for stale-frontend detection.
 var Version = "dev"
+
+// buildInfo holds VCS metadata extracted from the Go binary at startup.
+var buildInfo struct {
+	GoVersion  string
+	VCSRevision string
+	VCSTime     string
+	VCSModified string
+}
+
+func init() {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return
+	}
+	buildInfo.GoVersion = info.GoVersion
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			buildInfo.VCSRevision = s.Value
+		case "vcs.time":
+			buildInfo.VCSTime = s.Value
+		case "vcs.modified":
+			buildInfo.VCSModified = s.Value
+		}
+	}
+}
 
 // Config holds server configuration
 type Config struct {
@@ -380,6 +407,10 @@ func (s *Server) setupRoutes() {
 		resp := fiber.Map{
 			"status":           "ok",
 			"version":          Version,
+			"go_version":       buildInfo.GoVersion,
+			"git_commit":       buildInfo.VCSRevision,
+			"git_time":         buildInfo.VCSTime,
+			"git_dirty":        buildInfo.VCSModified == "true",
 			"oauth_configured": s.config.GitHubClientID != "",
 			"in_cluster":       inCluster,
 			"install_method":   detectInstallMethod(inCluster),
@@ -422,6 +453,17 @@ func (s *Server) setupRoutes() {
 			resp["enabled_dashboards"] = presetDashboards
 		}
 		return c.JSON(resp)
+	})
+
+	// Version endpoint — lightweight, returns only build metadata
+	s.app.Get("/api/version", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"version":    Version,
+			"go_version": buildInfo.GoVersion,
+			"git_commit": buildInfo.VCSRevision,
+			"git_time":   buildInfo.VCSTime,
+			"git_dirty":  buildInfo.VCSModified == "true",
+		})
 	})
 
 	// Auth routes (public)
