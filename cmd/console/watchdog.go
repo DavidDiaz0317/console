@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -396,8 +397,18 @@ func ensureSelfSignedCert() (certFile, keyFile string, err error) {
 	return certFile, keyFile, nil
 }
 
-// certValid returns true if the cert file exists and is not expired.
+// certValid returns true if both cert and key files exist, the key matches
+// the cert, and the cert is not expired (with a 7-day buffer).
 func certValid(certFile string) bool {
+	keyFile := watchdogTLSKeyFile
+
+	// Validate that both files exist and the key matches the cert
+	_, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return false
+	}
+
+	// Check expiry
 	data, err := os.ReadFile(certFile)
 	if err != nil {
 		return false
