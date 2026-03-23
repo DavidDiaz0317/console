@@ -549,25 +549,52 @@ export function useCachedEvents(
     initialData: [] as ClusterEvent[],
     demoData: getDemoEvents(),
     fetcher: async () => {
-      // Try agent first (direct kubectl proxy — works before backend auth)
+      // Try agent HTTP endpoint first (works before backend auth)
       if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
         if (cluster) {
           const ci = clusterCacheRef.clusters.find(c => c.name === cluster)
-          const ctx = ci?.context || cluster
-          const events = await kubectlProxy.getEvents(ctx, namespace, limit)
-          return events.map(e => ({ ...e, cluster }))
+          const params = new URLSearchParams()
+          params.append('cluster', ci?.context || cluster)
+          if (namespace) params.append('namespace', namespace)
+          params.append('limit', String(limit))
+
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), AGENT_HTTP_TIMEOUT_MS)
+          const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/events?${params}`, {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+          })
+          clearTimeout(timeoutId)
+
+          if (response.ok) {
+            const data = await response.json()
+            return ((data.events || []) as ClusterEvent[]).map(e => ({ ...e, cluster }))
+          }
         }
-        // Fetch from all clusters via agent
+        // Fetch from all clusters via agent (parallel)
         const clusters = getAgentClusters()
         const allEvents: ClusterEvent[] = []
         const results = await Promise.allSettled(
-          clusters.map(async (ci) => {
-            const ctx = ci.context || ci.name
-            const events = await kubectlProxy.getEvents(ctx, namespace, limit)
-            return events.map(e => ({ ...e, cluster: ci.name }))
+          clusters.map(async ({ name, context }) => {
+            const params = new URLSearchParams()
+            params.append('cluster', context || name)
+            if (namespace) params.append('namespace', namespace)
+            params.append('limit', String(limit))
+
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), AGENT_HTTP_TIMEOUT_MS)
+            const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/events?${params}`, {
+              signal: controller.signal,
+              headers: { Accept: 'application/json' },
+            })
+            clearTimeout(timeoutId)
+
+            if (!response.ok) throw new Error(`Agent returned ${response.status}`)
+            const data = await response.json()
+            return ((data.events || []) as ClusterEvent[]).map(e => ({ ...e, cluster: name }))
           })
         )
-        for (const r of (results || [])) {
+        for (const r of results) {
           if (r.status === 'fulfilled') allEvents.push(...r.value)
         }
         return allEvents
@@ -587,26 +614,45 @@ export function useCachedEvents(
       return await fetchFromAllClusters<ClusterEvent>('events', 'events', { namespace, limit })
     },
     progressiveFetcher: cluster ? undefined : async (onProgress) => {
-      // Try agent-based progressive fetch first
+      // Try agent HTTP endpoint first (parallel, fast)
       if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
         const clusters = getAgentClusters()
         const accumulated: ClusterEvent[] = []
-        for (const ci of (clusters || [])) {
-          try {
-            const ctx = ci.context || ci.name
-            const events = await kubectlProxy.getEvents(ctx, namespace, limit)
-            accumulated.push(...events.map(e => ({ ...e, cluster: ci.name })))
-            accumulated.sort((a, b) => {
-              const timeA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0
-              const timeB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0
-              return timeB - timeA
-            })
-            onProgress([...accumulated].slice(0, limit))
-          } catch {
-            // Skip failed clusters, continue with others
-          }
-        }
-        return accumulated.slice(0, limit)
+        const sortAndSlice = () => [...accumulated]
+          .sort((a, b) => {
+            const timeA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0
+            const timeB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0
+            return timeB - timeA
+          })
+          .slice(0, limit)
+
+        const promises = clusters.map(async ({ name, context }) => {
+          const params = new URLSearchParams()
+          params.append('cluster', context || name)
+          if (namespace) params.append('namespace', namespace)
+          params.append('limit', String(limit))
+
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), AGENT_HTTP_TIMEOUT_MS)
+          const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/events?${params}`, {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+          })
+          clearTimeout(timeoutId)
+
+          if (!response.ok) throw new Error(`Agent returned ${response.status}`)
+          const data = await response.json()
+          const tagged = ((data.events || []) as ClusterEvent[]).map(e => ({
+            ...e,
+            cluster: name,
+          }))
+          accumulated.push(...tagged)
+          onProgress(sortAndSlice())
+          return tagged
+        })
+
+        await Promise.allSettled(promises)
+        return sortAndSlice()
       }
       // Fall back to SSE via backend
       return await fetchViaSSE<ClusterEvent>('events', 'events', { namespace, limit }, onProgress)
