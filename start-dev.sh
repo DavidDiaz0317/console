@@ -125,7 +125,6 @@ echo "Starting KubeStellar Console (dev mode)..."
 echo "  GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:0:10}..."
 echo "  Frontend: $FRONTEND_URL"
 echo "  Backend: http://localhost:8080"
-echo "  Agent: http://localhost:8585"
 
 # Cleanup on exit
 cleanup() {
@@ -138,29 +137,72 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
-# Install/upgrade kc-agent via brew
-if command -v brew &>/dev/null; then
-    if brew list kc-agent &>/dev/null; then
-        echo "Upgrading kc-agent..."
-        brew update --quiet && brew upgrade kc-agent 2>/dev/null || true
-    else
-        echo "Installing kc-agent..."
-        brew update --quiet && brew install kubestellar/tap/kc-agent
+# Resolve kc-agent binary path (with validation)
+KC_AGENT_BIN=""
+if [ -x "$SCRIPT_DIR/bin/kc-agent" ]; then
+    KC_AGENT_BIN="$SCRIPT_DIR/bin/kc-agent"
+else
+    # Install/upgrade kc-agent via brew
+    if command -v brew &>/dev/null; then
+        if brew list kc-agent &>/dev/null; then
+            echo "Upgrading kc-agent..."
+            brew update --quiet && brew upgrade kc-agent 2>/dev/null || true
+        else
+            echo "Installing kc-agent..."
+            brew update --quiet && brew install kubestellar/tap/kc-agent
+        fi
+
+        # Validate the brew-installed binary — brew upgrade can leave a broken
+        # symlink (0-byte regular file) if the link step fails silently.
+        BREW_BIN="$(command -v kc-agent 2>/dev/null || true)"
+        if [ -n "$BREW_BIN" ] && [ ! -s "$BREW_BIN" ]; then
+            echo "Warning: Detected broken kc-agent binary (0 bytes), relinking..."
+            rm -f "$BREW_BIN"
+            brew unlink kc-agent 2>/dev/null || true
+            brew link kc-agent 2>/dev/null || true
+            BREW_BIN="$(command -v kc-agent 2>/dev/null || true)"
+        fi
+
+        # Final fallback: if the symlink is still broken, find the binary
+        # directly in the Cellar and use it without the symlink.
+        if [ -n "$BREW_BIN" ] && [ ! -s "$BREW_BIN" ]; then
+            echo "Warning: Brew symlink still broken, looking for Cellar binary..."
+            CELLAR_BIN="$(find "$(brew --cellar kc-agent 2>/dev/null)" -name kc-agent -type f -perm +111 2>/dev/null | head -1)"
+            if [ -n "$CELLAR_BIN" ] && [ -s "$CELLAR_BIN" ]; then
+                BREW_BIN="$CELLAR_BIN"
+            fi
+        fi
+    fi
+    if [ -n "${BREW_BIN:-}" ] && [ -s "$BREW_BIN" ] && [ -x "$BREW_BIN" ]; then
+        KC_AGENT_BIN="$BREW_BIN"
+    elif command -v kc-agent &>/dev/null && [ -s "$(command -v kc-agent)" ]; then
+        KC_AGENT_BIN="$(command -v kc-agent)"
     fi
 fi
 
-# Start kc-agent
-if command -v kc-agent &>/dev/null; then
-    echo "Starting kc-agent..."
+# Start kc-agent and verify it is running
+AGENT_PID=""
+AGENT_RUNNING=false
+if [ -n "$KC_AGENT_BIN" ]; then
+    echo "Starting kc-agent ($KC_AGENT_BIN)..."
     KC_AGENT_ARGS=()
     if [ -n "$KUBECONFIG" ]; then
         KC_AGENT_ARGS+=(--kubeconfig "$KUBECONFIG")
     fi
-    kc-agent "${KC_AGENT_ARGS[@]}" &
+    "$KC_AGENT_BIN" "${KC_AGENT_ARGS[@]}" &
     AGENT_PID=$!
     sleep 2
+
+    # Verify kc-agent is still running and listening on port 8585
+    if kill -0 "$AGENT_PID" 2>/dev/null && lsof -i :8585 -t >/dev/null 2>&1; then
+        AGENT_RUNNING=true
+    else
+        echo "Warning: kc-agent started but is not running on port 8585."
+        echo "  The binary may be invalid or crashed on startup."
+        AGENT_PID=""
+    fi
 else
-    echo "Warning: kc-agent not found and brew not available."
+    echo "Warning: kc-agent not found. Run 'make build' or install via brew."
     AGENT_PID=""
 fi
 
@@ -180,7 +222,11 @@ echo "=== Console is running in DEV mode ==="
 echo ""
 echo "  Frontend: http://localhost:5174"
 echo "  Backend:  http://localhost:8080"
-echo "  Agent:    http://localhost:8585"
+if [ "$AGENT_RUNNING" = true ]; then
+    echo "  Agent:    http://localhost:8585"
+else
+    echo "  Agent:    not running (kc-agent failed to start or not installed)"
+fi
 echo ""
 echo "Press Ctrl+C to stop"
 
