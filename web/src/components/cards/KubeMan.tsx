@@ -550,6 +550,7 @@ export function KubeMan(_props: CardComponentProps) {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
       if (!isPlaying) return
 
       const keyMap: Record<string, Direction> = {

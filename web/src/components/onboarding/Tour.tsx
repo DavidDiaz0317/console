@@ -298,7 +298,10 @@ export function TourOverlay() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         skipTour()
-      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        return
+      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
         nextStep()
       } else if (e.key === 'ArrowLeft') {
         prevStep()

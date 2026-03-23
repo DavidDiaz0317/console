@@ -249,6 +249,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
       if (!isPlaying || gameOver) return
 
       switch (e.key) {

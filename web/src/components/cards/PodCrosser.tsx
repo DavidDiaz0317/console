@@ -493,6 +493,7 @@ export function PodCrosser(_props: CardComponentProps) {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
       if (!isPlaying || player.dead) return
 
       const { targetX, targetY } = player

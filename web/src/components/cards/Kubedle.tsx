@@ -225,6 +225,7 @@ export function Kubedle(_props: CardComponentProps) {
   // Physical keyboard
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
       if (showStats || showHelp) return
       handleKey(e.key)
     }

@@ -224,6 +224,7 @@ export function Game2048(_props: CardComponentProps) {
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
       if (gameOver && !won) return
 
       switch (e.key) {
