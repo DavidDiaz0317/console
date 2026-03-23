@@ -16,10 +16,10 @@ import { coreFetchers, specialtyFetchers } from '../hooks/useCachedData'
 import { isDemoMode } from './demoMode'
 
 /** Delay before starting core data prefetch (after priority tier) */
-const CORE_PREFETCH_DELAY_MS = 400
-const SPECIALTY_DELAY_MS = 1_000
-const BACKGROUND_DELAY_MS = 5_000
-const PREFETCH_CONCURRENCY = 2
+const CORE_PREFETCH_DELAY_MS = 150
+const SPECIALTY_DELAY_MS = 500
+const BACKGROUND_DELAY_MS = 3_000
+const PREFETCH_CONCURRENCY = 3
 
 interface PrefetchEntry {
   key: string

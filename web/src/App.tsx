@@ -83,43 +83,8 @@ const UnifiedDashboardTest = safeLazy(() => import('./pages/UnifiedDashboardTest
 const AllCardsPerfTest = safeLazy(() => import('./pages/AllCardsPerfTest'), 'AllCardsPerfTest')
 const CompliancePerfTest = safeLazy(() => import('./pages/CompliancePerfTest'), 'CompliancePerfTest')
 
-// Dashboard ID → chunk import map for selective prefetching.
-// Only chunks for enabled dashboards are prefetched; disabled ones
-// still lazy-load on demand if the user navigates directly via URL.
-const DASHBOARD_CHUNKS: Record<string, () => Promise<unknown>> = {
-  'dashboard': () => import('./components/dashboard/Dashboard'),
-  'clusters': () => import('./components/clusters/Clusters'),
-  'workloads': () => import('./components/workloads/Workloads'),
-  'compute': () => import('./components/compute/Compute'),
-  'events': () => import('./components/events/Events'),
-  'nodes': () => import('./components/nodes/Nodes'),
-  'deployments': () => import('./components/deployments/Deployments'),
-  'pods': () => import('./components/pods/Pods'),
-  'services': () => import('./components/services/Services'),
-  'storage': () => import('./components/storage/Storage'),
-  'network': () => import('./components/network/Network'),
-  'security': () => import('./components/security/Security'),
-  'gitops': () => import('./components/gitops/GitOps'),
-  'alerts': () => import('./components/alerts/Alerts'),
-  'cost': () => import('./components/cost/Cost'),
-  'compliance': () => import('./components/compliance/Compliance'),
-  'operators': () => import('./components/operators/Operators'),
-  'helm': () => import('./components/helm/HelmReleases'),
-  'settings': () => import('./components/settings/Settings'),
-  'gpu-reservations': () => import('./components/gpu/GPUReservations'),
-  'data-compliance': () => import('./components/data-compliance/DataCompliance'),
-  'logs': () => import('./components/logs/Logs'),
-  'arcade': () => import('./components/arcade/Arcade'),
-  'deploy': () => import('./components/deploy/Deploy'),
-  'ai-ml': () => import('./components/aiml/AIML'),
-  'ai-agents': () => import('./components/aiagents/AIAgents'),
-  'llm-d-benchmarks': () => import('./components/llmd-benchmarks/LLMdBenchmarks'),
-  'cluster-admin': () => import('./components/cluster-admin/ClusterAdmin'),
-  'ci-cd': () => import('./components/cicd/CICD'),
-  'insights': () => import('./components/insights/Insights'),
-  'multi-tenancy': () => import('./components/multi-tenancy/MultiTenancy'),
-  'marketplace': () => import('./components/marketplace/Marketplace'),
-}
+// Dashboard ID → chunk import map (shared with hover prefetch in Sidebar)
+import { DASHBOARD_CHUNKS } from './lib/dashboardChunks'
 
 // Always prefetched regardless of enabled dashboards
 const ALWAYS_PREFETCH = new Set(['dashboard', 'settings', 'clusters'])
@@ -128,8 +93,8 @@ const ALWAYS_PREFETCH = new Set(['dashboard', 'settings', 'clusters'])
 // Batched to avoid overwhelming the Vite dev server with simultaneous
 // module transformation requests (which delays navigation on cold start).
 if (typeof window !== 'undefined') {
-  const PREFETCH_BATCH_SIZE = 5
-  const PREFETCH_BATCH_DELAY = 100
+  const PREFETCH_BATCH_SIZE = 8
+  const PREFETCH_BATCH_DELAY = 50
 
   const prefetchRoutes = async () => {
     // Wait for the enabled dashboards list from /health so we only

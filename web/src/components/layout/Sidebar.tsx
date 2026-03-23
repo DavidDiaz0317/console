@@ -16,6 +16,7 @@ import { useActiveUsers } from '../../hooks/useActiveUsers'
 import { ROUTES } from '../../config/routes'
 import { DASHBOARD_CONFIGS } from '../../config/dashboards/index'
 import { emitSidebarNavigated, emitDashboardRenamed } from '../../lib/analytics'
+import { prefetchDashboard } from '../../lib/prefetchDashboard'
 
 // Lazy-load SidebarCustomizer — it pulls in dnd-kit and heavy UI (~50 KB)
 const SidebarCustomizer = lazy(() =>
@@ -305,6 +306,7 @@ export function Sidebar() {
             to={item.href}
             onClick={() => emitSidebarNavigated(item.href)}
             onDoubleClick={(e) => handleDoubleClick(item, e)}
+            onMouseEnter={() => prefetchDashboard(item.href)}
             className={({ isActive }) => cn(
               'flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200',
               isActive
