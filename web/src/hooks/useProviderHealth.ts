@@ -151,7 +151,7 @@ const DEMO_PROVIDERS: ProviderHealthInfo[] = [
 ]
 
 /** Fetch AI + Cloud providers and their health status */
-async function fetchProviders(clusterSnapshot: Array<{ name: string; server: string; namespaces?: string[]; user?: string }>): Promise<ProviderHealthInfo[]> {
+async function fetchProviders(clusterSnapshot: Array<{ name: string; server?: string; namespaces?: string[]; user?: string }>): Promise<ProviderHealthInfo[]> {
   const result: ProviderHealthInfo[] = []
 
   // --- AI Providers from /settings/keys ---
@@ -263,7 +263,7 @@ export function useProviderHealth() {
 
   const cacheResult = useCache<ProviderHealthInfo[]>({
     key: `provider-health:${clusterKey}`,
-    category: 'health',
+    category: 'default',
     initialData: [],
     demoData: DEMO_PROVIDERS,
     fetcher: () => fetchProviders(clusters),
