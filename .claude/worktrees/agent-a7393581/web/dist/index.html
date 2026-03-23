@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" style="background:#0a0a0a;color-scheme:dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="KubeStellar" />
+    <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>KubeStellar Console</title>
+    <style>
+      /* Inline app shell — visible before JS loads */
+      #app-shell{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#a1a1aa}
+      #app-shell svg.logo{width:48px;height:48px;animation:pulse 2s ease-in-out infinite}
+      #app-shell p{margin-top:16px;font-size:14px;letter-spacing:0.05em;opacity:0.7}
+      .spinner{width:24px;height:24px;margin-top:20px;border:2.5px solid rgba(124,58,237,0.2);border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite}
+      @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+    <script type="module" crossorigin src="/assets/index-DGjwgag3.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-BgBbUw6h.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-BgD-WvDg.js">
+    <link rel="modulepreload" crossorigin href="/assets/i18n-vendor-BASCn4so.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-vendor-BloCsPFs.js">
+    <link rel="stylesheet" crossorigin href="/assets/vendor-Dv47L9lv.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-DdGxhWys.css">
+  </head>
+  <body>
+    <div id="root">
+      <div id="app-shell">
+        <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <p>Loading KubeStellar Console</p>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <script>
+      // Pre-flight: crypto.subtle requires a Secure Context (HTTPS or localhost).
+      // Show a clear message instead of a cryptic "Importing a module script failed" error.
+      (function(){
+        var isSecure = window.isSecureContext ||
+          location.hostname === 'localhost' ||
+          location.hostname === '127.0.0.1';
+        if (!isSecure) {
+          var shell = document.getElementById('app-shell');
+          if (shell) {
+            shell.innerHTML =
+              '<svg style="width:48px;height:48px" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5">' +
+              '<path d="M12 9v4m0 4h.01M3.6 20h16.8a1 1 0 0 0 .87-1.5L12.87 3.5a1 1 0 0 0-1.74 0L2.73 18.5A1 1 0 0 0 3.6 20z"/></svg>' +
+              '<p style="font-size:18px;font-weight:600;color:#f4f4f5;margin-top:16px">HTTPS Required</p>' +
+              '<p style="max-width:480px;text-align:center;line-height:1.6;margin-top:8px">' +
+              'KubeStellar Console requires a secure context (HTTPS) to run.<br>' +
+              'You are accessing <code style="background:#27272a;padding:2px 6px;border-radius:4px">' +
+              location.origin + '</code> over plain HTTP.</p>' +
+              '<p style="max-width:480px;text-align:center;line-height:1.6;margin-top:16px;font-size:13px">' +
+              '<strong style="color:#a78bfa">To fix:</strong> Access this URL with <code style="background:#27272a;padding:2px 6px;border-radius:4px">https://</code> instead, ' +
+              'or use <code style="background:#27272a;padding:2px 6px;border-radius:4px">localhost</code> for local development.</p>';
+          }
+          // Prevent the module script from loading (it will fail on crypto.subtle)
+          throw new Error('Insecure context — HTTPS required');
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+import{a as e}from"./react-vendor-BgBbUw6h.js";function r(r,t){const[u,n]=e.useState(!1),c=e.useRef(null);return{showIndicator:u,triggerRefresh:e.useCallback(()=>{n(!0),c.current&&clearTimeout(c.current),r(),c.current=setTimeout(()=>{n(!1),c.current=null},300)},[r])}}export{r as u};

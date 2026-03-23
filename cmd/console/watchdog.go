@@ -47,6 +47,7 @@ const (
 	watchdogTLSCertFile         = "./data/tls/localhost.crt"
 	watchdogTLSKeyFile          = "./data/tls/localhost.key"
 	watchdogCertValidity        = 365 * 24 * time.Hour // 1 year
+	watchdogStageFile           = "/tmp/.kc-startup-stage"
 )
 
 // WatchdogConfig holds configuration for the watchdog reverse proxy.

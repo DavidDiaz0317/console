@@ -1,0 +1,1 @@
+const t="kc_browser_notif_verified";function e(){try{const e=localStorage.getItem(t);if(!e)return!1;const{verified:r,at:n}=JSON.parse(e);return!(Date.now()-n>2592e6)&&!0===r}catch{return!1}}function r(e){localStorage.setItem(t,JSON.stringify({verified:e,at:Date.now()}))}export{e as i,r as s};

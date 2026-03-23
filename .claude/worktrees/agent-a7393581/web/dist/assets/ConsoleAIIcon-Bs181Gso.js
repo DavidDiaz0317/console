@@ -1,0 +1,1 @@
+import{j as s}from"./react-vendor-BgBbUw6h.js";import{L as a,v as e}from"./index-DGjwgag3.js";function m({className:m,size:o="md"}){return s.jsx(a,{className:e({sm:"w-4 h-4",md:"w-5 h-5",lg:"w-6 h-6"}[o],m),alt:"Console AI"})}export{m as C};
