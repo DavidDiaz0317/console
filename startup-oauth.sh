@@ -228,6 +228,13 @@ if [ "$USE_DEV_SERVER" = true ]; then
 else
     echo "  Frontend: Production build (fast load)"
 fi
+if [ "$TLS_ENABLED" = "true" ]; then
+    echo ""
+    echo "  ⚠️  TLS is enabled — the console will run on https://localhost:8080"
+    echo "     Make sure your GitHub OAuth App includes this callback URL:"
+    echo "     https://localhost:8080/auth/github/callback"
+    echo "     (Settings → Developer settings → OAuth Apps → your app → Callback URL)"
+fi
 echo ""
 
 # Watchdog-aware port cleanup
