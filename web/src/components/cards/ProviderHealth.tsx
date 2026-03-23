@@ -10,7 +10,6 @@ import { useCardLoadingState } from './CardDataContext'
 import { ROUTES } from '../../config/routes'
 import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../ui/StatusBadge'
-import { useDemoMode } from '../../hooks/useDemoMode'
 
 const STATUS_COLORS: Record<ProviderHealthInfo['status'], string> = {
   operational: 'bg-green-500',
@@ -88,15 +87,17 @@ function ProviderRow({ provider, onConfigure }: { provider: ProviderHealthInfo; 
 
 export function ProviderHealth() {
   const { t } = useTranslation(['cards', 'common'])
-  const { aiProviders, cloudProviders, isLoading } = useProviderHealth()
+  const { aiProviders, cloudProviders, isLoading, isRefreshing, isDemoFallback, isFailed, consecutiveFailures } = useProviderHealth()
   const navigate = useNavigate()
-  const { isDemoMode } = useDemoMode()
 
   // Report loading state to CardWrapper for skeleton/refresh behavior
   useCardLoadingState({
     isLoading,
+    isRefreshing,
     hasAnyData: aiProviders.length > 0 || cloudProviders.length > 0,
-    isDemoData: isDemoMode,
+    isDemoData: isDemoFallback,
+    isFailed,
+    consecutiveFailures,
   })
 
   const goToSettings = () => navigate(ROUTES.SETTINGS)

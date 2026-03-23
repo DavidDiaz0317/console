@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { getDemoMode } from './useDemoMode'
+import { useMemo } from 'react'
+import { useCache } from '../lib/cache'
 import { useClusters } from './mcp/clusters'
 import { detectCloudProvider, getProviderLabel } from '../components/ui/CloudProviderIcon'
 import type { CloudProvider } from '../components/ui/CloudProviderIcon'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
-const REFRESH_INTERVAL = 60_000 // 60 seconds
+import { getDemoMode } from './useDemoMode'
+
 const STATUS_CHECK_TIMEOUT = 5_000
 
 type HealthStatus = 'operational' | 'degraded' | 'down' | 'unknown'
@@ -138,148 +139,149 @@ interface KeysStatusResponse {
 }
 
 /** Demo data — shows a realistic set of providers all operational */
-function getDemoProviders(): ProviderHealthInfo[] {
-  return [
-    { id: 'anthropic', name: 'Anthropic (Claude)', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.anthropic, detail: 'API key configured' },
-    { id: 'openai', name: 'OpenAI', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.openai, detail: 'API key configured' },
-    { id: 'google', name: 'Google (Gemini)', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.google, detail: 'API key configured' },
-    { id: 'eks', name: 'AWS EKS', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.eks, detail: '3 clusters' },
-    { id: 'gke', name: 'Google GKE', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.gke, detail: '2 clusters' },
-    { id: 'aks', name: 'Azure AKS', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.aks, detail: '1 cluster' },
-    { id: 'openshift', name: 'OpenShift', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.openshift, detail: '1 cluster' },
-    { id: 'oci', name: 'Oracle OKE', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.oci, detail: '1 cluster' },
-  ]
+const DEMO_PROVIDERS: ProviderHealthInfo[] = [
+  { id: 'anthropic', name: 'Anthropic (Claude)', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.anthropic, detail: 'API key configured' },
+  { id: 'openai', name: 'OpenAI', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.openai, detail: 'API key configured' },
+  { id: 'google', name: 'Google (Gemini)', category: 'ai', status: 'operational', configured: true, statusUrl: STATUS_PAGES.google, detail: 'API key configured' },
+  { id: 'eks', name: 'AWS EKS', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.eks, detail: '3 clusters' },
+  { id: 'gke', name: 'Google GKE', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.gke, detail: '2 clusters' },
+  { id: 'aks', name: 'Azure AKS', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.aks, detail: '1 cluster' },
+  { id: 'openshift', name: 'OpenShift', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.openshift, detail: '1 cluster' },
+  { id: 'oci', name: 'Oracle OKE', category: 'cloud', status: 'operational', configured: true, statusUrl: STATUS_PAGES.oci, detail: '1 cluster' },
+]
+
+/** Fetch AI + Cloud providers and their health status */
+async function fetchProviders(clusterSnapshot: Array<{ name: string; server: string; namespaces?: string[]; user?: string }>): Promise<ProviderHealthInfo[]> {
+  const result: ProviderHealthInfo[] = []
+
+  // --- AI Providers from /settings/keys ---
+  const unconfiguredProviders: string[] = []
+  try {
+    const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/settings/keys`, {
+      signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
+    })
+    if (response.ok) {
+      const data: KeysStatusResponse = await response.json()
+      const seen = new Set<string>()
+      for (const key of (data.keys || [])) {
+        const normalized = normalizeAIProvider(key.provider)
+        if (seen.has(normalized)) continue
+        seen.add(normalized)
+
+        const name = AI_PROVIDER_NAMES[key.provider] || key.displayName || key.provider
+        let status: ProviderHealthInfo['status'] = 'unknown'
+        let detail: string | undefined
+        let configured = false
+
+        if (key.configured) {
+          configured = true
+          if (key.valid === true) {
+            status = 'operational'
+            detail = 'API key configured and valid'
+          } else if (key.valid === false) {
+            status = 'down'
+            detail = key.error || 'API key invalid'
+          } else {
+            status = 'operational'
+            detail = 'API key configured'
+          }
+        } else {
+          configured = false
+          status = 'unknown'
+          detail = 'API key not configured'
+          unconfiguredProviders.push(normalized)
+        }
+
+        result.push({
+          id: normalized,
+          name,
+          category: 'ai',
+          status,
+          configured,
+          statusUrl: STATUS_PAGES[normalized],
+          detail,
+        })
+      }
+    }
+  } catch {
+    // Agent unreachable — no AI providers to show
+  }
+
+  // Check actual service health for unconfigured providers
+  if (unconfiguredProviders.length > 0) {
+    const healthMap = await checkServiceHealth(unconfiguredProviders)
+    for (const id of unconfiguredProviders) {
+      const provider = result.find(p => p.id === id)
+      if (provider && healthMap.has(id)) {
+        provider.status = healthMap.get(id)!
+      }
+    }
+  }
+
+  // --- Cloud Providers from cluster distributions ---
+  if (clusterSnapshot.length > 0) {
+    const providerCounts = new Map<CloudProvider, number>()
+    for (const cluster of clusterSnapshot) {
+      const provider = detectCloudProvider(
+        cluster.name,
+        cluster.server,
+        cluster.namespaces,
+        cluster.user,
+      )
+      // Skip generic/local providers — only show real cloud platforms
+      if (provider === 'kubernetes' || provider === 'kind' || provider === 'minikube' || provider === 'k3s') {
+        continue
+      }
+      providerCounts.set(provider, (providerCounts.get(provider) || 0) + 1)
+    }
+
+    for (const [provider, count] of providerCounts) {
+      result.push({
+        id: provider,
+        name: getProviderLabel(provider),
+        category: 'cloud',
+        status: 'operational',
+        configured: true,
+        statusUrl: STATUS_PAGES[provider],
+        detail: `${count} cluster${count !== 1 ? 's' : ''} detected`,
+      })
+    }
+  }
+
+  return result
 }
 
 /**
  * Hook that discovers AI + Cloud providers and reports their health.
- * AI providers come from the backend /settings/keys endpoint.
- * Cloud providers are detected from cluster distributions.
- * Auto-refreshes every 60 seconds.
+ * Uses useCache for persistent caching, SWR, and demo fallback.
  */
 export function useProviderHealth() {
-  const [providers, setProviders] = useState<ProviderHealthInfo[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const intervalRef = useRef<ReturnType<typeof setInterval>>()
   const { clusters } = useClusters()
 
-  const fetchProviders = useCallback(async () => {
-    if (getDemoMode()) {
-      setProviders(getDemoProviders())
-      setIsLoading(false)
-      return
-    }
+  // Stabilize cluster snapshot for cache key — only re-key when cluster count changes
+  const clusterKey = clusters.length
 
-    const result: ProviderHealthInfo[] = []
+  const cacheResult = useCache<ProviderHealthInfo[]>({
+    key: `provider-health:${clusterKey}`,
+    category: 'health',
+    initialData: [],
+    demoData: DEMO_PROVIDERS,
+    fetcher: () => fetchProviders(clusters),
+    refreshInterval: 60_000,
+  })
 
-    // --- AI Providers from /settings/keys ---
-    const unconfiguredProviders: string[] = []
-    try {
-      const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/settings/keys`, {
-        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
-      })
-      if (response.ok) {
-        const data: KeysStatusResponse = await response.json()
-        const seen = new Set<string>()
-        for (const key of (data.keys || [])) {
-          const normalized = normalizeAIProvider(key.provider)
-          if (seen.has(normalized)) continue
-          seen.add(normalized)
+  const aiProviders = useMemo(() => cacheResult.data.filter(p => p.category === 'ai'), [cacheResult.data])
+  const cloudProviders = useMemo(() => cacheResult.data.filter(p => p.category === 'cloud'), [cacheResult.data])
 
-          const name = AI_PROVIDER_NAMES[key.provider] || key.displayName || key.provider
-          let status: ProviderHealthInfo['status'] = 'unknown'
-          let detail: string | undefined
-          let configured = false
-
-          if (key.configured) {
-            configured = true
-            if (key.valid === true) {
-              status = 'operational'
-              detail = 'API key configured and valid'
-            } else if (key.valid === false) {
-              status = 'down'
-              detail = key.error || 'API key invalid'
-            } else {
-              status = 'operational'
-              detail = 'API key configured'
-            }
-          } else {
-            configured = false
-            status = 'unknown'
-            detail = 'API key not configured'
-            unconfiguredProviders.push(normalized)
-          }
-
-          result.push({
-            id: normalized,
-            name,
-            category: 'ai',
-            status,
-            configured,
-            statusUrl: STATUS_PAGES[normalized],
-            detail,
-          })
-        }
-      }
-    } catch {
-      // Agent unreachable — no AI providers to show
-    }
-
-    // Check actual service health for unconfigured providers
-    if (unconfiguredProviders.length > 0) {
-      const healthMap = await checkServiceHealth(unconfiguredProviders)
-      for (const id of (unconfiguredProviders || [])) {
-        const provider = result.find(p => p.id === id)
-        if (provider && healthMap.has(id)) {
-          provider.status = healthMap.get(id)!
-        }
-      }
-    }
-
-    // --- Cloud Providers from cluster distributions ---
-    if (clusters.length > 0) {
-      const providerCounts = new Map<CloudProvider, number>()
-      for (const cluster of (clusters || [])) {
-        const provider = detectCloudProvider(
-          cluster.name,
-          cluster.server,
-          cluster.namespaces,
-          cluster.user,
-        )
-        // Skip generic/local providers — only show real cloud platforms
-        if (provider === 'kubernetes' || provider === 'kind' || provider === 'minikube' || provider === 'k3s') {
-          continue
-        }
-        providerCounts.set(provider, (providerCounts.get(provider) || 0) + 1)
-      }
-
-      for (const [provider, count] of providerCounts) {
-        result.push({
-          id: provider,
-          name: getProviderLabel(provider),
-          category: 'cloud',
-          status: 'operational',
-          configured: true,
-          statusUrl: STATUS_PAGES[provider],
-          detail: `${count} cluster${count !== 1 ? 's' : ''} detected`,
-        })
-      }
-    }
-
-    setProviders(result)
-    setIsLoading(false)
-  }, [clusters])
-
-  useEffect(() => {
-    fetchProviders()
-    intervalRef.current = setInterval(fetchProviders, REFRESH_INTERVAL)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [fetchProviders])
-
-  const aiProviders = providers.filter(p => p.category === 'ai')
-  const cloudProviders = providers.filter(p => p.category === 'cloud')
-
-  return { providers, aiProviders, cloudProviders, isLoading, refetch: fetchProviders }
+  return {
+    providers: cacheResult.data,
+    aiProviders,
+    cloudProviders,
+    isLoading: cacheResult.isLoading,
+    isRefreshing: cacheResult.isRefreshing,
+    isDemoFallback: cacheResult.isDemoFallback,
+    isFailed: cacheResult.isFailed,
+    consecutiveFailures: cacheResult.consecutiveFailures,
+    refetch: cacheResult.refetch,
+  }
 }
