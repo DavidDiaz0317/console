@@ -19,6 +19,7 @@ import {
 } from '../lib/llmd/benchmarkMockData'
 import { STORAGE_KEY_TOKEN } from '../lib/constants'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { isDemoMode } from '../lib/demoMode'
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_KEY_TOKEN)
@@ -215,9 +216,9 @@ export function useCachedBenchmarkReports() {
       const data = await res.json()
       return (data.reports ?? []) as BenchmarkReport[]
     },
-    // Do NOT use demoWhenEmpty — in live (non-demo) mode an empty API response
-    // should render an empty/loading state, not silently inject demo data (#3328).
-    demoWhenEmpty: false,
+    // Only allow demo fallback when demo mode is explicitly enabled (#3328).
+    // In live mode, an empty API response should show empty/loading state.
+    demoWhenEmpty: isDemoMode(),
   })
 
   // Use streamed data if we have any, otherwise fall back to cache/demo

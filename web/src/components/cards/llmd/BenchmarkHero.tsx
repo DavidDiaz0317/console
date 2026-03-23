@@ -11,7 +11,6 @@ import { Zap, Clock, Activity, Cpu, TrendingUp, TrendingDown, ArrowRight, Calend
 import { useReportCardDataState } from '../CardDataContext'
 import { useCachedBenchmarkReports, resetBenchmarkStream } from '../../../hooks/useBenchmarkData'
 import {
-  generateBenchmarkReports,
   getHardwareShort,
   getModelShort,
   CONFIG_COLORS,
@@ -93,7 +92,7 @@ function HeroMetric({
 export function BenchmarkHero() {
   const { t } = useTranslation()
   const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing, currentSince } = useCachedBenchmarkReports()
-  const effectiveReports = useMemo(() => isDemoFallback ? generateBenchmarkReports() : (liveReports ?? []), [isDemoFallback, liveReports])
+  const effectiveReports = useMemo(() => (liveReports ?? []), [liveReports])
   useReportCardDataState({ isDemoData: isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing, hasData: effectiveReports.length > 0 })
 
   const [customDays, setCustomDays] = useState('')
