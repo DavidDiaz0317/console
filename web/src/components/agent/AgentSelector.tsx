@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, Check, Loader2, Sparkles } from 'lucide-react'
 import { useMissions } from '../../hooks/useMissions'
 import { useDemoMode, getDemoMode } from '../../hooks/useDemoMode'
+import { useKagentBackend } from '../../hooks/useKagentBackend'
 import { AgentIcon } from './AgentIcon'
 import type { AgentInfo } from '../../types/agent'
 import { cn } from '../../lib/cn'
@@ -31,9 +32,33 @@ export function AgentSelector({ compact = false, className = '' }: AgentSelector
   // Stash the agent name the user intended to select when approval was triggered
   const pendingAgentRef = useRef<string | null>(null)
 
-  // Only show agents that are available (installed CLI-based agents).
-  // API-key-driven agents are hidden — they can't execute commands to diagnose/repair clusters.
-  const visibleAgents = agents.filter(a => a.available)
+  // In-cluster agent backends (kagent / kagenti)
+  const { kagentAvailable, kagentiAvailable, selectedKagentAgent, selectedKagentiAgent } = useKagentBackend()
+
+  // Merge local agents with in-cluster backends
+  const visibleAgents = useMemo(() => {
+    const local = agents.filter(a => a.available)
+    const inCluster: AgentInfo[] = []
+    if (kagentAvailable) {
+      inCluster.push({
+        name: 'kagent',
+        displayName: selectedKagentAgent ? `Kagent (${selectedKagentAgent.name})` : 'Kagent',
+        description: 'In-cluster AI agent via kagent',
+        provider: 'kagent',
+        available: true,
+      })
+    }
+    if (kagentiAvailable) {
+      inCluster.push({
+        name: 'kagenti',
+        displayName: selectedKagentiAgent ? `Kagenti (${selectedKagentiAgent.name})` : 'Kagenti',
+        description: 'In-cluster AI agent via kagenti',
+        provider: 'kagenti',
+        available: true,
+      })
+    }
+    return [...local, ...inCluster]
+  }, [agents, kagentAvailable, kagentiAvailable, selectedKagentAgent, selectedKagentiAgent])
 
   // Sort: selected agent first, then available agents, then unavailable
   const sortedAgents = useMemo(() => {

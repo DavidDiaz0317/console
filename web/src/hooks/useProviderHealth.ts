@@ -114,6 +114,8 @@ const AI_PROVIDER_NAMES: Record<string, string> = {
   gemini: 'Google (Gemini)',
   bob: 'Bob (Built-in)',
   'anthropic-local': 'Claude Code (Local)',
+  kagent: 'Kagent (In-Cluster)',
+  kagenti: 'Kagenti (In-Cluster)',
 }
 
 /** Normalize AI provider ID for dedup and status lookup */
