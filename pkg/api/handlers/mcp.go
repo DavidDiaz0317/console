@@ -2008,7 +2008,10 @@ func (h *MCPHandlers) GetFlatcarNodes(c *fiber.Ctx) error {
 		}
 
 		// Single cluster query
-		nodes, err := h.k8sClient.GetFlatcarNodes(c.Context(), cluster)
+		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
+		defer cancel()
+
+		nodes, err := h.k8sClient.GetFlatcarNodes(ctx, cluster)
 		if err != nil {
 			log.Printf("internal error: %v", err)
 			return c.Status(500).JSON(fiber.Map{"error": "internal server error"})
