@@ -307,8 +307,8 @@ if [ -z "$FAST_MODE" ]; then
     fi
   fi
 else
-  echo -e "${DIM}Playwright tests skipped (--fast mode)${NC}"
-  for script in "${PLAYWRIGHT_SCRIPTS[@]}"; do
+  echo -e "${DIM}Slow and Playwright tests skipped (--fast mode)${NC}"
+  for script in "${SLOW_SCRIPTS[@]}" "${PLAYWRIGHT_SCRIPTS[@]}"; do
     SUITE_NAME=$(basename "$script" .sh)
     TOTAL=$((TOTAL + 1))
     SKIPPED_SUITES=$((SKIPPED_SUITES + 1))
@@ -356,16 +356,25 @@ cat > "$REPORT_MD" << EOF
 
 ## Suites
 
+| Suite | Status |
+|-------|--------|
 EOF
 
 # Add suite results to markdown using recorded exit-code status (not log parsing)
-for script in "${ALL_SCRIPTS[@]}" "${PLAYWRIGHT_SCRIPTS[@]}"; do
+# Build the ordered list of all tracked scripts for the report
+declare -a REPORT_SCRIPTS=("${ALL_SCRIPTS[@]}")
+if [ -n "$FAST_MODE" ]; then
+  for s in "${SLOW_SCRIPTS[@]}"; do REPORT_SCRIPTS+=("$s"); done
+fi
+for s in "${PLAYWRIGHT_SCRIPTS[@]}"; do REPORT_SCRIPTS+=("$s"); done
+
+for script in "${REPORT_SCRIPTS[@]}"; do
   SUITE_NAME=$(basename "$script" .sh)
   STATUS="${SUITE_STATUS[$SUITE_NAME]:-skip}"
   case "$STATUS" in
-    pass) echo "| \`${SUITE_NAME}\` | PASS |" >> "$REPORT_MD" ;;
-    fail) echo "| \`${SUITE_NAME}\` | FAIL |" >> "$REPORT_MD" ;;
-    *)    echo "| \`${SUITE_NAME}\` | SKIP |" >> "$REPORT_MD" ;;
+    pass) echo "| \`${SUITE_NAME}\` | ✅ PASS |" >> "$REPORT_MD" ;;
+    fail) echo "| \`${SUITE_NAME}\` | ❌ FAIL |" >> "$REPORT_MD" ;;
+    *)    echo "| \`${SUITE_NAME}\` | ⏭ SKIP |" >> "$REPORT_MD" ;;
   esac
 done
 
