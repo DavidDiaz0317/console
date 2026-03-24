@@ -5,7 +5,7 @@
 #
 # Usage:
 #   ./scripts/run-all-tests.sh              # Run all test scripts
-#   ./scripts/run-all-tests.sh --fast       # Skip long-running tests (fuzz, playwright)
+#   ./scripts/run-all-tests.sh --fast       # Skip browser/Playwright tests and long-running tests
 #
 # Output:
 #   /tmp/all-tests-report.json              — unified JSON data
@@ -51,7 +51,7 @@ echo ""
 # Test scripts to run (in order)
 # ============================================================================
 
-# Scripts that do fast static checks (no external deps required)
+# Scripts that do fast static checks (no Playwright, no browser, no running server required)
 declare -a FAST_SCRIPTS=(
   "scripts/consistency-test.sh"
   "scripts/helm-lint-test.sh"
@@ -61,7 +61,7 @@ declare -a FAST_SCRIPTS=(
   "scripts/unit-test.sh"
 )
 
-# Scripts that run Go tests
+# Scripts that run Go tests (no Playwright or browser required)
 declare -a GO_SCRIPTS=(
   "scripts/auth-lifecycle-test.sh"
   "scripts/settings-migration-test.sh"
@@ -71,7 +71,7 @@ declare -a GO_SCRIPTS=(
   "scripts/dependency-audit-test.sh"
 )
 
-# Security scanning scripts
+# Security scanning scripts (no Playwright or browser required)
 declare -a SECURITY_SCRIPTS=(
   "scripts/secret-scan-test.sh"
   "scripts/ts-sast-test.sh"
@@ -79,20 +79,24 @@ declare -a SECURITY_SCRIPTS=(
   "scripts/security-headers-test.sh"
 )
 
-# Scripts that require a running server, Playwright, or are long-running
+# Scripts that require a running server, may use Playwright, or are long-running.
+# These are EXCLUDED from --fast mode to keep fast runs browser-free and quick.
 declare -a SLOW_SCRIPTS=(
   "scripts/api-contract-test.sh"
   "scripts/api-fuzz-test.sh"
   "scripts/error-boundary-test.sh"
 )
 
-# Build full list
+# Build full list — fast mode excludes SLOW_SCRIPTS and all Playwright tests
 declare -a ALL_SCRIPTS=()
 for s in "${FAST_SCRIPTS[@]}"; do ALL_SCRIPTS+=("$s"); done
 for s in "${GO_SCRIPTS[@]}"; do ALL_SCRIPTS+=("$s"); done
 for s in "${SECURITY_SCRIPTS[@]}"; do ALL_SCRIPTS+=("$s"); done
 if [ -z "$FAST_MODE" ]; then
   for s in "${SLOW_SCRIPTS[@]}"; do ALL_SCRIPTS+=("$s"); done
+else
+  echo -e "${DIM}Fast mode: skipping slow/browser tests — SLOW_SCRIPTS and Playwright suites excluded.${NC}"
+  echo ""
 fi
 
 TOTAL=0
@@ -165,6 +169,20 @@ for script in "${ALL_SCRIPTS[@]}"; do
 done
 
 echo ""
+
+# ============================================================================
+# Slow/browser suites: track skipped suites in fast mode
+# ============================================================================
+
+if [ -n "$FAST_MODE" ]; then
+  for script in "${SLOW_SCRIPTS[@]}"; do
+    SUITE_NAME=$(basename "$script" .sh)
+    TOTAL=$((TOTAL + 1))
+    SKIPPED_SUITES=$((SKIPPED_SUITES + 1))
+    SUITE_STATUS["$SUITE_NAME"]="skip"
+    RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"skip\",\"duration\":0},"
+  done
+fi
 
 # ============================================================================
 # Playwright-based tests: build once, share a single preview server
