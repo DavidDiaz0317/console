@@ -63,7 +63,7 @@ export function prefetchCardChunksEarly(): void {
     if (stored) {
       const parsed = JSON.parse(stored)
       if (Array.isArray(parsed) && parsed.length > 0) {
-        cardTypes = parsed.map((c: { card_type?: string }) => c.card_type).filter(Boolean)
+        cardTypes = parsed.map((c: { card_type?: string }) => c.card_type).filter((t): t is string => Boolean(t))
       }
     }
   } catch {
