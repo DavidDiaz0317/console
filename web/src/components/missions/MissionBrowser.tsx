@@ -159,7 +159,8 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
   // Scan state
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<FileScanResult | null>(null)
-  const [pendingImport, setPendingImport] = useState<MissionExport | null>(null)
+  const [, setPendingImport] = useState<MissionExport | null>(null)
+  const pendingImportRef = useRef<MissionExport | null>(null)
 
   // Improve mission dialog state
   const [showImproveDialog, setShowImproveDialog] = useState(false)
@@ -689,6 +690,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
 
   const handleImport = useCallback(async (mission: MissionExport, raw?: string) => {
     setPendingImport(mission)
+    pendingImportRef.current = mission
     setIsScanning(true)
 
     // If steps are empty (index-only metadata), fetch full content first
@@ -698,6 +700,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
         const fetched = await fetchMissionContent(mission)
         resolvedMission = fetched.mission
         setPendingImport(resolvedMission)
+        pendingImportRef.current = resolvedMission
       } catch {
         // Fall through with index-only mission — validation will catch the empty steps
       }
@@ -738,13 +741,16 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
   }, [])
 
   const handleScanComplete = useCallback((result: FileScanResult) => {
-    if (result.valid && pendingImport) {
-      emitSolutionImported(pendingImport.title, pendingImport.cncfProject)
-      onImport(pendingImport)
+    // Use ref to avoid stale closure — pendingImport state may not have
+    // updated yet when scan completes synchronously after async fetch
+    const mission = pendingImportRef.current
+    if (result.valid && mission) {
+      emitSolutionImported(mission.title, mission.cncfProject)
+      onImport(mission)
       onClose()
     }
     setIsScanning(false)
-  }, [pendingImport, onImport, onClose])
+  }, [onImport, onClose])
 
   const handleScanDismiss = useCallback(() => {
     setIsScanning(false)
