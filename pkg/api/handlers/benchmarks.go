@@ -262,7 +262,8 @@ type rawV1Report struct {
 // ---------------------------------------------------------------------------
 
 type driveFileList struct {
-	Files []driveFile `json:"files"`
+	Files         []driveFile `json:"files"`
+	NextPageToken string      `json:"nextPageToken,omitempty"`
 }
 
 type driveFile struct {
@@ -276,7 +277,7 @@ type driveFile struct {
 // Returns 0 if the value is "0" or empty (meaning no filter).
 func parseSinceDuration(s string) time.Duration {
 	s = strings.TrimSpace(s)
-	if s == "" || s == "0" {
+	if s == "" || s == "0" || s == "0d" {
 		return 0
 	}
 	if strings.HasSuffix(s, "d") {
@@ -286,6 +287,16 @@ func parseSinceDuration(s string) time.Duration {
 		}
 	}
 	return 0
+}
+
+// normalizeSinceKey returns a canonical cache key for the since parameter.
+// Semantically identical inputs ("0", "0d", "") all map to "0".
+func normalizeSinceKey(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0" || s == "0d" {
+		return "0"
+	}
+	return s
 }
 
 // parseDriveTime parses an RFC3339 timestamp from the Google Drive API.
@@ -384,14 +395,21 @@ func NewBenchmarkHandlers(apiKey, folderID string) *BenchmarkHandlers {
 
 // throttle ensures a minimum delay between Google Drive API requests
 // to avoid triggering anti-bot protection.
+// The lock is only held briefly to read/update timestamps; the actual
+// sleep (if needed) happens outside the lock so concurrent goroutines
+// are not blocked for the full delay.
 func (h *BenchmarkHandlers) throttle() {
 	h.reqMu.Lock()
-	defer h.reqMu.Unlock()
 	elapsed := time.Since(h.lastReq)
-	if elapsed < driveRequestDelay {
-		time.Sleep(driveRequestDelay - elapsed)
+	if elapsed >= driveRequestDelay {
+		h.lastReq = time.Now()
+		h.reqMu.Unlock()
+		return
 	}
-	h.lastReq = time.Now()
+	delay := driveRequestDelay - elapsed
+	h.lastReq = time.Now().Add(delay) // reserve a future slot
+	h.reqMu.Unlock()
+	time.Sleep(delay)
 }
 
 // driveGet performs a throttled HTTP GET with the proper User-Agent header.
@@ -446,7 +464,7 @@ func (h *BenchmarkHandlers) GetReports(c *fiber.Ctx) error {
 		})
 	}
 
-	since := c.Query("since", "0")
+	since := normalizeSinceKey(c.Query("since", "0"))
 
 	// Try cache first
 	if reports, ok := h.cache.get(since); ok {
@@ -460,7 +478,7 @@ func (h *BenchmarkHandlers) GetReports(c *fiber.Ctx) error {
 	}
 
 	// Fetch from Google Drive
-	reports, err := h.fetchAllReports(cutoff)
+	reports, parseFailures, err := h.fetchAllReports(cutoff)
 	if err != nil {
 		log.Printf("[benchmarks] Google Drive fetch error: %v", err)
 		h.cache.mu.RLock()
@@ -473,8 +491,12 @@ func (h *BenchmarkHandlers) GetReports(c *fiber.Ctx) error {
 	}
 
 	h.cache.set(reports, since)
-	log.Printf("[benchmarks] Fetched %d reports from Google Drive (since=%s)", len(reports), since)
-	return c.JSON(fiber.Map{"reports": reports, "source": "live"})
+	log.Printf("[benchmarks] Fetched %d reports from Google Drive (since=%s, parseFailures=%d)", len(reports), since, parseFailures)
+	resp := fiber.Map{"reports": reports, "source": "live"}
+	if parseFailures > 0 {
+		resp["parse_failures"] = parseFailures
+	}
+	return c.JSON(resp)
 }
 
 // StreamReports streams benchmark reports via SSE as they are fetched from Google Drive.
@@ -492,7 +514,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 		})
 	}
 
-	since := c.Query("since", "0")
+	since := normalizeSinceKey(c.Query("since", "0"))
 
 	// If cache is fresh, send it all at once
 	if reports, ok := h.cache.get(since); ok {
@@ -523,6 +545,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 		allReports := make([]BenchmarkReport, 0)
 		totalSent := 0
 		skippedFolders := 0
+		totalParseFailures := 0
 
 		// Accumulate reports into a pending batch and flush every batchSize reports.
 		const batchSize = 8
@@ -606,7 +629,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 					skippedFolders++
 					continue
 				}
-				reports, err := h.fetchRunFolderStreaming(runItem.ID, item.Name, runItem.Name, func(report BenchmarkReport) {
+				reports, failures, err := h.fetchRunFolderStreaming(runItem.ID, item.Name, runItem.Name, func(report BenchmarkReport) {
 					allReports = append(allReports, report)
 					totalSent++
 					pendingBatch = append(pendingBatch, report)
@@ -614,6 +637,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 						flushBatch()
 					}
 				})
+				totalParseFailures += failures
 				if err != nil {
 					log.Printf("[benchmarks] Error in %q/%q: %v", item.Name, runItem.Name, err)
 					continue
@@ -632,86 +656,38 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 		flushBatch()
 
 		h.cache.set(allReports, since)
-		log.Printf("[benchmarks] Stream complete: %d total reports, %d folders skipped (since=%s)", totalSent, skippedFolders, since)
-		fmt.Fprintf(w, "event: done\ndata: {\"total\":%d,\"source\":\"live\"}\n\n", totalSent)
+		log.Printf("[benchmarks] Stream complete: %d total reports, %d folders skipped, %d parse failures (since=%s)", totalSent, skippedFolders, totalParseFailures, since)
+		fmt.Fprintf(w, "event: done\ndata: {\"total\":%d,\"source\":\"live\",\"parse_failures\":%d}\n\n", totalSent, totalParseFailures)
 		w.Flush()
 	})
 
 	return nil
 }
 
-// fetchRunFolderStreaming is like fetchRunFolder but calls onReport for each individual report
-// as it's parsed, enabling per-file SSE streaming.
-func (h *BenchmarkHandlers) fetchRunFolderStreaming(folderID, experimentName, runName string, onReport func(BenchmarkReport)) ([]BenchmarkReport, error) {
-	items, err := h.listDriveFolder(folderID)
+// fetchRunFolderStreaming delegates to fetchRunFolder and calls onReport for each
+// parsed report, ensuring the streaming and non-streaming paths never diverge.
+func (h *BenchmarkHandlers) fetchRunFolderStreaming(folderID, experimentName, runName string, onReport func(BenchmarkReport)) ([]BenchmarkReport, int, error) {
+	reports, parseFailures, err := h.fetchRunFolder(folderID, experimentName, runName)
 	if err != nil {
-		return nil, err
+		return nil, parseFailures, err
 	}
-
-	var reports []BenchmarkReport
-	var subfolders []driveFile
-	for _, f := range items {
-		if f.MimeType == driveFolderMIME {
-			subfolders = append(subfolders, f)
-			continue
-		}
-		if strings.HasPrefix(f.Name, benchmarkFilePrefix) && strings.HasSuffix(f.Name, benchmarkFileSuffix) {
-			report, err := h.downloadAndParseReport(f, experimentName, runName)
-			if err != nil {
-				continue
-			}
-			reports = append(reports, report)
-			onReport(report)
-		}
+	for _, r := range reports {
+		onReport(r)
 	}
-	if len(reports) > 0 {
-		return reports, nil
-	}
-
-	// No direct files — recurse into "results" subfolder
-	for _, sub := range subfolders {
-		if !strings.EqualFold(sub.Name, "results") {
-			continue
-		}
-		resultFolders, err := h.listDriveFolder(sub.ID)
-		if err != nil {
-			continue
-		}
-		for _, rf := range resultFolders {
-			if rf.MimeType != driveFolderMIME {
-				continue
-			}
-			files, err := h.listDriveFolder(rf.ID)
-			if err != nil {
-				continue
-			}
-			for _, f := range files {
-				if f.MimeType == driveFolderMIME {
-					continue
-				}
-				if strings.HasPrefix(f.Name, benchmarkFilePrefix) && strings.HasSuffix(f.Name, benchmarkFileSuffix) {
-					report, err := h.downloadAndParseReport(f, experimentName, runName)
-					if err != nil {
-						continue
-					}
-					reports = append(reports, report)
-					onReport(report)
-				}
-			}
-		}
-	}
-	return reports, nil
+	return reports, parseFailures, nil
 }
 
 // fetchAllReports is the non-streaming version for the standard endpoint.
 // cutoff filters out folders older than the given time; zero means no filter.
-func (h *BenchmarkHandlers) fetchAllReports(cutoff time.Time) ([]BenchmarkReport, error) {
+// Returns reports and a count of files that failed to download or parse.
+func (h *BenchmarkHandlers) fetchAllReports(cutoff time.Time) ([]BenchmarkReport, int, error) {
 	topLevel, err := h.listDriveFolder(h.folderID)
 	if err != nil {
-		return nil, fmt.Errorf("listing top-level folder: %w", err)
+		return nil, 0, fmt.Errorf("listing top-level folder: %w", err)
 	}
 
 	allReports := make([]BenchmarkReport, 0)
+	totalParseFailures := 0
 	for _, item := range topLevel {
 		if item.MimeType != driveFolderMIME {
 			continue
@@ -731,28 +707,31 @@ func (h *BenchmarkHandlers) fetchAllReports(cutoff time.Time) ([]BenchmarkReport
 			if !isAfterCutoff(runItem, cutoff) {
 				continue
 			}
-			reports, err := h.fetchRunFolder(runItem.ID, item.Name, runItem.Name)
+			reports, failures, err := h.fetchRunFolder(runItem.ID, item.Name, runItem.Name)
 			if err != nil {
 				log.Printf("[benchmarks] Error in %q/%q: %v", item.Name, runItem.Name, err)
 				continue
 			}
 			allReports = append(allReports, reports...)
+			totalParseFailures += failures
 		}
 	}
-	return allReports, nil
+	return allReports, totalParseFailures, nil
 }
 
 // fetchRunFolder downloads benchmark YAML files from a run folder.
 // Handles nested layouts: run → results → individual-result → benchmark_report*.yaml
-func (h *BenchmarkHandlers) fetchRunFolder(folderID, experimentName, runName string) ([]BenchmarkReport, error) {
+// Returns reports and a count of files that failed to download or parse.
+func (h *BenchmarkHandlers) fetchRunFolder(folderID, experimentName, runName string) ([]BenchmarkReport, int, error) {
 	items, err := h.listDriveFolder(folderID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// First: look for benchmark YAML files directly in this folder
 	var reports []BenchmarkReport
 	var subfolders []driveFile
+	parseFailures := 0
 	for _, f := range items {
 		if f.MimeType == driveFolderMIME {
 			subfolders = append(subfolders, f)
@@ -761,13 +740,14 @@ func (h *BenchmarkHandlers) fetchRunFolder(folderID, experimentName, runName str
 		if strings.HasPrefix(f.Name, benchmarkFilePrefix) && strings.HasSuffix(f.Name, benchmarkFileSuffix) {
 			report, err := h.downloadAndParseReport(f, experimentName, runName)
 			if err != nil {
+				parseFailures++
 				continue
 			}
 			reports = append(reports, report)
 		}
 	}
 	if len(reports) > 0 {
-		return reports, nil
+		return reports, parseFailures, nil
 	}
 
 	// No direct files — look for "results" subfolder containing individual result folders
@@ -784,23 +764,26 @@ func (h *BenchmarkHandlers) fetchRunFolder(folderID, experimentName, runName str
 			if rf.MimeType != driveFolderMIME {
 				continue
 			}
-			r, err := h.collectBenchmarkFiles(rf.ID, experimentName, runName)
+			r, failures, err := h.collectBenchmarkFiles(rf.ID, experimentName, runName)
 			if err != nil {
 				continue
 			}
 			reports = append(reports, r...)
+			parseFailures += failures
 		}
 	}
-	return reports, nil
+	return reports, parseFailures, nil
 }
 
 // collectBenchmarkFiles finds and parses benchmark YAML files in a single folder.
-func (h *BenchmarkHandlers) collectBenchmarkFiles(folderID, experimentName, runName string) ([]BenchmarkReport, error) {
+// Returns the parsed reports and a count of files that failed to parse.
+func (h *BenchmarkHandlers) collectBenchmarkFiles(folderID, experimentName, runName string) ([]BenchmarkReport, int, error) {
 	files, err := h.listDriveFolder(folderID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var reports []BenchmarkReport
+	parseFailures := 0
 	for _, f := range files {
 		if f.MimeType == driveFolderMIME {
 			continue
@@ -808,12 +791,13 @@ func (h *BenchmarkHandlers) collectBenchmarkFiles(folderID, experimentName, runN
 		if strings.HasPrefix(f.Name, benchmarkFilePrefix) && strings.HasSuffix(f.Name, benchmarkFileSuffix) {
 			report, err := h.downloadAndParseReport(f, experimentName, runName)
 			if err != nil {
+				parseFailures++
 				continue
 			}
 			reports = append(reports, report)
 		}
 	}
-	return reports, nil
+	return reports, parseFailures, nil
 }
 
 // downloadAndParseReport downloads a single benchmark YAML file and parses it.
@@ -831,34 +815,52 @@ func (h *BenchmarkHandlers) downloadAndParseReport(f driveFile, experimentName, 
 	return adaptV1ToV2(raw, experimentName, runName, f.CreatedTime), nil
 }
 
-// listDriveFolder lists files in a Google Drive folder.
+// listDriveFolder lists all files in a Google Drive folder, handling pagination
+// so that folders with more than 1000 items are not silently truncated.
 func (h *BenchmarkHandlers) listDriveFolder(folderID string) ([]driveFile, error) {
-	url := fmt.Sprintf("%s?q='%s'+in+parents&key=%s&fields=files(id,name,mimeType,createdTime)&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true",
-		driveAPIBase, folderID, h.apiKey)
+	var allFiles []driveFile
+	pageToken := ""
 
-	resp, err := h.driveGetWithRetry(url)
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil {
-		return nil, fmt.Errorf("driveGetWithRetry returned nil response without error (should not happen)")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		var bodyStr string
-		if body, err := io.ReadAll(resp.Body); err == nil {
-			bodyStr = string(body)
+	for {
+		reqURL := fmt.Sprintf("%s?q='%s'+in+parents&key=%s&fields=files(id,name,mimeType,createdTime),nextPageToken&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true",
+			driveAPIBase, folderID, h.apiKey)
+		if pageToken != "" {
+			reqURL += "&pageToken=" + pageToken
 		}
-		return nil, fmt.Errorf("Drive API returned %d: %s", resp.StatusCode, bodyStr)
+
+		resp, err := h.driveGetWithRetry(reqURL)
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			return nil, fmt.Errorf("driveGetWithRetry returned nil response without error (should not happen)")
+		}
+
+		if resp.StatusCode != 200 {
+			var bodyStr string
+			if body, readErr := io.ReadAll(resp.Body); readErr == nil {
+				bodyStr = string(body)
+			}
+			resp.Body.Close()
+			return nil, fmt.Errorf("Drive API returned %d: %s", resp.StatusCode, bodyStr)
+		}
+
+		var result driveFileList
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decoding response: %w", err)
+		}
+		resp.Body.Close()
+
+		allFiles = append(allFiles, result.Files...)
+
+		if result.NextPageToken == "" {
+			break
+		}
+		pageToken = result.NextPageToken
 	}
 
-	var result driveFileList
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decoding response: %w", err)
-	}
-
-	return result.Files, nil
+	return allFiles, nil
 }
 
 // downloadDriveFile downloads file content from Google Drive.
@@ -930,6 +932,10 @@ func adaptV1ToV2(raw rawV1Report, experimentName, runName, fileCreatedTime strin
 	inputRate := raw.Metrics.Throughput.TotalTokensPerSec - raw.Metrics.Throughput.OutputTokensPerSec
 	if inputRate > 0 {
 		agg.Throughput.InputTokenRate = scalarToStats(inputRate, "tokens/s")
+	} else if inputRate < 0 {
+		log.Printf("[benchmarks] WARNING: negative derived input_token_rate (%.2f) for %s/%s stage %d — total=%.2f output=%.2f; skipping field",
+			inputRate, experimentName, runName, raw.Scenario.Load.Metadata.Stage,
+			raw.Metrics.Throughput.TotalTokensPerSec, raw.Metrics.Throughput.OutputTokensPerSec)
 	}
 
 	// Results — requests
@@ -1000,8 +1006,9 @@ func buildLoadConfig(raw rawV1Report) BenchmarkLoadConfig {
 		Value:        float64(sp.OutputLen),
 	}
 
-	// Rate from stage metadata
-	stageIdx := raw.Scenario.Load.Metadata.Stage
+	// Rate from stage metadata — Stage is a 1-based label, convert to 0-based index
+	stageLabel := raw.Scenario.Load.Metadata.Stage
+	stageIdx := stageLabel - 1
 	stages := raw.Scenario.Load.Args.Load.Stages
 	if stageIdx >= 0 && stageIdx < len(stages) {
 		rate := stages[stageIdx].Rate
