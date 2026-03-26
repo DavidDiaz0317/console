@@ -543,9 +543,9 @@ const RAW_CARD_COMPONENTS: Record<string, CardComponent> = {
   // Karmada multi-cluster orchestration
   karmada_status: KarmadaStatus,
   // Thanos distributed metrics
-  thanos_status: ThanosStatus,
+  'thanos_status': ThanosStatus,
   // OpenFeature feature-flag management
-  openfeature_status: OpenFeatureStatus,
+  'openfeature_status': OpenFeatureStatus,
 
   // Inspektor Gadget cards
   network_trace: NetworkTraceCard,
