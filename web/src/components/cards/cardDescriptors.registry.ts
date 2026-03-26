@@ -64,6 +64,28 @@ const DESCRIPTORS: CardDescriptor[] = [
     visualization: 'status',
     component: () => import('./ActiveAlerts').then(m => ({ default: m.ActiveAlerts as ComponentType<CardComponentProps> })),
   },
+
+  // ── Thanos distributed metrics card ──────────────────────────────────
+  {
+    id: 'thanos_status',
+    title: 'Thanos',
+    description: 'Thanos distributed metrics store, compactor, and query health.',
+    category: 'Orchestration',
+    defaultWidth: 6,
+    visualization: 'status',
+    component: () => import('./thanos_status').then(m => ({ default: m.ThanosStatus as ComponentType<CardComponentProps> })),
+  },
+
+  // ── OpenFeature feature-flag management card ──────────────────────────
+  {
+    id: 'openfeature_status',
+    title: 'OpenFeature',
+    description: 'OpenFeature feature flag provider status and flag evaluation metrics.',
+    category: 'Orchestration',
+    defaultWidth: 6,
+    visualization: 'status',
+    component: () => import('./openfeature_status').then(m => ({ default: m.OpenFeatureStatus as ComponentType<CardComponentProps> })),
+  },
 ]
 
 /**
