@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { RotateCcw, Trophy, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
 import { CardComponentProps } from './cardRegistry'
 import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 type Grid = (number | null)[][]
 
@@ -177,6 +178,7 @@ export function Game2048(_props: CardComponentProps) {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const [grid, setGrid] = useState<Grid>(initGame)
   const [score, setScore] = useState(0)
   const [bestScore, setBestScore] = useState(() => {
@@ -221,43 +223,38 @@ export function Game2048(_props: CardComponentProps) {
     }
   }, [grid, score, bestScore, gameOver, won, keepPlaying])
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (gameOver && !won) return
+  // Keyboard controls — scoped to visible game container (KeepAlive-safe)
+  const handle2048KeyDown = useCallback((e: KeyboardEvent) => {
+    if (gameOver && !won) return
 
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          e.preventDefault()
-          handleMove('up')
-          break
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          e.preventDefault()
-          handleMove('down')
-          break
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault()
-          handleMove('left')
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault()
-          handleMove('right')
-          break
-      }
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        e.preventDefault()
+        handleMove('up')
+        break
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        e.preventDefault()
+        handleMove('down')
+        break
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        e.preventDefault()
+        handleMove('left')
+        break
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        e.preventDefault()
+        handleMove('right')
+        break
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleMove, gameOver, won])
+  useGameKeys(gameContainerRef, { onKeyDown: handle2048KeyDown })
 
   // New game
   const newGame = useCallback(() => {
@@ -280,7 +277,7 @@ export function Game2048(_props: CardComponentProps) {
   const fontSize = isExpanded ? 'text-2xl' : 'text-sm'
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">

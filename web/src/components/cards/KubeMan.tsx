@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Game constants
 const CELL_SIZE = 16
@@ -122,6 +123,7 @@ export function KubeMan(_props: CardComponentProps) {
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
 
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -548,35 +550,31 @@ export function KubeMan(_props: CardComponentProps) {
   }, [isPlaying, gameOver, draw, getGhostTarget])
 
   // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (!isPlaying) return
+  // Keyboard controls — scoped to visible game container (KeepAlive-safe)
+  const handleManKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isPlaying) return
 
-      const keyMap: Record<string, Direction> = {
-        ArrowUp: 'up',
-        ArrowDown: 'down',
-        ArrowLeft: 'left',
-        ArrowRight: 'right',
-        w: 'up',
-        W: 'up',
-        s: 'down',
-        S: 'down',
-        a: 'left',
-        A: 'left',
-        d: 'right',
-        D: 'right',
-      }
-
-      if (keyMap[e.key]) {
-        e.preventDefault()
-        setNextDir(keyMap[e.key])
-      }
+    const keyMap: Record<string, Direction> = {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      w: 'up',
+      W: 'up',
+      s: 'down',
+      S: 'down',
+      a: 'left',
+      A: 'left',
+      d: 'right',
+      D: 'right',
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    if (keyMap[e.key]) {
+      e.preventDefault()
+      setNextDir(keyMap[e.key])
+    }
   }, [isPlaying])
+  useGameKeys(gameContainerRef, { onKeyDown: handleManKeyDown })
 
   // Start game
   const startGame = useCallback(() => {
@@ -612,7 +610,7 @@ export function KubeMan(_props: CardComponentProps) {
   }, [draw])
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">

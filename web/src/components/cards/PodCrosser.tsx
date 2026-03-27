@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Game constants
 const CANVAS_WIDTH = 280
@@ -65,6 +66,7 @@ export function PodCrosser(_props: CardComponentProps) {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -490,57 +492,52 @@ export function PodCrosser(_props: CardComponentProps) {
     }
   }, [isPlaying, gameOver, draw, level])
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (!isPlaying || player.dead) return
+  // Keyboard controls — scoped to visible game container (KeepAlive-safe)
+  const handleCrosserKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isPlaying || player.dead) return
 
-      const { targetX, targetY } = player
-      let newTargetX = targetX
-      let newTargetY = targetY
+    const { targetX, targetY } = player
+    let newTargetX = targetX
+    let newTargetY = targetY
 
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W': {
-          newTargetY = Math.max(0, targetY - CELL_SIZE)
-          // Score for forward progress
-          const newRow = Math.floor(newTargetY / CELL_SIZE)
-          if (newRow < highestRow) {
-            setScore(s => s + 10)
-            setHighestRow(newRow)
-          }
-          break
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W': {
+        newTargetY = Math.max(0, targetY - CELL_SIZE)
+        // Score for forward progress
+        const newRow = Math.floor(newTargetY / CELL_SIZE)
+        if (newRow < highestRow) {
+          setScore(s => s + 10)
+          setHighestRow(newRow)
         }
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          newTargetY = Math.min((ROWS - 1) * CELL_SIZE, targetY + CELL_SIZE)
-          break
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          newTargetX = Math.max(0, targetX - CELL_SIZE)
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          newTargetX = Math.min(CANVAS_WIDTH - PLAYER_SIZE, targetX + CELL_SIZE)
-          break
-        default:
-          return
+        break
       }
-
-      e.preventDefault()
-      // Only add the 4px lane offset when vertical position changed
-      const yOffset = newTargetY !== targetY ? 4 : 0
-      setPlayer(p => ({ ...p, targetX: newTargetX, targetY: newTargetY + yOffset, onLog: null }))
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        newTargetY = Math.min((ROWS - 1) * CELL_SIZE, targetY + CELL_SIZE)
+        break
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        newTargetX = Math.max(0, targetX - CELL_SIZE)
+        break
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        newTargetX = Math.min(CANVAS_WIDTH - PLAYER_SIZE, targetX + CELL_SIZE)
+        break
+      default:
+        return
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    e.preventDefault()
+    // Only add the 4px lane offset when vertical position changed
+    const yOffset = newTargetY !== targetY ? 4 : 0
+    setPlayer(p => ({ ...p, targetX: newTargetX, targetY: newTargetY + yOffset, onLog: null }))
   }, [isPlaying, player, highestRow])
+  useGameKeys(gameContainerRef, { onKeyDown: handleCrosserKeyDown })
 
   // Start game
   const startGame = useCallback(() => {
@@ -572,7 +569,7 @@ export function PodCrosser(_props: CardComponentProps) {
   }, [draw])
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">
           <div className="text-center">

@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Game constants
 const CANVAS_WIDTH = 400
@@ -36,6 +37,7 @@ export function KubeSnake() {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'paused' | 'gameover'>('idle')
   const [score, setScore] = useState(0)
@@ -274,32 +276,27 @@ export function KubeSnake() {
     return () => cancelAnimationFrame(gameLoopRef.current)
   }, [gameState, speed, moveSnake, render])
 
-  // Keyboard handlers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
-        e.preventDefault()
-      }
-
-      const key = e.key.toLowerCase()
-      const current = directionRef.current
-
-      // Prevent 180-degree turns
-      if ((key === 'arrowup' || key === 'w') && current !== 'down') {
-        nextDirectionRef.current = 'up'
-      } else if ((key === 'arrowdown' || key === 's') && current !== 'up') {
-        nextDirectionRef.current = 'down'
-      } else if ((key === 'arrowleft' || key === 'a') && current !== 'right') {
-        nextDirectionRef.current = 'left'
-      } else if ((key === 'arrowright' || key === 'd') && current !== 'left') {
-        nextDirectionRef.current = 'right'
-      }
+  // Keyboard handlers — scoped to visible game container (KeepAlive-safe)
+  const handleSnakeKeyDown = useCallback((e: KeyboardEvent) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
+      e.preventDefault()
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    const key = e.key.toLowerCase()
+    const current = directionRef.current
+
+    // Prevent 180-degree turns
+    if ((key === 'arrowup' || key === 'w') && current !== 'down') {
+      nextDirectionRef.current = 'up'
+    } else if ((key === 'arrowdown' || key === 's') && current !== 'up') {
+      nextDirectionRef.current = 'down'
+    } else if ((key === 'arrowleft' || key === 'a') && current !== 'right') {
+      nextDirectionRef.current = 'left'
+    } else if ((key === 'arrowright' || key === 'd') && current !== 'left') {
+      nextDirectionRef.current = 'right'
+    }
   }, [])
+  useGameKeys(gameContainerRef, { onKeyDown: handleSnakeKeyDown })
 
   // Render initial frame
   useEffect(() => {
@@ -320,7 +317,7 @@ export function KubeSnake() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={gameContainerRef} className="h-full flex flex-col">
       <div className={`flex flex-col items-center gap-3 ${isExpanded ? 'flex-1 min-h-0' : ''}`}>
         {/* Stats bar */}
         <div className="flex items-center justify-between w-full max-w-[400px] text-sm">

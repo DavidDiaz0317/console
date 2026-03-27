@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { RotateCcw, HelpCircle, BarChart3, X } from 'lucide-react'
 import { CardComponentProps } from './cardRegistry'
 import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // 5-letter Kubernetes-themed words
 const WORD_LIST = [
@@ -128,6 +129,7 @@ export function Kubedle(_props: CardComponentProps) {
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
 
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const [targetWord, setTargetWord] = useState(getTodaysWord)
   const [guesses, setGuesses] = useState<string[]>([])
   const [currentGuess, setCurrentGuess] = useState('')
@@ -222,17 +224,12 @@ export function Kubedle(_props: CardComponentProps) {
     }
   }, [currentGuess, guesses, gameOver, targetWord])
 
-  // Physical keyboard
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (showStats || showHelp) return
-      handleKey(e.key)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+  // Physical keyboard — scoped to visible game container (KeepAlive-safe)
+  const handleKubedleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (showStats || showHelp) return
+    handleKey(e.key)
   }, [handleKey, showStats, showHelp])
+  useGameKeys(gameContainerRef, { onKeyDown: handleKubedleKeyDown })
 
   // New game
   const newGame = useCallback((practice: boolean = false) => {
@@ -250,7 +247,7 @@ export function Kubedle(_props: CardComponentProps) {
   const keySize = isExpanded ? 'min-w-[32px] h-10 text-sm' : 'min-w-[24px] h-8 text-xs'
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2">
         {practiceMode && (

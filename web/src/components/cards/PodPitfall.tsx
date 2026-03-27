@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeyTracking } from '../../hooks/useGameKeys'
 
 // Game constants
 const CANVAS_WIDTH = 320
@@ -55,6 +56,7 @@ export function PodPitfall(_props: CardComponentProps) {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const keysRef = useRef<Set<string>>(new Set())
@@ -506,25 +508,10 @@ export function PodPitfall(_props: CardComponentProps) {
     }
   }, [isPlaying, gameOver, draw, player.x, distance])
 
-  // Keyboard
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'].includes(e.key)) {
-        e.preventDefault()
-        keysRef.current.add(e.key)
-      }
-    }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [])
+  // Keyboard — scoped to visible game container (KeepAlive-safe)
+  useGameKeyTracking(gameContainerRef, keysRef, {
+    preventDefaultKeys: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd'],
+  })
 
   // Start game
   const startGame = useCallback(() => {
@@ -557,7 +544,7 @@ export function PodPitfall(_props: CardComponentProps) {
   }, [draw])
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">
           <div className="text-center">

@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Game constants
 const GRAVITY = 0.5
@@ -26,6 +27,7 @@ export function FlappyPod(_props: CardComponentProps) {
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
 
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<number | null>(null)
   const pipeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -209,22 +211,18 @@ export function FlappyPod(_props: CardComponentProps) {
     }
   }, [isPlaying, gameOver, gameWidth, gameHeight, endGame])
 
-  // Keyboard and click controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        if (!isPlaying && !gameOver) {
-          startGame()
-        } else {
-          jump()
-        }
+  // Keyboard and click controls — scoped to visible game container (KeepAlive-safe)
+  const handleFlappyKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === ' ' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!isPlaying && !gameOver) {
+        startGame()
+      } else {
+        jump()
       }
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isPlaying, gameOver, startGame, jump])
+  useGameKeys(gameContainerRef, { onKeyDown: handleFlappyKeyDown })
 
   const handleClick = useCallback(() => {
     if (!isPlaying && !gameOver) {
@@ -235,7 +233,7 @@ export function FlappyPod(_props: CardComponentProps) {
   }, [isPlaying, gameOver, startGame, jump])
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">

@@ -4,6 +4,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // ─── Game Constants ───────────────────────────────────────────────────────────
 const PYRAMID_ROWS = 7
@@ -578,45 +579,40 @@ export function KubeBert() {
     startGameLoop()
   }, [stopIntervals, buildTileLabels, initTiles, startEnemies, startGameLoop])
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (gameStateRef.current !== 'playing') return
+  // Keyboard controls — scoped to visible game container (KeepAlive-safe)
+  const handleBertKeyDown = useCallback((e: KeyboardEvent) => {
+    if (gameStateRef.current !== 'playing') return
 
-      // Q*bert uses diagonal movement mapped to arrow keys:
-      // Up = up-left, Right = up-right, Down = down-right, Left = down-left
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          e.preventDefault()
-          movePlayer('up-left')
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault()
-          movePlayer('up-right')
-          break
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          e.preventDefault()
-          movePlayer('down-right')
-          break
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault()
-          movePlayer('down-left')
-          break
-      }
+    // Q*bert uses diagonal movement mapped to arrow keys:
+    // Up = up-left, Right = up-right, Down = down-right, Left = down-left
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        e.preventDefault()
+        movePlayer('up-left')
+        break
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        e.preventDefault()
+        movePlayer('up-right')
+        break
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        e.preventDefault()
+        movePlayer('down-right')
+        break
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        e.preventDefault()
+        movePlayer('down-left')
+        break
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [movePlayer])
+  useGameKeys(containerRef, { onKeyDown: handleBertKeyDown })
 
   // Resize canvas to container
   useEffect(() => {

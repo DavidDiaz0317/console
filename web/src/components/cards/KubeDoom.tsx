@@ -4,6 +4,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Canvas dimensions
 const CANVAS_WIDTH = 480
@@ -92,6 +93,7 @@ export function KubeDoom() {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'paused' | 'gameover' | 'levelcomplete'>('idle')
   const [score, setScore] = useState(0)
@@ -513,31 +515,21 @@ export function KubeDoom() {
     return () => cancelAnimationFrame(animationRef.current)
   }, [gameState, update, render])
 
-  // Keyboard handlers
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      const key = e.key.toLowerCase()
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
-        e.preventDefault()
-      }
-      keysRef.current.add(key)
-      if (key === ' ' && gameState === 'playing') {
-        shoot()
-      }
+  // Keyboard handlers — scoped to visible game container (KeepAlive-safe)
+  const handleDoomKeyDown = useCallback((e: KeyboardEvent) => {
+    const key = e.key.toLowerCase()
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'w', 'a', 's', 'd', 'q', 'e'].includes(key)) {
+      e.preventDefault()
     }
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key.toLowerCase())
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
+    keysRef.current.add(key)
+    if (key === ' ' && gameState === 'playing') {
+      shoot()
     }
   }, [gameState, shoot])
+  const handleDoomKeyUp = useCallback((e: KeyboardEvent) => {
+    keysRef.current.delete(e.key.toLowerCase())
+  }, [])
+  useGameKeys(gameContainerRef, { onKeyDown: handleDoomKeyDown, onKeyUp: handleDoomKeyUp })
 
   // Render initial frame
   useEffect(() => {
@@ -563,7 +555,7 @@ export function KubeDoom() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={gameContainerRef} className="h-full flex flex-col">
       <div className={`flex flex-col items-center gap-3 ${isExpanded ? 'flex-1 min-h-0' : ''}`}>
         {/* Stats bar */}
         <div className="flex items-center justify-between w-full max-w-[480px] text-sm">

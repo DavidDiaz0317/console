@@ -5,6 +5,7 @@ import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeyTracking } from '../../hooks/useGameKeys'
 
 // Game constants
 const CANVAS_WIDTH = 300
@@ -43,6 +44,7 @@ export function NodeInvaders(_props: CardComponentProps) {
   const { t: _t } = useTranslation()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
   const { isExpanded } = useCardExpanded()
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const keysRef = useRef<Set<string>>(new Set())
@@ -370,25 +372,10 @@ export function NodeInvaders(_props: CardComponentProps) {
     }
   }, [isPlaying, gameOver, draw, initInvaders, initShields, canShoot, invaderSpeed])
 
-  // Keyboard
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'a', 'd', 'A', 'D'].includes(e.key)) {
-        e.preventDefault()
-        keysRef.current.add(e.key)
-      }
-    }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [])
+  // Keyboard — scoped to visible game container (KeepAlive-safe)
+  useGameKeyTracking(gameContainerRef, keysRef, {
+    preventDefaultKeys: ['ArrowLeft', 'ArrowRight', 'ArrowUp', ' ', 'a', 'd', 'A', 'D'],
+  })
 
   // Start game
   const startGame = useCallback(() => {
@@ -413,7 +400,7 @@ export function NodeInvaders(_props: CardComponentProps) {
   }, [draw])
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-1.5">
           <Rocket className="w-4 h-4 text-cyan-400" />

@@ -6,6 +6,7 @@ import { useReportCardDataState } from './CardDataContext'
 import { DynamicCardErrorBoundary } from './DynamicCardErrorBoundary'
 import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
+import { useGameKeys } from '../../hooks/useGameKeys'
 
 // Board dimensions
 const ROWS = 20
@@ -159,6 +160,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
 
+  const gameContainerRef = useRef<HTMLDivElement>(null)
   const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Calculate drop speed based on level
@@ -246,52 +248,47 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
     setTimeout(moveDown, 10)
   }, [piece, board, gameOver, isPaused, moveDown])
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || (e.target instanceof HTMLElement && e.target.isContentEditable)) return
-      if (!isPlaying || gameOver) return
+  // Keyboard controls — scoped to visible game container (KeepAlive-safe)
+  const handleTetrisKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isPlaying || gameOver) return
 
-      switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault()
-          moveHorizontal(-1)
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault()
-          moveHorizontal(1)
-          break
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          e.preventDefault()
-          moveDown()
-          break
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          e.preventDefault()
-          rotate()
-          break
-        case ' ':
-          e.preventDefault()
-          hardDrop()
-          break
-        case 'p':
-        case 'P':
-          e.preventDefault()
-          setIsPaused(p => !p)
-          break
-      }
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'a':
+      case 'A':
+        e.preventDefault()
+        moveHorizontal(-1)
+        break
+      case 'ArrowRight':
+      case 'd':
+      case 'D':
+        e.preventDefault()
+        moveHorizontal(1)
+        break
+      case 'ArrowDown':
+      case 's':
+      case 'S':
+        e.preventDefault()
+        moveDown()
+        break
+      case 'ArrowUp':
+      case 'w':
+      case 'W':
+        e.preventDefault()
+        rotate()
+        break
+      case ' ':
+        e.preventDefault()
+        hardDrop()
+        break
+      case 'p':
+      case 'P':
+        e.preventDefault()
+        setIsPaused(p => !p)
+        break
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isPlaying, gameOver, moveHorizontal, moveDown, rotate, hardDrop])
+  useGameKeys(gameContainerRef, { onKeyDown: handleTetrisKeyDown })
 
   // Game loop
   useEffect(() => {
@@ -359,7 +356,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
   const displayBoard = renderBoard()
 
   return (
-    <div className="h-full flex flex-col p-2 select-none">
+    <div ref={gameContainerRef} className="h-full flex flex-col p-2 select-none">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-3 text-xs">
