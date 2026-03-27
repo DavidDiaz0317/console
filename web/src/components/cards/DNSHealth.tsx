@@ -1,10 +1,19 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCachedPods } from '../../hooks/useCachedData'
+import { useCardLoadingState } from './CardDataContext'
 
 export function DNSHealth() {
   const { t } = useTranslation('cards')
-  const { pods, isLoading } = useCachedPods(undefined, 'kube-system')
+  const { pods, isLoading, isRefreshing, isDemoFallback, isFailed, consecutiveFailures } = useCachedPods(undefined, 'kube-system')
+  const { showSkeleton } = useCardLoadingState({
+    isLoading,
+    isRefreshing,
+    hasAnyData: pods.length > 0,
+    isDemoData: isDemoFallback,
+    isFailed,
+    consecutiveFailures,
+  })
 
   const dnsPods = useMemo(() => {
     return pods.filter(p =>
@@ -22,7 +31,7 @@ export function DNSHealth() {
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
   }, [dnsPods])
 
-  if (isLoading && pods.length === 0) {
+  if (showSkeleton) {
     return (
       <div className="space-y-2 p-1">
         {[1, 2, 3].map(i => (
