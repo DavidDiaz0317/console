@@ -211,9 +211,27 @@ async function fetchClusterVersion(clusterName: string, forceRefresh = false): P
   }
 }
 
+// Derive the latest known Kubernetes minor version from cluster data.
+// Falls back to a hardcoded value when no cluster versions are available.
+const FALLBACK_LATEST_MINOR = 33
+
+function deriveLatestMinor(versions: Record<string, string>): number {
+  let maxMinor = 0
+  for (const version of Object.values(versions)) {
+    const match = version.match(/v?(\d+)\.(\d+)\.(\d+)/)
+    if (match) {
+      const minor = parseInt(match[2], 10)
+      if (minor > maxMinor) maxMinor = minor
+    }
+  }
+  // The latest available minor is at least one ahead of the highest observed,
+  // since clusters are rarely all on the very latest release.
+  // If no versions were parsed, fall back to the hardcoded value.
+  return maxMinor > 0 ? maxMinor + 1 : FALLBACK_LATEST_MINOR
+}
+
 // Check if a newer stable version is available
-// In a real implementation, this would check against kubernetes release info
-function getRecommendedUpgrade(currentVersion: string): string | null {
+function getRecommendedUpgrade(currentVersion: string, latestMinor: number): string | null {
   if (!currentVersion || currentVersion === '-' || currentVersion === 'loading...') return null
 
   // Parse version (e.g., "v1.28.5" -> { major: 1, minor: 28, patch: 5 })
@@ -222,10 +240,6 @@ function getRecommendedUpgrade(currentVersion: string): string | null {
 
   const minor = parseInt(match[2], 10)
   const patch = parseInt(match[3], 10)
-
-  // Suggest upgrade if not on latest minor or patch
-  // This is simplified - real implementation would check actual Kubernetes releases
-  const latestMinor = 33 // Current latest minor version
 
   if (minor < latestMinor - 2) {
     // More than 2 minor versions behind - suggest next minor
@@ -468,6 +482,9 @@ Please proceed step by step and ask for confirmation before making any changes.`
     return result
   }, [allClusters, globalSelectedClusters, isAllClustersSelected, customFilter])
 
+  // Derive the latest Kubernetes minor version dynamically from observed cluster versions
+  const latestMinor = useMemo(() => deriveLatestMinor(clusterVersions), [clusterVersions])
+
   // Build version data from real cluster versions
   const clusterVersionData = useMemo(() => {
     return globalFilteredClusters.map((c) => {
@@ -483,7 +500,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
       const currentVersion = stateVersion || freshCached || staleCached ||
         (isUnreachable ? '-' : (isStillLoading || (!fetchCompleted && agentConnected) ? 'loading...' : '-'))
 
-      const targetVersion = getRecommendedUpgrade(currentVersion)
+      const targetVersion = getRecommendedUpgrade(currentVersion, latestMinor)
       const hasUpgrade = targetVersion && targetVersion !== currentVersion && currentVersion !== '-' && currentVersion !== 'loading...'
 
       return {
@@ -498,7 +515,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
         isLoading: isStillLoading,
       }
     })
-  }, [globalFilteredClusters, clusterVersions, agentConnected, fetchCompleted])
+  }, [globalFilteredClusters, clusterVersions, agentConnected, fetchCompleted, latestMinor])
 
   // Use shared card data hook for filtering, sorting, and pagination
   const {
