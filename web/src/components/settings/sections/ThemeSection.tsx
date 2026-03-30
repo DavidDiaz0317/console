@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Moon, Sun, Check, Palette, ChevronDown, Trash2 } from 'lucide-react'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
@@ -18,6 +18,8 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
   const [customThemes, setCustomThemes] = useState<Theme[]>(() => getCustomThemes())
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = () => setCustomThemes(getCustomThemes())
@@ -37,6 +39,76 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
     }
     setConfirmRemoveId(null)
   }
+
+  const openDropdown = useCallback(() => {
+    setThemeDropdownOpen(true)
+    requestAnimationFrame(() => {
+      const items = dropdownRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])')
+      if (!items?.length) return
+      const selected = Array.from(items).find(el => el.getAttribute('aria-selected') === 'true')
+      const target = selected ?? items[0]
+      target.focus()
+      target.scrollIntoView({ block: 'nearest' })
+    })
+  }, [])
+
+  const closeDropdown = useCallback(() => {
+    setThemeDropdownOpen(false)
+    triggerRef.current?.focus()
+  }, [])
+
+  const handleTriggerKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setThemeDropdownOpen(false)
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openDropdown()
+    }
+  }, [openDropdown])
+
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const items = Array.from(dropdownRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])') ?? [])
+    const idx = items.indexOf(document.activeElement as HTMLElement)
+
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeDropdown()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const next = items[Math.min(idx + 1, items.length - 1)]
+      next?.focus()
+      next?.scrollIntoView({ block: 'nearest' })
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (idx <= 0) {
+        closeDropdown()
+      } else {
+        const prev = items[Math.max(idx - 1, 0)]
+        prev?.focus()
+        prev?.scrollIntoView({ block: 'nearest' })
+      }
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      const first = items[0]
+      first?.focus()
+      first?.scrollIntoView({ block: 'nearest' })
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      const last = items[items.length - 1]
+      last?.focus()
+      last?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [closeDropdown])
+
+  const handleDropdownBlur = useCallback((e: React.FocusEvent) => {
+    if (
+      !dropdownRef.current?.contains(e.relatedTarget as Node) &&
+      !triggerRef.current?.contains(e.relatedTarget as Node)
+    ) {
+      setThemeDropdownOpen(false)
+    }
+  }, [])
 
   return (
     <div id="theme-settings" className="glass rounded-xl p-6 overflow-visible relative z-30" style={{ isolation: 'isolate' }}>
@@ -85,9 +157,15 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
 
         {/* Theme Selector Dropdown */}
         <div className="relative z-20">
-          <label className="block text-sm text-muted-foreground mb-2">{t('settings.theme.selectTheme')}</label>
+          <label id="theme-dropdown-label" className="block text-sm text-muted-foreground mb-2">{t('settings.theme.selectTheme')}</label>
           <button
-            onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
+            ref={triggerRef}
+            aria-expanded={themeDropdownOpen}
+            aria-haspopup="listbox"
+            aria-labelledby="theme-dropdown-label"
+            aria-controls="theme-dropdown-listbox"
+            onClick={() => themeDropdownOpen ? closeDropdown() : openDropdown()}
+            onKeyDown={handleTriggerKeyDown}
             className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-secondary border border-border text-foreground hover:bg-secondary/80 transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -111,7 +189,16 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
 
           {/* Dropdown Menu */}
           {themeDropdownOpen && (
-            <div className="absolute z-[9999] mt-2 w-full max-h-[400px] overflow-y-auto rounded-lg bg-card border border-border shadow-xl" style={{ transform: 'translateZ(0)' }}>
+            <div
+              ref={dropdownRef}
+              id="theme-dropdown-listbox"
+              role="listbox"
+              aria-labelledby="theme-dropdown-label"
+              onKeyDown={handleDropdownKeyDown}
+              onBlur={handleDropdownBlur}
+              className="absolute z-[9999] mt-2 w-full max-h-[400px] overflow-y-auto rounded-lg bg-card border border-border shadow-xl"
+              style={{ transform: 'translateZ(0)' }}
+            >
               {themeGroups.map((group) => (
                 <div key={group.name}>
                   <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-secondary/50 sticky top-0">
@@ -124,9 +211,12 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
                     return (
                       <button
                         key={tid}
+                        role="option"
+                        aria-selected={isSelected}
+                        tabIndex={-1}
                         onClick={() => {
                           setTheme(tid)
-                          setThemeDropdownOpen(false)
+                          closeDropdown()
                         }}
                         className={`w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors ${
                           isSelected ? 'bg-primary/10' : ''
@@ -177,9 +267,12 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
                     return (
                       <button
                         key={ct.id}
+                        role="option"
+                        aria-selected={isSelected}
+                        tabIndex={-1}
                         onClick={() => {
                           setTheme(ct.id)
-                          setThemeDropdownOpen(false)
+                          closeDropdown()
                         }}
                         className={`w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors ${
                           isSelected ? 'bg-primary/10' : ''

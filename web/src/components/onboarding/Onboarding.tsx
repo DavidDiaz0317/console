@@ -237,10 +237,12 @@ export function Onboarding() {
               ))}
             </div>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-3" role="radiogroup" aria-label={currentQuestion.question}>
               {currentQuestion.options.map((option) => (
                 <button
                   key={option}
+                  role="radio"
+                  aria-checked={answers[currentQuestion.key] === option}
                   onClick={() => handleSelect(option)}
                   className={`w-full p-4 rounded-xl text-left transition-all duration-200 ${
                     answers[currentQuestion.key] === option

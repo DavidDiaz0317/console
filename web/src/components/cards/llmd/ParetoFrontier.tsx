@@ -657,6 +657,7 @@ function FilterDropdown({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
+        aria-label={label}
         className="bg-secondary border border-border rounded px-2 py-1 text-[11px] text-foreground min-w-[100px]"
       >
         {!noAllOption && <option value="all">{t('common:common.all')}</option>}

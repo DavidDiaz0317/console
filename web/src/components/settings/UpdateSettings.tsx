@@ -143,6 +143,8 @@ export function UpdateSettings() {
   const [countdown, setCountdown] = useState(ESTIMATED_UPDATE_SECS)
   const triggerGuardRef = useRef(false) // prevents rapid double-clicks from firing multiple triggers
   const triggerTimestampRef = useRef(0) // when "Update Now" was clicked (for duration tracking)
+  const channelTriggerRef = useRef<HTMLButtonElement>(null)
+  const channelDropdownRef = useRef<HTMLDivElement>(null)
 
   // Track visual spinning for Check Now button (ensures 1 full rotation like cards)
   const [isVisuallySpinning, setIsVisuallySpinning] = useState(false)
@@ -245,6 +247,66 @@ export function UpdateSettings() {
   const isWsUpdating = updateProgress && !['idle', 'done', 'failed'].includes(updateProgress.status)
   const isUpdating = isWsUpdating || triggerState === 'triggered'
 
+  const openChannelDropdown = () => {
+    setChannelDropdownOpen(true)
+    requestAnimationFrame(() => {
+      const items = channelDropdownRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])')
+      if (!items?.length) return
+      const selected = Array.from(items).find(el => el.getAttribute('aria-selected') === 'true')
+      const target = selected ?? items[0]
+      target.focus()
+    })
+  }
+
+  const closeChannelDropdown = () => {
+    setChannelDropdownOpen(false)
+    channelTriggerRef.current?.focus()
+  }
+
+  const handleChannelTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setChannelDropdownOpen(false)
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openChannelDropdown()
+    }
+  }
+
+  const handleChannelDropdownKeyDown = (e: React.KeyboardEvent) => {
+    const items = Array.from(channelDropdownRef.current?.querySelectorAll<HTMLElement>('[role="option"]:not([disabled])') ?? [])
+    const idx = items.indexOf(document.activeElement as HTMLElement)
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeChannelDropdown()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      items[Math.min(idx + 1, items.length - 1)]?.focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (idx <= 0) {
+        closeChannelDropdown()
+      } else {
+        items[Math.max(idx - 1, 0)]?.focus()
+      }
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      items[0]?.focus()
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      items[items.length - 1]?.focus()
+    }
+  }
+
+  const handleChannelDropdownBlur = (e: React.FocusEvent) => {
+    if (
+      !channelDropdownRef.current?.contains(e.relatedTarget as Node) &&
+      !channelTriggerRef.current?.contains(e.relatedTarget as Node)
+    ) {
+      setChannelDropdownOpen(false)
+    }
+  }
+
   // Countdown timer during updates — reset on start, tick every second
   useEffect(() => {
     if (isUpdating) {
@@ -302,12 +364,18 @@ export function UpdateSettings() {
 
       {/* Channel Selector */}
       <div className="mb-4">
-        <label className="block text-sm text-muted-foreground mb-2">
+        <label id="channel-dropdown-label" className="block text-sm text-muted-foreground mb-2">
           {t('settings.updates.updateChannel')}
         </label>
         <div className="relative">
           <button
-            onClick={() => setChannelDropdownOpen(!channelDropdownOpen)}
+            ref={channelTriggerRef}
+            aria-expanded={channelDropdownOpen}
+            aria-haspopup="listbox"
+            aria-labelledby="channel-dropdown-label"
+            aria-controls="channel-dropdown-listbox"
+            onClick={() => channelDropdownOpen ? closeChannelDropdown() : openChannelDropdown()}
+            onKeyDown={handleChannelTriggerKeyDown}
             className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-secondary border border-border text-foreground hover:bg-secondary/80 transition-colors"
           >
             <span className="flex items-center gap-2">
@@ -319,13 +387,24 @@ export function UpdateSettings() {
             />
           </button>
           {channelDropdownOpen && (
-            <div className="absolute z-50 mt-2 w-full rounded-lg bg-card border border-border shadow-xl">
+            <div
+              ref={channelDropdownRef}
+              id="channel-dropdown-listbox"
+              role="listbox"
+              aria-labelledby="channel-dropdown-label"
+              onKeyDown={handleChannelDropdownKeyDown}
+              onBlur={handleChannelDropdownBlur}
+              className="absolute z-50 mt-2 w-full rounded-lg bg-card border border-border shadow-xl"
+            >
               {visibleChannels.map((option) => (
                 <button
                   key={option.value}
+                  role="option"
+                  aria-selected={channel === option.value}
+                  tabIndex={-1}
                   onClick={() => {
                     setChannel(option.value)
-                    setChannelDropdownOpen(false)
+                    closeChannelDropdown()
                   }}
                   className={`w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
                     channel === option.value ? 'bg-primary/10' : ''

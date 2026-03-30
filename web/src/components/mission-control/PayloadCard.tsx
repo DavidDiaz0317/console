@@ -64,8 +64,71 @@ export function PayloadCard({ project, onRemove, onUpdatePriority, onHover, onCl
   const [showPriorityMenu, setShowPriorityMenu] = useState(false)
   const [showDeps, setShowDeps] = useState(false)
   const depRef = useRef<HTMLSpanElement>(null)
+  const priorityTriggerRef = useRef<HTMLButtonElement>(null)
+  const priorityMenuRef = useRef<HTMLDivElement>(null)
   const gradient = getCategoryGradient(project.category)
   const maturity = project.maturity ? MATURITY_CONFIG[project.maturity] : null
+
+  const openPriorityMenu = () => {
+    setShowPriorityMenu(true)
+    requestAnimationFrame(() => {
+      const items = priorityMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])')
+      if (!items?.length) return
+      const current = Array.from(items).find(el => el.getAttribute('data-selected') === 'true')
+      const target = current ?? items[0]
+      target.focus()
+    })
+  }
+
+  const closePriorityMenu = () => {
+    setShowPriorityMenu(false)
+    priorityTriggerRef.current?.focus()
+  }
+
+  const handlePriorityTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setShowPriorityMenu(false)
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.stopPropagation()
+      e.preventDefault()
+      openPriorityMenu()
+    }
+  }
+
+  const handlePriorityMenuKeyDown = (e: React.KeyboardEvent) => {
+    const items = Array.from(priorityMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? [])
+    const idx = items.indexOf(document.activeElement as HTMLElement)
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closePriorityMenu()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      items[Math.min(idx + 1, items.length - 1)]?.focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (idx <= 0) {
+        closePriorityMenu()
+      } else {
+        items[Math.max(idx - 1, 0)]?.focus()
+      }
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      items[0]?.focus()
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      items[items.length - 1]?.focus()
+    }
+  }
+
+  const handlePriorityMenuBlur = (e: React.FocusEvent) => {
+    if (
+      !priorityMenuRef.current?.contains(e.relatedTarget as Node) &&
+      !priorityTriggerRef.current?.contains(e.relatedTarget as Node)
+    ) {
+      setShowPriorityMenu(false)
+    }
+  }
 
   return (
     <motion.div
@@ -182,12 +245,17 @@ export function PayloadCard({ project, onRemove, onUpdatePriority, onHover, onCl
           {/* Priority dropdown */}
           <div className="relative ml-auto">
             <Button
+              ref={priorityTriggerRef}
               variant="ghost"
               size="sm"
+              aria-expanded={showPriorityMenu}
+              aria-haspopup="menu"
+              aria-label={`Priority: ${project.priority}`}
               onClick={(e) => {
                 e.stopPropagation()
-                setShowPriorityMenu(!showPriorityMenu)
+                if (showPriorityMenu) { closePriorityMenu() } else { openPriorityMenu() }
               }}
+              onKeyDown={handlePriorityTriggerKeyDown}
               className={cn(
                 '!text-[10px] !px-1.5 !py-0.5 rounded-full border !gap-0.5 cursor-pointer',
                 PRIORITY_STYLES[project.priority]
@@ -201,16 +269,26 @@ export function PayloadCard({ project, onRemove, onUpdatePriority, onHover, onCl
               <>
                 {/* Backdrop to close on outside click */}
                 <div className="fixed inset-0 z-20" onClick={() => setShowPriorityMenu(false)} />
-                <div className="absolute right-0 bottom-full mb-1 bg-slate-900 border border-border rounded-lg shadow-lg py-1 z-30 min-w-[100px]">
+                <div
+                  ref={priorityMenuRef}
+                  role="menu"
+                  aria-label="Set priority"
+                  onKeyDown={handlePriorityMenuKeyDown}
+                  onBlur={handlePriorityMenuBlur}
+                  className="absolute right-0 bottom-full mb-1 bg-slate-900 border border-border rounded-lg shadow-lg py-1 z-30 min-w-[100px]"
+                >
                   {(['required', 'recommended', 'optional'] as const).map((p) => (
                     <Button
                       key={p}
                       variant="ghost"
                       size="sm"
+                      role="menuitem"
+                      data-selected={project.priority === p ? 'true' : 'false'}
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation()
                         onUpdatePriority(p)
-                        setShowPriorityMenu(false)
+                        closePriorityMenu()
                       }}
                       className={cn(
                         'w-full !justify-start !text-xs !px-3 !py-1.5 !rounded-none capitalize',

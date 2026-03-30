@@ -254,8 +254,9 @@ function CronJobClusterPanel({ cluster }: { cluster: string }) {
           </div>
           {/* Tier selector */}
           <div>
-            <label className="text-2xs text-white/40 block mb-0.5">Check Tier</label>
+            <label htmlFor="check-tier-select" className="text-2xs text-white/40 block mb-0.5">Check Tier</label>
             <select
+              id="check-tier-select"
               value={tier}
               onChange={e => setTier(Number(e.target.value))}
               className="w-full px-2 py-1 text-xs rounded border border-white/10 bg-secondary text-white/80 focus:outline-none focus:border-white/20"
@@ -304,6 +305,7 @@ function CronJobClusterPanel({ cluster }: { cluster: string }) {
           <select
             value={tier}
             onChange={e => setTier(Number(e.target.value))}
+            aria-label="Check tier"
             className="px-1.5 py-0.5 text-2xs rounded border border-white/10 bg-secondary text-white/60 focus:outline-none focus:border-white/20"
           >
             {TIER_OPTIONS.map(t => (

@@ -302,6 +302,7 @@ export function MiniDashboard() {
             disabled={isRefreshing}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-white transition-colors disabled:opacity-50"
             title={t('common.refresh')}
+            aria-label={t('common.refresh')}
           >
             <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
           </button>
@@ -309,6 +310,7 @@ export function MiniDashboard() {
             onClick={openFullDashboard}
             className="p-1.5 rounded-lg hover:bg-secondary/50 text-muted-foreground hover:text-white transition-colors"
             title="Open full dashboard"
+            aria-label="Open full dashboard"
           >
             <Maximize2 className="w-4 h-4" />
           </button>

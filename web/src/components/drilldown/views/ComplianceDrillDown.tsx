@@ -284,6 +284,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value); resetPage() }}
+              aria-label="Filter by status"
               className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Statuses</option>
@@ -294,6 +295,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={severityFilter}
               onChange={e => { setSeverityFilter(e.target.value); resetPage() }}
+              aria-label="Filter by severity"
               className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Severities</option>
@@ -305,6 +307,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={clusterFilter}
               onChange={e => { setClusterFilter(e.target.value); resetPage() }}
+              aria-label="Filter by cluster"
               className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Clusters</option>
@@ -315,6 +318,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={profileFilter}
               onChange={e => { setProfileFilter(e.target.value); resetPage() }}
+              aria-label="Filter by profile"
               className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="">All Profiles</option>
@@ -354,20 +358,20 @@ export function ComplianceDrillDown({ data }: Props) {
           <div className="rounded-lg border border-border overflow-hidden">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_2fr_100px_100px_120px_120px] gap-px bg-border text-xs font-medium text-muted-foreground">
-              <button onClick={() => toggleSort('controlId')} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
+              <button onClick={() => toggleSort('controlId')} aria-label={`Sort by control ID${sortField === 'controlId' ? `, currently ${sortDir}ending` : ''}`} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
                 Control <SortIndicator field="controlId" />
               </button>
               <div className="px-3 py-2 min-h-11 bg-card/80">Description</div>
-              <button onClick={() => toggleSort('status')} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
+              <button onClick={() => toggleSort('status')} aria-label={`Sort by status${sortField === 'status' ? `, currently ${sortDir}ending` : ''}`} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
                 Status <SortIndicator field="status" />
               </button>
-              <button onClick={() => toggleSort('severity')} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
+              <button onClick={() => toggleSort('severity')} aria-label={`Sort by severity${sortField === 'severity' ? `, currently ${sortDir}ending` : ''}`} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
                 Severity <SortIndicator field="severity" />
               </button>
-              <button onClick={() => toggleSort('cluster')} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
+              <button onClick={() => toggleSort('cluster')} aria-label={`Sort by cluster${sortField === 'cluster' ? `, currently ${sortDir}ending` : ''}`} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
                 Cluster <SortIndicator field="cluster" />
               </button>
-              <button onClick={() => toggleSort('profile')} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
+              <button onClick={() => toggleSort('profile')} aria-label={`Sort by profile${sortField === 'profile' ? `, currently ${sortDir}ending` : ''}`} className="flex items-center gap-1 px-3 py-2 min-h-11 bg-card/80 hover:bg-card transition-colors">
                 Profile <SortIndicator field="profile" />
               </button>
             </div>
