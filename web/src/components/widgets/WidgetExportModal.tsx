@@ -489,26 +489,45 @@ const PREV_SM = '8px'           // 2 × 4px: standard margins and gaps
 const PREV_ITEM_PAD = '4px 8px' // py-1 px-2: item-row padding (vertical=XS, horizontal=SM)
 const PREV_DOTS_GAP = '2px'     // sub-grid gap for tightly-packed status-dot rows
 
+// Color constants for the macOS widget export preview.
+// These are intentionally fixed dark values — the preview must look the same
+// regardless of the console's current light/dark theme.
+const PREV_CARD_BG = 'rgba(17, 24, 39, 0.9)'
+const PREV_CARD_BORDER = '1px solid rgba(255, 255, 255, 0.1)'
+const PREV_CARD_SHADOW = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+const PREV_TEXT_PRIMARY = '#f9fafb'
+const PREV_TEXT_MUTED = '#9ca3af'
+const PREV_TEXT_SECONDARY = '#6b7280'
+const PREV_TEXT_LIGHT = '#cbd5e1'
+const PREV_TEXT_SOFT = '#94a3b8'
+const PREV_TEXT_DIM = '#4b5563'
+const PREV_COLOR_BLUE = '#60a5fa'
+const PREV_COLOR_PURPLE = '#c084fc'
+const PREV_COLOR_CYAN = '#22d3ee'
+const PREV_COLOR_PURPLE_ACCENT = '#a855f7'
+const PREV_MINI_BG = 'rgba(31, 41, 55, 0.5)'
+const PREV_MINI_BORDER = '1px solid rgba(255, 255, 255, 0.05)'
+
 /** Shared preview styles matching macOS Übersicht widget appearance.
  *  These use hardcoded dark colors intentionally — they render a fixed preview
  *  of how the exported widget will look on a macOS desktop, regardless of
  *  the console's current theme. */
 const ps = {
   card: {
-    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    backgroundColor: PREV_CARD_BG,
     borderRadius: '12px',
     padding: '12px 16px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: '#f9fafb',
+    border: PREV_CARD_BORDER,
+    color: PREV_TEXT_PRIMARY,
     fontFamily: 'Inter, -apple-system, sans-serif',
     fontSize: '11px',
     lineHeight: 1.4,
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+    boxShadow: PREV_CARD_SHADOW,
   } as React.CSSProperties,
   title: {
     fontSize: '12px',
     fontWeight: 600,
-    color: '#f9fafb',
+    color: PREV_TEXT_PRIMARY,
     marginBottom: PREV_SM,
     display: 'flex',
     alignItems: 'center',
@@ -523,9 +542,9 @@ const ps = {
     flexShrink: 0,
   }) as React.CSSProperties,
   statBlock: {
-    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    backgroundColor: PREV_CARD_BG,
     borderRadius: '6px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    border: PREV_CARD_BORDER,
     padding: '8px 12px',
     display: 'flex',
     flexDirection: 'column' as const,
@@ -540,14 +559,14 @@ const ps = {
   } as React.CSSProperties,
   statLbl: {
     fontSize: '9px',
-    color: '#9ca3af',
+    color: PREV_TEXT_MUTED,
     textTransform: 'uppercase' as const,
     letterSpacing: '0.05em',
     marginTop: '1px',
   } as React.CSSProperties,
   row: { display: 'flex', gap: PREV_SM, alignItems: 'center' } as React.CSSProperties,
   col: { display: 'flex', flexDirection: 'column' as const, gap: PREV_XS } as React.CSSProperties,
-  muted: { color: '#9ca3af', fontSize: '10px' } as React.CSSProperties,
+  muted: { color: PREV_TEXT_MUTED, fontSize: '10px' } as React.CSSProperties,
   colors: { healthy: '#22c55e', warning: '#eab308', error: '#ef4444', info: '#3b82f6', purple: '#9333ea' },
 }
 
@@ -674,14 +693,14 @@ function CardPreview({ cardType }: { cardType: string }) {
             </div>
           </div>
           <div style={ps.col}>
-            <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Alerts (2)</div>
+            <div style={{ fontSize: '9px', fontWeight: 600, color: PREV_TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Alerts (2)</div>
             <div style={{ ...ps.row, padding: PREV_ITEM_PAD, backgroundColor: 'rgba(239,68,68,0.1)', borderRadius: PREV_XS, borderLeft: `4px solid ${ps.colors.error}` }}>
               <span style={{ fontSize: '10px', color: ps.colors.error, fontWeight: 600 }}>GPU</span>
-              <span style={{ fontSize: '9px', color: '#9ca3af', marginLeft: PREV_XS }}>worker-3 (-2)</span>
+              <span style={{ fontSize: '9px', color: PREV_TEXT_MUTED, marginLeft: PREV_XS }}>worker-3 (-2)</span>
             </div>
             <div style={{ ...ps.row, padding: PREV_ITEM_PAD, backgroundColor: 'rgba(234,179,8,0.1)', borderRadius: PREV_XS, borderLeft: `4px solid ${ps.colors.warning}` }}>
               <span style={{ fontSize: '10px', color: ps.colors.warning, fontWeight: 600 }}>NIC</span>
-              <span style={{ fontSize: '9px', color: '#9ca3af', marginLeft: PREV_XS }}>worker-1 (-1)</span>
+              <span style={{ fontSize: '9px', color: PREV_TEXT_MUTED, marginLeft: PREV_XS }}>worker-1 (-1)</span>
             </div>
           </div>
         </div>
@@ -721,7 +740,7 @@ function CardPreview({ cardType }: { cardType: string }) {
             ].map((a) => (
               <div key={a.name} style={{ ...ps.row, padding: PREV_ITEM_PAD, backgroundColor: a.severity === 'critical' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)', borderRadius: PREV_XS, borderLeft: `4px solid ${a.severity === 'critical' ? ps.colors.error : ps.colors.warning}` }}>
                 <span style={{ fontSize: '10px', color: a.severity === 'critical' ? ps.colors.error : ps.colors.warning, fontWeight: 600 }}>{a.name}</span>
-                <span style={{ fontSize: '9px', color: '#6b7280', marginLeft: 'auto' }}>{a.ns}</span>
+                <span style={{ fontSize: '9px', color: PREV_TEXT_SECONDARY, marginLeft: 'auto' }}>{a.ns}</span>
               </div>
             ))}
           </div>
@@ -742,7 +761,7 @@ function CardPreview({ cardType }: { cardType: string }) {
               <div key={r.name} style={{ ...ps.row, justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '10px', fontWeight: 500 }}>{r.name}</span>
                 <span style={{ fontSize: '9px', color: r.status === 'deployed' ? ps.colors.healthy : ps.colors.error }}>{r.status}</span>
-                <span style={{ fontSize: '9px', color: '#6b7280' }}>{r.ver}</span>
+                <span style={{ fontSize: '9px', color: PREV_TEXT_SECONDARY }}>{r.ver}</span>
               </div>
             ))}
           </div>
@@ -761,8 +780,8 @@ function CardPreview({ cardType }: { cardType: string }) {
             ].map((p) => (
               <div key={p.name} style={{ ...ps.row, justifyContent: 'space-between', fontSize: '10px' }}>
                 <span style={{ fontWeight: 500, maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                <span style={{ color: '#60a5fa' }}>{p.cpu}</span>
-                <span style={{ color: '#c084fc' }}>{p.mem}</span>
+                <span style={{ color: PREV_COLOR_BLUE }}>{p.cpu}</span>
+                <span style={{ color: PREV_COLOR_PURPLE }}>{p.mem}</span>
               </div>
             ))}
           </div>
@@ -782,7 +801,7 @@ function CardPreview({ cardType }: { cardType: string }) {
             ].map((e, i) => (
               <div key={i} style={{ ...ps.row, fontSize: '10px' }}>
                 <span style={{ color: e.type === 'Warning' ? ps.colors.warning : ps.colors.healthy, fontWeight: 600, minWidth: '18px' }}>{e.count}</span>
-                <span style={{ color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.msg}</span>
+                <span style={{ color: PREV_TEXT_LIGHT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.msg}</span>
               </div>
             ))}
           </div>
@@ -848,7 +867,7 @@ function CardPreview({ cardType }: { cardType: string }) {
           </div>
           <div style={ps.col}>
             {['ClusterIP (12)', 'LoadBalancer (4)', 'NodePort (2)'].map((s) => (
-              <div key={s} style={{ fontSize: '10px', color: '#9ca3af' }}>{s}</div>
+              <div key={s} style={{ fontSize: '10px', color: PREV_TEXT_MUTED }}>{s}</div>
             ))}
           </div>
         </div>
@@ -864,15 +883,15 @@ function CardPreview({ cardType }: { cardType: string }) {
           </div>
           <div style={ps.row}>
             <div style={ps.statBlock}>
-              <span style={{ ...ps.statVal, fontSize: '14px', color: '#60a5fa' }}>$482</span>
+              <span style={{ ...ps.statVal, fontSize: '14px', color: PREV_COLOR_BLUE }}>$482</span>
               <span style={ps.statLbl}>Compute</span>
             </div>
             <div style={ps.statBlock}>
-              <span style={{ ...ps.statVal, fontSize: '14px', color: '#c084fc' }}>$635</span>
+              <span style={{ ...ps.statVal, fontSize: '14px', color: PREV_COLOR_PURPLE }}>$635</span>
               <span style={ps.statLbl}>GPU</span>
             </div>
             <div style={ps.statBlock}>
-              <span style={{ ...ps.statVal, fontSize: '14px', color: '#22d3ee' }}>$130</span>
+              <span style={{ ...ps.statVal, fontSize: '14px', color: PREV_COLOR_CYAN }}>$130</span>
               <span style={ps.statLbl}>{t('common.storage')}</span>
             </div>
           </div>
@@ -920,7 +939,7 @@ function GenericCardPreview({ card }: { card: WidgetCardDefinition }) {
       <div style={ps.row}>
         {data.items.map((item) => (
           <div key={item.label} style={ps.statBlock}>
-            <span style={{ ...ps.statVal, fontSize: '16px', color: item.color || '#f9fafb' }}>{item.value}</span>
+            <span style={{ ...ps.statVal, fontSize: '16px', color: item.color || PREV_TEXT_PRIMARY }}>{item.value}</span>
             <span style={ps.statLbl}>{item.label}</span>
           </div>
         ))}
@@ -937,8 +956,8 @@ function StatPreview({ statIds }: { statIds: string[] }) {
         const stat = WIDGET_STATS[id]
         const value = SAMPLE_STATS[id] ?? '—'
         return (
-          <div key={id} style={{ ...ps.statBlock, borderTop: `3px solid ${stat?.color || '#9333ea'}`, textAlign: 'center' }}>
-            <span style={{ ...ps.statVal, fontSize: '16px', color: stat?.color || '#fff' }}>{value}</span>
+          <div key={id} style={{ ...ps.statBlock, borderTop: `3px solid ${stat?.color || ps.colors.purple}`, textAlign: 'center' }}>
+            <span style={{ ...ps.statVal, fontSize: '16px', color: stat?.color || PREV_TEXT_PRIMARY }}>{value}</span>
             <span style={ps.statLbl}>{stat?.displayName}</span>
           </div>
         )
@@ -958,8 +977,8 @@ function TemplatePreview({ templateId }: { templateId: string }) {
         const stat = WIDGET_STATS[id]
         const value = SAMPLE_STATS[id] ?? '—'
         return (
-          <div key={id} style={{ ...ps.statBlock, flex: 1, borderTop: `2px solid ${stat?.color || '#9333ea'}`, textAlign: 'center', padding: PREV_ITEM_PAD }}>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: stat?.color || '#fff' }}>{value}</span>
+          <div key={id} style={{ ...ps.statBlock, flex: 1, borderTop: `2px solid ${stat?.color || ps.colors.purple}`, textAlign: 'center', padding: PREV_ITEM_PAD }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: stat?.color || PREV_TEXT_PRIMARY }}>{value}</span>
             <span style={{ ...ps.statLbl, fontSize: '8px' }}>{stat?.displayName}</span>
           </div>
         )
@@ -969,10 +988,10 @@ function TemplatePreview({ templateId }: { templateId: string }) {
 
   const cardMiniStyle: React.CSSProperties = {
     flex: 1,
-    backgroundColor: 'rgba(31, 41, 55, 0.5)',
+    backgroundColor: PREV_MINI_BG,
     borderRadius: '6px',
     padding: PREV_ITEM_PAD,
-    border: '1px solid rgba(255, 255, 255, 0.05)',
+    border: PREV_MINI_BORDER,
   }
 
   const isGrid = template.layout === 'grid'
@@ -1023,7 +1042,7 @@ function NightlyE2EPreview() {
       ],
     },
     {
-      name: 'GKE', color: '#3b82f6',
+      name: 'GKE', color: ps.colors.info,
       guides: [
         { acronym: 'IS', dots: ['g','g','g','g','g','g','g'] },
         { acronym: 'PD', dots: ['r','g','g','g','g','g','g'] },
@@ -1032,7 +1051,7 @@ function NightlyE2EPreview() {
       ],
     },
     {
-      name: 'CKS', color: '#a855f7',
+      name: 'CKS', color: PREV_COLOR_PURPLE_ACCENT,
       guides: [
         { acronym: 'IS', dots: [] as string[] },
         { acronym: 'PD', dots: [] as string[] },
@@ -1041,27 +1060,27 @@ function NightlyE2EPreview() {
       ],
     },
   ]
-  const dotColor: Record<string, string> = { g: '#22c55e', r: '#ef4444', b: '#60a5fa' }
+  const dotColor: Record<string, string> = { g: ps.colors.healthy, r: ps.colors.error, b: PREV_COLOR_BLUE }
 
   return (
     <div style={{ ...ps.card, width: 320, fontSize: '10px', padding: '8px 12px' }}>
-      <div style={ps.title}><span style={ps.dot('#22c55e')} /> Nightly E2E Status</div>
+      <div style={ps.title}><span style={ps.dot(ps.colors.healthy)} /> Nightly E2E Status</div>
       <div style={{ display: 'flex', gap: '16px', marginBottom: PREV_SM }}>
-        <div><span style={{ fontSize: '16px', fontWeight: 700, color: '#a855f7' }}>87%</span><div style={ps.muted}>Pass Rate</div></div>
+        <div><span style={{ fontSize: '16px', fontWeight: 700, color: PREV_COLOR_PURPLE_ACCENT }}>87%</span><div style={ps.muted}>Pass Rate</div></div>
         <div><span style={{ fontSize: '16px', fontWeight: 700 }}>16</span><div style={ps.muted}>Guides</div></div>
-        <div><span style={{ fontSize: '16px', fontWeight: 700, color: '#ef4444' }}>3</span><div style={ps.muted}>Failing</div></div>
+        <div><span style={{ fontSize: '16px', fontWeight: 700, color: ps.colors.error }}>3</span><div style={ps.muted}>Failing</div></div>
       </div>
       {platforms.map((p) => (
         <div key={p.name} style={{ marginBottom: PREV_XS }}>
           <div style={{ color: p.color, fontWeight: 600, fontSize: '9px', marginBottom: PREV_XS }}>{p.name}</div>
           {p.guides.map((g) => (
             <div key={`${p.name}-${g.acronym}`} style={{ display: 'flex', alignItems: 'center', gap: PREV_XS, marginBottom: '1px' }}>
-              <span style={{ width: '24px', fontWeight: 600, color: '#94a3b8' }}>{g.acronym}</span>
+              <span style={{ width: '24px', fontWeight: 600, color: PREV_TEXT_SOFT }}>{g.acronym}</span>
               <div style={{ display: 'flex', gap: PREV_DOTS_GAP }}>
                 {g.dots.length > 0 ? g.dots.map((d, i) => (
                   <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: dotColor[d], display: 'inline-block', ...(d === 'b' ? { animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' } : {}) }} />
                 )) : (
-                  <span style={{ color: '#4b5563', fontSize: '8px' }}>no runs</span>
+                  <span style={{ color: PREV_TEXT_DIM, fontSize: '8px' }}>no runs</span>
                 )}
               </div>
             </div>

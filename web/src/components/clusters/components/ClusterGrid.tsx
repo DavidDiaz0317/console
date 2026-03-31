@@ -304,8 +304,8 @@ const FullClusterCard = memo(function FullClusterCard({
           className="absolute -bottom-2 -left-2 pointer-events-none"
           style={{
             opacity: 0.25,
-            maskImage: 'linear-gradient(45deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 80%)',
-            WebkitMaskImage: 'linear-gradient(45deg, rgba(0,0,0,1) 0%, rgba(0,0,0,0.4) 80%)',
+            maskImage: 'linear-gradient(45deg, black 0%, rgba(0,0,0,0.4) 80%)',
+            WebkitMaskImage: 'linear-gradient(45deg, black 0%, rgba(0,0,0,0.4) 80%)',
           }}
         >
           <CloudProviderIcon provider={provider} size={100} />
@@ -541,8 +541,8 @@ const ListClusterCard = memo(function ListClusterCard({
           className="absolute -right-4 top-1/2 -translate-y-1/2 pointer-events-none"
           style={{
             opacity: 0.15,
-            maskImage: 'linear-gradient(to left, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 40%)',
-            WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 40%)',
+            maskImage: 'linear-gradient(to left, transparent 0%, black 40%)',
+            WebkitMaskImage: 'linear-gradient(to left, transparent 0%, black 40%)',
           }}
         >
           <CloudProviderIcon provider={provider} size={64} />

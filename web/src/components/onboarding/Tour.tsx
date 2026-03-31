@@ -330,7 +330,7 @@ export function TourOverlay() {
               left: targetRect.left - 8,
               width: targetRect.width + 16,
               height: targetRect.height + 16,
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)',
+              boxShadow: '0 0 0 9999px var(--overlay-backdrop)',
             }}
           />
           {/* Pulsing border highlight — only the border animates, not the backdrop */}

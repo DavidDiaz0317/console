@@ -2301,7 +2301,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
               className={cn(
                 'flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium',
                 'bg-purple-600/20 text-purple-200 hover:bg-purple-500/30 border border-purple-500/50',
-                'shadow-[0_0_15px_rgba(147,51,234,0.2)] hover:shadow-[0_0_20px_rgba(147,51,234,0.3)]',
+                'shadow-[0_0_15px_var(--shadow-purple-glow-sm)] hover:shadow-[0_0_20px_var(--shadow-purple-glow-md)]',
                 aiAnalysisLoading && 'opacity-70 cursor-wait'
               )}
             >
@@ -2325,7 +2325,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
               className={cn(
                 'flex-1 py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium',
                 'bg-orange-600/20 text-orange-200 hover:bg-orange-500/30 border border-orange-500/50',
-                'shadow-[0_0_15px_rgba(234,88,12,0.2)] hover:shadow-[0_0_20px_rgba(234,88,12,0.3)]'
+                'shadow-[0_0_15px_var(--shadow-orange-glow-sm)] hover:shadow-[0_0_20px_var(--shadow-orange-glow-md)]'
               )}
             >
               <div className="relative">

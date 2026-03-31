@@ -36,6 +36,36 @@ const DEFAULT_TERMINAL_COLS = 80
 /** Default terminal rows when dimensions cannot be detected */
 const DEFAULT_TERMINAL_ROWS = 24
 
+/**
+ * GitHub dark terminal colour palette used for the xterm.js ITheme.
+ * xterm.js renders on a canvas and cannot resolve CSS custom properties at
+ * paint time, so these are kept as resolved hex values.  The same colours
+ * are exposed as CSS variables (--terminal-*) in index.css for Tailwind
+ * arbitrary-value classes used in the surrounding toolbar UI.
+ */
+const TERMINAL_THEME = {
+  background: '#0d1117',
+  foreground: '#c9d1d9',
+  cursor: '#58a6ff',
+  selectionBackground: '#264f78',
+  black: '#0d1117',
+  red: '#ff7b72',
+  green: '#7ee787',
+  yellow: '#d29922',
+  blue: '#58a6ff',
+  magenta: '#bc8cff',
+  cyan: '#39c5cf',
+  white: '#b1bac4',
+  brightBlack: '#484f58',
+  brightRed: '#ffa198',
+  brightGreen: '#56d364',
+  brightYellow: '#e3b341',
+  brightBlue: '#79c0ff',
+  brightMagenta: '#d2a8ff',
+  brightCyan: '#56d4dd',
+  brightWhite: '#f0f6fc',
+} as const
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -93,28 +123,7 @@ export function PodExecTerminal({
       fontSize: TERMINAL_FONT_SIZE,
       lineHeight: TERMINAL_LINE_HEIGHT,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: '#0d1117',
-        foreground: '#c9d1d9',
-        cursor: '#58a6ff',
-        selectionBackground: '#264f78',
-        black: '#0d1117',
-        red: '#ff7b72',
-        green: '#7ee787',
-        yellow: '#d29922',
-        blue: '#58a6ff',
-        magenta: '#bc8cff',
-        cyan: '#39c5cf',
-        white: '#b1bac4',
-        brightBlack: '#484f58',
-        brightRed: '#ffa198',
-        brightGreen: '#56d364',
-        brightYellow: '#e3b341',
-        brightBlue: '#79c0ff',
-        brightMagenta: '#d2a8ff',
-        brightCyan: '#56d4dd',
-        brightWhite: '#f0f6fc',
-      },
+      theme: TERMINAL_THEME,
     })
 
     const fitAddon = new FitAddon()
@@ -250,21 +259,21 @@ export function PodExecTerminal({
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#161b22] border-b border-[#30363d]">
+      <div className="flex items-center justify-between px-4 py-2 bg-[var(--terminal-toolbar-bg)] border-b border-[var(--terminal-border)]">
         <div className="flex items-center gap-3">
           {/* Container picker */}
           {containers.length > 1 && (
             <div className="relative">
               <button
                 onClick={() => setShowContainerPicker(!showContainerPicker)}
-                className="flex items-center gap-2 px-3 py-1 text-xs rounded bg-[#21262d] border border-[#30363d] text-[#c9d1d9] hover:border-[#58a6ff] transition-colors"
+                className="flex items-center gap-2 px-3 py-1 text-xs rounded bg-[var(--terminal-item-bg)] border border-[var(--terminal-border)] text-[var(--terminal-fg)] hover:border-[var(--terminal-accent)] transition-colors"
               >
-                <span className="text-[#8b949e]">container:</span>
+                <span className="text-[var(--terminal-muted)]">container:</span>
                 <span className="font-mono">{selectedContainer || 'none'}</span>
-                <ChevronDown className="w-3 h-3 text-[#8b949e]" />
+                <ChevronDown className="w-3 h-3 text-[var(--terminal-muted)]" />
               </button>
               {showContainerPicker && (
-                <div className="absolute top-full left-0 mt-1 z-50 bg-[#161b22] border border-[#30363d] rounded shadow-lg">
+                <div className="absolute top-full left-0 mt-1 z-50 bg-[var(--terminal-toolbar-bg)] border border-[var(--terminal-border)] rounded shadow-lg">
                   {(containers || []).map((c) => (
                     <button
                       key={c}
@@ -272,8 +281,8 @@ export function PodExecTerminal({
                         setSelectedContainer(c)
                         setShowContainerPicker(false)
                       }}
-                      className={`block w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-[#21262d] transition-colors ${
-                        c === selectedContainer ? 'text-[#58a6ff]' : 'text-[#c9d1d9]'
+                      className={`block w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-[var(--terminal-item-bg)] transition-colors ${
+                        c === selectedContainer ? 'text-[var(--terminal-accent)]' : 'text-[var(--terminal-fg)]'
                       }`}
                     >
                       {c}
@@ -296,7 +305,7 @@ export function PodExecTerminal({
           {(status === 'disconnected' || status === 'error') && (
             <button
               onClick={handleReconnect}
-              className="flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-[#238636] hover:bg-[#2ea043] text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-[var(--terminal-success-btn)] hover:bg-[var(--terminal-success-btn-hover)] text-white transition-colors"
             >
               <RotateCcw className="w-3 h-3" />
               {exitCode !== null ? 'Reconnect' : 'Connect'}
@@ -314,7 +323,7 @@ export function PodExecTerminal({
           {(status === 'connected' || status === 'reconnecting') && (
             <button
               onClick={handleDisconnect}
-              className="flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-[#da3633] hover:bg-[#f85149] text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-[var(--terminal-error-btn)] hover:bg-[var(--terminal-error-btn-hover)] text-white transition-colors"
             >
               <Power className="w-3 h-3" />
               Disconnect
@@ -324,11 +333,11 @@ export function PodExecTerminal({
       </div>
 
       {/* Terminal area */}
-      <div className="flex-1 relative bg-[#0d1117]">
+      <div className="flex-1 relative bg-[var(--terminal-bg)]">
         {/* Overlay for connecting state */}
         {status === 'connecting' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117]/80 z-10">
-            <div className="flex items-center gap-3 text-[#8b949e]">
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--terminal-bg)]/80 z-10">
+            <div className="flex items-center gap-3 text-[var(--terminal-muted)]">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span className="text-sm">Connecting to {pod}...</span>
             </div>
@@ -337,16 +346,16 @@ export function PodExecTerminal({
 
         {/* Overlay for error state */}
         {status === 'error' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117]/80 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--terminal-bg)]/80 z-10">
             <div className="flex flex-col items-center gap-3 text-center max-w-md">
-              <AlertCircle className="w-8 h-8 text-[#f85149]" />
-              <div className="text-sm text-[#f85149] font-medium">Connection Error</div>
-              <div className="text-xs text-[#f85149]/80">
+              <AlertCircle className="w-8 h-8 text-[var(--terminal-error)]" />
+              <div className="text-sm text-[var(--terminal-error)] font-medium">Connection Error</div>
+              <div className="text-xs text-[var(--terminal-error)]/80">
                 {error || 'Could not connect to cluster exec endpoint. Please verify the backend is running and /ws/exec is reachable.'}
               </div>
               <button
                 onClick={handleReconnect}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] border border-[#30363d] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-[var(--terminal-item-bg)] hover:bg-[var(--terminal-border)] text-[var(--terminal-fg)] border border-[var(--terminal-border)] transition-colors"
               >
                 <RotateCcw className="w-3 h-3" />
                 Try Again
@@ -357,13 +366,13 @@ export function PodExecTerminal({
 
         {/* Overlay for reconnecting state */}
         {status === 'reconnecting' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0d1117]/60 z-10 pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--terminal-bg)]/60 z-10 pointer-events-none">
             <div className="flex flex-col items-center gap-2 text-center pointer-events-auto">
-              <RefreshCw className="w-6 h-6 text-[#d29922] animate-spin" />
-              <div className="text-sm text-[#d29922]">
+              <RefreshCw className="w-6 h-6 text-[var(--terminal-warning)] animate-spin" />
+              <div className="text-sm text-[var(--terminal-warning)]">
                 Reconnecting{reconnectCountdown > 0 ? ` in ${reconnectCountdown}s` : '...'}
               </div>
-              <div className="text-xs text-[#8b949e]">
+              <div className="text-xs text-[var(--terminal-muted)]">
                 Attempt {reconnectAttempt} of 5
               </div>
             </div>
@@ -393,25 +402,25 @@ interface StatusIndicatorProps {
 
 function StatusIndicator({ status, reconnectAttempt, reconnectCountdown }: StatusIndicatorProps) {
   const config: Record<SessionStatus, { color: string; label: string; Icon?: typeof WifiOff }> = {
-    disconnected: { color: 'bg-[#484f58]', label: 'Disconnected' },
-    connecting: { color: 'bg-[#d29922] animate-pulse', label: 'Connecting...' },
-    connected: { color: 'bg-[#56d364]', label: 'Connected' },
-    error: { color: 'bg-[#f85149]', label: 'Error', Icon: WifiOff },
-    reconnecting: { color: 'bg-[#d29922] animate-pulse', label: `Reconnecting${reconnectCountdown > 0 ? ` (${reconnectCountdown}s)` : '...'}` },
+    disconnected: { color: 'bg-[var(--terminal-neutral)]', label: 'Disconnected' },
+    connecting: { color: 'bg-[var(--terminal-warning)] animate-pulse', label: 'Connecting...' },
+    connected: { color: 'bg-[var(--terminal-success)]', label: 'Connected' },
+    error: { color: 'bg-[var(--terminal-error)]', label: 'Error', Icon: WifiOff },
+    reconnecting: { color: 'bg-[var(--terminal-warning)] animate-pulse', label: `Reconnecting${reconnectCountdown > 0 ? ` (${reconnectCountdown}s)` : '...'}` },
   }
 
   const { color, label, Icon } = config[status]
 
   return (
-    <div className="flex items-center gap-2 text-xs text-[#8b949e]">
+    <div className="flex items-center gap-2 text-xs text-[var(--terminal-muted)]">
       {Icon ? (
-        <Icon className="w-3 h-3 text-[#f85149]" />
+        <Icon className="w-3 h-3 text-[var(--terminal-error)]" />
       ) : (
         <div className={`w-2 h-2 rounded-full ${color}`} />
       )}
       <span>{label}</span>
       {status === 'reconnecting' && reconnectAttempt > 0 && (
-        <span className="text-[#8b949e]/60 text-2xs">
+        <span className="text-[var(--terminal-muted)]/60 text-2xs">
           (attempt {reconnectAttempt}/5)
         </span>
       )}

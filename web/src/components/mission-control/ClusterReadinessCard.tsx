@@ -82,7 +82,7 @@ export function ClusterReadinessCard({
     <div
       className={cn(
         'rounded-xl border bg-card p-4 transition-all',
-        isRecommended && 'border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.15)]',
+        isRecommended && 'border-violet-500/50 shadow-[0_0_12px_var(--shadow-violet-glow-sm)]',
         !isRecommended && 'border-border'
       )}
     >
