@@ -550,8 +550,20 @@ class KubectlProxy {
       throw new Error(response.error || 'Failed to get pods')
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let data: { items?: any[] }
+    interface RawPodItem {
+      metadata: { name: string; namespace: string }
+      status: {
+        phase?: string
+        reason?: string
+        containerStatuses?: Array<{
+          restartCount?: number
+          state?: { waiting?: { reason?: string } }
+          lastState?: { terminated?: { reason?: string } }
+        }>
+        conditions?: Array<{ type: string; status: string; reason?: string }>
+      }
+    }
+    let data: { items?: RawPodItem[] }
     try {
       data = JSON.parse(response.output)
     } catch {
