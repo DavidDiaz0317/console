@@ -1730,12 +1730,13 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
                 entries={filteredEntries}
                 viewMode={viewMode}
                 onSelect={(entry) => {
+                  const entrySource = selectedPath?.startsWith('github/') ? 'github' as const : 'community' as const
                   const node: TreeNode = {
                     id: entry.path,
                     name: entry.name,
                     path: entry.path,
                     type: entry.type,
-                    source: 'community',
+                    source: entrySource,
                     loaded: entry.type === 'file',
                   }
                   if (entry.type === 'file') {
@@ -1851,7 +1852,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission }: Mi
             {/* ============================================================ */}
             {/* FIXES TAB */}
             {/* ============================================================ */}
-            {!selectedMission && !unstructuredContent && activeTab === 'fixes' && (
+            {!selectedMission && !unstructuredContent && filteredEntries.length === 0 && activeTab === 'fixes' && (
               <div className="space-y-4">
                 {/* Fixer filters */}
                 <div className="flex flex-wrap items-center gap-2">
