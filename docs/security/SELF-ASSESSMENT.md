@@ -12,6 +12,7 @@ This document follows the [CNCF TAG-Security self-assessment template](https://g
 - [Secure Development Practices](#secure-development-practices)
 - [Security Issue Resolution](#security-issue-resolution)
 - [Appendix](#appendix)
+  - [Data Storage Summary](#data-storage-summary)
 
 ## Metadata
 
@@ -65,7 +66,7 @@ KubeStellar Console is an AI-powered multi-cluster Kubernetes dashboard that pro
 
 - Console does **not** manage Kubernetes RBAC policies — it inherits existing permissions
 - Console does **not** provide network security or service mesh capabilities
-- Console does **not** store cluster data at rest (except user preferences in local SQLite)
+- Console does **not** persistently store raw Kubernetes resource data on the server — pods, deployments, and services are fetched on-demand via the Kubernetes API. See [Data Storage Summary](#data-storage-summary) for details on what is persisted.
 - Console is **not** a secrets management tool
 
 ## Self-Assessment Use
@@ -146,6 +147,26 @@ Vulnerability reports should be sent to [kubestellar-security-announce@googlegro
 The security response team (listed in [SECURITY_CONTACTS](../../SECURITY_CONTACTS)) triages all reports. Critical vulnerabilities trigger an immediate patch release; non-critical issues are addressed in the next scheduled release.
 
 ## Appendix
+
+### Data Storage Summary
+
+The following table details all data persisted by KubeStellar Console, both server-side and client-side:
+
+| Storage | Type | What is Stored | Location | Retention |
+|---------|------|----------------|----------|-----------|
+| **Backend SQLite** | Relational DB | User accounts, dashboard layouts, card configurations, GPU utilization snapshots, revoked JWT tokens, user analytics events, feature requests | Server: `/data/console.db` | Indefinite |
+| **Metrics History** | JSON file | Rolling cluster metrics (CPU/memory %, node counts, pod issues, GPU allocation per node) | kc-agent host: `~/.kc/metrics_history.json` | 7 days |
+| **Frontend SQLite (OPFS)** | Browser DB | Cached Kubernetes resource data (pods, deployments, services) for performance | Browser OPFS: `/kc-cache.sqlite3` | Until browser cache cleared |
+| **Frontend IndexedDB** | Browser DB | Same as OPFS (fallback when OPFS unavailable) | Browser IndexedDB: `kc_cache` | Until browser cache cleared |
+| **localStorage** | Browser KV | User preferences, theme, AI settings, UI state | Browser localStorage | Until browser data cleared |
+| **In-memory SSE cache** | Process memory | Short-lived Kubernetes API responses | Server memory | 15-second TTL; lost on restart |
+
+**Key points:**
+
+- Raw Kubernetes resource data (pods, deployments, services) is **not** stored server-side — it is fetched on-demand and cached only in browser storage and a 15-second in-memory server cache.
+- Kubernetes **credentials** never leave the user's machine — the kc-agent proxies requests locally.
+- The backend SQLite database stores user preferences and dashboard configuration, plus GPU utilization snapshots for historical trend analysis.
+- The kc-agent's metrics history file (`~/.kc/metrics_history.json`) stores 7 days of aggregated cluster health metrics on the user's local machine for AI-assisted trend analysis.
 
 ### Known Issues and Areas for Improvement
 
