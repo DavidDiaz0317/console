@@ -78,36 +78,43 @@ if [ -d "web" ] && [ -f "web/package-lock.json" ]; then
   npm audit --json > "$NPM_OUTPUT" 2>/dev/null || true
   cd ..
 
-  # Parse npm audit JSON
-  read -r NPM_CRITICAL NPM_HIGH NPM_MODERATE NPM_LOW NPM_TOTAL < <(python3 -c "
-import json
-try:
-    with open('$NPM_OUTPUT') as f:
-        data = json.load(f)
-    vulns = data.get('metadata', {}).get('vulnerabilities', {})
-    c = vulns.get('critical', 0)
-    h = vulns.get('high', 0)
-    m = vulns.get('moderate', 0)
-    lo = vulns.get('low', 0)
-    t = vulns.get('total', c + h + m + lo)
-    print(c, h, m, lo, t)
-except Exception:
-    print(0, 0, 0, 0, 0)
-" 2>/dev/null || echo "0 0 0 0 0")
+  # Parse npm audit JSON.  A parse failure is surfaced as an explicit error
+  # rather than silently falling back to zero counts, which would mask tool or
+  # runtime failures and report a broken audit run as "clean".
+  NPM_PARSE_ERR_FILE="$TMPDIR_AUDIT/npm-parse-err.txt"
+  NPM_COUNTS_FILE="$TMPDIR_AUDIT/npm-counts.txt"
+  if python3 -c "
+import json, sys
+with open('$NPM_OUTPUT') as f:
+    data = json.load(f)
+vulns = data.get('metadata', {}).get('vulnerabilities', {})
+c  = vulns.get('critical', 0)
+h  = vulns.get('high', 0)
+m  = vulns.get('moderate', 0)
+lo = vulns.get('low', 0)
+t  = vulns.get('total', c + h + m + lo)
+print(c, h, m, lo, t)
+" > "$NPM_COUNTS_FILE" 2>"$NPM_PARSE_ERR_FILE"; then
+    read -r NPM_CRITICAL NPM_HIGH NPM_MODERATE NPM_LOW NPM_TOTAL < "$NPM_COUNTS_FILE"
 
-  if [ "$NPM_TOTAL" -eq 0 ]; then
-    echo -e "  ${GREEN}✓ No vulnerabilities found${NC}"
+    if [ "$NPM_TOTAL" -eq 0 ]; then
+      echo -e "  ${GREEN}✓ No vulnerabilities found${NC}"
+    else
+      [ "$NPM_CRITICAL" -gt 0 ] && echo -e "  ${RED}❌ CRITICAL: ${NPM_CRITICAL}${NC}"
+      [ "$NPM_HIGH" -gt 0 ]     && echo -e "  ${RED}❌ HIGH:     ${NPM_HIGH}${NC}"
+      [ "$NPM_MODERATE" -gt 0 ] && echo -e "  ${YELLOW}⚠️  MODERATE: ${NPM_MODERATE}${NC}"
+      [ "$NPM_LOW" -gt 0 ]      && echo -e "  ${DIM}ℹ  LOW:      ${NPM_LOW}${NC}"
+    fi
+
+    if [ "$NPM_CRITICAL" -gt 0 ] || [ "$NPM_HIGH" -gt 0 ]; then
+      NPM_STATUS="fail"
+    elif [ -n "$STRICT_MODE" ] && [ "$NPM_MODERATE" -gt 0 ]; then
+      NPM_STATUS="fail"
+    fi
   else
-    [ "$NPM_CRITICAL" -gt 0 ] && echo -e "  ${RED}❌ CRITICAL: ${NPM_CRITICAL}${NC}"
-    [ "$NPM_HIGH" -gt 0 ] && echo -e "  ${RED}❌ HIGH:     ${NPM_HIGH}${NC}"
-    [ "$NPM_MODERATE" -gt 0 ] && echo -e "  ${YELLOW}⚠️  MODERATE: ${NPM_MODERATE}${NC}"
-    [ "$NPM_LOW" -gt 0 ] && echo -e "  ${DIM}ℹ  LOW:      ${NPM_LOW}${NC}"
-  fi
-
-  if [ "$NPM_CRITICAL" -gt 0 ] || [ "$NPM_HIGH" -gt 0 ]; then
-    NPM_STATUS="fail"
-  elif [ -n "$STRICT_MODE" ] && [ "$NPM_MODERATE" -gt 0 ]; then
-    NPM_STATUS="fail"
+    echo -e "  ${RED}❌ npm audit output could not be parsed — treating as audit error${NC}"
+    [ -s "$NPM_PARSE_ERR_FILE" ] && sed 's/^/    /' "$NPM_PARSE_ERR_FILE"
+    NPM_STATUS="error"
   fi
 else
   echo -e "  ${YELLOW}⚠️  web/package-lock.json not found — skipping${NC}"
@@ -239,11 +246,14 @@ EOF
 # ============================================================================
 
 OVERALL_FAIL=0
-[ "$NPM_STATUS" = "fail" ] && OVERALL_FAIL=1
-[ "$GO_STATUS" = "fail" ] && OVERALL_FAIL=1
+[ "$NPM_STATUS" = "fail" ]  && OVERALL_FAIL=1
+[ "$NPM_STATUS" = "error" ] && OVERALL_FAIL=1
+[ "$GO_STATUS" = "fail" ]   && OVERALL_FAIL=1
 
 if [ "$OVERALL_FAIL" -eq 0 ]; then
   echo -e "${GREEN}${BOLD}Dependency audit passed${NC}"
+elif [ "$NPM_STATUS" = "error" ]; then
+  echo -e "${RED}${BOLD}Dependency audit failed (npm audit could not be parsed)${NC}"
 else
   echo -e "${RED}${BOLD}Dependency audit found vulnerabilities${NC}"
 fi
