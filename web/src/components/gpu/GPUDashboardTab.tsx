@@ -74,7 +74,7 @@ export function GPUDashboardTab({
           className="flex items-center gap-4 px-4 py-2 rounded-lg border bg-card/50 text-sm"
           aria-label="GPU cluster health status"
         >
-          <span className="text-muted-foreground font-medium">GPU Health:</span>
+          <span className="text-muted-foreground font-medium">{t('consoleOfflineDetection.gpuHealth')}:</span>
           {healthSummary.healthy > 0 && (
             <span className="flex items-center gap-1.5 text-green-400">
               <CheckCircle className="w-4 h-4" aria-hidden="true" />
@@ -84,17 +84,17 @@ export function GPUDashboardTab({
           {healthSummary.degraded > 0 && (
             <span className="flex items-center gap-1.5 text-yellow-400">
               <AlertTriangle className="w-4 h-4" aria-hidden="true" />
-              {healthSummary.degraded} degraded
+              {healthSummary.degraded} {t('common:common.degraded')}
             </span>
           )}
           {healthSummary.offline > 0 && (
             <span className="flex items-center gap-1.5 text-red-400">
               <WifiOff className="w-4 h-4" aria-hidden="true" />
-              {healthSummary.offline} offline
+              {healthSummary.offline} {t('common:common.offline')}
             </span>
           )}
           {healthStatus === 'healthy' && (
-            <span className="ml-auto text-xs text-green-400">All GPU nodes operational</span>
+            <span className="ml-auto text-xs text-green-400">{t('consoleOfflineDetection.allHealthy')}</span>
           )}
         </div>
       )}

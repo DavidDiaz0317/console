@@ -8,23 +8,23 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('../../../hooks/useLocalAgent', () => ({
+vi.mock('../../../../hooks/useLocalAgent', () => ({
   useLocalAgent: () => ({ status: 'connected' }),
 }))
 
-vi.mock('../../../hooks/useBackendHealth', () => ({
+vi.mock('../../../../hooks/useBackendHealth', () => ({
   isInClusterMode: () => false,
 }))
 
-vi.mock('../../../hooks/useDemoMode', () => ({
+vi.mock('../../../../hooks/useDemoMode', () => ({
   useDemoMode: () => ({ isDemoMode: false }),
 }))
 
-vi.mock('../../../lib/modals', () => ({
+vi.mock('../../../../lib/modals', () => ({
   useModalState: () => ({ isOpen: false, open: vi.fn(), close: vi.fn() }),
 }))
 
-vi.mock('../../ui/StatsConfig', () => ({
+vi.mock('../../../ui/StatsConfig', () => ({
   StatsConfigModal: () => null,
   useStatsConfig: () => ({
     blocks: [
@@ -44,7 +44,7 @@ vi.mock('../../ui/StatsConfig', () => ({
   }),
 }))
 
-vi.mock('../../shared/TechnicalAcronym', () => ({
+vi.mock('../../../shared/TechnicalAcronym', () => ({
   wrapAbbreviations: (text: string) => text,
 }))
 

@@ -2801,7 +2801,8 @@
     "monthlyCost": "Monthly Cost",
     "savingsRecommendations": "Savings Recommendations",
     "poweredBy": "Powered by Kubecost",
-    "docs": "Docs"
+    "docs": "Docs",
+    "statusDemoData": "Demo Data — Kubecost not configured"
   },
   "keda": {
     "healthy": "Healthy",

@@ -10,15 +10,6 @@ vi.mock('../../../lib/demoMode', () => ({
   isFeatureEnabled: () => true,
 }))
 
-const mockUseDemoMode = vi.fn()
-vi.mock('../../../hooks/useDemoMode', () => ({
-  getDemoMode: () => true, default: () => true,
-  useDemoMode: () => mockUseDemoMode(),
-  hasRealToken: () => false, isDemoModeForced: false, isNetlifyDeployment: false,
-  canToggleDemoMode: () => true, isDemoToken: () => true, setDemoToken: vi.fn(),
-  setGlobalDemoMode: vi.fn(),
-}))
-
 vi.mock('../../../lib/analytics', () => ({
   emitNavigate: vi.fn(), emitLogin: vi.fn(), emitEvent: vi.fn(), analyticsReady: Promise.resolve(),
   emitAddCardModalOpened: vi.fn(), emitCardExpanded: vi.fn(), emitCardRefreshed: vi.fn(), markErrorReported: vi.fn(),
@@ -50,7 +41,6 @@ import { KubecostOverview } from '../KubecostOverview'
 describe('KubecostOverview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDemoMode.mockReturnValue({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
     mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: true, isRefreshing: false })
     mockDrillDown.mockReturnValue({ drillToCost: vi.fn() })
   })
@@ -70,30 +60,18 @@ describe('KubecostOverview', () => {
     expect(screen.getByTestId('health-indicator')).toBeTruthy()
   })
 
-  it('shows demo data health status in demo mode', () => {
-    mockUseDemoMode.mockReturnValue({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+  it('always shows not-configured status since card only uses demo data', () => {
     render(<KubecostOverview />)
     const indicator = screen.getByTestId('health-indicator')
-    expect(indicator.textContent).toContain('Demo Data')
+    // t() mock returns the key, so we check for the i18n key
+    expect(indicator.textContent).toContain('kubecostOverview.statusDemoData')
   })
 
-  it('shows connected health status in non-demo mode', () => {
-    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
-    render(<KubecostOverview />)
-    const indicator = screen.getByTestId('health-indicator')
-    expect(indicator.textContent).toContain('Kubecost Connected')
-  })
-
-  it('renders correctly in demo mode', () => {
-    mockUseDemoMode.mockReturnValue({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+  it('renders correctly regardless of demo mode flag', () => {
     const { container } = render(<KubecostOverview />)
     expect(container).toBeTruthy()
-  })
-
-  it('renders correctly in non-demo mode', () => {
-    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
-    const { container } = render(<KubecostOverview />)
-    expect(container).toBeTruthy()
+    // health indicator should always be present
+    expect(screen.getByTestId('health-indicator')).toBeTruthy()
   })
 
 })

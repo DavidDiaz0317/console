@@ -1,8 +1,7 @@
-import { TrendingDown, AlertTriangle, ExternalLink, AlertCircle, PieChart, ChevronRight, CheckCircle } from 'lucide-react'
+import { TrendingDown, AlertTriangle, ExternalLink, AlertCircle, PieChart, ChevronRight } from 'lucide-react'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useReportCardDataState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
-import { useDemoMode } from '../../hooks/useDemoMode'
 
 interface KubecostOverviewProps {
   config?: {
@@ -39,30 +38,18 @@ const DEMO_RECOMMENDATIONS = [
 export function KubecostOverview({ config: _config }: KubecostOverviewProps) {
   const { t } = useTranslation('cards')
   const { drillToCost } = useDrillDownActions()
-  const { isDemoMode } = useDemoMode()
   useReportCardDataState({ hasData: true, isFailed: false, consecutiveFailures: 0, isDemoData: false })
-
-  // Derive integration health: demo mode means Kubecost is not configured
-  const integrationStatus = isDemoMode ? 'demo' : 'connected'
 
   return (
     <div className="h-full flex flex-col min-h-card content-loaded">
-      {/* Health status indicator */}
+      {/* Health status indicator — always "not configured" until live Kubecost integration is implemented */}
       <div
         data-testid="health-indicator"
-        className={`flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border text-xs font-medium ${
-          integrationStatus === 'connected'
-            ? 'bg-green-500/10 border-green-500/30 text-green-400'
-            : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-        }`}
-        aria-label={`Kubecost integration status: ${integrationStatus === 'connected' ? 'connected' : 'demo data'}`}
+        className="flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border bg-yellow-500/10 border-yellow-500/30 text-yellow-400 text-xs font-medium"
+        aria-label={t('kubecostOverview.statusDemoData')}
       >
-        {integrationStatus === 'connected' ? (
-          <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
-        ) : (
-          <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
-        )}
-        <span>{integrationStatus === 'connected' ? 'Kubecost Connected' : 'Demo Data — Kubecost not configured'}</span>
+        <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>{t('kubecostOverview.statusDemoData')}</span>
       </div>
       {/* Controls */}
       <div className="flex items-center justify-end gap-1 mb-3">
