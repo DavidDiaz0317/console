@@ -1133,6 +1133,16 @@ export function startGlobalErrorTracking() {
       // becomes inactive (browser idle, SW update). The calling code catches these
       // and falls back to the standard Notification API.
       if (msg.includes('showNotification') || msg.includes('No active registration')) return
+      // Skip Vite HMR transport errors — these are thrown by Vite's
+      // `setupForwardConsoleHandler` when a console.warn/error call is intercepted
+      // before the HMR WebSocket connection is established. The rejected Promise
+      // has no catch handler in Vite's client code, so it surfaces as an
+      // unhandledrejection. This is a Vite development-infrastructure error, not
+      // a real user-facing bug. Both variants are covered to future-proof.
+      if (
+        msg.includes('send was called before connect') ||
+        msg.includes('invoke was called before connect')
+      ) return
       emitError('unhandled_rejection', msg)
     } finally {
       isEmitting = false
