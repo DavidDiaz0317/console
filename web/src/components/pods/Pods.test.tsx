@@ -54,10 +54,13 @@ vi.mock('../../lib/dashboards/DashboardPage', () => ({
   ),
 }))
 
+// Mutable clusters list for per-test control
+let mockClusters: unknown[] = []
+
 vi.mock('../../hooks/useMCP', () => ({
   useClusters: () => ({
-    clusters: [],
-    deduplicatedClusters: [],
+    clusters: mockClusters,
+    deduplicatedClusters: mockClusters,
     isLoading: false,
     isRefreshing: false,
     lastUpdated: null,
@@ -226,6 +229,60 @@ describe('Pods Component', () => {
       const row = screen.getByRole('button', { name: /my-pod/ })
       expect(row.getAttribute('aria-disabled')).toBeNull()
       expect(row.getAttribute('tabindex')).toBe('0')
+    })
+  })
+
+  describe('multi-cluster reachability filtering', () => {
+    beforeEach(() => {
+      drillToPodSpy.mockClear()
+      mockClusters = []
+      mockPodIssues = []
+    })
+
+    it('shows pod issues from reachable clusters', () => {
+      mockClusters = [{ name: 'ctx/prod', reachable: true, healthy: true, podCount: 5 }]
+      mockPodIssues = [{ name: 'prod-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Error', reason: 'CrashLoopBackOff', restarts: 2, issues: [] }]
+      renderPods()
+      expect(screen.getByRole('button', { name: /prod-pod/ })).toBeTruthy()
+    })
+
+    it('hides pod issues from unreachable clusters', () => {
+      mockClusters = [{ name: 'ctx/prod', reachable: false, healthy: false, podCount: 0 }]
+      mockPodIssues = [{ name: 'unreachable-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Error', reason: 'CrashLoopBackOff', restarts: 1, issues: [] }]
+      renderPods()
+      expect(screen.queryByRole('button', { name: /unreachable-pod/ })).toBeNull()
+    })
+
+    it('shows pod issues from reachable clusters while hiding those from unreachable ones', () => {
+      mockClusters = [
+        { name: 'ctx/prod', reachable: true, healthy: true, podCount: 3 },
+        { name: 'ctx/down', reachable: false, healthy: false, podCount: 0 },
+      ]
+      mockPodIssues = [
+        { name: 'reachable-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Error', reason: 'CrashLoopBackOff', restarts: 2, issues: [] },
+        { name: 'unreachable-pod', namespace: 'default', cluster: 'ctx/down', status: 'Error', reason: 'CrashLoopBackOff', restarts: 1, issues: [] },
+      ]
+      renderPods()
+      expect(screen.getByRole('button', { name: /reachable-pod/ })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /unreachable-pod/ })).toBeNull()
+    })
+
+    it('passes through pod issues without a cluster field when clusters are unknown', () => {
+      mockClusters = []
+      mockPodIssues = [{ name: 'no-cluster-pod', namespace: 'default', cluster: undefined, status: 'Pending', reason: 'Pending', restarts: 0, issues: [] }]
+      renderPods()
+      expect(screen.getByRole('button', { name: /no-cluster-pod/ })).toBeTruthy()
+    })
+
+    it('passes through pod issues without a cluster field even when clusters are loaded', () => {
+      mockClusters = [{ name: 'ctx/prod', reachable: true, healthy: true, podCount: 1 }]
+      mockPodIssues = [
+        { name: 'no-cluster-pod', namespace: 'default', cluster: undefined, status: 'Pending', reason: 'Pending', restarts: 0, issues: [] },
+        { name: 'prod-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Error', reason: 'CrashLoopBackOff', restarts: 1, issues: [] },
+      ]
+      renderPods()
+      expect(screen.getByRole('button', { name: /no-cluster-pod/ })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /prod-pod/ })).toBeTruthy()
     })
   })
 })

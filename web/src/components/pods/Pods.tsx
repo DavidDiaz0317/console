@@ -57,12 +57,23 @@ export function Pods() {
     }
   }, [drillToPod])
 
-  // Filter pod issues by global cluster selection
-  const filteredPodIssues = useMemo(() => {
-    // Apply cluster filtering using the built-in helper
-    let filtered = filterByCluster(podIssues)
+  // Build a set of reachable cluster names for multi-cluster-aware filtering
+  const reachableClusterNames = useMemo(() => {
+    return new Set(clusters.filter(c => c.reachable !== false).map(c => c.name))
+  }, [clusters])
 
-    // Apply custom text filtering
+  // Filter pod issues across all connected clusters
+  const filteredPodIssues = useMemo(() => {
+    // Limit to issues from reachable clusters when cluster topology is known;
+    // pass issues with no cluster field through for backward compatibility.
+    let filtered = clusters.length > 0
+      ? podIssues.filter(issue => !issue.cluster || reachableClusterNames.has(issue.cluster))
+      : podIssues
+
+    // Apply global cluster selection filter across all clusters
+    filtered = filterByCluster(filtered)
+
+    // Apply custom text filtering across all cluster contexts
     if (customFilter.trim()) {
       const query = customFilter.toLowerCase()
       filtered = filtered.filter(issue =>
@@ -74,7 +85,7 @@ export function Pods() {
     }
 
     return filtered
-  }, [podIssues, filterByCluster, customFilter])
+  }, [podIssues, clusters, reachableClusterNames, filterByCluster, customFilter])
 
   // Calculate stats
   const stats = useMemo(() => {
