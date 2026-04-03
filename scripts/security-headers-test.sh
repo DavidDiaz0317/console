@@ -85,12 +85,72 @@ echo -e "${BOLD}Phase 1: netlify.toml header configuration${NC}"
 echo ""
 
 NETLIFY_TOML="netlify.toml"
+
+# ---------------------------------------------------------------------------
+# netlify_header_configured <header-name> <toml-file>
+#
+# Semantically checks that a security header is set inside a
+# [[headers]] → [headers.values] block in netlify.toml.
+#
+# A pure grep on the file is insufficient because the header name can appear
+# in comment lines or unrelated sections (e.g. [build.environment]), which
+# would produce false-positive results.  This function uses Python to walk
+# the TOML structure and only counts a header as configured when it is
+# present as a real key=value assignment inside [headers.values].
+#
+# Returns 0 if the header is properly configured, 1 otherwise.
+# ---------------------------------------------------------------------------
+netlify_header_configured() {
+  local header_name="$1"
+  local toml_file="$2"
+  python3 - "$toml_file" "$header_name" <<'PYEOF'
+import sys
+import re
+
+toml_path = sys.argv[1]
+target = sys.argv[2].lower()
+
+try:
+    lines = open(toml_path).readlines()
+except OSError:
+    sys.exit(1)
+
+in_headers_values = False
+for raw in lines:
+    line = raw.strip()
+    # Skip blank lines and comment-only lines
+    if not line or line.startswith('#'):
+        continue
+    # Strip trailing inline comment (must be preceded by whitespace)
+    line = re.sub(r'\s+#.*$', '', line).strip()
+    # [[headers]] — start of a new headers array element; values block closed
+    if re.fullmatch(r'\[\[headers\]\]', line):
+        in_headers_values = False
+        continue
+    # [headers.values] — open the key=value block for the current element
+    if re.fullmatch(r'\[headers\.values\]', line):
+        in_headers_values = True
+        continue
+    # Any other TOML section marker closes the current values block
+    if line.startswith('['):
+        in_headers_values = False
+        continue
+    # Inside [headers.values]: parse "Key = value" assignments
+    if in_headers_values and '=' in line:
+        key = line.split('=', 1)[0].strip().strip('"').strip("'")
+        if key.lower() == target:
+            sys.exit(0)
+
+sys.exit(1)
+PYEOF
+}
+
 if [ -f "$NETLIFY_TOML" ]; then
   for entry in "${REQUIRED_HEADERS[@]}"; do
     IFS='|' read -r header_name expected_pattern severity <<< "$entry"
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
 
-    if grep -qi "$header_name" "$NETLIFY_TOML" 2>/dev/null; then
+    if netlify_header_configured "$header_name" "$NETLIFY_TOML"; then
       echo -e "  ${GREEN}✓${NC} ${header_name} — configured in netlify.toml"
       PASS_COUNT=$((PASS_COUNT + 1))
       RESULTS_LINES="${RESULTS_LINES}{\"header\":\"${header_name}\",\"source\":\"config\",\"status\":\"pass\",\"severity\":\"${severity}\"},"
@@ -107,7 +167,7 @@ if [ -f "$NETLIFY_TOML" ]; then
     IFS='|' read -r header_name expected_pattern severity <<< "$entry"
     TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
 
-    if grep -qi "$header_name" "$NETLIFY_TOML" 2>/dev/null; then
+    if netlify_header_configured "$header_name" "$NETLIFY_TOML"; then
       echo -e "  ${GREEN}✓${NC} ${header_name} — configured"
       PASS_COUNT=$((PASS_COUNT + 1))
       RESULTS_LINES="${RESULTS_LINES}{\"header\":\"${header_name}\",\"source\":\"config\",\"status\":\"pass\",\"severity\":\"${severity}\"},"
@@ -234,7 +294,7 @@ EOF
 
 for entry in "${REQUIRED_HEADERS[@]}"; do
   IFS='|' read -r header_name expected_pattern severity <<< "$entry"
-  if grep -qi "$header_name" "$NETLIFY_TOML" 2>/dev/null; then
+  if netlify_header_configured "$header_name" "$NETLIFY_TOML"; then
     echo "| ${header_name} | PASS |" >> "$REPORT_MD"
   else
     echo "| ${header_name} | **FAIL** |" >> "$REPORT_MD"
@@ -249,7 +309,7 @@ echo "|--------|--------|" >> "$REPORT_MD"
 
 for entry in "${RECOMMENDED_HEADERS[@]}"; do
   IFS='|' read -r header_name expected_pattern severity <<< "$entry"
-  if grep -qi "$header_name" "$NETLIFY_TOML" 2>/dev/null; then
+  if netlify_header_configured "$header_name" "$NETLIFY_TOML"; then
     echo "| ${header_name} | PASS |" >> "$REPORT_MD"
   else
     echo "| ${header_name} | WARN |" >> "$REPORT_MD"
