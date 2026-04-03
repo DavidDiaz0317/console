@@ -109,16 +109,31 @@ fi
 export DEV_MODE=${DEV_MODE:-true}
 export FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}
 
-# Kill any existing instances on required ports
+# Stop a process on a given port only if it belongs to this project.
+# Unrelated processes are skipped with a warning to avoid disrupting other services.
+kill_project_port() {
+    local port="$1"
+    local pids
+    pids=$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)
+    [ -z "$pids" ] && return 0
+    for pid in $pids; do
+        local cmd
+        cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+        if echo "$cmd" | grep -qE "(cmd/console|kc-agent|[Vv]ite)" || \
+           echo "$cmd" | grep -qF "$SCRIPT_DIR"; then
+            echo "Stopping KubeStellar Console process on port $port (PID $pid)..."
+            kill -TERM "$pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$pid" 2>/dev/null || true
+        else
+            echo "WARNING: Port $port is occupied by an unrelated process (PID $pid): $cmd"
+            echo "         Stop it manually if it conflicts with the console."
+        fi
+    done
+}
+
 for p in 8080 5174 8585; do
-    EXISTING_PID=$(lsof -ti :$p 2>/dev/null || true)
-    if [ -n "$EXISTING_PID" ]; then
-        echo "Killing existing process on port $p (PID: $EXISTING_PID)..."
-        kill -TERM $EXISTING_PID 2>/dev/null || true
-        sleep 2
-        # Fall back to SIGKILL if process did not exit gracefully
-        kill -9 $EXISTING_PID 2>/dev/null || true
-    fi
+    kill_project_port "$p"
 done
 
 echo "Starting KubeStellar Console (dev mode)..."

@@ -36,9 +36,18 @@ cleanup() {
   for pid in "${PIDS_TO_KILL[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
-  # Kill any processes we started on known ports
+  # Kill only project-related processes on known ports to avoid disrupting other services
+  local project_dir
+  project_dir="$(cd "$(dirname "$0")/.." && pwd)"
   for port in 8080 8081 5174; do
-    lsof -ti ":$port" 2>/dev/null | xargs -r kill 2>/dev/null || true
+    for pid in $(lsof -ti ":$port" 2>/dev/null || true); do
+      local cmd
+      cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+      if echo "$cmd" | grep -qE "(cmd/console|kc-agent|[Vv]ite)" || \
+         echo "$cmd" | grep -qF "$project_dir"; then
+        kill "$pid" 2>/dev/null || true
+      fi
+    done
   done
   # Stop docker container if running
   docker rm -f kc-smoke-test 2>/dev/null || true

@@ -60,15 +60,32 @@ echo "  Frontend URL: $FRONTEND_URL"
 echo "  Database: $PROJECT_DIR/data/console.db"
 echo ""
 
+# Stop a process on a given port only if it belongs to this project.
+# Unrelated processes are skipped with a warning to avoid disrupting other services.
+kill_project_port() {
+    local port="$1"
+    local pids
+    pids=$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)
+    [ -z "$pids" ] && return 0
+    for pid in $pids; do
+        local cmd
+        cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+        if echo "$cmd" | grep -qE "(cmd/console|kc-agent|[Vv]ite)" || \
+           echo "$cmd" | grep -qF "$PROJECT_DIR"; then
+            echo -e "${YELLOW}Stopping KubeStellar Console process on port $port (PID $pid)...${NC}"
+            kill -TERM "$pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$pid" 2>/dev/null || true
+        else
+            echo -e "${YELLOW}WARNING: Port $port is occupied by an unrelated process (PID $pid): $cmd${NC}"
+            echo -e "${YELLOW}         Stop it manually if it conflicts with the console.${NC}"
+        fi
+    done
+}
+
 # Clear ports if in use
 for p in $PORT 5174; do
-    if lsof -Pi :$p -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo -e "${YELLOW}Port $p is in use, killing existing process...${NC}"
-        lsof -ti:$p | xargs kill -TERM 2>/dev/null || true
-        sleep 2
-        # Fall back to SIGKILL if process did not exit gracefully
-        lsof -ti:$p | xargs kill -9 2>/dev/null || true
-    fi
+    kill_project_port "$p"
 done
 
 # Cleanup on exit

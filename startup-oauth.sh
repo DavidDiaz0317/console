@@ -248,6 +248,30 @@ if [ -f "$WATCHDOG_PID_FILE" ]; then
     fi
 fi
 
+# Stop a process on a given port only if it belongs to this project.
+# Only kills LISTENING processes (not outgoing connections e.g. watchdog→backend).
+# Unrelated processes are skipped with a warning to avoid disrupting other services.
+kill_project_port() {
+    local port="$1"
+    local pids
+    pids=$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)
+    [ -z "$pids" ] && return 0
+    for pid in $pids; do
+        local cmd
+        cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+        if echo "$cmd" | grep -qE "(cmd/console|kc-agent|[Vv]ite)" || \
+           echo "$cmd" | grep -qF "$SCRIPT_DIR"; then
+            echo -e "${YELLOW}Stopping KubeStellar Console process on port $port (PID $pid)...${NC}"
+            kill -TERM "$pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$pid" 2>/dev/null || true
+        else
+            echo -e "${YELLOW}WARNING: Port $port is occupied by an unrelated process (PID $pid): $cmd${NC}"
+            echo -e "${YELLOW}         Stop it manually if it conflicts with the console.${NC}"
+        fi
+    done
+}
+
 # Clean ports — skip 8080 if watchdog is alive
 PORTS_TO_CLEAN="$BACKEND_LISTEN_PORT 8585"
 if [ "$WATCHDOG_RUNNING" = false ]; then
@@ -255,15 +279,7 @@ if [ "$WATCHDOG_RUNNING" = false ]; then
 fi
 if [ "$USE_DEV_SERVER" = true ]; then PORTS_TO_CLEAN="$PORTS_TO_CLEAN 5174"; fi
 for p in $PORTS_TO_CLEAN; do
-    if lsof -Pi :$p -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo -e "${YELLOW}Port $p is in use, killing existing process...${NC}"
-        # Only kill LISTENING processes — not processes with outgoing connections
-        # (the watchdog has outgoing connections to the backend port)
-        lsof -ti:$p -sTCP:LISTEN | xargs kill -TERM 2>/dev/null || true
-        sleep 2
-        # Fall back to SIGKILL if process did not exit gracefully
-        lsof -ti:$p -sTCP:LISTEN | xargs kill -9 2>/dev/null || true
-    fi
+    kill_project_port "$p"
 done
 
 # Cleanup on exit
