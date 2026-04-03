@@ -36,11 +36,6 @@ export function ClusterGroupsSection({
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupClusters, setNewGroupClusters] = useState<string[]>([])
 
-  // Only render when there are groups or the form is showing
-  if (clusterGroups.length === 0 && !showGroupForm) {
-    return null
-  }
-
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -53,7 +48,11 @@ export function ClusterGroupsSection({
           {showGroups ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
         <button
-          onClick={() => setShowGroupForm(!showGroupForm)}
+          onClick={() => {
+            const isOpening = !showGroupForm
+            setShowGroupForm(isOpening)
+            if (isOpening) setShowGroups(true)
+          }}
           className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
