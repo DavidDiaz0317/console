@@ -1773,6 +1773,153 @@ describe('cancelling mission receives terminal messages', () => {
   })
 })
 
+// ── Stale response after cancellation is ignored ────────────────────────────
+//
+// Regression test for the bug where a previously failed (no-response) request
+// stays in pendingRequests and its delayed backend response appears after a
+// later request is cancelled.
+//
+// Steps:
+//   1. Send Message A (initial mission) — succeeds.
+//   2. Send Message B (sendMessage) — backend never replies (stale request).
+//   3. Send Message C (sendMessage).
+//   4. Cancel Message C → mission transitions 'cancelling' → 'failed' via cancel_ack.
+//   5. Backend finally sends a response for the stale Message B request.
+//   6. Assert: the response is silently dropped; mission stays 'failed' with
+//      no new assistant content.
+
+describe('stale response after cancellation is ignored', () => {
+  it('does not append stale backend response to a cancelled mission', async () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    // ── Step 1: start mission and get initial request ID ──────────────────
+    const { missionId, requestId: requestIdA } = await startMissionWithConnection(result)
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('running')
+
+    // Complete Message A so mission moves to waiting_input
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestIdA,
+        type: 'result',
+        payload: { content: 'Message A response' },
+      })
+    })
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('waiting_input')
+
+    // ── Step 2: send Message B — we deliberately never send a backend reply ─
+    act(() => { result.current.sendMessage(missionId, 'Message B') })
+    await act(async () => { await Promise.resolve() })
+
+    // Extract the request ID used for Message B from the WS send calls
+    const allSends = MockWebSocket.lastInstance?.send.mock.calls ?? []
+    const chatSends = allSends
+      .map((c: string[]) => JSON.parse(c[0]))
+      .filter((m: { type: string }) => m.type === 'chat')
+    const requestIdB = chatSends[chatSends.length - 1].id as string
+
+    // Message B is now pending — mission is running, no reply yet
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('running')
+
+    // ── Step 3: send Message C ─────────────────────────────────────────────
+    act(() => { result.current.sendMessage(missionId, 'Message C') })
+    await act(async () => { await Promise.resolve() })
+
+    // ── Step 4: cancel (cancel_ack finalises the mission) ─────────────────
+    act(() => { result.current.cancelMission(missionId) })
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('cancelling')
+
+    // Backend sends cancel acknowledgment
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: `cancel-ack-${Date.now()}`,
+        type: 'cancel_ack',
+        payload: { sessionId: missionId, success: true },
+      })
+    })
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('failed')
+
+    // Record the message count at the point of cancellation
+    const messagesAfterCancel = result.current.missions.find(m => m.id === missionId)?.messages ?? []
+    const msgCountAfterCancel = messagesAfterCancel.length
+
+    // ── Step 5: stale backend response for Message B arrives ──────────────
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestIdB,
+        type: 'result',
+        payload: { content: 'Stale response for Message B' },
+      })
+    })
+
+    // ── Step 6: assert stale response is dropped ──────────────────────────
+    const mission = result.current.missions.find(m => m.id === missionId)
+    expect(mission?.status).toBe('failed')
+    expect(mission?.messages.length).toBe(msgCountAfterCancel)
+    expect(mission?.messages.some(m => m.content === 'Stale response for Message B')).toBe(false)
+  })
+
+  it('does not apply stale stream chunks after cancel_ack finalises the mission', async () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    const { missionId, requestId: requestIdA } = await startMissionWithConnection(result)
+
+    // Complete Message A
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestIdA,
+        type: 'result',
+        payload: { content: 'Message A done' },
+      })
+    })
+
+    // Send Message B — backend never replies
+    act(() => { result.current.sendMessage(missionId, 'Message B') })
+    await act(async () => { await Promise.resolve() })
+
+    const allSends = MockWebSocket.lastInstance?.send.mock.calls ?? []
+    const chatSends = allSends
+      .map((c: string[]) => JSON.parse(c[0]))
+      .filter((m: { type: string }) => m.type === 'chat')
+    const requestIdB = chatSends[chatSends.length - 1].id as string
+
+    // Send Message C then cancel via cancel_ack
+    act(() => { result.current.sendMessage(missionId, 'Message C') })
+    await act(async () => { await Promise.resolve() })
+    act(() => { result.current.cancelMission(missionId) })
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: `cancel-ack-2-${Date.now()}`,
+        type: 'cancel_ack',
+        payload: { sessionId: missionId, success: true },
+      })
+    })
+    expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('failed')
+
+    const msgCountAfterCancel = result.current.missions.find(m => m.id === missionId)?.messages.length ?? 0
+
+    // Stale stream chunks for Message B arrive after cancellation
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestIdB,
+        type: 'stream',
+        payload: { content: 'stale chunk', done: false },
+      })
+    })
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestIdB,
+        type: 'stream',
+        payload: { content: '', done: true },
+      })
+    })
+
+    const mission = result.current.missions.find(m => m.id === missionId)
+    expect(mission?.status).toBe('failed')
+    expect(mission?.messages.length).toBe(msgCountAfterCancel)
+    expect(mission?.messages.some(m => m.content.includes('stale chunk'))).toBe(false)
+  })
+})
+
 // ── Persistence edge cases ──────────────────────────────────────────────────
 
 describe('persistence edge cases', () => {

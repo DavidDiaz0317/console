@@ -676,6 +676,14 @@ Install the console locally with the KubeStellar Console agent to use AI mission
       cancelTimeouts.current.delete(missionId)
     }
 
+    // Clear every pending request entry that belongs to this mission.
+    // Without this, stale backend responses (e.g. for a previously failed
+    // request that never received a reply) can arrive after cancellation is
+    // finalised and mistakenly append content to the already-cancelled mission.
+    for (const [reqId, mId] of pendingRequests.current.entries()) {
+      if (mId === missionId) pendingRequests.current.delete(reqId)
+    }
+
     setMissions(prev => prev.map(m =>
       m.id === missionId && m.status === 'cancelling' ? {
         ...m,
@@ -761,6 +769,17 @@ Install the console locally with the KubeStellar Console agent to use AI mission
 
     setMissions(prev => prev.map(m => {
       if (m.id !== missionId) return m
+
+      // Drop any message that arrives for a mission that is already in a
+      // terminal state ('failed', 'completed', 'saved').  This acts as a
+      // belt-and-suspenders guard: finalizeCancellation already clears
+      // pendingRequests, but a response that races between the cancel_ack
+      // clearing the map and the setMissions update settling could otherwise
+      // sneak through and append stale content to a finished mission.
+      if (m.status === 'failed' || m.status === 'completed' || m.status === 'saved') {
+        pendingRequests.current.delete(message.id)
+        return m
+      }
 
       // If the mission is in 'cancelling' state and we receive a terminal message
       // (result, error, or stream-done), treat it as backend confirmation of the
