@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('../../../../lib/demoMode', () => ({
   isDemoMode: () => true, getDemoMode: () => true, isNetlifyDeployment: false,
@@ -33,7 +33,22 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../../../hooks/useClusterData', () => ({
-  useClusterData: () => ({ clusters: [], deduplicatedClusters: [], pods: [], deployments: [], events: [], helmReleases: [], operatorSubscriptions: [], securityIssues: [] }),
+  useClusterData: () => ({
+    clusters: [
+      { name: 'cluster-1', healthy: true, reachable: true, nodeCount: 3, podCount: 10, namespaces: ['default'] },
+      { name: 'cluster-2', healthy: false, reachable: true, nodeCount: 2, podCount: 5, namespaces: ['default'] },
+    ],
+    deduplicatedClusters: [
+      { name: 'cluster-1', healthy: true, reachable: true, nodeCount: 3, podCount: 10, namespaces: ['default'] },
+      { name: 'cluster-2', healthy: false, reachable: true, nodeCount: 2, podCount: 5, namespaces: ['default'] },
+    ],
+    pods: [],
+    deployments: [],
+    events: [],
+    helmReleases: [],
+    operatorSubscriptions: [],
+    securityIssues: [],
+  }),
 }))
 
 vi.mock('../../../../hooks/useDrillDown', () => ({
@@ -48,7 +63,30 @@ import { MultiClusterSummaryDrillDown } from '../MultiClusterSummaryDrillDown'
 
 describe('MultiClusterSummaryDrillDown', () => {
   it('renders without crashing', () => {
-    const { container } = render(<MultiClusterSummaryDrillDown data={{ filter: '' }} />)
+    const { container } = render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
     expect(container).toBeTruthy()
+  })
+
+  it('renders health summary stats section', () => {
+    render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
+    // Health summary section shows "healthy" and "Issues" labels
+    expect(screen.getByText('common.healthy')).toBeTruthy()
+    expect(screen.getByText('Issues')).toBeTruthy()
+  })
+
+  it('shows healthy cluster count in health summary', () => {
+    render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
+    // cluster-1 is healthy, cluster-2 is not — healthy count = 1
+    const healthyCounts = screen.getAllByText('1')
+    expect(healthyCounts.length).toBeGreaterThan(0)
+  })
+
+  it('renders status badges for each cluster', () => {
+    render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
+    // Both clusters should have status badges
+    const healthyBadges = screen.getAllByText('healthy')
+    expect(healthyBadges.length).toBeGreaterThan(0)
+    const unhealthyBadges = screen.getAllByText('unhealthy')
+    expect(unhealthyBadges.length).toBeGreaterThan(0)
   })
 })

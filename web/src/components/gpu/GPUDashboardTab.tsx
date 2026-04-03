@@ -2,6 +2,9 @@ import { useTranslation } from 'react-i18next'
 import {
   Plus,
   LayoutDashboard,
+  CheckCircle,
+  AlertTriangle,
+  WifiOff,
 } from 'lucide-react'
 import { SortableGpuCard } from './SortableGpuCard'
 import type { GpuDashCard } from './SortableGpuCard'
@@ -16,6 +19,13 @@ import {
   rectSortingStrategy,
 } from '@dnd-kit/sortable'
 
+/** Optional GPU cluster health summary for the dashboard header */
+export interface GPUHealthSummary {
+  healthy: number
+  degraded: number
+  offline: number
+}
+
 export interface GPUDashboardTabProps {
   dashboardCards: GpuDashCard[]
   dashCardIds: string[]
@@ -27,6 +37,8 @@ export interface GPUDashboardTabProps {
   onDashCardWidthChange: (index: number, newWidth: number) => void
   onTriggerRefresh: () => void
   onShowAddCardModal: () => void
+  /** Optional health summary for GPU cluster nodes */
+  healthSummary?: GPUHealthSummary
 }
 
 export function GPUDashboardTab({
@@ -40,11 +52,52 @@ export function GPUDashboardTab({
   onDashCardWidthChange,
   onTriggerRefresh,
   onShowAddCardModal,
+  healthSummary,
 }: GPUDashboardTabProps) {
   const { t } = useTranslation(['cards', 'common'])
 
+  // Derive overall health status from summary
+  const healthStatus = healthSummary
+    ? healthSummary.offline > 0
+      ? 'offline'
+      : healthSummary.degraded > 0
+        ? 'degraded'
+        : 'healthy'
+    : null
+
   return (
     <div className="space-y-4">
+      {/* Health status indicator */}
+      {healthSummary && (
+        <div
+          data-testid="gpu-health-indicator"
+          className="flex items-center gap-4 px-4 py-2 rounded-lg border bg-card/50 text-sm"
+          aria-label="GPU cluster health status"
+        >
+          <span className="text-muted-foreground font-medium">GPU Health:</span>
+          {healthSummary.healthy > 0 && (
+            <span className="flex items-center gap-1.5 text-green-400">
+              <CheckCircle className="w-4 h-4" aria-hidden="true" />
+              {healthSummary.healthy} {t('common:common.healthy')}
+            </span>
+          )}
+          {healthSummary.degraded > 0 && (
+            <span className="flex items-center gap-1.5 text-yellow-400">
+              <AlertTriangle className="w-4 h-4" aria-hidden="true" />
+              {healthSummary.degraded} degraded
+            </span>
+          )}
+          {healthSummary.offline > 0 && (
+            <span className="flex items-center gap-1.5 text-red-400">
+              <WifiOff className="w-4 h-4" aria-hidden="true" />
+              {healthSummary.offline} offline
+            </span>
+          )}
+          {healthStatus === 'healthy' && healthSummary.degraded === 0 && healthSummary.offline === 0 && (
+            <span className="ml-auto text-xs text-green-400">All GPU nodes operational</span>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {t('gpuReservations.dashboard.customizable')}

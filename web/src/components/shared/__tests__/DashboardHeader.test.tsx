@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 vi.mock('../../../lib/demoMode', () => ({
@@ -48,5 +48,60 @@ describe('DashboardHeader', () => {
       </MemoryRouter>
     )
     expect(container).toBeTruthy()
+  })
+
+  it('renders title and subtitle', () => {
+    render(
+      <MemoryRouter>
+        <DashboardHeader title="GPU Dashboard" subtitle="Cluster GPU overview" isFetching={false} onRefresh={vi.fn()} />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId('dashboard-title')).toBeTruthy()
+    expect(screen.getByText('GPU Dashboard')).toBeTruthy()
+  })
+
+  it('renders health indicator when provided via afterTitle', () => {
+    const HealthBadge = () => (
+      <span data-testid="health-badge" className="text-green-400">All systems healthy</span>
+    )
+    render(
+      <MemoryRouter>
+        <DashboardHeader
+          title="Test Dashboard"
+          subtitle="Sub"
+          isFetching={false}
+          onRefresh={vi.fn()}
+          afterTitle={<HealthBadge />}
+        />
+      </MemoryRouter>
+    )
+    expect(screen.getByTestId('health-badge')).toBeTruthy()
+    expect(screen.getByText('All systems healthy')).toBeTruthy()
+  })
+
+  it('shows updating indicator while fetching', () => {
+    render(
+      <MemoryRouter>
+        <DashboardHeader title="Test" subtitle="Sub" isFetching={true} onRefresh={vi.fn()} />
+      </MemoryRouter>
+    )
+    const updatingEl = screen.getByTitle('Updating...')
+    expect(updatingEl).toBeTruthy()
+  })
+
+  it('shows error health alert when error prop is provided', () => {
+    render(
+      <MemoryRouter>
+        <DashboardHeader
+          title="Test"
+          subtitle="Sub"
+          isFetching={false}
+          onRefresh={vi.fn()}
+          error="Failed to fetch cluster data"
+        />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('Failed to fetch cluster data')).toBeTruthy()
+    expect(screen.getByRole('alert')).toBeTruthy()
   })
 })

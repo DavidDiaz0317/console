@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 // Standard mocks
 vi.mock('../../../lib/demoMode', () => ({
@@ -52,7 +52,7 @@ describe('KubecostOverview', () => {
     vi.clearAllMocks()
     mockUseDemoMode.mockReturnValue({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
     mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: true, isRefreshing: false })
-    mockDrillDown.mockReturnValue({ drillToCosts: vi.fn() })
+    mockDrillDown.mockReturnValue({ drillToCost: vi.fn() })
   })
 
   it('renders without crashing', () => {
@@ -63,6 +63,25 @@ describe('KubecostOverview', () => {
   it('renders and reports state correctly', () => {
     const { container } = render(<KubecostOverview />)
     expect(container || true).toBeTruthy()
+  })
+
+  it('renders health indicator', () => {
+    render(<KubecostOverview />)
+    expect(screen.getByTestId('health-indicator')).toBeTruthy()
+  })
+
+  it('shows demo data health status in demo mode', () => {
+    mockUseDemoMode.mockReturnValue({ isDemoMode: true, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    render(<KubecostOverview />)
+    const indicator = screen.getByTestId('health-indicator')
+    expect(indicator.textContent).toContain('Demo Data')
+  })
+
+  it('shows connected health status in non-demo mode', () => {
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    render(<KubecostOverview />)
+    const indicator = screen.getByTestId('health-indicator')
+    expect(indicator.textContent).toContain('Kubecost Connected')
   })
 
   it('renders correctly in demo mode', () => {
