@@ -8,7 +8,6 @@ import { useState, useRef, useEffect, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { DynamicCardErrorBoundary } from '../../DynamicCardErrorBoundary'
 
 interface PortalTooltipProps {
   children: ReactNode
@@ -16,7 +15,7 @@ interface PortalTooltipProps {
   className?: string
 }
 
-function PortalTooltipInternal({ children, content, className = '' }: PortalTooltipProps) {
+export function PortalTooltip({ children, content, className = '' }: PortalTooltipProps) {
   const { t: _t } = useTranslation()
   const [isVisible, setIsVisible] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -82,14 +81,6 @@ function PortalTooltipInternal({ children, content, className = '' }: PortalTool
         document.body
       )}
     </>
-  )
-}
-
-export function PortalTooltip(props: PortalTooltipProps) {
-  return (
-    <DynamicCardErrorBoundary cardId="PortalTooltip">
-      <PortalTooltipInternal {...props} />
-    </DynamicCardErrorBoundary>
   )
 }
 
