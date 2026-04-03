@@ -57,12 +57,15 @@ export function ControlPlaneHealth() {
     })
   }, [filtered])
 
-  // Only declare "managed cluster" when data has fully loaded (not loading, not demo)
-  // and no control-plane pods were found. Without this guard, slow API responses
-  // cause all clusters to show the managed-cluster message during initial load.
+  // Only declare "managed cluster" when data has fully loaded successfully (not loading,
+  // not failed, not demo) and no control-plane pods were found. Without these guards:
+  // - slow API responses show a false "managed cluster" during initial load
+  // - repeated API failures (isFailed) incorrectly show "managed cluster" instead of
+  //   an error state, because isLoading drops to false after MAX_FAILURES retries
   const managedCluster = componentStatus.every(c => c.total === 0)
     && clusters.length > 0
     && !isLoading
+    && !isFailed
     && !isDemoFallback
 
   if (showSkeleton) {
