@@ -12,6 +12,7 @@ import { useProjectFilter } from '../../../hooks/useProjectFilter'
 import { useGlobalFilters } from '../../../hooks/useGlobalFilters'
 import { ALL_PROJECTS_ID, isBuiltInProject } from '../../../lib/projects'
 import { cn } from '../../../lib/cn'
+import { useModalState } from '../../../lib/modals'
 
 /** Maximum visible project items before the list scrolls */
 const MAX_VISIBLE_ITEMS = 8
@@ -33,7 +34,7 @@ export function ProjectSelector() {
 
   const { availableClusters } = useGlobalFilters()
 
-  const [isOpen, setIsOpen] = useState(false)
+  const { isOpen, close, toggle } = useModalState()
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newName, setNewName] = useState('')
   const [newClusters, setNewClusters] = useState<string[]>([])
@@ -44,12 +45,12 @@ export function ProjectSelector() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
+        close()
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  }, [close])
 
   // Count of selected user projects (excludes "All")
   const activeCount = isAllSelected ? 0 : selectedProjectIds.length
@@ -85,7 +86,7 @@ export function ProjectSelector() {
     <div className="relative" ref={dropdownRef}>
       {/* Trigger button */}
       <button
-        onClick={() => setIsOpen(prev => !prev)}
+        onClick={toggle}
         className={cn(
           'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
           isProjectFiltered
