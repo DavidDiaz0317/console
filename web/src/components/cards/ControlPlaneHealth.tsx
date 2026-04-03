@@ -57,7 +57,7 @@ export function ControlPlaneHealth() {
     })
   }, [filtered])
 
-  const managedCluster = componentStatus.every(c => c.total === 0) && clusters.length > 0
+  const managedCluster = !isLoading && !isFailed && componentStatus.every(c => c.total === 0) && clusters.length > 0
 
   if (showSkeleton) {
     return (

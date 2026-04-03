@@ -120,4 +120,40 @@ describe('ControlPlaneHealth', () => {
     expect(mockUseCardLoadingState).toHaveBeenCalled()
   })
 
+  it('does not show managed cluster message while pods are still loading', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: false, isRefreshing: false })
+    mockPods.mockReturnValue({ pods: [], isLoading: true, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: null })
+    mockUseClusters.mockReturnValue({
+      clusters: [{ name: 'prod-cluster', healthy: true, reachable: true, nodeCount: 3, podCount: 10, cpuCores: 8, memoryGB: 16, cpuRequestsCores: 4, memoryRequestsGB: 8 }],
+      deduplicatedClusters: [],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    const { queryByText } = render(<ControlPlaneHealth />)
+    expect(queryByText('controlPlaneHealth.managedCluster')).toBeNull()
+  })
+
+  it('does not show managed cluster message when pod fetch has failed', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: false, isRefreshing: false })
+    mockPods.mockReturnValue({ pods: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: true, consecutiveFailures: 3, error: 'Network error', lastRefresh: null })
+    mockUseClusters.mockReturnValue({
+      clusters: [{ name: 'prod-cluster', healthy: true, reachable: true, nodeCount: 3, podCount: 10, cpuCores: 8, memoryGB: 16, cpuRequestsCores: 4, memoryRequestsGB: 8 }],
+      deduplicatedClusters: [],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    const { queryByText } = render(<ControlPlaneHealth />)
+    expect(queryByText('controlPlaneHealth.managedCluster')).toBeNull()
+  })
+
+  it('shows managed cluster message only after successful load with no control-plane pods', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: false, isRefreshing: false })
+    mockPods.mockReturnValue({ pods: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockUseClusters.mockReturnValue({
+      clusters: [{ name: 'eks-cluster', healthy: true, reachable: true, nodeCount: 3, podCount: 10, cpuCores: 8, memoryGB: 16, cpuRequestsCores: 4, memoryRequestsGB: 8 }],
+      deduplicatedClusters: [],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    const { getByText } = render(<ControlPlaneHealth />)
+    expect(getByText('controlPlaneHealth.managedCluster')).toBeTruthy()
+  })
+
 })
