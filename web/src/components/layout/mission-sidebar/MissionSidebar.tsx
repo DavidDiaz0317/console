@@ -303,8 +303,12 @@ export function MissionSidebar() {
     const q = missionSearchQuery.toLowerCase()
     return m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
   }, [missionSearchQuery])
-  const savedMissions = missions.filter(m => m.status === 'saved' && matchesSearch(m))
-  const activeMissions = missions.filter(m => m.status !== 'saved' && matchesSearch(m))
+  const savedMissions = missions
+    .filter(m => m.status === 'saved' && matchesSearch(m))
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+  const activeMissions = missions
+    .filter(m => m.status !== 'saved' && matchesSearch(m))
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 
   const handleImportMission = useCallback((mission: MissionExport) => {
     const missionType = mission.missionClass === 'install' ? 'deploy' as const

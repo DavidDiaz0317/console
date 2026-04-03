@@ -5564,6 +5564,56 @@ describe('executeMission wsSend failure', () => {
   })
 })
 
+// ── Mission ordering: updatedAt ───────────────────────────────────────────────
+
+describe('mission ordering by updatedAt', () => {
+  it('sendMessage updates updatedAt so the mission can be sorted to the top', async () => {
+    // Seed two missions: olderMission was updated a minute ago, newerMission just now
+    const now = Date.now()
+    const missions = [
+      {
+        id: 'older-mission',
+        title: 'Older Mission',
+        description: 'Was updated first',
+        type: 'troubleshoot',
+        status: 'completed',
+        messages: [],
+        createdAt: new Date(now - 120_000).toISOString(),
+        updatedAt: new Date(now - 60_000).toISOString(),
+      },
+      {
+        id: 'newer-mission',
+        title: 'Newer Mission',
+        description: 'Was updated second',
+        type: 'troubleshoot',
+        status: 'completed',
+        messages: [],
+        createdAt: new Date(now - 60_000).toISOString(),
+        updatedAt: new Date(now).toISOString(),
+      },
+    ]
+    localStorage.setItem('kc_missions', JSON.stringify(missions))
+
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    // Verify initial state: newerMission has later updatedAt
+    const olderBefore = result.current.missions.find(m => m.id === 'older-mission')
+    const newerBefore = result.current.missions.find(m => m.id === 'newer-mission')
+    expect(olderBefore).toBeDefined()
+    expect(newerBefore).toBeDefined()
+    expect(newerBefore!.updatedAt.getTime()).toBeGreaterThan(olderBefore!.updatedAt.getTime())
+
+    // After sendMessage on older mission, its updatedAt should be > newer mission's updatedAt
+    await act(async () => {
+      result.current.sendMessage('older-mission', 'Hello again')
+    })
+
+    const olderAfter = result.current.missions.find(m => m.id === 'older-mission')
+    const newerAfter = result.current.missions.find(m => m.id === 'newer-mission')
+    expect(olderAfter!.updatedAt.getTime()).toBeGreaterThan(newerAfter!.updatedAt.getTime())
+  })
+})
+
 // ── runSavedMission: wsSend failure path ────────────────────────────────────
 
 describe('runSavedMission wsSend failure', () => {
