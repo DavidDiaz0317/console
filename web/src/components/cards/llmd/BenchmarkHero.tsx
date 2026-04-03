@@ -10,6 +10,7 @@ import { motion } from 'framer-motion'
 import { Zap, Clock, Activity, Cpu, TrendingUp, TrendingDown, ArrowRight, CalendarDays } from 'lucide-react'
 import { useReportCardDataState } from '../CardDataContext'
 import { useCachedBenchmarkReports, resetBenchmarkStream } from '../../../hooks/useBenchmarkData'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 import {
   generateBenchmarkReports,
   getHardwareShort,
@@ -90,7 +91,7 @@ function HeroMetric({
   )
 }
 
-export function BenchmarkHero() {
+function BenchmarkHeroInternal() {
   const { t } = useTranslation()
   const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing, currentSince } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(() => isDemoFallback ? generateBenchmarkReports() : (liveReports ?? []), [isDemoFallback, liveReports])
@@ -313,6 +314,14 @@ export function BenchmarkHero() {
         </div>
       </div>
     </div>
+  )
+}
+
+export function BenchmarkHero() {
+  return (
+    <DynamicCardErrorBoundary cardId="BenchmarkHero">
+      <BenchmarkHeroInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

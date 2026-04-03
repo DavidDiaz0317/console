@@ -11,6 +11,7 @@
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DynamicCardErrorBoundary } from '../../DynamicCardErrorBoundary'
 
 interface GaugeConfig {
   value: number
@@ -63,7 +64,7 @@ function getGradientColors(color: string) {
   return colorMap[color] || { start: color, end: color }
 }
 
-export function PremiumGauge({
+function PremiumGaugeInternal({
   primary,
   secondary,
   title,
@@ -312,6 +313,14 @@ export function PremiumGauge({
         </div>
       )}
     </div>
+  )
+}
+
+export function PremiumGauge(props: PremiumGaugeProps) {
+  return (
+    <DynamicCardErrorBoundary cardId="PremiumGauge">
+      <PremiumGaugeInternal {...props} />
+    </DynamicCardErrorBoundary>
   )
 }
 

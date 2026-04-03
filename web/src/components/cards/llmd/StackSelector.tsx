@@ -12,6 +12,7 @@ import type { LLMdStack } from '../../../hooks/useStackDiscovery'
 import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../../ui/StatusBadge'
 import { useModalState } from '../../../lib/modals'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 const STATUS_COLORS = {
   healthy: 'bg-green-500',
@@ -201,7 +202,7 @@ const StackOption = memo(function StackOption({ stack, isSelected, onSelect }: S
   )
 })
 
-export function StackSelector() {
+function StackSelectorInternal() {
   const { t } = useTranslation()
   const stackContext = useOptionalStack()
   const { isOpen, close: closeDropdown, toggle } = useModalState()
@@ -559,6 +560,14 @@ export function StackSelector() {
         </div>
       )}
     </div>
+  )
+}
+
+export function StackSelector() {
+  return (
+    <DynamicCardErrorBoundary cardId="StackSelector">
+      <StackSelectorInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

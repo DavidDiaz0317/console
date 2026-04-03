@@ -15,6 +15,7 @@ import { generateAIInsights, type AIInsight } from '../../../lib/llmd/mockData'
 import type { LLMdStack } from '../../../hooks/useStackDiscovery'
 import { useTranslation } from 'react-i18next'
 import { PROGRESS_SIMULATION_MS } from '../../../lib/constants/network'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 const INSIGHT_ICONS = {
   optimization: Lightbulb,
@@ -319,7 +320,7 @@ function generateStackInsights(stack: LLMdStack, t?: (key: string, options?: Rec
   return insights
 }
 
-export function LLMdAIInsights() {
+function LLMdAIInsightsInternal() {
   const { t } = useTranslation(['cards', 'common'])
   const stackContext = useOptionalStack()
   const { shouldUseDemoData, showDemoBadge, reason } = useCardDemoState({ requires: 'stack' })
@@ -529,6 +530,14 @@ export function LLMdAIInsights() {
         </form>
       </div>
     </div>
+  )
+}
+
+export function LLMdAIInsights() {
+  return (
+    <DynamicCardErrorBoundary cardId="LLMdAIInsights">
+      <LLMdAIInsightsInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

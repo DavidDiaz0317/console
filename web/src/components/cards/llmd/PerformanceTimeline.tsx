@@ -16,6 +16,7 @@ import {
 } from '../../../lib/llmd/benchmarkDataUtils'
 import type { BenchmarkReport } from '../../../lib/llmd/benchmarkMockData'
 import { useTranslation } from 'react-i18next'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 type MetricMode = 'throughput' | 'ttft' | 'p99' | 'tpot'
 
@@ -55,7 +56,7 @@ function getColor(value: number, min: number, max: number, higherBetter: boolean
   return `rgba(239, 68, 68, ${0.3 + (1 - ratio) * 0.4})`
 }
 
-export function PerformanceTimeline() {
+function PerformanceTimelineInternal() {
   const { t } = useTranslation()
   const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(
@@ -257,6 +258,14 @@ export function PerformanceTimeline() {
         <span>{modeInfo.higherBetter ? 'High' : 'Worst'}</span>
       </div>
     </div>
+  )
+}
+
+export function PerformanceTimeline() {
+  return (
+    <DynamicCardErrorBoundary cardId="PerformanceTimeline">
+      <PerformanceTimelineInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

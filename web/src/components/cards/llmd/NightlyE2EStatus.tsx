@@ -22,6 +22,7 @@ import { BACKEND_DEFAULT_URL, FETCH_DEFAULT_TIMEOUT_MS } from '../../../lib/cons
 import { POPUP_HIDE_DELAY_MS, TOOLTIP_HIDE_DELAY_MS } from '../../../lib/constants/network'
 import type { NightlyGuideStatus, NightlyRun } from '../../../lib/llmd/nightlyE2EDemoData'
 import { useTranslation } from 'react-i18next'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 const PLATFORM_ORDER = ['OCP', 'GKE', 'CKS'] as const
 
@@ -834,7 +835,7 @@ function StatBox({ label, value, color }: { label: string; value: string; color:
   )
 }
 
-export function NightlyE2EStatus() {
+function NightlyE2EStatusInternal() {
   const { t } = useTranslation(['cards', 'common'])
   const { guides, isDemoFallback, isFailed, consecutiveFailures, isLoading } = useNightlyE2EData()
   const { shouldSummarize } = useAIMode()
@@ -1044,6 +1045,14 @@ export function NightlyE2EStatus() {
         <span>{t('cards:llmd.newestRunOnLeft')}</span>
       </div>
     </div>
+  )
+}
+
+export function NightlyE2EStatus() {
+  return (
+    <DynamicCardErrorBoundary cardId="NightlyE2EStatus">
+      <NightlyE2EStatusInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

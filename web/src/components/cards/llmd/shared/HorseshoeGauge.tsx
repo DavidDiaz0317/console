@@ -7,6 +7,7 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { DynamicCardErrorBoundary } from '../../DynamicCardErrorBoundary'
 
 interface HorseshoeGaugeProps {
   value: number
@@ -26,7 +27,7 @@ const getColor = (pct: number) => {
   return '#22c55e' // green
 }
 
-export function HorseshoeGauge({
+function HorseshoeGaugeInternal({
   value,
   maxValue = 100,
   label,
@@ -212,6 +213,14 @@ export function HorseshoeGauge({
         <span className="text-xs text-muted-foreground -mt-1">{sublabel}</span>
       )}
     </div>
+  )
+}
+
+export function HorseshoeGauge(props: HorseshoeGaugeProps) {
+  return (
+    <DynamicCardErrorBoundary cardId="HorseshoeGauge">
+      <HorseshoeGaugeInternal {...props} />
+    </DynamicCardErrorBoundary>
   )
 }
 

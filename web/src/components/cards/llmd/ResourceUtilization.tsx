@@ -22,6 +22,7 @@ import {
 } from '../../../lib/llmd/benchmarkDataUtils'
 import { useTranslation } from 'react-i18next'
 import { StatusBadge } from '../../ui/StatusBadge'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 type MetricMode = 'throughput' | 'ttftP50Ms' | 'tpotP50Ms' | 'p99LatencyMs'
 
@@ -62,7 +63,7 @@ function CustomTooltip({ active, payload }: {
   )
 }
 
-export function ResourceUtilization() {
+function ResourceUtilizationInternal() {
   const { t } = useTranslation()
   const { data: liveReports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing, lastRefresh } = useCachedBenchmarkReports()
   const effectiveReports = useMemo(
@@ -247,6 +248,14 @@ export function ResourceUtilization() {
         ))}
       </div>
     </div>
+  )
+}
+
+export function ResourceUtilization() {
+  return (
+    <DynamicCardErrorBoundary cardId="ResourceUtilization">
+      <ResourceUtilizationInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 

@@ -20,6 +20,7 @@ import { CardSearch, useCardSearch } from '../../ui/CardSearch'
 import { CardControls, type SortDirection } from '../../ui/CardControls'
 import { usePagination, Pagination } from '../../ui/Pagination'
 import { useTranslation } from 'react-i18next'
+import { DynamicCardErrorBoundary } from '../DynamicCardErrorBoundary'
 
 type SortKey = keyof Pick<LeaderboardRow, 'score' | 'throughputPerGpu' | 'ttftP50Ms' | 'tpotP50Ms' | 'p99LatencyMs' | 'llmdAdvantage'>
 
@@ -52,7 +53,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDirection }) {
     : <ChevronUp size={12} className="text-blue-400" />
 }
 
-export function HardwareLeaderboard() {
+function HardwareLeaderboardInternal() {
   const { t } = useTranslation()
   const { data: reports, isDemoFallback, isFailed, consecutiveFailures, isLoading, isRefreshing } = useCachedBenchmarkReports()
   // Use hook data directly — it already returns cached live data or demo fallback.
@@ -227,6 +228,14 @@ export function HardwareLeaderboard() {
         />
       )}
     </div>
+  )
+}
+
+export function HardwareLeaderboard() {
+  return (
+    <DynamicCardErrorBoundary cardId="HardwareLeaderboard">
+      <HardwareLeaderboardInternal />
+    </DynamicCardErrorBoundary>
   )
 }
 
