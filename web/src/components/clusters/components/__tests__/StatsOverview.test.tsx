@@ -88,16 +88,18 @@ describe('StatsOverview', () => {
   it('shows correct healthy cluster count', async () => {
     const { StatsOverview } = await import('../StatsOverview')
     render(<StatsOverview stats={MOCK_STATS} />)
-    // Should render "3" as the healthy count
-    const healthyCount = screen.getAllByText('3')
-    expect(healthyCount.length).toBeGreaterThan(0)
+    // The "Healthy" label and its count should be in the same stat block container
+    const healthyLabel = screen.getByText('Healthy')
+    const statBlock = healthyLabel.closest('div')?.parentElement
+    expect(statBlock?.textContent).toContain('3')
   }, IMPORT_TIMEOUT_MS)
 
   it('shows correct unhealthy cluster count', async () => {
     const { StatsOverview } = await import('../StatsOverview')
     render(<StatsOverview stats={MOCK_STATS} />)
-    // Should render "1" as the unhealthy count
-    const unhealthyCount = screen.getAllByText('1')
-    expect(unhealthyCount.length).toBeGreaterThan(0)
+    // The "Unhealthy" label and its count should be in the same stat block container
+    const unhealthyLabel = screen.getByText('Unhealthy')
+    const statBlock = unhealthyLabel.closest('div')?.parentElement
+    expect(statBlock?.textContent).toContain('1')
   }, IMPORT_TIMEOUT_MS)
 })

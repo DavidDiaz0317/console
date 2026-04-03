@@ -93,7 +93,7 @@ export function GPUDashboardTab({
               {healthSummary.offline} offline
             </span>
           )}
-          {healthStatus === 'healthy' && healthSummary.degraded === 0 && healthSummary.offline === 0 && (
+          {healthStatus === 'healthy' && (
             <span className="ml-auto text-xs text-green-400">All GPU nodes operational</span>
           )}
         </div>

@@ -76,17 +76,19 @@ describe('MultiClusterSummaryDrillDown', () => {
 
   it('shows healthy cluster count in health summary', () => {
     render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
-    // cluster-1 is healthy, cluster-2 is not — healthy count = 1
-    const healthyCounts = screen.getAllByText('1')
-    expect(healthyCounts.length).toBeGreaterThan(0)
+    // The healthy summary block should contain "1" (cluster-1 is healthy)
+    const healthyLabel = screen.getByText('common.healthy')
+    const healthyBlock = healthyLabel.closest('.glass')
+    expect(healthyBlock?.textContent).toContain('1')
   })
 
   it('renders status badges for each cluster', () => {
     render(<MultiClusterSummaryDrillDown data={{ filter: '' }} viewType="all-clusters" />)
-    // Both clusters should have status badges
+    // cluster-1 should have a healthy status badge, cluster-2 should have unhealthy
+    // (note: "healthy" may also appear in the filter dropdown, so check >= 1)
     const healthyBadges = screen.getAllByText('healthy')
-    expect(healthyBadges.length).toBeGreaterThan(0)
+    expect(healthyBadges.length).toBeGreaterThanOrEqual(1)
     const unhealthyBadges = screen.getAllByText('unhealthy')
-    expect(unhealthyBadges.length).toBeGreaterThan(0)
+    expect(unhealthyBadges.length).toBeGreaterThanOrEqual(1)
   })
 })
