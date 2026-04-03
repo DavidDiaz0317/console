@@ -1,23 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
-// Pin React across vi.resetModules() calls — the mock factory caches the real
-// module on first invocation so every fresh import gets the SAME React instance.
-// Without this, renderHook (which uses the original React) and hooks from fresh
-// modules would use different React instances, causing "Invalid hook call".
-const { reactCache, jsxCache } = vi.hoisted(() => ({
-  reactCache: { mod: null as unknown },
-  jsxCache: { mod: null as unknown },
-}))
-vi.mock('react', async (importOriginal) => {
-  if (!reactCache.mod) reactCache.mod = await importOriginal()
-  return reactCache.mod
-})
-vi.mock('react/jsx-runtime', async (importOriginal) => {
-  if (!jsxCache.mod) jsxCache.mod = await importOriginal()
-  return jsxCache.mod
-})
-
 vi.mock('../useDemoMode', () => ({
   useDemoMode: vi.fn(() => ({ isDemoMode: true })),
 }))
@@ -516,9 +499,15 @@ describe('useSidebarConfig — expanded coverage', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+    // Mock fetch so fetchEnabledDashboards (called by useSidebarConfig hook)
+    // doesn't hang waiting for a real /health request
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      json: async () => ({ enabled_dashboards: [] }),
+    }))
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 

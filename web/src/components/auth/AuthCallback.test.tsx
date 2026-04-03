@@ -24,6 +24,17 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }))
 
+vi.mock('../../lib/utils/localStorage', () => ({
+  safeGetItem: vi.fn(() => null),
+  safeRemoveItem: vi.fn(),
+}))
+
+// Mock fetch to prevent real /auth/refresh request from hanging in jsdom.
+// Return a pending promise so the effect stays in the loading state
+// (i.e., status stays 'authCallback.fetchingUserInfo' and doesn't advance
+// to the .catch handler's 'authCallback.completingSignIn').
+vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
 import { AuthCallback } from './AuthCallback'
 
 describe('AuthCallback Component', () => {

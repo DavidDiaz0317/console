@@ -4337,7 +4337,9 @@ describe('AlertsContext — wave 2 deep coverage', () => {
     }
 
     const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    // Allow lazy component to resolve and onData to fire
     await act(async () => { vi.advanceTimersByTime(0) })
+    await flushTimers()
 
     expect(result.current.dataError).toBe('MCP connection failed')
     expect(result.current.isLoadingData).toBe(false)
