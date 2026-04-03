@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Save, RefreshCw, Check, X, Github, ExternalLink, Loader2, Server } from 'lucide-react'
 import { STORAGE_KEY_TOKEN, STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE, STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED, FETCH_EXTERNAL_TIMEOUT_MS } from '../../../lib/constants'
 import { emitGitHubTokenConfigured, emitGitHubTokenRemoved, emitConversionStep } from '../../../lib/analytics'
+import { safeGetItem, safeSetItem, safeRemoveItem } from '../../../lib/utils/localStorage'
 import { UI_FEEDBACK_TIMEOUT_MS, SCROLL_COMPLETE_MS } from '../../../lib/constants/network'
 import { GITHUB_TOKEN_CREATE_URL, GITHUB_TOKEN_CLASSIC_URL } from '../../../lib/constants/github-token'
 import { ConfirmDialog } from '../../../lib/modals'
@@ -26,7 +27,7 @@ const DEEP_LINK_RENDER_DELAY_MS = 300
 
 /** Build JWT auth headers for backend proxy requests */
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem(STORAGE_KEY_TOKEN)
+  const token = safeGetItem(STORAGE_KEY_TOKEN)
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -46,7 +47,7 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
   useEffect(() => {
     const loadToken = async () => {
       // Skip if user explicitly dismissed the env token
-      if (localStorage.getItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED) === 'true') {
+      if (safeGetItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED) === 'true') {
         setIsInitializing(false)
         return
       }
@@ -60,7 +61,7 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
           const data = await response.json() as { hasToken: boolean; source: string }
           if (data.hasToken) {
             const source = data.source || TOKEN_SOURCE_SETTINGS
-            localStorage.setItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE, source)
+            safeSetItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE, source)
             window.dispatchEvent(new CustomEvent('kubestellar-settings-changed'))
             setHasToken(true)
             setTokenSource(source)
@@ -181,9 +182,9 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
       const isValid = await validateViaProxy()
 
       if (isValid) {
-        localStorage.setItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE, TOKEN_SOURCE_SETTINGS)
+        safeSetItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE, TOKEN_SOURCE_SETTINGS)
         // Clear any previous env-token dismissal
-        localStorage.removeItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED)
+        safeRemoveItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED)
         window.dispatchEvent(new CustomEvent('kubestellar-settings-changed'))
         setHasToken(true)
         setTokenSource(TOKEN_SOURCE_SETTINGS)
@@ -216,9 +217,9 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
       // Best-effort — clear local state regardless
     }
 
-    localStorage.removeItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE)
+    safeRemoveItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_SOURCE)
     if (isEnvToken) {
-      localStorage.setItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED, 'true')
+      safeSetItem(STORAGE_KEY_FEEDBACK_GITHUB_TOKEN_DISMISSED, 'true')
     }
     setHasToken(false)
     setTokenSource(null)
