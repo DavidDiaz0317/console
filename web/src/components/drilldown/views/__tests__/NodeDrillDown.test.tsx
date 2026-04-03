@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('../../../../lib/demoMode', () => ({
   isDemoMode: () => true, getDemoMode: () => true, isNetlifyDeployment: false,
@@ -46,7 +46,7 @@ vi.mock('../../../../lib/clipboard', () => ({
 }))
 
 vi.mock('../../../../hooks/useCachedData', () => ({
-  useCachedNodes: () => ({ nodes: [], isLoading: false, isFailed: false, lastRefresh: Date.now() }),
+  useCachedNodes: () => ({ nodes: [], isLoading: false, isFailed: false, isRefreshing: false, lastRefresh: Date.now() }),
 }))
 
 import { NodeDrillDown } from '../NodeDrillDown'
@@ -55,5 +55,10 @@ describe('NodeDrillDown', () => {
   it('renders without crashing', () => {
     const { container } = render(<NodeDrillDown data={{ cluster: 'c1', node: 'node1' }} />)
     expect(container).toBeTruthy()
+  })
+
+  it('shows a freshness indicator for cached node data', () => {
+    render(<NodeDrillDown data={{ cluster: 'c1', node: 'node1' }} />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 })

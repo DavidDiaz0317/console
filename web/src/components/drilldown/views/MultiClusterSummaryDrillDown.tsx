@@ -5,6 +5,7 @@ import { useDrillDownActions } from '../../../hooks/useDrillDown'
 import type { DrillDownViewType } from '../../../hooks/useDrillDown'
 import { useCachedNodes } from '../../../hooks/useCachedData'
 import { useTranslation } from 'react-i18next'
+import { RefreshIndicator } from '../../ui/RefreshIndicator'
 
 interface MultiClusterSummaryDrillDownProps {
   data: Record<string, unknown>
@@ -172,11 +173,9 @@ function getStatusBadge(status: string) {
 export function MultiClusterSummaryDrillDown({ data, viewType }: MultiClusterSummaryDrillDownProps) {
   const { t } = useTranslation()
   const { clusters, deduplicatedClusters, pods, deployments, events, helmReleases, operatorSubscriptions, securityIssues } = useClusterData()
-  const { nodes: rawCachedNodes, lastRefresh: nodesLastRefresh } = useCachedNodes()
+  const { nodes: rawCachedNodes, isRefreshing: isNodesRefreshing, lastRefresh: nodesLastRefresh } = useCachedNodes()
   // Guard against undefined to prevent crashes when APIs return 404/500/empty
   const cachedNodes = rawCachedNodes || []
-  // Freshness tracking: lastUpdated (from nodesLastRefresh) available if needed for display
-  void nodesLastRefresh
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [clusterFilter, setClusterFilter] = useState<string>('all')
@@ -434,27 +433,36 @@ export function MultiClusterSummaryDrillDown({ data, viewType }: MultiClusterSum
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="glass rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Icon className={`w-5 h-5 ${config.color}`} />
-            <span className="text-sm text-muted-foreground">{t('common.total')}</span>
+      <div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="glass rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon className={`w-5 h-5 ${config.color}`} />
+              <span className="text-sm text-muted-foreground">{t('common.total')}</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </div>
-          <div className="text-2xl font-bold">{stats.total}</div>
+          <div className="glass rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-sm text-muted-foreground">{t('common.healthy')}</span>
+            </div>
+            <div className="text-2xl font-bold text-green-400">{stats.healthy}</div>
+          </div>
+          <div className="glass rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-400" />
+              <span className="text-sm text-muted-foreground">Issues</span>
+            </div>
+            <div className="text-2xl font-bold text-yellow-400">{stats.issues}</div>
+          </div>
         </div>
-        <div className="glass rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-sm text-muted-foreground">{t('common.healthy')}</span>
-          </div>
-          <div className="text-2xl font-bold text-green-400">{stats.healthy}</div>
-        </div>
-        <div className="glass rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-5 h-5 text-yellow-400" />
-            <span className="text-sm text-muted-foreground">Issues</span>
-          </div>
-          <div className="text-2xl font-bold text-yellow-400">{stats.issues}</div>
+        <div className="mt-2 flex justify-end">
+          <RefreshIndicator
+            isRefreshing={isNodesRefreshing}
+            lastUpdated={nodesLastRefresh ? new Date(nodesLastRefresh) : null}
+            size="xs"
+          />
         </div>
       </div>
 

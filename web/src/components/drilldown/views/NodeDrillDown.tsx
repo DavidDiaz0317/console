@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../../lib/constants/network'
 import { copyToClipboard } from '../../../lib/clipboard'
 import { useCachedNodes } from '../../../hooks/useCachedData'
+import { RefreshIndicator } from '../../ui/RefreshIndicator'
 
 interface Props {
   data: Record<string, unknown>
@@ -32,9 +33,7 @@ export function NodeDrillDown({ data }: Props) {
   const issue = data.issue as string | undefined
 
   // Fetch node data from cache to fill in missing fields (#3028)
-  // lastRefresh tracks when node data was last updated (freshness: lastUpdated shown in parent via CardWrapper)
-  const { nodes, isLoading: isLoadingNodes, isFailed: isNodesFailed, lastRefresh: nodeLastRefresh } = useCachedNodes(cluster || undefined)
-  void nodeLastRefresh // freshness timestamp available if needed for display
+  const { nodes, isLoading: isLoadingNodes, isFailed: isNodesFailed, isRefreshing: isNodesRefreshing, lastRefresh: nodeLastRefresh } = useCachedNodes(cluster || undefined)
 
   // Look up this specific node from the cached data
   const cachedNode = useMemo(() => {
@@ -130,7 +129,14 @@ Start by checking node events and conditions.`,
 
       {/* Node Info */}
       <div className="p-4 rounded-lg bg-card/50 border border-border">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Node: {nodeName}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-foreground">Node: {nodeName}</h3>
+          <RefreshIndicator
+            isRefreshing={isNodesRefreshing}
+            lastUpdated={nodeLastRefresh ? new Date(nodeLastRefresh) : null}
+            size="xs"
+          />
+        </div>
 
         {/* Loading indicator while resolving node data */}
         {isResolvingNode && (
