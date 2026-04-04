@@ -120,7 +120,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 						slog.Error("[Chat] recovered from panic in streaming handler", "panic", r)
 						if !closed.Load() {
 							writeMu.Lock()
-							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", fmt.Sprintf("Internal server error: %v", r)))
+							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", "An unexpected error occurred. Please try again."))
 							writeMu.Unlock()
 						}
 					}
@@ -139,7 +139,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 						slog.Error("[Kubectl] recovered from panic in message handler", "panic", r)
 						if !closed.Load() {
 							writeMu.Lock()
-							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", fmt.Sprintf("Internal server error: %v", r)))
+							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", "An unexpected error occurred. Please try again."))
 							writeMu.Unlock()
 						}
 					}
