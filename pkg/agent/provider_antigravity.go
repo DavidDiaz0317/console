@@ -80,8 +80,13 @@ func (a *AntigravityProvider) Refresh() {
 // Handshake verifies that the Antigravity CLI is installed and can respond.
 // It returns a structured result with prerequisites and actionable errors.
 func (a *AntigravityProvider) Handshake(ctx context.Context) *HandshakeResult {
-	// Re-detect CLI in case the user installed it after the server started.
-	a.detectCLI()
+	// Re-detect CLI only when no path is configured, in case the user installed
+	// it after the server started. If a path is already set, use it as-is so
+	// that an explicitly configured (or invalid) path is not silently replaced
+	// by a system-wide installation found in PATH.
+	if a.cliPath == "" {
+		a.detectCLI()
+	}
 
 	if a.cliPath == "" {
 		return &HandshakeResult{
