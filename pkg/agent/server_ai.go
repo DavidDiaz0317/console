@@ -117,7 +117,12 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			go func(m protocol.Message, fa string) {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Info("[Chat] recovered from panic in streaming handler", "panic", r)
+						slog.Error("[Chat] recovered from panic in streaming handler", "panic", r)
+						if !closed.Load() {
+							writeMu.Lock()
+							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", fmt.Sprintf("Internal server error: %v", r)))
+							writeMu.Unlock()
+						}
 					}
 				}()
 				s.handleChatMessageStreaming(conn, m, fa, writeMu, &closed)
@@ -131,7 +136,12 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			go func(m protocol.Message) {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Info("[Kubectl] recovered from panic in message handler", "panic", r)
+						slog.Error("[Kubectl] recovered from panic in message handler", "panic", r)
+						if !closed.Load() {
+							writeMu.Lock()
+							conn.WriteJSON(s.errorResponse(m.ID, "internal_error", fmt.Sprintf("Internal server error: %v", r)))
+							writeMu.Unlock()
+						}
 					}
 				}()
 				response := s.handleMessage(m)

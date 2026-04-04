@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/kubestellar/console/pkg/agent/protocol"
 	"github.com/kubestellar/console/pkg/k8s"
 	"github.com/kubestellar/console/pkg/settings"
@@ -3147,5 +3148,146 @@ func TestSanitizeClusterError(t *testing.T) {
 				t.Errorf("sanitizeClusterError() = %q, want %q", got, tt.expected)
 			}
 		})
+	}
+}
+
+// ============================================================================
+// Panic Recovery WebSocket Tests
+// ============================================================================
+
+// panicProvider is an AIProvider that panics on every Chat call to simulate
+// a misbehaving provider in panic recovery tests.
+type panicProvider struct{}
+
+func (p *panicProvider) Name() string                     { return "panic-provider" }
+func (p *panicProvider) DisplayName() string              { return "Panic Provider" }
+func (p *panicProvider) Description() string              { return "test provider that panics" }
+func (p *panicProvider) Provider() string                 { return "test" }
+func (p *panicProvider) IsAvailable() bool                { return true }
+func (p *panicProvider) Capabilities() ProviderCapability { return CapabilityChat }
+func (p *panicProvider) Chat(_ context.Context, _ *ChatRequest) (*ChatResponse, error) {
+	panic("simulated panic in chat provider")
+}
+func (p *panicProvider) StreamChat(_ context.Context, _ *ChatRequest, _ func(string)) (*ChatResponse, error) {
+	panic("simulated panic in chat provider")
+}
+
+// TestServer_ChatPanicRecovery_SendsErrorResponse verifies that when a panic
+// occurs inside the Chat goroutine, the WebSocket client receives an error
+// response instead of being left indefinitely waiting.
+func TestServer_ChatPanicRecovery_SendsErrorResponse(t *testing.T) {
+	reg := &Registry{
+		providers:     make(map[string]AIProvider),
+		selectedAgent: make(map[string]string),
+	}
+	if err := reg.Register(&panicProvider{}); err != nil {
+		t.Fatalf("failed to register panic provider: %v", err)
+	}
+
+	srv := &Server{
+		registry:         reg,
+		allowedOrigins:   []string{"*"},
+		clients:          make(map[*websocket.Conn]*wsClient),
+		activeChatCtxs:   make(map[string]context.CancelFunc),
+		kubectl:          &KubectlProxy{config: &api.Config{}},
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(_ *http.Request) bool { return true },
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(srv.handleWebSocket))
+	defer ts.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect to WebSocket: %v", err)
+	}
+	defer conn.Close()
+
+	// Send a chat message that will cause the provider to panic
+	chatMsg := protocol.Message{
+		ID:   "test-panic-id",
+		Type: protocol.TypeChat,
+		Payload: map[string]interface{}{
+			"prompt":    "trigger panic",
+			"sessionId": "test-session",
+			"agent":     "panic-provider",
+		},
+	}
+	if err := conn.WriteJSON(chatMsg); err != nil {
+		t.Fatalf("failed to send message: %v", err)
+	}
+
+	// The client must receive an error message within a reasonable time,
+	// not hang indefinitely. The first message may be a TypeProgress, so
+	// keep reading until we find the TypeError.
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	for {
+		var resp protocol.Message
+		if err := conn.ReadJSON(&resp); err != nil {
+			t.Fatalf("expected error response from server after panic, got read error: %v", err)
+		}
+		if resp.Type == protocol.TypeError {
+			if resp.ID != "test-panic-id" {
+				t.Errorf("expected response ID %q, got %q", "test-panic-id", resp.ID)
+			}
+			return
+		}
+	}
+}
+
+// TestServer_KubectlPanicRecovery_SendsErrorResponse verifies that when a
+// panic occurs inside the Kubectl goroutine, the WebSocket client receives an
+// error response instead of being left indefinitely waiting.
+func TestServer_KubectlPanicRecovery_SendsErrorResponse(t *testing.T) {
+	// Build a server with a nil kubectl so that handleKubectlMessage panics
+	// when it tries to dereference s.kubectl.
+	srv := &Server{
+		registry:       &Registry{providers: make(map[string]AIProvider), selectedAgent: make(map[string]string)},
+		allowedOrigins: []string{"*"},
+		clients:        make(map[*websocket.Conn]*wsClient),
+		activeChatCtxs: make(map[string]context.CancelFunc),
+		// kubectl is intentionally left nil so that handleKubectlMessage panics
+		// when it tries to call s.kubectl methods.
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(_ *http.Request) bool { return true },
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(srv.handleWebSocket))
+	defer ts.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(ts.URL, "http") + "/"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("failed to connect to WebSocket: %v", err)
+	}
+	defer conn.Close()
+
+	// Send a kubectl message that will dereference the nil kubectl field
+	kubectlMsg := protocol.Message{
+		ID:   "test-kubectl-panic-id",
+		Type: protocol.TypeKubectl,
+		Payload: map[string]interface{}{
+			"args": []string{"get", "pods"},
+		},
+	}
+	if err := conn.WriteJSON(kubectlMsg); err != nil {
+		t.Fatalf("failed to send message: %v", err)
+	}
+
+	// The client must receive an error response within a reasonable time.
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	var resp protocol.Message
+	if err := conn.ReadJSON(&resp); err != nil {
+		t.Fatalf("expected error response from server after kubectl panic, got read error: %v", err)
+	}
+
+	if resp.Type != protocol.TypeError {
+		t.Errorf("expected response type %q, got %q", protocol.TypeError, resp.Type)
+	}
+	if resp.ID != "test-kubectl-panic-id" {
+		t.Errorf("expected response ID %q, got %q", "test-kubectl-panic-id", resp.ID)
 	}
 }
