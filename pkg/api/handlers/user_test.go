@@ -93,7 +93,7 @@ func TestUpdateCurrentUser_Success(t *testing.T) {
 	mockStore.On("GetUser", userID).Return(existingUser, nil).Once()
 	mockStore.On("UpdateUser", existingUser).Return(nil).Once()
 
-	payload := `{"email":"new@example.com","slackId":"U12345"}`
+	payload := `{"email":"new@example.com","slack_id":"U12345"}`
 	req, err := http.NewRequest("PUT", "/api/user", strings.NewReader(payload))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
