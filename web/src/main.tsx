@@ -87,14 +87,21 @@ async function checkForStaleHtml(): Promise<void> {
 }
 
 // Check when user returns to the tab (common scenario: deploy happened while tab was backgrounded)
-document.addEventListener('visibilitychange', () => {
+function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     checkForStaleHtml()
   }
-})
+}
+document.addEventListener('visibilitychange', handleVisibilityChange)
 
 // Also check on a periodic interval for long-lived tabs
-setInterval(checkForStaleHtml, STALE_CHECK_INTERVAL_MS)
+const staleCheckIntervalId = setInterval(checkForStaleHtml, STALE_CHECK_INTERVAL_MS)
+
+// Clean up stale-check resources on page unload to avoid dangling timers/listeners
+window.addEventListener('beforeunload', () => {
+  clearInterval(staleCheckIntervalId)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+}, { once: true })
 
 // Suppress recharts dimension warnings (these occur when charts render before container is sized)
 const originalWarn = console.warn

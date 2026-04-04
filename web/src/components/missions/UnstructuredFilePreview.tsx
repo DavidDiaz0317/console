@@ -7,7 +7,7 @@
  * combining with matched console-kb install missions.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   ArrowLeft,
   FileCode,
@@ -61,6 +61,15 @@ export function UnstructuredFilePreview({
 }: UnstructuredFilePreviewProps) {
   const [showFullContent, setShowFullContent] = useState(false)
   const [copied, setCopied] = useState(false)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const lines = content.split('\n')
   const isTruncated = lines.length > MAX_PREVIEW_LINES && !showFullContent
@@ -71,10 +80,13 @@ export function UnstructuredFilePreview({
   const FormatIcon = format === 'yaml' ? FileCode : FileText
 
   const handleCopy = useCallback(async () => {
+    if (copyTimeoutRef.current !== null) {
+      clearTimeout(copyTimeoutRef.current)
+    }
     await copyToClipboard(content)
     setCopied(true)
     const COPY_FEEDBACK_MS = 2_000
-    setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), COPY_FEEDBACK_MS)
   }, [content])
 
   return (
