@@ -237,13 +237,13 @@ test('security compliance — frontend security audit', async ({ page }, testInf
       `Found ${dataIframes} data: iframes`, 'high')
   }
 
-  // Check 1.5: All external links have rel="noopener"
+  // Check 1.5: All external links have rel="noopener noreferrer"
   const unsafeExternalLinks = await page.evaluate(() => {
     const links = document.querySelectorAll('a[target="_blank"]')
     const unsafe: string[] = []
     links.forEach((link) => {
       const rel = link.getAttribute('rel') || ''
-      if (!rel.includes('noopener')) {
+      if (!rel.includes('noopener') || !rel.includes('noreferrer')) {
         unsafe.push(link.getAttribute('href') || '(no href)')
       }
     })
@@ -251,11 +251,11 @@ test('security compliance — frontend security audit', async ({ page }, testInf
   })
 
   if (unsafeExternalLinks.length === 0) {
-    addCheck('DOM Security', 'External links have rel=noopener', 'pass',
-      'All target="_blank" links have rel="noopener"', 'medium')
+    addCheck('DOM Security', 'External links have rel=noopener noreferrer', 'pass',
+      'All target="_blank" links have rel="noopener noreferrer"', 'medium')
   } else {
-    addCheck('DOM Security', 'External links have rel=noopener', 'warn',
-      `${unsafeExternalLinks.length} links missing rel="noopener": ${unsafeExternalLinks.slice(0, 3).join(', ')}`, 'medium')
+    addCheck('DOM Security', 'External links have rel=noopener noreferrer', 'warn',
+      `${unsafeExternalLinks.length} links missing rel="noopener noreferrer": ${unsafeExternalLinks.slice(0, 3).join(', ')}`, 'medium')
   }
 
   // Check 1.6: Iframes have sandbox attribute
