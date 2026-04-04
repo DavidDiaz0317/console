@@ -198,7 +198,9 @@ class KubectlProxy {
     // Queue the request and process it when a slot is available
     return new Promise((resolve, reject) => {
       this.requestQueue.push({ args, options, resolve, reject })
-      this.processQueue()
+      // Void the returned Promise to prevent unhandled rejections — errors are
+      // routed to individual request.reject() callbacks inside processQueue().
+      void this.processQueue().catch(() => {})
     })
   }
 
@@ -225,9 +227,10 @@ class KubectlProxy {
       request.reject(err instanceof Error ? err : new Error(String(err)))
     } finally {
       this.activeRequests--
-      // Process next request in queue
+      // Process next request in queue.  Void the returned Promise — errors are
+      // handled per-request inside the recursive processQueue() invocation.
       if (this.requestQueue.length > 0) {
-        this.processQueue()
+        void this.processQueue().catch(() => {})
       }
     }
   }

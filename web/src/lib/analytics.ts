@@ -1136,8 +1136,18 @@ export function startGlobalErrorTracking() {
       // Skip WebSocket send-before-connect errors — transient race condition in
       // Safari where the WS transitions out of OPEN between readyState check and
       // send(). The kubectlProxy try/catch handles these; they surface here only
-      // due to browser microtask ordering.
-      if (msg.includes('send was called before connect') || msg.includes('InvalidStateError')) return
+      // due to browser microtask ordering.  Also match by exception name because
+      // some Safari versions include "InvalidStateError" only in .name, not in
+      // .message (e.g. "The WebSocket is not connected." has no "InvalidStateError"
+      // in the text, but the DOMException.name is "InvalidStateError").
+      if (
+        errorName === 'InvalidStateError' ||
+        msg.includes('send was called before connect') ||
+        msg.includes('InvalidStateError') ||
+        msg.includes('WebSocket is not connected') ||
+        msg.includes('WebSocket is already in CLOSING') ||
+        msg.includes('Still in CONNECTING state')
+      ) return
       emitError('unhandled_rejection', msg)
     } finally {
       isEmitting = false

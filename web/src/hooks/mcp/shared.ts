@@ -708,7 +708,7 @@ export function connectSharedWebSocket() {
           clusterCache.isFailed = false
           // If clusters_updated includes cluster data, we could use it directly
           // For now, just trigger a full refresh to get health data too
-          fullFetchClusters()
+          void fullFetchClusters().catch(() => { /* errors are handled inside fullFetchClusters */ })
         }
       } catch {
         // Silently ignore parse errors
@@ -1384,7 +1384,7 @@ export async function fullFetchClusters() {
       fetchInProgress = false
       // Check health progressively (non-blocking) - use deduplicated list to avoid
       // running health checks on long context-path duplicates
-      checkHealthProgressively(dedupedClusters)
+      void checkHealthProgressively(dedupedClusters).catch(() => { /* errors are handled per-cluster inside checkHealthProgressively */ })
       return
     }
 
@@ -1445,7 +1445,7 @@ export async function fullFetchClusters() {
     })
     fetchInProgress = false
     // Check health progressively (non-blocking) - will update each cluster's data including cpuCores
-    checkHealthProgressively(data.clusters || [])
+    void checkHealthProgressively(data.clusters || []).catch(() => { /* errors are handled per-cluster inside checkHealthProgressively */ })
   } catch {
     // Always fall back gracefully to demo clusters - never show blocking errors
     // This ensures the UI always has data to display
