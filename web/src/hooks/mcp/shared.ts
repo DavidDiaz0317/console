@@ -707,7 +707,10 @@ export function connectSharedWebSocket() {
           clusterCache.consecutiveFailures = 0
           clusterCache.isFailed = false
           // If clusters_updated includes cluster data, we could use it directly
-          // For now, just trigger a full refresh to get health data too
+          // For now, just trigger a full refresh to get health data too.
+          // Void the Promise to prevent unhandled rejections — fullFetchClusters
+          // has comprehensive internal error handling, but any unexpected error
+          // that escapes it would otherwise surface as an unhandledrejection event.
           void fullFetchClusters().catch(() => { /* errors are handled inside fullFetchClusters */ })
         }
       } catch {
@@ -1383,7 +1386,10 @@ export async function fullFetchClusters() {
       // Reset flag before returning - allows subsequent refresh calls
       fetchInProgress = false
       // Check health progressively (non-blocking) - use deduplicated list to avoid
-      // running health checks on long context-path duplicates
+      // running health checks on long context-path duplicates.
+      // Void the Promise to prevent unhandled rejections — per-cluster errors are
+      // caught inside checkHealthProgressively, but any unexpected error that
+      // escapes its loop would otherwise surface as an unhandledrejection event.
       void checkHealthProgressively(dedupedClusters).catch(() => { /* errors are handled per-cluster inside checkHealthProgressively */ })
       return
     }
@@ -1444,7 +1450,10 @@ export async function fullFetchClusters() {
       lastRefresh: new Date(),
     })
     fetchInProgress = false
-    // Check health progressively (non-blocking) - will update each cluster's data including cpuCores
+    // Check health progressively (non-blocking) - will update each cluster's data including cpuCores.
+    // Void the Promise to prevent unhandled rejections — per-cluster errors are
+    // caught inside checkHealthProgressively, but any unexpected error that
+    // escapes its loop would otherwise surface as an unhandledrejection event.
     void checkHealthProgressively(data.clusters || []).catch(() => { /* errors are handled per-cluster inside checkHealthProgressively */ })
   } catch {
     // Always fall back gracefully to demo clusters - never show blocking errors
