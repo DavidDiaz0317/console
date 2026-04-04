@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('../../../../../lib/demoMode', () => ({
   isDemoMode: () => true, getDemoMode: () => true, isNetlifyDeployment: false,
@@ -33,7 +33,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../../../../lib/cn', () => ({
-  cn: vi.fn(),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }))
 
 import { PodAiAnalysis } from '../PodAiAnalysis'
@@ -42,5 +42,43 @@ describe('PodAiAnalysis', () => {
   it('renders without crashing', () => {
     const { container } = render(<PodAiAnalysis aiAnalysis={null} aiAnalysisLoading={false} fetchAiAnalysis={vi.fn()} handleRepairPod={vi.fn()} />)
     expect(container).toBeTruthy()
+  })
+
+  it('shows error state when aiAnalysisError is provided', () => {
+    render(
+      <PodAiAnalysis
+        aiAnalysis={null}
+        aiAnalysisLoading={false}
+        aiAnalysisError="Could not connect to AI analysis service."
+        fetchAiAnalysis={vi.fn()}
+        handleRepairPod={vi.fn()}
+      />
+    )
+    expect(screen.getByText('drilldown.ai.analysisFailed')).toBeTruthy()
+    expect(screen.getByText('Could not connect to AI analysis service.')).toBeTruthy()
+  })
+
+  it('shows loading state when aiAnalysisLoading is true', () => {
+    render(
+      <PodAiAnalysis
+        aiAnalysis={null}
+        aiAnalysisLoading={true}
+        fetchAiAnalysis={vi.fn()}
+        handleRepairPod={vi.fn()}
+      />
+    )
+    expect(screen.getByText('common.analyzing')).toBeTruthy()
+  })
+
+  it('shows analysis result when aiAnalysis has content', () => {
+    render(
+      <PodAiAnalysis
+        aiAnalysis="Pod is OOMKilled due to memory limits."
+        aiAnalysisLoading={false}
+        fetchAiAnalysis={vi.fn()}
+        handleRepairPod={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Pod is OOMKilled due to memory limits.')).toBeTruthy()
   })
 })

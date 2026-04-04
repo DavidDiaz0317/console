@@ -80,6 +80,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   const [podStatusLoading, setPodStatusLoading] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(cache.aiAnalysis || null)
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false)
+  const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null)
   const [labels, setLabels] = useState<Record<string, string> | null>(cache.labels || null)
   const [annotations, setAnnotations] = useState<Record<string, string> | null>(cache.annotations || null)
   const [showAllLabels, setShowAllLabels] = useState(false)
@@ -99,6 +100,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   const [annotationError, setAnnotationError] = useState<string | null>(null)
   const [relatedResources, setRelatedResources] = useState<RelatedResource[]>(cache.ownerChain || [])
   const [relatedLoading, setRelatedLoading] = useState(false)
+  const [relatedError, setRelatedError] = useState<string | null>(null)
   const [configMaps, setConfigMaps] = useState<string[]>(cache.configMaps || [])
   const [secrets, setSecrets] = useState<string[]>(cache.secrets || [])
   const [pvcs, setPvcs] = useState<string[]>(cache.pvcs || [])
@@ -325,6 +327,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   const fetchAiAnalysis = async () => {
     if (!agentConnected || aiAnalysisLoading) return
     setAiAnalysisLoading(true)
+    setAiAnalysisError(null)
 
     try {
       // Helper to run a kubectl command and get output
@@ -492,7 +495,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
             if (msg.payload?.content) {
               setAiAnalysis(msg.payload.content)
             } else if (msg.payload?.error || msg.payload?.message) {
-              setAiAnalysis(`Analysis unavailable: ${msg.payload.error || msg.payload.message}`)
+              setAiAnalysisError(`Analysis unavailable: ${msg.payload.error || msg.payload.message}`)
             } else {
               setAiAnalysis('Analysis complete - no specific issues identified.')
             }
@@ -505,12 +508,12 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
       }
 
       ws.onerror = () => {
-        setAiAnalysis('Could not connect to AI analysis service.')
+        setAiAnalysisError('Could not connect to AI analysis service.')
         setAiAnalysisLoading(false)
         ws.close()
       }
     } catch (err) {
-      setAiAnalysis(`Failed to perform AI analysis: ${err}`)
+      setAiAnalysisError(`Failed to perform AI analysis: ${err}`)
       setAiAnalysisLoading(false)
     }
   }
@@ -1036,6 +1039,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
   const fetchRelatedResources = async (force = false) => {
     if (!agentConnected || (!force && relatedResources.length > 0)) return
     setRelatedLoading(true)
+    setRelatedError(null)
 
     try {
       const runKubectl = (args: string[]): Promise<string> => {
@@ -1145,8 +1149,8 @@ Please proceed step by step and ask for confirmation before making any changes.`
       }
       setOwnerChain(chain)
       setRelatedResources([...chain])
-    } catch {
-      // Ignore errors
+    } catch (err) {
+      setRelatedError(`Failed to discover related resources: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setRelatedLoading(false)
     }
@@ -1426,6 +1430,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
           cluster={cluster}
           agentConnected={agentConnected}
           relatedLoading={relatedLoading}
+          relatedError={relatedError}
           ownerChain={ownerChain}
           configMaps={configMaps}
           secrets={secrets}
@@ -1530,6 +1535,7 @@ Please proceed step by step and ask for confirmation before making any changes.`
           <PodAiAnalysis
             aiAnalysis={aiAnalysis}
             aiAnalysisLoading={aiAnalysisLoading}
+            aiAnalysisError={aiAnalysisError}
             fetchAiAnalysis={fetchAiAnalysis}
             handleRepairPod={handleRepairPod}
           />

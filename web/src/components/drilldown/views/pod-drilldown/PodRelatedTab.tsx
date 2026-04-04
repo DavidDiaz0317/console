@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, Loader2, Box, Layers, Server } from 'lucide-react'
+import { FileText, Loader2, Box, Layers, Server, AlertCircle } from 'lucide-react'
 import { cn } from '../../../../lib/cn'
 import { Button } from '../../../ui/Button'
 import { StatusBadge } from '../../../ui/StatusBadge'
@@ -11,6 +11,7 @@ export interface PodRelatedTabProps {
   namespace: string
   agentConnected: boolean
   relatedLoading: boolean
+  relatedError?: string | null
   ownerChain: RelatedResource[]
   configMaps: string[]
   secrets: string[]
@@ -31,6 +32,7 @@ export function PodRelatedTab({
   namespace,
   agentConnected,
   relatedLoading,
+  relatedError,
   ownerChain,
   configMaps,
   secrets,
@@ -53,6 +55,22 @@ export function PodRelatedTab({
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
           <span className="ml-2 text-muted-foreground">{t('drilldown.status.discoveringRelated')}</span>
+        </div>
+      ) : relatedError ? (
+        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-400">{t('drilldown.error.failedToDiscoverRelated', 'Failed to discover related resources')}</p>
+            <p className="text-xs text-muted-foreground mt-1">{relatedError}</p>
+            {agentConnected && (
+              <button
+                onClick={() => fetchRelatedResources(true)}
+                className="mt-2 px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
+              >
+                {t('common.retry', 'Retry')}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <>

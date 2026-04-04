@@ -1,4 +1,4 @@
-import { Loader2, Stethoscope, Wrench, Sparkles } from 'lucide-react'
+import { Loader2, Stethoscope, Wrench, Sparkles, AlertCircle } from 'lucide-react'
 import { cn } from '../../../../lib/cn'
 import { ConsoleAIIcon } from '../../../ui/ConsoleAIIcon'
 import { useTranslation } from 'react-i18next'
@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 export interface PodAiAnalysisProps {
   aiAnalysis: string | null
   aiAnalysisLoading: boolean
+  aiAnalysisError?: string | null
   fetchAiAnalysis: () => void
   handleRepairPod: () => void
 }
@@ -13,6 +14,7 @@ export interface PodAiAnalysisProps {
 export function PodAiAnalysis({
   aiAnalysis,
   aiAnalysisLoading,
+  aiAnalysisError,
   fetchAiAnalysis,
   handleRepairPod,
 }: PodAiAnalysisProps) {
@@ -21,10 +23,23 @@ export function PodAiAnalysis({
   return (
     <>
       {/* AI Analysis Results - visible on all tabs */}
-      {(aiAnalysis || aiAnalysisLoading) && (
+      {(aiAnalysis || aiAnalysisLoading || aiAnalysisError) && (
         <div className="p-4 pb-0">
-          <div className="rounded-lg bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 border border-purple-500/30 overflow-hidden">
-            {aiAnalysisLoading ? (
+          <div className={cn(
+            'rounded-lg overflow-hidden',
+            aiAnalysisError
+              ? 'bg-red-500/10 border border-red-500/30'
+              : 'bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-cyan-500/10 border border-purple-500/30'
+          )}>
+            {aiAnalysisError ? (
+              <div className="p-4 flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-400">{t('drilldown.ai.analysisFailed', 'AI analysis failed')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{aiAnalysisError}</p>
+                </div>
+              </div>
+            ) : aiAnalysisLoading ? (
               <div className="p-4">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <div className="flex gap-1">
@@ -72,7 +87,7 @@ export function PodAiAnalysis({
                 <Stethoscope className="w-4 h-4" />
                 <Sparkles className="absolute -top-0.5 -right-0.5 w-2 h-2 text-purple-400 animate-pulse" />
               </div>
-              <span>{aiAnalysis ? t('drilldown.actions.reAnalyze') : t('drilldown.actions.diagnose')}</span>
+              <span>{(aiAnalysis || aiAnalysisError) ? t('drilldown.actions.reAnalyze') : t('drilldown.actions.diagnose')}</span>
             </>
           )}
         </button>
