@@ -207,9 +207,12 @@ export function useMissionControl() {
   }, [latestAssistantContent, state.phase, state.planningMissionId, planningMission?.status])
 
   // Update streaming state from mission status
+  // Include 'pending' so that aiStreaming stays true while the mission is being
+  // set up (before transitioning to 'running'), preventing the button from
+  // briefly re-enabling and appearing as a no-op on the first click (#5034).
   useEffect(() => {
     if (!planningMission) return
-    const isStreaming = planningMission.status === 'running'
+    const isStreaming = planningMission.status === 'running' || planningMission.status === 'pending'
     if (isStreaming !== state.aiStreaming) {
       setState((prev) => ({ ...prev, aiStreaming: isStreaming }))
     }
