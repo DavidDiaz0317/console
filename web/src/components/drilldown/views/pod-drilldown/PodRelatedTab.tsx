@@ -63,12 +63,15 @@ export function PodRelatedTab({
             <p className="text-sm font-medium text-red-400">{t('drilldown.error.failedToDiscoverRelated', 'Failed to discover related resources')}</p>
             <p className="text-xs text-muted-foreground mt-1">{relatedError}</p>
             {agentConnected && (
-              <button
-                onClick={() => fetchRelatedResources(true)}
-                className="mt-2 px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs"
-              >
-                {t('common.retry', 'Retry')}
-              </button>
+              <div className="mt-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fetchRelatedResources(true)}
+                >
+                  {t('common.retry', 'Retry')}
+                </Button>
+              </div>
             )}
           </div>
         </div>
