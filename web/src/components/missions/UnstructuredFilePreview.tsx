@@ -65,9 +65,7 @@ export function UnstructuredFilePreview({
 
   useEffect(() => {
     return () => {
-      if (copyTimeoutRef.current !== null) {
-        clearTimeout(copyTimeoutRef.current)
-      }
+      clearTimeout(copyTimeoutRef.current ?? undefined)
     }
   }, [])
 
