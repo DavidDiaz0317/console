@@ -354,6 +354,8 @@ export function useKyverno() {
   )
   /** Number of clusters that have completed checking (for progressive UI) */
   const [clustersChecked, setClustersChecked] = useState(0)
+  /** Number of consecutive fetch rounds where every cluster returned an error */
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0)
   const initialLoadDone = useRef(!!cachedSnapshot)
   /** Guard to prevent concurrent refetch calls from flooding the request queue */
   const fetchInProgress = useRef(false)
@@ -397,6 +399,16 @@ export function useKyverno() {
     })
 
     await settledWithConcurrency(tasks)
+
+    // Track consecutive failures: if every cluster returned an error, increment;
+    // otherwise reset since at least one cluster succeeded.
+    const allErrored = Object.keys(allStatuses).length > 0 &&
+      Object.values(allStatuses).every(s => !!s.error)
+    if (allErrored) {
+      setConsecutiveFailures(prev => prev + 1)
+    } else {
+      setConsecutiveFailures(0)
+    }
 
     // Final: save complete cache and clear refresh state
     saveToCache(allStatuses)
@@ -445,6 +457,7 @@ export function useKyverno() {
       setIsLoading(true)
       setLastRefresh(null)
       setClustersChecked(0)
+      setConsecutiveFailures(0)
       initialLoadDone.current = false
     })
 
@@ -476,6 +489,9 @@ export function useKyverno() {
     [statuses]
   )
 
+  /** True when 3+ consecutive fetch rounds all errored */
+  const isFailed = consecutiveFailures >= 3
+
   return {
     statuses,
     isLoading,
@@ -489,6 +505,10 @@ export function useKyverno() {
     clustersChecked,
     /** Total number of clusters being checked */
     totalClusters: clusters.length,
+    /** Number of consecutive fetch rounds where every cluster returned an error */
+    consecutiveFailures,
+    /** True when 3+ consecutive fetch rounds all errored */
+    isFailed,
     refetch,
   }
 }

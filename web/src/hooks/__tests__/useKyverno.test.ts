@@ -125,6 +125,8 @@ describe('useKyverno', () => {
     expect(result.current).toHaveProperty('isDemoData')
     expect(result.current).toHaveProperty('clustersChecked')
     expect(result.current).toHaveProperty('totalClusters')
+    expect(result.current).toHaveProperty('consecutiveFailures')
+    expect(result.current).toHaveProperty('isFailed')
     expect(result.current).toHaveProperty('refetch')
     expect(typeof result.current.refetch).toBe('function')
 

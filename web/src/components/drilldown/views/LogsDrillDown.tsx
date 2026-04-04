@@ -43,9 +43,6 @@ Tail lines: ${tailLines}
 Note: Live log streaming coming soon.
 Connect to kubestellar-ops MCP server to fetch real logs.`
 
-  // TODO: When real API is added, replace this with actual fetch logic.
-  // Currently logs are static placeholder text — no loading/error state needed.
-
   const handleRefresh = () => {
     // Placeholder for future API refresh
     setIsLoading(true)
