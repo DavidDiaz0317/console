@@ -397,6 +397,7 @@ export function MissionControlDialog({ open, onClose }: MissionControlDialogProp
                         }}
                         className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white border-0 shadow-lg shadow-violet-500/25"
                         icon={<Rocket className="w-4 h-4" />}
+                        title="Trigger AI-powered installation of each project on its assigned cluster using kubectl and helm"
                       >
                         Deploy to Clusters
                       </Button>
@@ -408,7 +409,7 @@ export function MissionControlDialog({ open, onClose }: MissionControlDialogProp
                           mc.setPhase('launching')
                         }}
                         icon={<FlaskConical className="w-3.5 h-3.5" />}
-                        title="Run against live clusters without deploying — report only"
+                        title="Validate the deployment plan against live clusters using --dry-run=server — no resources will be created"
                       >
                         Dry Run
                       </Button>

@@ -16,6 +16,7 @@ import {
   RotateCcw,
   PartyPopper,
   Loader2,
+  Info,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { Button } from '../ui/Button'
@@ -42,10 +43,19 @@ export function LaunchSequence({
   onUpdateProgress,
   onComplete,
 }: LaunchSequenceProps) {
-  const { startMission, missions } = useMissions()
+  const { startMission, missions, isAIDisabled, agents, agentsLoading } = useMissions()
   const [isStarted, setIsStarted] = useState(false)
   const progressRef = useRef<PhaseProgress[]>(state.launchProgress)
   const startedMissions = useRef(new Set<string>())
+
+  // Guard: if no phases or no assigned projects, render an informational empty state
+  // instead of a false "Mission Complete!" (vacuous-truth on empty array).
+  const hasNothingToDeploy =
+    state.phases.length === 0 ||
+    !state.phases.some((ph) => ph.projectNames.length > 0)
+
+  // Show the "no agent" warning once loading has settled and no available agent is found.
+  const noAgentAvailable = !agentsLoading && (isAIDisabled || !agents.some((a) => a.available))
 
   // Initialize progress from phases
   useEffect(() => {
@@ -253,13 +263,78 @@ export function LaunchSequence({
   }, [state.phases.length])
 
   const progress = state.launchProgress.length > 0 ? state.launchProgress : progressRef.current
-  const allComplete = progress.every(
+  // Guard: only consider complete when there is actual work to track
+  const allComplete = progress.length > 0 && progress.every(
     (p) => p.status === 'completed' || p.status === 'failed' || p.status === 'skipped'
   )
-  const allSuccess = progress.every((p) => p.status === 'completed')
+  const allSuccess = progress.length > 0 && progress.every((p) => p.status === 'completed')
+
+  // --- Empty state: no deploy phases configured ---
+  if (hasNothingToDeploy) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 space-y-6 text-center">
+        <div className="inline-flex p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+          <AlertTriangle className="w-10 h-10 text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">No Deployment Plan Configured</h2>
+          <p className="text-sm text-muted-foreground">
+            The flight plan has no phases or assigned projects to deploy. Go back to the{' '}
+            <strong>Chart Course</strong> step and either ask the AI to generate an assignment
+            plan or manually assign projects to clusters.
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-left space-y-2">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-2">
+            <Info className="w-3.5 h-3.5 text-primary" />
+            How deployment works
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Mission Control uses an AI agent to perform the actual installation of each
+            project on its assigned cluster. When you click <strong>Deploy to Clusters</strong>,
+            the agent runs <code className="text-xs bg-muted px-1 py-0.5 rounded">kubectl</code> and{' '}
+            <code className="text-xs bg-muted px-1 py-0.5 rounded">helm</code> commands on
+            your live clusters — following the phased plan shown in the flight plan.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => onComplete()}>
+          Go Back
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
+      {/* AI-powered deployment notice */}
+      {!allComplete && (
+        <div className={cn(
+          'flex items-start gap-3 rounded-xl border p-3 text-xs',
+          noAgentAvailable
+            ? 'border-amber-500/30 bg-amber-500/5 text-amber-300'
+            : 'border-primary/20 bg-primary/5 text-muted-foreground'
+        )}>
+          <Info className="w-4 h-4 mt-0.5 shrink-0 text-primary" />
+          <span>
+            {noAgentAvailable
+              ? <>
+                  <strong className="text-amber-400">No AI agent connected.</strong>{' '}
+                  Install and start the KubeStellar Console agent (<code className="bg-muted px-1 py-0.5 rounded">kc-agent</code>) to enable live deployments.
+                  Without a connected agent, missions cannot execute {state.isDryRun ? 'dry-run validations' : 'installations'} on your clusters.
+                </>
+              : <>
+                  Each project is deployed via an AI agent that runs{' '}
+                  <code className="bg-muted px-1 py-0.5 rounded">kubectl</code> and{' '}
+                  <code className="bg-muted px-1 py-0.5 rounded">helm</code> commands on your live clusters.
+                  {state.isDryRun
+                    ? ' Dry-run mode validates resources without creating them.'
+                    : ' Monitor progress in the Mission Sidebar on the right.'}
+                </>
+            }
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center">
         <motion.div
@@ -288,7 +363,7 @@ export function LaunchSequence({
         <p className="text-sm text-muted-foreground mt-1">
           {allComplete
             ? 'All deployment phases have finished.'
-            : `Deploying ${state.projects.length} projects in ${state.phases.length} phases`}
+            : `Deploying ${state.projects.length} project${state.projects.length !== 1 ? 's' : ''} across ${state.phases.length} phase${state.phases.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 

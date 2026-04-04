@@ -1632,6 +1632,19 @@ function DeployModeInfoPanel({ mode, phases, projects, onShowProject, installedP
         </p>
       </div>
 
+      {/* AI-powered deployment callout */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2">
+        <Info className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          <span className="font-semibold text-foreground">Deploy to Clusters</span> triggers real deployments —
+          an AI agent runs <code className="bg-muted px-1 py-0.5 rounded text-[10px]">kubectl</code> and{' '}
+          <code className="bg-muted px-1 py-0.5 rounded text-[10px]">helm</code> commands on your live clusters,
+          following this phase plan. Use <span className="font-semibold text-foreground">Dry Run</span> to
+          validate the plan with <code className="bg-muted px-1 py-0.5 rounded text-[10px]">--dry-run=server</code> first.
+          A connected <code className="bg-muted px-1 py-0.5 rounded text-[10px]">kc-agent</code> is required.
+        </p>
+      </div>
+
       {/* AI vs Human time comparison */}
       {projects.length > 0 && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
