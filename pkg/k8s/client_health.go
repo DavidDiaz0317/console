@@ -116,7 +116,6 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 			Reachable:    false,
 			ErrorType:    errType,
 			ErrorMessage: sanitizedClusterErrorMessage(errType),
-			Issues:       []string{"Failed to connect to cluster"},
 			CheckedAt:    now,
 		}, nil
 	}
@@ -165,7 +164,6 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 		health.Reachable = false
 		health.ErrorType = errType
 		health.ErrorMessage = sanitizedClusterErrorMessage(errType)
-		health.Issues = append(health.Issues, "Failed to retrieve cluster nodes")
 	} else if nodes != nil {
 		health.NodeCount = len(nodes.Items)
 		var totalCPU int64
