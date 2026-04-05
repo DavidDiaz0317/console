@@ -1628,20 +1628,22 @@ export async function fetchWithRetry(
   const totalAttempts = maxRetries + 1
 
   for (let attempt = 0; attempt < totalAttempts; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    // Chain with caller's signal — named handler so it can be removed after each attempt
+    const abortHandler = fetchOptions.signal
+      ? () => controller.abort()
+      : null
+    if (abortHandler) {
+      fetchOptions.signal!.addEventListener('abort', abortHandler)
+    }
+
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
-      // Chain with caller's signal if provided
-      if (fetchOptions.signal) {
-        fetchOptions.signal.addEventListener('abort', () => controller.abort())
-      }
-
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
       })
-      clearTimeout(timeoutId)
 
       // Don't retry on 4xx — those are permanent client errors
       if (response.status >= 400 && response.status < 500) {
@@ -1665,6 +1667,11 @@ export async function fetchWithRetry(
       }
       const backoff = initialBackoffMs * Math.pow(2, attempt)
       await new Promise(resolve => setTimeout(resolve, backoff))
+    } finally {
+      clearTimeout(timeoutId)
+      if (abortHandler) {
+        fetchOptions.signal!.removeEventListener('abort', abortHandler)
+      }
     }
   }
 

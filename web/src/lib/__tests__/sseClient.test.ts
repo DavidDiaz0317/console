@@ -260,6 +260,52 @@ describe('sseClient', () => {
       expect(result === 'AbortError' || Array.isArray(result)).toBe(true)
     })
 
+    it('removes abort listener from signal after stream completes', async () => {
+      const controller = new AbortController()
+      const addSpy = vi.spyOn(controller.signal, 'addEventListener')
+      const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+      vi.mocked(fetch).mockResolvedValue(makeSSEResponse([
+        { event: 'done', data: {} },
+      ]))
+
+      await fetchSSE({
+        url: `/api/listener-cleanup-${testId++}`,
+        itemsKey: 'items',
+        onClusterData: vi.fn(),
+        signal: controller.signal,
+      })
+
+      // Listener was added once and removed once
+      expect(addSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+      expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+      // The same handler reference must be used for both add and remove
+      const addedHandler = addSpy.mock.calls[0][1]
+      const removedHandler = removeSpy.mock.calls[0][1]
+      expect(addedHandler).toBe(removedHandler)
+    })
+
+    it('removes abort listener from signal after stream is aborted', async () => {
+      const controller = new AbortController()
+      const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+      // Never-resolving fetch
+      vi.mocked(fetch).mockReturnValue(new Promise(() => {}))
+
+      const promise = fetchSSE({
+        url: `/api/abort-cleanup-${testId++}`,
+        itemsKey: 'items',
+        onClusterData: vi.fn(),
+        signal: controller.signal,
+      }).catch(() => { /* expected AbortError */ })
+
+      controller.abort()
+      await vi.advanceTimersByTimeAsync(50)
+      await promise
+
+      expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    })
+
     it('tags items with cluster name when item lacks cluster field', async () => {
       const clusterDataCalls: Array<{ cluster: string; items: unknown[] }> = []
       const events = [

@@ -150,8 +150,15 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
     let aborted = false
     /** Timer ID for scheduled reconnect — cleared on unmount/abort */
     let reconnectTimerId: ReturnType<typeof setTimeout> | null = null
+    /** Stored abort handler so it can be removed after request completion */
+    let abortHandler: (() => void) | undefined
 
     const cleanup = (wasAborted = false) => {
+      // Remove abort listener to prevent leaks and stale post-unmount callbacks
+      if (signal && abortHandler) {
+        signal.removeEventListener('abort', abortHandler)
+        abortHandler = undefined
+      }
       inflightRequests.delete(cacheKey)
       if (reconnectTimerId !== null) {
         clearTimeout(reconnectTimerId)
@@ -172,13 +179,14 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
     }, SSE_TIMEOUT_MS)
 
     if (signal) {
-      signal.addEventListener('abort', () => {
+      abortHandler = () => {
         aborted = true
         timeoutController.abort()
         clearTimeout(timeoutId)
         cleanup(/* wasAborted */ true)
         reject(new DOMException('Aborted', 'AbortError'))
-      })
+      }
+      signal.addEventListener('abort', abortHandler)
     }
 
     /**

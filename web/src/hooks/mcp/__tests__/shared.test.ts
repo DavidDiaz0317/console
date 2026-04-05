@@ -868,6 +868,48 @@ describe('fetchWithRetry', () => {
     expect(resp.status).toBe(FORBIDDEN)
     expect(globalThis.fetch).toHaveBeenCalledOnce()
   })
+
+  it('removes abort listener from signal after successful request', async () => {
+    const OK_STATUS = 200
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('ok', { status: OK_STATUS }))
+
+    const controller = new AbortController()
+    const addSpy = vi.spyOn(controller.signal, 'addEventListener')
+    const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+    await fetchWithRetry('/test', { signal: controller.signal })
+
+    expect(addSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    // The same handler reference must be used for both add and remove
+    const addedHandler = addSpy.mock.calls[0][1]
+    const removedHandler = removeSpy.mock.calls[0][1]
+    expect(addedHandler).toBe(removedHandler)
+  })
+
+  it('removes abort listener after each retry attempt', async () => {
+    vi.useFakeTimers()
+    const OK_STATUS = 200
+    const controller = new AbortController()
+    const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response('ok', { status: OK_STATUS }))
+    globalThis.fetch = fetchMock
+
+    const promise = fetchWithRetry('/test', {
+      signal: controller.signal,
+      maxRetries: 1,
+      initialBackoffMs: DEFAULT_INITIAL_BACKOFF_MS,
+    })
+    await vi.advanceTimersByTimeAsync(DEFAULT_INITIAL_BACKOFF_MS)
+    await promise
+
+    // Listener must be removed once per attempt (2 total attempts = 2 removals)
+    expect(removeSpy).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
 })
 
 describe('deduplicateClustersByServer — merge request metrics', () => {
