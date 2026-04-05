@@ -642,31 +642,38 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   // Resolve an alert
   const resolveAlert = useCallback((alertId: string) => {
     const resolvedAt = new Date().toISOString()
-    let resolvedAlert: Alert | undefined
-    setAlerts(prev => {
-      const updated = prev.map(alert =>
+
+    // Read the alert to resolve from the ref BEFORE calling setAlerts so that
+    // the state updater remains a pure function with no external side effects.
+    // React may invoke state updaters more than once (Strict Mode / concurrent
+    // rendering); any assignment inside an updater is therefore a side effect
+    // that can execute multiple times and trigger duplicate API calls.
+    const alertToResolve = alertsRef.current.find(a => a.id === alertId)
+
+    setAlerts(prev =>
+      prev.map(alert =>
         alert.id === alertId
           ? { ...alert, status: 'resolved' as const, resolvedAt }
           : alert
       )
-      resolvedAlert = updated.find(a => a.id === alertId)
-      return updated
-    })
+    )
+
     // Send resolution notifications outside the state updater to avoid duplicate
     // side effects if React replays the updater (Strict Mode / concurrent rendering).
     // We use queueMicrotask so the notification runs after the state update commits
     // but still within the same task, keeping it predictable and non-blocking.
-    queueMicrotask(() => {
-      if (resolvedAlert) {
-        const rule = rules.find(r => r.id === resolvedAlert!.ruleId)
+    if (alertToResolve) {
+      queueMicrotask(() => {
+        const rule = rules.find(r => r.id === alertToResolve.ruleId)
         if (rule) {
           const enabledChannels = rule.channels.filter(ch => ch.enabled)
           if (enabledChannels.length > 0) {
-            sendNotifications(resolvedAlert!, enabledChannels).catch(() => {})
+            const resolvedVersion = { ...alertToResolve, status: 'resolved' as const, resolvedAt }
+            sendNotifications(resolvedVersion, enabledChannels).catch(() => {})
           }
         }
-      }
-    })
+      })
+    }
   }, [rules])
 
   // Delete an alert
@@ -752,7 +759,39 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       // ── Unbatched path: direct setAlerts (outside evaluation cycle) ──
       const alertId = generateId()
       const firedAt = new Date().toISOString()
-      let newAlert: Alert | undefined
+
+      // Build the candidate alert object BEFORE calling setAlerts so it can be
+      // reused inside the pure state updater without recreating it, and safely
+      // referenced for the notification without capturing anything from inside
+      // the updater.  Assigning external variables inside a setState updater is
+      // a side effect — React may replay the updater (Strict Mode / concurrent
+      // rendering) causing those assignments (and any downstream API calls) to
+      // execute more than once, producing duplicate notifications.
+      const candidateAlert: Alert = {
+        id: alertId,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        severity: rule.severity,
+        status: 'firing',
+        message,
+        details,
+        cluster,
+        namespace,
+        resource,
+        resourceKind,
+        firedAt,
+        isDemo: isDemoMode,
+      }
+
+      // Decide whether to send a notification BEFORE calling setAlerts using
+      // alertsRef so the updater stays side-effect-free.
+      const existingInRef = alertsRef.current.find(
+        a =>
+          a.ruleId === rule.id &&
+          a.status === 'firing' &&
+          alertDedupKey(a.ruleId, rule.condition.type, a.cluster, a.resource) === dedupKey
+      )
+      const shouldNotify = !existingInRef
 
       setAlerts(prev => {
         const existingAlert = prev.find(
@@ -770,10 +809,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
             existingAlert.resourceKind === resourceKind &&
             shallowEqualRecords(existingAlert.details, details)
           ) {
-            newAlert = undefined
             return prev
           }
-          newAlert = undefined
           return prev.map(a =>
             a.id === existingAlert.id
               ? { ...a, message, details, resource, namespace, resourceKind }
@@ -781,25 +818,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           )
         }
 
-        const alert: Alert = {
-          id: alertId,
-          ruleId: rule.id,
-          ruleName: rule.name,
-          severity: rule.severity,
-          status: 'firing',
-          message,
-          details,
-          cluster,
-          namespace,
-          resource,
-          resourceKind,
-          firedAt,
-          isDemo: isDemoMode,
-        }
-
-        newAlert = alert
-
-        const newAlerts = [alert, ...prev]
+        const newAlerts = [candidateAlert, ...prev]
         if (newAlerts.length <= MAX_ALERTS) return newAlerts
         const firingAlerts = newAlerts.filter(a => a.status === 'firing')
         const resolvedAlerts = newAlerts
@@ -809,14 +828,14 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         return [...firingAlerts, ...resolvedAlerts]
       })
 
-      queueMicrotask(() => {
-        if (newAlert && rule.channels && rule.channels.length > 0) {
-          const enabledChannels = rule.channels.filter(ch => ch.enabled)
-          if (enabledChannels.length > 0) {
-            sendNotifications(newAlert, enabledChannels).catch(() => {})
-          }
+      if (shouldNotify && rule.channels && rule.channels.length > 0) {
+        const enabledChannels = rule.channels.filter(ch => ch.enabled)
+        if (enabledChannels.length > 0) {
+          queueMicrotask(() => {
+            sendNotifications(candidateAlert, enabledChannels).catch(() => {})
+          })
         }
-      })
+      }
     },
     [isDemoMode]
   )
