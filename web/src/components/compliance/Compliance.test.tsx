@@ -125,6 +125,7 @@ function emptyKubescape() {
   return {
     installed: false,
     isDemoData: false,
+    statuses: {},
     aggregated: {
       overallScore: 0,
       frameworks: [],
@@ -147,8 +148,8 @@ function emptyTrivy() {
 function installedKyverno() {
   return {
     statuses: {
-      'cluster-a': { installed: true, totalViolations: 5, totalPolicies: 20 },
-      'cluster-b': { installed: true, totalViolations: 3, totalPolicies: 15 },
+      'cluster-a': { cluster: 'cluster-a', installed: true, totalViolations: 5, totalPolicies: 20 },
+      'cluster-b': { cluster: 'cluster-b', installed: true, totalViolations: 3, totalPolicies: 15 },
     },
     isDemoData: false,
   }
@@ -158,11 +159,27 @@ function installedKubescape() {
   return {
     installed: true,
     isDemoData: false,
+    statuses: {
+      'cluster-a': {
+        cluster: 'cluster-a',
+        installed: true,
+        loading: false,
+        overallScore: 72,
+        frameworks: [
+          { name: 'CIS Kubernetes Benchmark', score: 85, passCount: 72, failCount: 20 },
+          { name: 'NSA Hardening Guide', score: 79, passCount: 72, failCount: 20 },
+        ],
+        totalControls: 100,
+        passedControls: 72,
+        failedControls: 20,
+        controls: [],
+      },
+    },
     aggregated: {
       overallScore: 72,
       frameworks: [
-        { name: 'CIS Kubernetes Benchmark', score: 85 },
-        { name: 'NSA Hardening Guide', score: 79 },
+        { name: 'CIS Kubernetes Benchmark', score: 85, passCount: 72, failCount: 20 },
+        { name: 'NSA Hardening Guide', score: 79, passCount: 72, failCount: 20 },
       ],
       totalControls: 100,
       passedControls: 72,
@@ -176,8 +193,24 @@ function installedTrivy() {
     installed: true,
     isDemoData: false,
     statuses: {
-      'cluster-a': { installed: true, totalReports: 50 },
-      'cluster-b': { installed: true, totalReports: 30 },
+      'cluster-a': {
+        cluster: 'cluster-a',
+        installed: true,
+        loading: false,
+        totalReports: 50,
+        scannedImages: 5,
+        images: [],
+        vulnerabilities: { critical: 4, high: 10, medium: 15, low: 8, unknown: 2 },
+      },
+      'cluster-b': {
+        cluster: 'cluster-b',
+        installed: true,
+        loading: false,
+        totalReports: 30,
+        scannedImages: 3,
+        images: [],
+        vulnerabilities: { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 },
+      },
     },
     aggregated: { critical: 4, high: 10, medium: 15, low: 8, unknown: 2 },
   }
@@ -322,7 +355,9 @@ describe('Compliance dashboard component', () => {
 
   it('falls back to overall Kubescape score when framework is absent', () => {
     const ks = installedKubescape()
-    ks.aggregated.frameworks = [] // No framework-specific scores
+    // installedKubescape() only has cluster-a in statuses, so clearing its frameworks
+    // ensures kubescapeStatuses[0]?.frameworks returns [] and the fallback path is exercised.
+    ks.statuses['cluster-a'].frameworks = [] // No framework-specific scores
     setupDefaults({ kubescape: ks })
     render(<Compliance />)
 
@@ -427,5 +462,91 @@ describe('Compliance dashboard component', () => {
 
     const unknown = getStatValue('non_existent_stat')
     expect(unknown.value).toBe('-')
+  })
+
+  // ---- 6) Global filter behaviour ----
+
+  it('only counts clusters matching the global selection', () => {
+    // Only cluster-a is selected; cluster-b should be excluded
+    setupDefaults({
+      filters: { selectedClusters: ['cluster-a'], isAllClustersSelected: false },
+      kyverno: installedKyverno(),
+    })
+    render(<Compliance />)
+
+    // Only cluster-a violations (5), cluster-b (3) should be excluded
+    const stat = getStatValue('kyverno_violations')
+    expect(stat.value).toBe(5)
+  })
+
+  it('scores reflect only the selected cluster when filter is applied', () => {
+    setupDefaults({
+      filters: { selectedClusters: ['cluster-a'], isAllClustersSelected: false },
+      kubescape: installedKubescape(),
+    })
+    render(<Compliance />)
+
+    // Only cluster-a is selected; cluster-a has overallScore=72
+    const score = getStatValue('score')
+    expect(score.value).toBe('72%')
+  })
+
+  it('trivy stats update when cluster filter changes to a single cluster', () => {
+    setupDefaults({
+      filters: { selectedClusters: ['cluster-a'], isAllClustersSelected: false },
+      trivy: installedTrivy(),
+    })
+    render(<Compliance />)
+
+    // cluster-a has critical=4, high=10; cluster-b has all zeros
+    const critical = getStatValue('critical_vulns')
+    expect(critical.value).toBe(4)
+
+    const trivy = getStatValue('trivy_vulns')
+    // Only cluster-a: 4+10+15+8+2 = 39
+    expect(trivy.value).toBe(39)
+  })
+
+  it('shows zeros when selected cluster has no tool data', () => {
+    // cluster-b has no trivy data (all zeros)
+    setupDefaults({
+      filters: { selectedClusters: ['cluster-b'], isAllClustersSelected: false },
+      trivy: installedTrivy(),
+    })
+    render(<Compliance />)
+
+    const critical = getStatValue('critical_vulns')
+    expect(critical.value).toBe(0)
+  })
+
+  it('shows all-cluster aggregate when isAllClustersSelected is true', () => {
+    setupDefaults({
+      filters: { selectedClusters: [], isAllClustersSelected: true },
+      kyverno: installedKyverno(),
+    })
+    render(<Compliance />)
+
+    // Both cluster-a (5) and cluster-b (3) violations included
+    const stat = getStatValue('kyverno_violations')
+    expect(stat.value).toBe(8)
+  })
+
+  it('excludes unreachable clusters from stats even when selected', () => {
+    setupDefaults({
+      clusters: {
+        ...defaultClustersReturn(),
+        clusters: [
+          { name: 'cluster-a', reachable: true },
+          { name: 'cluster-b', reachable: false },
+        ],
+      },
+      filters: { selectedClusters: [], isAllClustersSelected: true },
+      kyverno: installedKyverno(),
+    })
+    render(<Compliance />)
+
+    // cluster-b is unreachable, so only cluster-a violations (5) count
+    const stat = getStatValue('kyverno_violations')
+    expect(stat.value).toBe(5)
   })
 })

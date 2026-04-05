@@ -48,28 +48,42 @@ export function Compliance() {
   )
   const reachableClusters = filteredClusters.filter(c => c.reachable !== false)
 
-  // Aggregate real data across clusters
+  // Aggregate real data across selected clusters only
   const realData = useMemo(() => {
-    // Kyverno aggregates
-    const kyvernoStatuses = Object.values(kyverno.statuses).filter(s => s.installed)
+    // Compute the set of selected reachable cluster names to respect global filters
+    const selectedClusterNames = new Set(
+      clusters
+        .filter(c => c.reachable !== false && (isAllClustersSelected || globalSelectedClusters.includes(c.name)))
+        .map(c => c.name)
+    )
+
+    // Kyverno aggregates — filtered by selected clusters
+    const kyvernoStatuses = Object.values(kyverno.statuses).filter(s => s.installed && selectedClusterNames.has(s.cluster))
     const kyvernoInstalled = kyvernoStatuses.length > 0
     const kyvernoViolations = kyvernoStatuses.reduce((sum, s) => sum + s.totalViolations, 0)
     const kyvernoPolicies = kyvernoStatuses.reduce((sum, s) => sum + s.totalPolicies, 0)
 
-    // Kubescape aggregates
-    const kubescapeInstalled = kubescape.installed
-    const kubescapeScore = kubescape.aggregated.overallScore
-    const kubescapeFrameworks = kubescape.aggregated.frameworks || []
-    const kubescapeTotalControls = kubescape.aggregated.totalControls
-    const kubescapePassedControls = kubescape.aggregated.passedControls
-    const kubescapeFailedControls = kubescape.aggregated.failedControls
+    // Kubescape aggregates — filtered by selected clusters
+    const kubescapeStatuses = Object.values(kubescape.statuses).filter(s => s.installed && selectedClusterNames.has(s.cluster))
+    const kubescapeInstalled = kubescapeStatuses.length > 0
+    const kubescapeScore = kubescapeStatuses.length > 0
+      ? Math.round(kubescapeStatuses.reduce((sum, s) => sum + s.overallScore, 0) / kubescapeStatuses.length)
+      : 0
+    // Framework scores — use the first cluster's list (same convention as useKubescape's own
+    // aggregated field, where framework names/IDs are identical across clusters).
+    const kubescapeFrameworks = kubescapeStatuses[0]?.frameworks || []
+    const kubescapeTotalControls = kubescapeStatuses.reduce((sum, s) => sum + s.totalControls, 0)
+    const kubescapePassedControls = kubescapeStatuses.reduce((sum, s) => sum + s.passedControls, 0)
+    const kubescapeFailedControls = kubescapeStatuses.reduce((sum, s) => sum + s.failedControls, 0)
 
-    // Trivy aggregates
-    const trivyInstalled = trivy.installed
-    const trivyVulns = trivy.aggregated.critical + trivy.aggregated.high +
-      trivy.aggregated.medium + trivy.aggregated.low + trivy.aggregated.unknown
-    const trivyCritical = trivy.aggregated.critical
-    const trivyHigh = trivy.aggregated.high
+    // Trivy aggregates — filtered by selected clusters
+    const trivyStatuses = Object.values(trivy.statuses).filter(s => s.installed && selectedClusterNames.has(s.cluster))
+    const trivyInstalled = trivyStatuses.length > 0
+    const trivyCritical = trivyStatuses.reduce((sum, s) => sum + s.vulnerabilities.critical, 0)
+    const trivyHigh = trivyStatuses.reduce((sum, s) => sum + s.vulnerabilities.high, 0)
+    const trivyVulns = trivyStatuses.reduce((sum, s) =>
+      sum + s.vulnerabilities.critical + s.vulnerabilities.high +
+      s.vulnerabilities.medium + s.vulnerabilities.low + s.vulnerabilities.unknown, 0)
 
     // Any tool installed = we have some real data
     const hasAnyRealData = kyvernoInstalled || kubescapeInstalled || trivyInstalled
@@ -93,7 +107,6 @@ export function Compliance() {
     }
     if (trivyInstalled) {
       // Trivy reports count towards total checks
-      const trivyStatuses = Object.values(trivy.statuses).filter(s => s.installed)
       const totalReports = trivyStatuses.reduce((sum, s) => sum + s.totalReports, 0)
       const reportsWithCritical = trivyCritical + trivyHigh
       totalChecks += totalReports
@@ -127,7 +140,7 @@ export function Compliance() {
       failing,
       warning: Math.max(0, totalChecks - passing - failing),
     }
-  }, [kyverno.statuses, kubescape.installed, kubescape.aggregated, trivy.installed, trivy.aggregated, trivy.statuses])
+  }, [kyverno.statuses, kubescape.statuses, trivy.statuses, clusters, globalSelectedClusters, isAllClustersSelected])
 
   // Only show demo/mock data when the user is explicitly in demo mode.
   // When connected to a live cluster without compliance tools, show zeros — not fake numbers.
