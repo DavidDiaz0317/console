@@ -162,8 +162,15 @@ func (h *RBACHandler) GetUserManagementSummary(c *fiber.Ctx) error {
 	return c.JSON(summary)
 }
 
-// ListK8sServiceAccounts returns service accounts from clusters
+// ListK8sServiceAccounts returns service accounts from clusters (admin only)
 func (h *RBACHandler) ListK8sServiceAccounts(c *fiber.Ctx) error {
+	// Check if current user is admin
+	currentUserID := middleware.GetUserID(c)
+	currentUser, err := h.store.GetUser(currentUserID)
+	if err != nil || currentUser == nil || currentUser.Role != models.UserRoleAdmin {
+		return fiber.NewError(fiber.StatusForbidden, "Admin access required")
+	}
+
 	if h.k8sClient == nil {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "Kubernetes client not available")
 	}

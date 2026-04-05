@@ -108,6 +108,84 @@ func TestRBACUpdateUserRole_Success(t *testing.T) {
 	assert.Equal(t, string(models.UserRoleEditor), store.updatedRole)
 }
 
+func TestRBACListK8sServiceAccounts_ForbiddenForNonAdmin(t *testing.T) {
+	env := setupTestEnv(t)
+	nonAdminUser := &models.User{
+		ID:   testAdminUserID,
+		Role: models.UserRoleViewer,
+	}
+
+	store := &rbacTestStore{
+		users: map[uuid.UUID]*models.User{
+			testAdminUserID: nonAdminUser,
+		},
+	}
+
+	handler := NewRBACHandler(store, nil)
+	env.App.Get("/api/rbac/service-accounts", handler.ListK8sServiceAccounts)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/rbac/service-accounts", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestRBACListK8sServiceAccounts_ForbiddenForEditor(t *testing.T) {
+	env := setupTestEnv(t)
+	editorUser := &models.User{
+		ID:   testAdminUserID,
+		Role: models.UserRoleEditor,
+	}
+
+	store := &rbacTestStore{
+		users: map[uuid.UUID]*models.User{
+			testAdminUserID: editorUser,
+		},
+	}
+
+	handler := NewRBACHandler(store, nil)
+	env.App.Get("/api/rbac/service-accounts", handler.ListK8sServiceAccounts)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/rbac/service-accounts", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestRBACListK8sServiceAccounts_AdminAllowed(t *testing.T) {
+	env := setupTestEnv(t)
+	adminUser := &models.User{
+		ID:   testAdminUserID,
+		Role: models.UserRoleAdmin,
+	}
+
+	store := &rbacTestStore{
+		users: map[uuid.UUID]*models.User{
+			testAdminUserID: adminUser,
+		},
+	}
+
+	// Pass nil k8sClient — after the admin check passes, the handler returns
+	// 503 (no k8s client), which confirms the authorization check was satisfied.
+	handler := NewRBACHandler(store, nil)
+	env.App.Get("/api/rbac/service-accounts", handler.ListK8sServiceAccounts)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/rbac/service-accounts", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	// 503 means the admin check passed and the handler reached the k8s-client guard
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+}
+
 func TestRBACListConsoleUsers_Success(t *testing.T) {
 	env := setupTestEnv(t)
 	adminUser := &models.User{
