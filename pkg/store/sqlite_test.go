@@ -363,6 +363,39 @@ func TestCardCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, got)
 	})
+
+	t.Run("corrupted position JSON returns zero position without error", func(t *testing.T) {
+		card := &models.Card{
+			DashboardID: dash.ID,
+			CardType:    models.CardTypeClusterHealth,
+			Position:    models.CardPosition{X: 1, Y: 2, W: 3, H: 4},
+		}
+		require.NoError(t, store.CreateCard(card))
+
+		// Corrupt the position column directly in the database.
+		_, err := store.db.Exec(`UPDATE cards SET position = 'not-valid-json' WHERE id = ?`, card.ID.String())
+		require.NoError(t, err)
+
+		// GetCard should succeed and return a zero position (no error propagated).
+		got, err := store.GetCard(card.ID)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Equal(t, models.CardPosition{}, got.Position)
+
+		// GetDashboardCards should also succeed and include the card with a zero position.
+		cards, err := store.GetDashboardCards(dash.ID)
+		require.NoError(t, err)
+		var found *models.Card
+		for i := range cards {
+			if cards[i].ID == card.ID {
+				c := cards[i]
+				found = &c
+				break
+			}
+		}
+		require.NotNil(t, found)
+		require.Equal(t, models.CardPosition{}, found.Position)
+	})
 }
 
 func TestOnboarding(t *testing.T) {
