@@ -123,8 +123,26 @@ function isValidSquare(row: number, col: number): boolean {
   return row >= 0 && row < 8 && col >= 0 && col < 8
 }
 
+// Check if a square is attacked by any piece of the given color.
+// Uses skipCastling=true when calling getPieceMoves to prevent infinite recursion.
+function isSquareAttacked(board: Board, targetRow: number, targetCol: number, byColor: Color, state: GameState): boolean {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r][c]
+      if (piece && piece.color === byColor) {
+        const moves = getPieceMoves(board, r, c, state, true)
+        if (moves.some(m => m.row === targetRow && m.col === targetCol)) {
+          return true
+        }
+      }
+    }
+  }
+  return false
+}
+
 // Get all possible moves for a piece (without checking for check)
-function getPieceMoves(board: Board, row: number, col: number, state: GameState): { row: number; col: number }[] {
+// skipCastling: when true, omit castling moves (used internally to prevent recursion)
+function getPieceMoves(board: Board, row: number, col: number, state: GameState, skipCastling = false): { row: number; col: number }[] {
   const piece = board[row][col]
   if (!piece) return []
 
@@ -189,15 +207,27 @@ function getPieceMoves(board: Board, row: number, col: number, state: GameState)
         }
       }
     }
-    // Castling
-    const rights = state.castlingRights[color]
-    const backRank = color === 'white' ? 7 : 0
-    if (row === backRank && col === 4) {
-      if (rights.kingside && !board[backRank][5] && !board[backRank][6]) {
-        moves.push({ row: backRank, col: 6 })
-      }
-      if (rights.queenside && !board[backRank][1] && !board[backRank][2] && !board[backRank][3]) {
-        moves.push({ row: backRank, col: 2 })
+    // Castling (omitted when skipCastling=true to prevent infinite recursion)
+    if (!skipCastling) {
+      const opponent = color === 'white' ? 'black' : 'white'
+      const rights = state.castlingRights[color]
+      const backRank = color === 'white' ? 7 : 0
+      if (row === backRank && col === 4) {
+        // Rule 1: cannot castle while in check
+        if (!isSquareAttacked(board, backRank, 4, opponent, state)) {
+          if (rights.kingside && !board[backRank][5] && !board[backRank][6]) {
+            // Rule 2: king must not pass through an attacked square (f1/f8 = col 5)
+            if (!isSquareAttacked(board, backRank, 5, opponent, state)) {
+              moves.push({ row: backRank, col: 6 })
+            }
+          }
+          if (rights.queenside && !board[backRank][1] && !board[backRank][2] && !board[backRank][3]) {
+            // Rule 2: king must not pass through an attacked square (d1/d8 = col 3)
+            if (!isSquareAttacked(board, backRank, 3, opponent, state)) {
+              moves.push({ row: backRank, col: 2 })
+            }
+          }
+        }
       }
     }
   } else {
