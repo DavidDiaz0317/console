@@ -299,6 +299,15 @@ export function MissionSidebar() {
   // Mission list search filter (#3944)
   const [missionSearchQuery, setMissionSearchQuery] = useState('')
 
+  // Pagination for the active-missions (history) list
+  const MISSIONS_PAGE_SIZE = 20
+  const [visibleMissionCount, setVisibleMissionCount] = useState(MISSIONS_PAGE_SIZE)
+
+  // Reset pagination whenever the search query changes
+  useEffect(() => {
+    setVisibleMissionCount(MISSIONS_PAGE_SIZE)
+  }, [missionSearchQuery])
+
   // Split missions into saved (library) and active, applying search filter
   const matchesSearch = useCallback((m: Mission) => {
     if (!missionSearchQuery.trim()) return true
@@ -309,6 +318,10 @@ export function MissionSidebar() {
   const activeMissions = missions
     .filter(m => m.status !== 'saved' && matchesSearch(m))
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+
+  // Slice to respect the current page limit
+  const visibleActiveMissions = activeMissions.slice(0, visibleMissionCount)
+  const hasMoreMissions = activeMissions.length > visibleMissionCount
 
   const handleImportMission = useCallback((mission: MissionExport) => {
     const missionType = mission.missionClass === 'install' ? 'deploy' as const
@@ -1019,7 +1032,7 @@ export function MissionSidebar() {
                   <span className="text-2xs bg-secondary px-1.5 py-0.5 rounded-full">{activeMissions.length}</span>
                 </div>
               )}
-              {[...activeMissions].map((mission) => (
+              {visibleActiveMissions.map((mission) => (
                 <MissionListItem
                   key={mission.id}
                   mission={mission}
@@ -1045,6 +1058,18 @@ export function MissionSidebar() {
                   onToggleCollapse={() => toggleMissionCollapse(mission.id)}
                 />
               ))}
+              {/* Load More button */}
+              {hasMoreMissions && (
+                <button
+                  onClick={() => setVisibleMissionCount(c => c + MISSIONS_PAGE_SIZE)}
+                  className="w-full py-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-primary/50 rounded-lg transition-colors"
+                >
+                  {t('missionSidebar.loadMore', {
+                    defaultValue: 'Load more ({{remaining}} remaining)',
+                    remaining: activeMissions.length - visibleMissionCount,
+                  })}
+                </button>
+              )}
             </>
           )}
 
