@@ -4368,3 +4368,212 @@ describe('AlertsContext — wave 2 deep coverage', () => {
     expect(result.current.dataError).toBeNull()
   })
 })
+
+// ── Duplicate notification prevention ─────────────────────────────────────────
+// Verifies that moving side effects (external-variable assignments) OUT of
+// setState updaters prevents duplicate API calls when React replays the updater
+// (Strict Mode / concurrent rendering).
+
+describe('duplicate notification prevention', () => {
+  const slackChannel = { type: 'slack' as const, enabled: true, config: { slackWebhookUrl: 'https://hooks.slack.com/test' } }
+
+  // ── resolveAlert sends exactly one notification ───────────────────────
+
+  it('resolveAlert triggers sendNotifications exactly once for a firing alert', async () => {
+    const rule: AlertRule = {
+      id: 'dn-rule-resolve',
+      name: 'DN Resolve Rule',
+      description: '',
+      enabled: true,
+      condition: { type: 'gpu_usage' },
+      severity: 'critical',
+      channels: [slackChannel],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    const firingAlert: Alert = {
+      id: 'dn-alert-resolve',
+      ruleId: 'dn-rule-resolve',
+      ruleName: 'DN Resolve Rule',
+      severity: 'critical',
+      status: 'firing',
+      message: 'GPU usage high',
+      details: {},
+      firedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([firingAlert]))
+    localStorage.setItem('auth_token', 'test-token')
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.resolveAlert('dn-alert-resolve')
+    })
+    await flushTimers()
+
+    const notifCalls = fetchSpy.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/api/notifications/send')
+    )
+    // Exactly one API call — not zero, not two (as would happen if the side
+    // effect were inside a state updater that React replays).
+    expect(notifCalls.length).toBe(1)
+
+    // The notification payload should reflect the resolved status
+    const body = JSON.parse(notifCalls[0][1]!.body as string) as { alert: Alert }
+    expect(body.alert.status).toBe('resolved')
+    expect(body.alert.id).toBe('dn-alert-resolve')
+
+    fetchSpy.mockRestore()
+  })
+
+  it('resolveAlert does not send a notification when the alert does not exist', async () => {
+    const rule: AlertRule = {
+      id: 'dn-rule-no-alert',
+      name: 'DN No Alert Rule',
+      description: '',
+      enabled: true,
+      condition: { type: 'gpu_usage' },
+      severity: 'warning',
+      channels: [slackChannel],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([]))
+    localStorage.setItem('auth_token', 'test-token')
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.resolveAlert('non-existent-id')
+    })
+    await flushTimers()
+
+    const notifCalls = fetchSpy.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/api/notifications/send')
+    )
+    expect(notifCalls.length).toBe(0)
+
+    fetchSpy.mockRestore()
+  })
+
+  // ── createAlert (unbatched) sends exactly one notification ────────────
+
+  it('createAlert (unbatched) triggers sendNotifications exactly once for a new alert', async () => {
+    const rule: AlertRule = {
+      id: 'dn-rule-create',
+      name: 'DN Create Rule',
+      description: '',
+      enabled: true,
+      condition: { type: 'gpu_usage' },
+      severity: 'critical',
+      channels: [slackChannel],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([]))
+    localStorage.setItem('auth_token', 'test-token')
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    // Set MCP data BEFORE rendering so the AlertsDataFetcher mock pushes it on mount
+    mockMCPData = {
+      gpuNodes: [{ cluster: 'dn-cluster', gpuCount: 10, gpuAllocated: 10 }],
+      podIssues: [],
+      clusters: [{ name: 'dn-cluster', healthy: true, nodeCount: 1 }],
+      isLoading: false,
+      error: null,
+    }
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.evaluateConditions()
+    })
+    await flushTimers()
+
+    const notifCalls = fetchSpy.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/api/notifications/send')
+    )
+    // Exactly one batch notification call for the newly created alert
+    expect(notifCalls.length).toBe(1)
+
+    fetchSpy.mockRestore()
+  })
+
+  it('createAlert (unbatched) does not send a notification when alert already exists', async () => {
+    const rule: AlertRule = {
+      id: 'dn-rule-dedup',
+      name: 'DN Dedup Rule',
+      description: '',
+      enabled: true,
+      condition: { type: 'gpu_usage' },
+      severity: 'warning',
+      channels: [slackChannel],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    // Pre-seed a firing alert so createAlert will hit the dedup (update) path
+    const existingAlert: Alert = {
+      id: 'dn-existing',
+      ruleId: 'dn-rule-dedup',
+      ruleName: 'DN Dedup Rule',
+      severity: 'warning',
+      status: 'firing',
+      message: 'GPU usage high',
+      details: { usagePercent: 95 },
+      cluster: 'dn-dedup-cluster',
+      firedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([existingAlert]))
+    localStorage.setItem('auth_token', 'test-token')
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 })
+    )
+
+    mockMCPData = {
+      gpuNodes: [{ cluster: 'dn-dedup-cluster', gpuCount: 10, gpuAllocated: 10 }],
+      podIssues: [],
+      clusters: [{ name: 'dn-dedup-cluster', healthy: true, nodeCount: 1 }],
+      isLoading: false,
+      error: null,
+    }
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.evaluateConditions()
+    })
+    await flushTimers()
+
+    const notifCalls = fetchSpy.mock.calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('/api/notifications/send')
+    )
+    // No notification: the alert already existed — dedup prevents re-notification
+    expect(notifCalls.length).toBe(0)
+
+    fetchSpy.mockRestore()
+  })
+})
