@@ -167,6 +167,8 @@ func (b *BobProvider) buildPromptWithHistory(req *ChatRequest) string {
 				sb.WriteString("Assistant: ")
 			case "system":
 				sb.WriteString("System: ")
+			default:
+				continue
 			}
 			sb.WriteString(msg.Content)
 			sb.WriteString("\n\n")
