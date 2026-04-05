@@ -109,13 +109,21 @@ export function CardRecommendations({ currentCardTypes, onAddCard }: Props) {
       }
     }
 
-    // Use setTimeout to avoid closing immediately when clicking to open
-    setTimeout(() => {
+    // Use setTimeout to avoid closing immediately when clicking to open.
+    // Track the timer ID and a cancelled flag so that if the effect is
+    // cleaned up before the timeout fires (the race condition / listener-leak
+    // pattern) we cancel the deferred addEventListener call rather than
+    // adding listeners that can never be removed.
+    let cancelled = false
+    const timerId = setTimeout(() => {
+      if (cancelled) return
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleEscape)
     }, 0)
 
     return () => {
+      cancelled = true
+      clearTimeout(timerId)
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
