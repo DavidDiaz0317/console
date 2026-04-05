@@ -56,9 +56,11 @@ function applyTheme(theme: Theme) {
     if (theme.dark) {
       root.classList.add('dark')
       root.classList.remove('light')
+      root.style.setProperty('color-scheme', 'dark')
     } else {
       root.classList.add('light')
       root.classList.remove('dark')
+      root.style.setProperty('color-scheme', 'light')
     }
 
   // Apply theme ID as data attribute for special styling

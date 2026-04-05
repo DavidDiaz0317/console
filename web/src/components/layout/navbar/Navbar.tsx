@@ -173,11 +173,12 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
             onClick={toggleTheme}
             className="p-2 hover:bg-secondary rounded-lg transition-colors"
             title={t('navbar.themeToggle', { theme })}
+            aria-label={t('navbar.themeToggle', { theme })}
           >
             {theme === 'dark' ? (
               <Moon className="w-5 h-5 text-muted-foreground" />
             ) : theme === 'light' ? (
-              <Sun className="w-5 h-5 text-yellow-400" />
+              <Sun className="w-5 h-5 text-amber-500" />
             ) : (
               <Monitor className="w-5 h-5 text-muted-foreground" />
             )}
