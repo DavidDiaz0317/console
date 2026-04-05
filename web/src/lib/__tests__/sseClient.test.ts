@@ -87,6 +87,12 @@ describe('sseClient', () => {
       expect(mod).toHaveProperty('fetchSSE')
       expect(typeof mod.fetchSSE).toBe('function')
     })
+
+    it('exports clearSSECache function', async () => {
+      const mod = await import('../sseClient')
+      expect(mod).toHaveProperty('clearSSECache')
+      expect(typeof mod.clearSSECache).toBe('function')
+    })
   })
 
   describe('fetchSSE', () => {
@@ -588,6 +594,76 @@ describe('sseClient', () => {
       const url = String(call[0])
       expect(url).toContain('limit=50')
       expect(url).toContain('page=3')
+    })
+  })
+
+  describe('user-scoped caching', () => {
+    it('issues separate fetches for different tokens on the same URL', async () => {
+      const sharedUrl = `/api/user-scope-${testId++}`
+      const events = [
+        { event: 'cluster_data', data: { cluster: 'c1', items: [{ id: 1 }] } },
+        { event: 'done', data: {} },
+      ]
+
+      // First request as user A
+      localStorage.setItem('token', 'token-user-a')
+      vi.mocked(fetch).mockResolvedValueOnce(makeSSEResponse(events))
+      await fetchSSE({ url: sharedUrl, itemsKey: 'items', onClusterData: vi.fn() })
+
+      // Second request as user B — must not reuse user A's cache
+      localStorage.setItem('token', 'token-user-b')
+      vi.mocked(fetch).mockResolvedValueOnce(makeSSEResponse(events))
+      await fetchSSE({ url: sharedUrl, itemsKey: 'items', onClusterData: vi.fn() })
+
+      // fetch must have been called twice (once per user)
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
+    })
+
+    it('serves cached data for the same token within TTL', async () => {
+      const sharedUrl = `/api/same-user-cache-${testId++}`
+      const events = [
+        { event: 'cluster_data', data: { cluster: 'c1', items: [{ id: 1 }] } },
+        { event: 'done', data: {} },
+      ]
+
+      localStorage.setItem('token', 'token-user-same')
+      vi.mocked(fetch).mockResolvedValueOnce(makeSSEResponse(events))
+
+      // First call — hits network
+      await fetchSSE({ url: sharedUrl, itemsKey: 'items', onClusterData: vi.fn() })
+      // Second call with the same token — should be served from cache
+      await fetchSSE({ url: sharedUrl, itemsKey: 'items', onClusterData: vi.fn() })
+
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('clearSSECache', () => {
+    it('forces a new fetch after the cache is cleared', async () => {
+      const { clearSSECache } = await import('../sseClient')
+      const url = `/api/clear-cache-${testId++}`
+      const events = [
+        { event: 'cluster_data', data: { cluster: 'c1', items: [{ id: 1 }] } },
+        { event: 'done', data: {} },
+      ]
+
+      localStorage.setItem('token', 'token-clear-test')
+      // Use mockImplementation so each call gets a fresh ReadableStream
+      vi.mocked(fetch).mockImplementation(() => Promise.resolve(makeSSEResponse(events)))
+
+      // Populate the cache
+      await fetchSSE({ url, itemsKey: 'items', onClusterData: vi.fn() })
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1)
+
+      // Clear the cache and re-request — must hit the network again
+      clearSSECache()
+      await fetchSSE({ url, itemsKey: 'items', onClusterData: vi.fn() })
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not throw when called on an empty cache', async () => {
+      const { clearSSECache } = await import('../sseClient')
+      expect(() => clearSSECache()).not.toThrow()
     })
   })
 })

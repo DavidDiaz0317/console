@@ -5,6 +5,7 @@ import { clearPermissionsCache } from '../hooks/usePermissions'
 import { STORAGE_KEY_TOKEN, DEMO_TOKEN_VALUE, STORAGE_KEY_DEMO_MODE, STORAGE_KEY_ONBOARDED, STORAGE_KEY_USER_CACHE, FETCH_DEFAULT_TIMEOUT_MS } from './constants'
 import { emitLogin, emitLogout, setAnalyticsUserId, setAnalyticsUserProperties, emitConversionStep, emitDeveloperSession } from './analytics'
 import { setDemoMode as setGlobalDemoMode } from './demoMode'
+import { clearSSECache } from './sseClient'
 
 interface User {
   id: string
@@ -162,6 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dashboardSync.clearCache()
     // Clear permissions cache so the next login doesn't serve stale data
     clearPermissionsCache()
+    // Clear SSE result cache so stale data from this session is not served to
+    // the next user who logs in within the cache TTL window
+    clearSSECache()
   }, [])
 
   const setDemoMode = useCallback(() => {

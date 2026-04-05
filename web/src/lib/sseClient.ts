@@ -42,13 +42,23 @@ const SSE_RECONNECT_BACKOFF_FACTOR = 2
 /** Maximum number of reconnect attempts before giving up */
 const SSE_MAX_RECONNECT_ATTEMPTS = 5
 
-// Dedup: prevent duplicate concurrent SSE requests to the same URL
+// Dedup: prevent duplicate concurrent SSE requests to the same URL+user
 const inflightRequests = new Map<string, Promise<unknown[]>>()
 
 // Result cache: serve cached data on re-navigation within 10s
 const resultCache = new Map<string, { data: unknown[]; at: number }>()
 /** Cache TTL: 10 seconds */
 const RESULT_CACHE_TTL_MS = 10_000
+
+/**
+ * Clear the SSE result cache and cancel any tracked in-flight request dedup
+ * entries. Call this on logout or auth-context change to prevent stale data
+ * from one user session being served to another.
+ */
+export function clearSSECache(): void {
+  resultCache.clear()
+  inflightRequests.clear()
+}
 
 /**
  * Parse an SSE text stream and dispatch events.
@@ -105,8 +115,10 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
   const queryString = searchParams.toString()
   const fullUrl = queryString ? `${url}?${queryString}` : url
 
-  // Build cache key including token hash (different users get different caches)
-  const cacheKey = fullUrl
+  // Scope the cache key to the current user's token so that data fetched under
+  // one authentication context is never served to a different user.
+  const currentToken = localStorage.getItem(STORAGE_KEY_TOKEN) || ''
+  const cacheKey = currentToken ? `${currentToken}:${fullUrl}` : fullUrl
 
   // Check result cache — if fresh, replay cached data via callbacks and resolve
   const cached = resultCache.get(cacheKey)
