@@ -36,6 +36,7 @@ func (h *MCPHandlers) GetGPUNodes(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allNodes := make([]k8s.GPUNode, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpExtendedTimeout // Increased for large GPU clusters
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -49,7 +50,11 @@ func (h *MCPHandlers) GetGPUNodes(c *fiber.Ctx) error {
 					defer cancel()
 
 					nodes, err := h.k8sClient.GetGPUNodes(ctx, clusterName)
-					if err == nil && len(nodes) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(nodes) > 0 {
 						mu.Lock()
 						allNodes = append(allNodes, nodes...)
 						mu.Unlock()
@@ -58,7 +63,12 @@ func (h *MCPHandlers) GetGPUNodes(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"nodes": allNodes, "source": "k8s"})
+			resp := fiber.Map{"nodes": allNodes, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpExtendedTimeout)
@@ -95,6 +105,7 @@ func (h *MCPHandlers) GetGPUNodeHealth(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allNodes := make([]k8s.GPUNodeHealthStatus, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpExtendedTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -108,7 +119,11 @@ func (h *MCPHandlers) GetGPUNodeHealth(c *fiber.Ctx) error {
 					defer cancel()
 
 					nodes, err := h.k8sClient.GetGPUNodeHealth(ctx, clusterName)
-					if err == nil && len(nodes) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(nodes) > 0 {
 						mu.Lock()
 						allNodes = append(allNodes, nodes...)
 						mu.Unlock()
@@ -117,7 +132,12 @@ func (h *MCPHandlers) GetGPUNodeHealth(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"nodes": allNodes, "source": "k8s"})
+			resp := fiber.Map{"nodes": allNodes, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpExtendedTimeout)
@@ -271,6 +291,7 @@ func (h *MCPHandlers) GetNVIDIAOperatorStatus(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allStatus := make([]*k8s.NVIDIAOperatorStatus, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -284,7 +305,11 @@ func (h *MCPHandlers) GetNVIDIAOperatorStatus(c *fiber.Ctx) error {
 					defer cancel()
 
 					status, err := h.k8sClient.GetNVIDIAOperatorStatus(ctx, clusterName)
-					if err == nil && (status.GPUOperator != nil || status.NetworkOperator != nil) {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if status.GPUOperator != nil || status.NetworkOperator != nil {
 						mu.Lock()
 						allStatus = append(allStatus, status)
 						mu.Unlock()
@@ -293,7 +318,12 @@ func (h *MCPHandlers) GetNVIDIAOperatorStatus(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"operators": allStatus, "source": "k8s"})
+			resp := fiber.Map{"operators": allStatus, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -329,6 +359,7 @@ func (h *MCPHandlers) GetConfigMaps(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allConfigMaps := make([]k8s.ConfigMap, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -342,7 +373,11 @@ func (h *MCPHandlers) GetConfigMaps(c *fiber.Ctx) error {
 					defer cancel()
 
 					configmaps, err := h.k8sClient.GetConfigMaps(ctx, clusterName, namespace)
-					if err == nil && len(configmaps) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(configmaps) > 0 {
 						mu.Lock()
 						allConfigMaps = append(allConfigMaps, configmaps...)
 						mu.Unlock()
@@ -351,7 +386,12 @@ func (h *MCPHandlers) GetConfigMaps(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"configmaps": allConfigMaps, "source": "k8s"})
+			resp := fiber.Map{"configmaps": allConfigMaps, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -390,6 +430,7 @@ func (h *MCPHandlers) GetSecrets(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allSecrets := make([]k8s.Secret, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -403,7 +444,11 @@ func (h *MCPHandlers) GetSecrets(c *fiber.Ctx) error {
 					defer cancel()
 
 					secrets, err := h.k8sClient.GetSecrets(ctx, clusterName, namespace)
-					if err == nil && len(secrets) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(secrets) > 0 {
 						mu.Lock()
 						allSecrets = append(allSecrets, secrets...)
 						mu.Unlock()
@@ -412,7 +457,12 @@ func (h *MCPHandlers) GetSecrets(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"secrets": allSecrets, "source": "k8s"})
+			resp := fiber.Map{"secrets": allSecrets, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -451,6 +501,7 @@ func (h *MCPHandlers) GetServiceAccounts(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allServiceAccounts := make([]k8s.ServiceAccount, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -464,7 +515,11 @@ func (h *MCPHandlers) GetServiceAccounts(c *fiber.Ctx) error {
 					defer cancel()
 
 					serviceAccounts, err := h.k8sClient.GetServiceAccounts(ctx, clusterName, namespace)
-					if err == nil && len(serviceAccounts) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(serviceAccounts) > 0 {
 						mu.Lock()
 						allServiceAccounts = append(allServiceAccounts, serviceAccounts...)
 						mu.Unlock()
@@ -473,7 +528,12 @@ func (h *MCPHandlers) GetServiceAccounts(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"serviceAccounts": allServiceAccounts, "source": "k8s"})
+			resp := fiber.Map{"serviceAccounts": allServiceAccounts, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -512,6 +572,7 @@ func (h *MCPHandlers) GetPVCs(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allPVCs := make([]k8s.PVC, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -525,7 +586,11 @@ func (h *MCPHandlers) GetPVCs(c *fiber.Ctx) error {
 					defer cancel()
 
 					pvcs, err := h.k8sClient.GetPVCs(ctx, clusterName, namespace)
-					if err == nil && len(pvcs) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(pvcs) > 0 {
 						mu.Lock()
 						allPVCs = append(allPVCs, pvcs...)
 						mu.Unlock()
@@ -534,7 +599,12 @@ func (h *MCPHandlers) GetPVCs(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"pvcs": allPVCs, "source": "k8s"})
+			resp := fiber.Map{"pvcs": allPVCs, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -572,6 +642,7 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allPVs := make([]k8s.PV, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -585,7 +656,11 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 					defer cancel()
 
 					pvs, err := h.k8sClient.GetPVs(ctx, clusterName)
-					if err == nil && len(pvs) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(pvs) > 0 {
 						mu.Lock()
 						allPVs = append(allPVs, pvs...)
 						mu.Unlock()
@@ -594,7 +669,12 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"pvs": allPVs, "source": "k8s"})
+			resp := fiber.Map{"pvs": allPVs, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -633,6 +713,7 @@ func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allQuotas := make([]k8s.ResourceQuota, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -646,7 +727,11 @@ func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 					defer cancel()
 
 					quotas, err := h.k8sClient.GetResourceQuotas(ctx, clusterName, namespace)
-					if err == nil && len(quotas) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(quotas) > 0 {
 						mu.Lock()
 						allQuotas = append(allQuotas, quotas...)
 						mu.Unlock()
@@ -655,7 +740,12 @@ func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"resourceQuotas": allQuotas, "source": "k8s"})
+			resp := fiber.Map{"resourceQuotas": allQuotas, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -694,6 +784,7 @@ func (h *MCPHandlers) GetLimitRanges(c *fiber.Ctx) error {
 			var wg sync.WaitGroup
 			var mu sync.Mutex
 			allRanges := make([]k8s.LimitRange, 0)
+			clusterErrs := make([]ClusterError, 0)
 			clusterTimeout := mcpDefaultTimeout
 
 			clusterCtx, clusterCancel := context.WithCancel(c.Context())
@@ -707,7 +798,11 @@ func (h *MCPHandlers) GetLimitRanges(c *fiber.Ctx) error {
 					defer cancel()
 
 					ranges, err := h.k8sClient.GetLimitRanges(ctx, clusterName, namespace)
-					if err == nil && len(ranges) > 0 {
+					if err != nil {
+						recordClusterError(&mu, &clusterErrs, clusterName, err)
+						return
+					}
+					if len(ranges) > 0 {
 						mu.Lock()
 						allRanges = append(allRanges, ranges...)
 						mu.Unlock()
@@ -716,7 +811,12 @@ func (h *MCPHandlers) GetLimitRanges(c *fiber.Ctx) error {
 			}
 
 			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
-			return c.JSON(fiber.Map{"limitRanges": allRanges, "source": "k8s"})
+			resp := fiber.Map{"limitRanges": allRanges, "source": "k8s"}
+			if len(clusterErrs) > 0 {
+				resp["partial"] = true
+				resp["clusterErrors"] = clusterErrs
+			}
+			return c.JSON(resp)
 		}
 
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)

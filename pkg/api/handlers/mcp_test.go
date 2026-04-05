@@ -321,3 +321,99 @@ func TestMCPGetPods_AuthErrorReturnsUnavailable(t *testing.T) {
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "auth", payload["errorType"])
 }
+
+// TestMCPGetPods_MultiCluster_PartialFailureSetsPartialFlag verifies that when one
+// cluster in an all-cluster query fails, the response still contains data from the
+// healthy cluster, sets partial=true, and includes a clusterErrors entry.
+func TestMCPGetPods_MultiCluster_PartialFailureSetsPartialFlag(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/pods", handler.GetPods)
+
+	// Add a second cluster that will fail
+	addClusterToRawConfig(env.K8sClient, "bad-cluster")
+	badFake := k8sfake.NewSimpleClientset()
+	env.K8sClient.InjectClient("bad-cluster", badFake)
+	badFake.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("dial tcp 10.0.0.2:6443: connect: connection refused")
+	})
+
+	// All-clusters query (no cluster param)
+	req, err := http.NewRequest("GET", "/api/mcp/pods", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 10000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Equal(t, "k8s", payload["source"])
+	assert.Equal(t, true, payload["partial"], "partial flag should be set when a cluster fails")
+
+	clusterErrors, ok := payload["clusterErrors"].([]interface{})
+	require.True(t, ok, "clusterErrors should be a JSON array")
+	require.Len(t, clusterErrors, 1)
+
+	clusterErr, ok := clusterErrors[0].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "bad-cluster", clusterErr["cluster"])
+	assert.Equal(t, "network", clusterErr["errorType"])
+	assert.NotEmpty(t, clusterErr["errorMessage"])
+}
+
+// TestMCPGetPods_MultiCluster_AllSuccessNoPartialFlag verifies that when all clusters
+// succeed, the partial flag is absent from the response.
+func TestMCPGetPods_MultiCluster_AllSuccessNoPartialFlag(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/pods", handler.GetPods)
+
+	req, err := http.NewRequest("GET", "/api/mcp/pods", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 10000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Equal(t, "k8s", payload["source"])
+	_, hasPartial := payload["partial"]
+	assert.False(t, hasPartial, "partial flag should not be present when all clusters succeed")
+	_, hasClusterErrors := payload["clusterErrors"]
+	assert.False(t, hasClusterErrors, "clusterErrors should not be present when all clusters succeed")
+}
+
+// TestMCPGetDeployments_MultiCluster_PartialFailureSetsPartialFlag verifies partial
+// failure tracking for GetDeployments.
+func TestMCPGetDeployments_MultiCluster_PartialFailureSetsPartialFlag(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/deployments", handler.GetDeployments)
+
+	addClusterToRawConfig(env.K8sClient, "bad-cluster")
+	badFake := k8sfake.NewSimpleClientset()
+	env.K8sClient.InjectClient("bad-cluster", badFake)
+	badFake.PrependReactor("list", "deployments", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("dial tcp 10.0.0.2:6443: connect: connection refused")
+	})
+
+	req, err := http.NewRequest("GET", "/api/mcp/deployments", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 10000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Equal(t, true, payload["partial"])
+
+	clusterErrors, ok := payload["clusterErrors"].([]interface{})
+	require.True(t, ok)
+	require.Len(t, clusterErrors, 1)
+	clusterErr := clusterErrors[0].(map[string]interface{})
+	assert.Equal(t, "bad-cluster", clusterErr["cluster"])
+	assert.Equal(t, "network", clusterErr["errorType"])
+}

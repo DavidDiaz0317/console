@@ -28,6 +28,28 @@ const mcpDefaultTimeout = 15 * time.Second
 // (e.g. deployments, GPU queries) that may need extra time.
 const mcpExtendedTimeout = 30 * time.Second
 
+// ClusterError represents an error encountered while querying a specific cluster
+// during a multi-cluster fan-out request.
+type ClusterError struct {
+	Cluster      string `json:"cluster"`
+	ErrorType    string `json:"errorType"`
+	ErrorMessage string `json:"errorMessage"`
+}
+
+// recordClusterError classifies the error from a cluster and appends a
+// ClusterError entry to *errs under mu. Call this inside multi-cluster
+// goroutines when err != nil so that partial failures are surfaced to callers.
+func recordClusterError(mu *sync.Mutex, errs *[]ClusterError, clusterName string, err error) {
+	errType := k8s.ClassifyError(err.Error())
+	mu.Lock()
+	*errs = append(*errs, ClusterError{
+		Cluster:      clusterName,
+		ErrorType:    errType,
+		ErrorMessage: err.Error(),
+	})
+	mu.Unlock()
+}
+
 // waitWithDeadline waits for all goroutines in wg to finish, but returns
 // early if the deadline is reached. When the deadline fires, cancel is
 // called to signal the in-flight goroutines to stop, so they exit promptly
