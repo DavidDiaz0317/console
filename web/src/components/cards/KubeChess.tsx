@@ -216,13 +216,13 @@ function getPieceMoves(board: Board, row: number, col: number, state: GameState,
         // Rule 1: cannot castle while in check
         if (!isSquareAttacked(board, backRank, 4, opponent, state)) {
           if (rights.kingside && !board[backRank][5] && !board[backRank][6]) {
-            // Rule 2: king must not pass through an attacked square (f1/f8 = col 5)
+            // Rule 2: king passes through col 5 (f1/f8) on the way to col 6; that square must not be attacked
             if (!isSquareAttacked(board, backRank, 5, opponent, state)) {
               moves.push({ row: backRank, col: 6 })
             }
           }
           if (rights.queenside && !board[backRank][1] && !board[backRank][2] && !board[backRank][3]) {
-            // Rule 2: king must not pass through an attacked square (d1/d8 = col 3)
+            // Rule 2: king passes through col 3 (d1/d8) on the way to col 2; that square must not be attacked
             if (!isSquareAttacked(board, backRank, 3, opponent, state)) {
               moves.push({ row: backRank, col: 2 })
             }
