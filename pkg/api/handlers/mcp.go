@@ -170,6 +170,14 @@ func validateLabelSelector(selector string) error {
 	return nil
 }
 
+// validateTailLines validates the ?tail= query parameter for pod-log endpoints.
+func validateTailLines(tail int) error {
+	if tail < 1 || tail > 10000 {
+		return errors.New("tail must be between 1 and 10000")
+	}
+	return nil
+}
+
 // validWorkloadTypes is the set of accepted values for the ?type= query
 // parameter on workload endpoints.
 var validWorkloadTypes = map[string]bool{

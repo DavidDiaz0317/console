@@ -912,8 +912,8 @@ func (h *MCPHandlers) GetPodLogs(c *fiber.Ctx) error {
 	if err := validateResourceName("container", container); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	if tailLines < 1 || tailLines > 10000 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "tail must be between 1 and 10000"})
+	if err := validateTailLines(tailLines); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	if h.k8sClient != nil {

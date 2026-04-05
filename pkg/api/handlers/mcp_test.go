@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -355,11 +356,6 @@ func TestValidateCluster(t *testing.T) {
 }
 
 func TestValidateNamespace(t *testing.T) {
-	longName := string(make([]byte, 64))
-	for i := range []byte(longName) {
-		longName = longName[:i] + "a" + longName[i+1:]
-	}
-
 	cases := []struct {
 		name    string
 		input   string
@@ -371,7 +367,7 @@ func TestValidateNamespace(t *testing.T) {
 		{"uppercase rejected", "MyNamespace", true},
 		{"underscore rejected", "my_ns", true},
 		{"dot rejected", "my.ns", true},
-		{"too long (64 chars)", longName, true},
+		{"too long (64 chars)", strings.Repeat("a", 64), true},
 		{"starts with hyphen", "-bad", true},
 		{"ends with hyphen", "bad-", true},
 		{"special chars", "ns!@#", true},
@@ -389,11 +385,6 @@ func TestValidateNamespace(t *testing.T) {
 }
 
 func TestValidateResourceName(t *testing.T) {
-	longName := make([]byte, 254)
-	for i := range longName {
-		longName[i] = 'a'
-	}
-
 	cases := []struct {
 		name    string
 		input   string
@@ -406,7 +397,7 @@ func TestValidateResourceName(t *testing.T) {
 		{"starts with hyphen", "-pod", true},
 		{"ends with hyphen", "pod-", true},
 		{"underscore rejected", "my_pod", true},
-		{"too long (254 chars)", string(longName), true},
+		{"too long (254 chars)", strings.Repeat("a", 254), true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
