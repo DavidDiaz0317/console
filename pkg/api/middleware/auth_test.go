@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -104,6 +105,70 @@ func TestGetContextHelpers(t *testing.T) {
 
 	// Validate body content
 	// (Implementation detail: we trust Fiber locals works, we are testing the Get* helpers)
+}
+
+// TestRevokedTokenCacheEviction validates that the in-memory cache never grows
+// without bound: backfilled (zero-time) entries must be evicted when the cache
+// exceeds its size thresholds.
+func TestRevokedTokenCacheEviction(t *testing.T) {
+	t.Run("cleanup evicts backfilled entries above half-max", func(t *testing.T) {
+		c := &revokedTokenCache{
+			tokens: make(map[string]time.Time),
+		}
+		// Fill cache with zero-time (backfilled) entries just above the half-max
+		// threshold so cleanup() must evict them.
+		for i := 0; i < revokedTokenCacheHalfMax+1; i++ {
+			c.tokens[fmt.Sprintf("jti-%d", i)] = time.Time{}
+		}
+		c.cleanup()
+		assert.Equal(t, 0, len(c.tokens), "cleanup should remove all zero-time entries when above half-max")
+	})
+
+	t.Run("cleanup does not evict backfilled entries below half-max", func(t *testing.T) {
+		c := &revokedTokenCache{
+			tokens: make(map[string]time.Time),
+		}
+		// Add fewer zero-time entries than the half-max threshold.
+		for i := 0; i < 5; i++ {
+			c.tokens[fmt.Sprintf("jti-%d", i)] = time.Time{}
+		}
+		c.cleanup()
+		assert.Equal(t, 5, len(c.tokens), "cleanup should not evict entries when cache is below half-max")
+	})
+
+	t.Run("Revoke evicts zero-time entries when over max size", func(t *testing.T) {
+		c := &revokedTokenCache{
+			tokens: make(map[string]time.Time),
+		}
+		// Pre-fill with revokedTokenCacheMaxSize zero-time (backfilled) entries.
+		for i := 0; i < revokedTokenCacheMaxSize; i++ {
+			c.tokens[fmt.Sprintf("jti-%d", i)] = time.Time{}
+		}
+		// Adding one more via Revoke must trigger eviction.
+		c.Revoke("new-jti", time.Now().Add(time.Hour))
+		assert.LessOrEqual(t, len(c.tokens), revokedTokenCacheMaxSize,
+			"cache size must not exceed revokedTokenCacheMaxSize after Revoke")
+		// The newly revoked token must still be present.
+		_, present := c.tokens["new-jti"]
+		assert.True(t, present, "newly revoked token must remain in cache after eviction")
+	})
+
+	t.Run("Revoke evicts expired entries first before zero-time entries", func(t *testing.T) {
+		c := &revokedTokenCache{
+			tokens: make(map[string]time.Time),
+		}
+		past := time.Now().Add(-time.Hour)
+		// Half expired, half backfilled (zero-time), total at max.
+		for i := 0; i < revokedTokenCacheMaxSize/2; i++ {
+			c.tokens[fmt.Sprintf("expired-%d", i)] = past
+		}
+		for i := 0; i < revokedTokenCacheMaxSize/2; i++ {
+			c.tokens[fmt.Sprintf("backfilled-%d", i)] = time.Time{}
+		}
+		c.Revoke("new-jti", time.Now().Add(time.Hour))
+		assert.LessOrEqual(t, len(c.tokens), revokedTokenCacheMaxSize,
+			"cache must not exceed max size after Revoke with mixed entries")
+	})
 }
 
 func generateTestToken(secret string, expiry time.Time) (string, error) {
