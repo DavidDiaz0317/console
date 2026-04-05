@@ -53,6 +53,7 @@ export type DrillDownViewType =
   | 'all-helm'
   | 'all-operators'
   | 'all-security'
+  | 'all-compliance-checks'
   | 'all-gpu'
   | 'all-storage'
   | 'all-jobs'
@@ -718,6 +719,16 @@ export function useDrillDownActions() {
     })
   }, [openOrPush])
 
+  const drillToAllComplianceChecks = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+    const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Checks` : 'Compliance Checks'
+    openOrPush({
+      type: 'all-compliance-checks',
+      title,
+      subtitle: 'Across all clusters',
+      data: { filter, ...filterData },
+    })
+  }, [openOrPush])
+
   const drillToAllGPU = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} GPUs` : 'All GPUs'
     openOrPush({
@@ -794,6 +805,7 @@ export function useDrillDownActions() {
     drillToAllHelm,
     drillToAllOperators,
     drillToAllSecurity,
+    drillToAllComplianceChecks,
     drillToAllGPU,
     drillToAllStorage,
     drillToAllJobs,

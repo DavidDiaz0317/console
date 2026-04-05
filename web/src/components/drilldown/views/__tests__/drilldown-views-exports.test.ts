@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import * as BuildpackDrillDown from '../BuildpackDrillDown'
 import * as ComplianceDrillDown from '../ComplianceDrillDown'
+import * as ComplianceChecksDrillDown from '../ComplianceChecksDrillDown'
 import * as ConfigMapDrillDown from '../ConfigMapDrillDown'
 import * as CostDrillDown from '../CostDrillDown'
 import * as CRDDrillDown from '../CRDDrillDown'
@@ -30,6 +31,7 @@ import * as ServiceAccountDrillDown from '../ServiceAccountDrillDown'
 const modules = [
   { name: 'BuildpackDrillDown', mod: BuildpackDrillDown },
   { name: 'ComplianceDrillDown', mod: ComplianceDrillDown },
+  { name: 'ComplianceChecksDrillDown', mod: ComplianceChecksDrillDown },
   { name: 'ConfigMapDrillDown', mod: ConfigMapDrillDown },
   { name: 'CostDrillDown', mod: CostDrillDown },
   { name: 'CRDDrillDown', mod: CRDDrillDown },

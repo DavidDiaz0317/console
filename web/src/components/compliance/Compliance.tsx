@@ -30,7 +30,7 @@ const MOCK_FALCO_PER_CLUSTER = 1.5
 
 export function Compliance() {
   const { clusters, isLoading, refetch, lastUpdated, isRefreshing: dataRefreshing, error } = useClusters()
-  const { drillToAllSecurity } = useDrillDownActions()
+  const { drillToAllSecurity, drillToAllComplianceChecks } = useDrillDownActions()
   const { getStatValue: getUniversalStatValue } = useUniversalStats()
   const { selectedClusters: globalSelectedClusters, isAllClustersSelected } = useGlobalFilters()
 
@@ -165,15 +165,15 @@ export function Compliance() {
       case 'total_checks':
         return allDemo
           ? { value: (reachableClusters.length || 1) * MOCK_CHECKS_PER_CLUSTER, sublabel: 'total checks', isDemo: true, isClickable: false }
-          : { value: realData.totalChecks, sublabel: 'total checks', onClick: () => { emitComplianceDrillDown('total_checks'); drillToAllSecurity() }, isClickable: realData.totalChecks > 0 }
+          : { value: realData.totalChecks, sublabel: 'total checks', onClick: () => { emitComplianceDrillDown('total_checks'); drillToAllComplianceChecks() }, isClickable: realData.totalChecks > 0 }
       case 'passing':
         return allDemo
           ? { value: Math.floor((reachableClusters.length || 1) * MOCK_CHECKS_PER_CLUSTER * MOCK_PASS_RATE), sublabel: 'passing', isDemo: true, isClickable: false }
-          : { value: realData.passing, sublabel: 'passing', onClick: () => { emitComplianceDrillDown('passing'); drillToAllSecurity('passing') }, isClickable: realData.passing > 0 }
+          : { value: realData.passing, sublabel: 'passing', onClick: () => { emitComplianceDrillDown('passing'); drillToAllComplianceChecks('passing') }, isClickable: realData.passing > 0 }
       case 'failing':
         return allDemo
           ? { value: Math.floor((reachableClusters.length || 1) * MOCK_CHECKS_PER_CLUSTER * MOCK_FAIL_RATE), sublabel: 'failing', isDemo: true, isClickable: false }
-          : { value: realData.failing, sublabel: 'failing', onClick: () => { emitComplianceDrillDown('failing'); drillToAllSecurity('failing') }, isClickable: realData.failing > 0 }
+          : { value: realData.failing, sublabel: 'failing', onClick: () => { emitComplianceDrillDown('failing'); drillToAllComplianceChecks('failing') }, isClickable: realData.failing > 0 }
       case 'warning': {
         const mockTotal = (reachableClusters.length || 1) * MOCK_CHECKS_PER_CLUSTER
         return allDemo
@@ -237,7 +237,7 @@ export function Compliance() {
       default:
         return { value: '-' }
     }
-  }, [allDemo, realData, kyvernoIsDemo, kubescapeIsDemo, trivyIsDemo, reachableClusters, drillToAllSecurity, explicitDemoMode])
+  }, [allDemo, realData, kyvernoIsDemo, kubescapeIsDemo, trivyIsDemo, reachableClusters, drillToAllSecurity, drillToAllComplianceChecks, explicitDemoMode])
 
   const getStatValue = useCallback(
     (blockId: string) => createMergedStatValueGetter(getDashboardStatValue, getUniversalStatValue)(blockId),

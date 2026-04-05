@@ -26,6 +26,7 @@ const BuildpackDrillDown = safeLazy(() => import('./views/BuildpackDrillDown'), 
 const RBACDrillDown = safeLazy(() => import('./views/RBACDrillDown'), 'RBACDrillDown')
 const CostDrillDown = safeLazy(() => import('./views/CostDrillDown'), 'CostDrillDown')
 const ComplianceDrillDown = safeLazy(() => import('./views/ComplianceDrillDown'), 'ComplianceDrillDown')
+const ComplianceChecksDrillDown = safeLazy(() => import('./views/ComplianceChecksDrillDown'), 'ComplianceChecksDrillDown')
 
 const EventsDrillDown = safeLazy(() => import('./views/EventsDrillDown'), 'EventsDrillDown')
 
@@ -262,6 +263,8 @@ export function DrillDownModal() {
         return <PolicyDrillDown data={data} />
       case 'compliance':
         return <ComplianceDrillDown data={data} />
+      case 'all-compliance-checks':
+        return <ComplianceChecksDrillDown data={data} />
       case 'kustomization':
         return <KustomizationDrillDown data={data} />
       case 'buildpack':
