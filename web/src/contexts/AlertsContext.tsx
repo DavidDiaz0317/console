@@ -262,7 +262,6 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   // During evaluateConditions, all alert state updates are accumulated here
   // and applied in a single setAlerts call at the end of the cycle.
   // This eliminates O(rules × alerts) sequential React state updates.
-  const evalBatchUpdaters = useRef<Array<(prev: Alert[]) => Alert[]>>([])
   // Working copy of alerts maintained during batch evaluation so that each
   // createAlert call can perform correct dedup against in-cycle mutations.
   const evalWorkingAlertsRef = useRef<Alert[]>([])
@@ -616,11 +615,11 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       }
 
       if (isInBatchEvalRef.current) {
-        // Batch evaluation path: apply the updater synchronously to the working copy
-        // so subsequent createAlert calls in the same cycle see up-to-date dedup state,
-        // then queue it for the single setAlerts flush at the end of the cycle.
+        // Batch evaluation path: apply the updater directly to the working copy so
+        // subsequent createAlert calls in the same cycle see up-to-date dedup state.
+        // evaluateConditions will commit evalWorkingAlertsRef.current with a single
+        // setAlerts call at the end — each updater runs exactly once.
         evalWorkingAlertsRef.current = updater(evalWorkingAlertsRef.current)
-        evalBatchUpdaters.current.push(updater)
 
         // Collect notification if a genuinely new alert was created.
         if (newAlert && rule.channels?.length) {
@@ -721,14 +720,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Stable wrapper that routes a state-updater through the batch queue during
+  // Stable wrapper that routes a state-updater through the batch workspace during
   // an evaluation cycle, or applies it immediately via setAlerts otherwise.
   // Using useCallback with empty deps ensures referential stability so evaluators
   // don't need to be recreated when this is added to their dependency arrays.
   const batchableSetAlerts = useCallback((updater: (prev: Alert[]) => Alert[]) => {
     if (isInBatchEvalRef.current) {
+      // Apply directly to the working copy — no queuing needed.
+      // evaluateConditions will commit evalWorkingAlertsRef.current in one setAlerts call.
       evalWorkingAlertsRef.current = updater(evalWorkingAlertsRef.current)
-      evalBatchUpdaters.current.push(updater)
     } else {
       setAlerts(updater)
     }
@@ -1513,8 +1513,7 @@ Please provide:
     // single setAlerts call below — eliminating O(rules × alerts) sequential
     // React state updates that previously caused main-thread jank.
     isInBatchEvalRef.current = true
-    evalWorkingAlertsRef.current = alertsRef.current
-    evalBatchUpdaters.current = []
+    evalWorkingAlertsRef.current = [...alertsRef.current]
     pendingNotificationsRef.current = []
 
     try {
@@ -1560,13 +1559,10 @@ Please provide:
         }
       }
     } finally {
-      // Flush all accumulated state mutations in a single React state update,
-      // composing each queued updater sequentially so the final result is
-      // identical to N individual setAlerts calls — but with only one render.
-      if (evalBatchUpdaters.current.length > 0) {
-        const updaters = evalBatchUpdaters.current
-        setAlerts(prev => updaters.reduce((acc, fn) => fn(acc), prev))
-      }
+      // Flush all accumulated state mutations in a single React state update.
+      // evalWorkingAlertsRef.current holds the fully-computed next state — each
+      // updater was applied exactly once during the evaluation loop.
+      setAlerts(evalWorkingAlertsRef.current)
 
       // Dispatch all queued HTTP notifications as a single batch request,
       // replacing N concurrent /api/notifications/send calls with one
@@ -1578,7 +1574,6 @@ Please provide:
 
       // Clean up batch workspace before releasing the guard flag.
       isInBatchEvalRef.current = false
-      evalBatchUpdaters.current = []
       pendingNotificationsRef.current = []
 
       saveNotifiedAlertKeys(notifiedAlertKeysRef.current)
