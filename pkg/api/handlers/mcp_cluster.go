@@ -78,6 +78,10 @@ func (h *MCPHandlers) GetClusterHealth(c *fiber.Ctx) error {
 		return c.JSON(getDemoClusterHealth(cluster))
 	}
 
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
 	defer cancel()
 
@@ -132,6 +136,9 @@ func (h *MCPHandlers) GetNodes(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		// If no cluster specified, query all clusters in parallel
@@ -198,6 +205,16 @@ func (h *MCPHandlers) GetEvents(c *fiber.Ctx) error {
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
 	limit := c.QueryInt("limit", 50)
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateLimit(limit); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	// Try MCP bridge first
 	if h.bridge != nil {
@@ -298,6 +315,16 @@ func (h *MCPHandlers) GetWarningEvents(c *fiber.Ctx) error {
 	namespace := c.Query("namespace")
 	limit := c.QueryInt("limit", 50)
 
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateLimit(limit); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	// Try MCP bridge first
 	if h.bridge != nil {
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -392,6 +419,13 @@ func (h *MCPHandlers) CheckSecurityIssues(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	// Fall back to direct k8s client
 	if h.k8sClient != nil {

@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"regexp"
 	"sync"
 	"time"
 
@@ -80,6 +83,111 @@ func handleK8sError(c *fiber.Ctx, err error) error {
 		slog.Error("[MCP] internal error", "error", err)
 		return c.Status(500).JSON(fiber.Map{"error": "internal server error"})
 	}
+}
+
+// validK8sNameRe matches a valid Kubernetes namespace / resource name used as a
+// DNS label: lowercase alphanumeric characters with optional hyphens in the
+// middle, starting and ending with an alphanumeric character.
+var validK8sNameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+// validK8sSubdomainRe matches a valid Kubernetes resource name used as a DNS
+// subdomain: lowercase alphanumeric characters with optional hyphens or dots,
+// starting and ending with an alphanumeric character.
+var validK8sSubdomainRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.\-]*[a-z0-9])?$`)
+
+// validateCluster validates a kubeconfig cluster/context name.
+// Cluster names in kubeconfig can be complex (GKE, EKS ARNs, OpenShift, etc.),
+// so only obvious attack vectors are rejected: null bytes, newlines, and
+// excessive length.
+func validateCluster(cluster string) error {
+	if cluster == "" {
+		return nil
+	}
+	if len(cluster) > 512 {
+		return errors.New("cluster name too long (max 512 characters)")
+	}
+	for _, r := range cluster {
+		if r == '\x00' || r == '\n' || r == '\r' || r == '\t' {
+			return errors.New("cluster name contains invalid characters")
+		}
+	}
+	return nil
+}
+
+// validateNamespace validates a Kubernetes namespace name (DNS label).
+// An empty value is accepted because namespace is an optional filter.
+func validateNamespace(ns string) error {
+	if ns == "" {
+		return nil
+	}
+	if len(ns) > 63 {
+		return errors.New("namespace too long (max 63 characters)")
+	}
+	if !validK8sNameRe.MatchString(ns) {
+		return errors.New("namespace must consist of lowercase alphanumeric characters or '-', and must start and end with an alphanumeric character")
+	}
+	return nil
+}
+
+// validateResourceName validates a Kubernetes resource name (DNS subdomain).
+// label is a human-readable parameter name used in error messages (e.g. "pod").
+// An empty value is accepted because many resource-name params are optional.
+func validateResourceName(label, value string) error {
+	if value == "" {
+		return nil
+	}
+	if len(value) > 253 {
+		return fmt.Errorf("%s name too long (max 253 characters)", label)
+	}
+	if !validK8sSubdomainRe.MatchString(value) {
+		return fmt.Errorf("%s must consist of lowercase alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character", label)
+	}
+	return nil
+}
+
+// validateLimit validates that a pagination limit is in the range [1, 1000].
+func validateLimit(limit int) error {
+	if limit < 1 || limit > 1000 {
+		return errors.New("limit must be between 1 and 1000")
+	}
+	return nil
+}
+
+// validateLabelSelector validates a Kubernetes label selector string.
+// An empty value is accepted.
+func validateLabelSelector(selector string) error {
+	if selector == "" {
+		return nil
+	}
+	if len(selector) > 512 {
+		return errors.New("labelSelector too long (max 512 characters)")
+	}
+	for _, r := range selector {
+		if r == '\x00' || r == '\n' || r == '\r' {
+			return errors.New("labelSelector contains invalid characters")
+		}
+	}
+	return nil
+}
+
+// validWorkloadTypes is the set of accepted values for the ?type= query
+// parameter on workload endpoints.
+var validWorkloadTypes = map[string]bool{
+	"":            true, // empty → return all workload types
+	"deployment":  true,
+	"statefulset": true,
+	"daemonset":   true,
+	"replicaset":  true,
+	"job":         true,
+	"cronjob":     true,
+}
+
+// validateWorkloadType validates the ?type= query parameter value.
+func validateWorkloadType(t string) error {
+	if !validWorkloadTypes[t] {
+		return fmt.Errorf("invalid workload type %q (allowed: deployment, statefulset, daemonset, replicaset, job, cronjob)", t)
+	}
+	return nil
 }
 
 // ClusterError represents a per-cluster failure in a multi-cluster request (#4758).

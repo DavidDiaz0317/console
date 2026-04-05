@@ -24,6 +24,9 @@ func (h *MCPHandlers) GetGPUNodes(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		// If no cluster specified, query all clusters in parallel
@@ -84,6 +87,9 @@ func (h *MCPHandlers) GetGPUNodeHealth(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -145,6 +151,9 @@ func (h *MCPHandlers) GetGPUHealthCronJobStatus(c *fiber.Ctx) error {
 	cluster := c.Query("cluster")
 	if cluster == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "cluster parameter is required"})
+	}
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	if h.k8sClient == nil {
@@ -236,6 +245,9 @@ func (h *MCPHandlers) GetGPUHealthCronJobResults(c *fiber.Ctx) error {
 	if cluster == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "cluster parameter is required"})
 	}
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient == nil {
 		return c.Status(503).JSON(fiber.Map{"error": "No cluster access"})
@@ -259,6 +271,9 @@ func (h *MCPHandlers) GetNVIDIAOperatorStatus(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		// If no cluster specified, query all clusters in parallel
@@ -318,6 +333,13 @@ func (h *MCPHandlers) GetConfigMaps(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -380,6 +402,13 @@ func (h *MCPHandlers) GetSecrets(c *fiber.Ctx) error {
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
 
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	if h.k8sClient != nil {
 		if cluster == "" {
 			clusters, _, err := h.k8sClient.HealthyClusters(c.Context())
@@ -440,6 +469,13 @@ func (h *MCPHandlers) GetServiceAccounts(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -502,6 +538,13 @@ func (h *MCPHandlers) GetPVCs(c *fiber.Ctx) error {
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
 
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	if h.k8sClient != nil {
 		if cluster == "" {
 			clusters, _, err := h.k8sClient.HealthyClusters(c.Context())
@@ -561,6 +604,9 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -623,6 +669,13 @@ func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
 
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
 	if h.k8sClient != nil {
 		if cluster == "" {
 			clusters, _, err := h.k8sClient.HealthyClusters(c.Context())
@@ -683,6 +736,13 @@ func (h *MCPHandlers) GetLimitRanges(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -799,6 +859,15 @@ func (h *MCPHandlers) DeleteResourceQuota(c *fiber.Ctx) error {
 	if cluster == "" || namespace == "" || name == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "cluster, namespace, and name are required"})
 	}
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateResourceName("name", name); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		ctx, cancel := context.WithTimeout(c.Context(), mcpDefaultTimeout)
@@ -830,6 +899,21 @@ func (h *MCPHandlers) GetPodLogs(c *fiber.Ctx) error {
 
 	if cluster == "" || namespace == "" || pod == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "cluster, namespace, and pod are required"})
+	}
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateResourceName("pod", pod); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateResourceName("container", container); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if tailLines < 1 || tailLines > 10000 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "tail must be between 1 and 10000"})
 	}
 
 	if h.k8sClient != nil {
@@ -1025,6 +1109,9 @@ func (h *MCPHandlers) GetFlatcarNodes(c *fiber.Ctx) error {
 	}
 
 	cluster := c.Query("cluster")
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		// No cluster specified → query all healthy clusters in parallel
@@ -1084,6 +1171,13 @@ func (h *MCPHandlers) GetIngresses(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
@@ -1145,6 +1239,13 @@ func (h *MCPHandlers) GetNetworkPolicies(c *fiber.Ctx) error {
 
 	cluster := c.Query("cluster")
 	namespace := c.Query("namespace")
+
+	if err := validateCluster(cluster); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateNamespace(namespace); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	if h.k8sClient != nil {
 		if cluster == "" {
