@@ -604,6 +604,116 @@ describe('useAIPredictions', () => {
     removeEventListenerSpy.mockRestore()
   })
 
+  // ---------- NEW: subscriber-aware WebSocket reconnect ----------
+
+  // Helper: create a mock WebSocket and stub the global constructor.
+  // Returns mockWs; pass `onConstruct` to run extra logic on each `new WebSocket()` call.
+  function createMockWebSocket(onConstruct?: () => void) {
+    const mockWs = {
+      readyState: WebSocket.OPEN,
+      send: vi.fn(),
+      close: vi.fn(),
+      onopen: null as ((this: WebSocket, ev: Event) => unknown) | null,
+      onclose: null as ((this: WebSocket, ev: CloseEvent) => unknown) | null,
+      onmessage: null as ((this: WebSocket, ev: MessageEvent) => unknown) | null,
+      onerror: null as ((this: WebSocket, ev: Event) => unknown) | null,
+    }
+    // Use a regular function (not an arrow function) so it works as a `new` constructor in Vitest 4
+    vi.stubGlobal('WebSocket', vi.fn(function() { onConstruct?.(); return mockWs }))
+    return mockWs
+  }
+
+  it('does not reconnect WebSocket after last subscriber unmounts', async () => {
+    mockGetDemoMode.mockReturnValue(false)
+    mockIsAgentUnavailable.mockReturnValue(false)
+
+    const mockWs = createMockWebSocket()
+
+    try {
+      const { unmount } = renderHook(() => useAIPredictions())
+
+      // Capture the onclose handler set by connectWebSocket
+      const capturedOnClose = mockWs.onclose as (() => void) | null
+
+      // Unmount — this removes the last subscriber and calls disconnectWebSocket
+      unmount()
+
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+
+      // Simulate the WebSocket closing AFTER unmount (e.g., in-flight close event)
+      if (capturedOnClose) {
+        act(() => { capturedOnClose() })
+      }
+
+      // setTimeout should NOT have been called for reconnect because subscribers.size === 0
+      const reconnectCalls = setTimeoutSpy.mock.calls.filter(
+        call => typeof call[0] === 'function'
+      )
+      expect(reconnectCalls.length).toBe(0)
+
+      setTimeoutSpy.mockRestore()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('cancels pending reconnect timeout when last subscriber unmounts', async () => {
+    mockGetDemoMode.mockReturnValue(false)
+    mockIsAgentUnavailable.mockReturnValue(false)
+
+    let wsCreateCount = 0
+    const mockWs = createMockWebSocket(() => { wsCreateCount++ })
+
+    try {
+      const { unmount } = renderHook(() => useAIPredictions())
+      // One WS was created on mount
+      expect(wsCreateCount).toBe(1)
+
+      // Simulate WS close WHILE subscriber is still active → schedules a reconnect timeout
+      act(() => {
+        if (mockWs.onclose) (mockWs.onclose as () => void)()
+      })
+
+      // Unmounting removes the last subscriber → disconnectWebSocket() → cancels the pending timeout
+      unmount()
+
+      // Advance time past WS_RECONNECT_DELAY_MS (mocked as 5000ms)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000)
+      })
+
+      // No new WebSocket should have been created — the pending reconnect was cancelled
+      expect(wsCreateCount).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('closes WebSocket when last subscriber unmounts', async () => {
+    mockGetDemoMode.mockReturnValue(false)
+    mockIsAgentUnavailable.mockReturnValue(false)
+
+    const mockWs = createMockWebSocket()
+
+    try {
+      const { unmount } = renderHook(() => useAIPredictions())
+
+      // Simulate WS open so wsConnected is true
+      act(() => {
+        if (mockWs.onopen) (mockWs.onopen as () => void)()
+      })
+
+      expect(isWSConnected()).toBe(true)
+
+      unmount()
+
+      // disconnectWebSocket() must have run, clearing wsConnected
+      expect(isWSConnected()).toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   // ---------- NEW: confidence filtering on HTTP fetch ----------
 
   it('filters fetched predictions by minConfidence setting', async () => {

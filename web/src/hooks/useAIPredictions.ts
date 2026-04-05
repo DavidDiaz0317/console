@@ -52,6 +52,7 @@ let providers: string[] = []
 let isStale = false
 let wsConnected = false
 let ws: WebSocket | null = null
+let wsReconnectTimeout: ReturnType<typeof setTimeout> | null = null
 const subscribers = new Set<() => void>()
 
 // Notify all subscribers
@@ -181,8 +182,10 @@ function connectWebSocket(): void {
     ws.onclose = () => {
       wsConnected = false
       ws = null
-      // Reconnect after delay
-      setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS)
+      // Only reconnect if there are active subscribers
+      if (subscribers.size > 0) {
+        wsReconnectTimeout = setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS)
+      }
     }
 
     ws.onerror = () => {
@@ -193,6 +196,23 @@ function connectWebSocket(): void {
   } catch {
     // WebSocket not supported or connection failed
   }
+}
+
+/**
+ * Disconnect WebSocket and cancel any pending reconnect.
+ * Called when the last subscriber unmounts to stop all activity.
+ */
+function disconnectWebSocket(): void {
+  if (wsReconnectTimeout !== null) {
+    clearTimeout(wsReconnectTimeout)
+    wsReconnectTimeout = null
+  }
+  if (ws) {
+    ws.onclose = null // Prevent in-flight close events from triggering a ghost reconnect after intentional disconnect
+    ws.close()
+    ws = null
+  }
+  wsConnected = false
 }
 
 /**
@@ -268,6 +288,10 @@ export function useAIPredictions() {
       subscribers.delete(handleUpdate)
       if (pollRef.current) {
         clearInterval(pollRef.current)
+      }
+      // If no more subscribers remain, stop the WebSocket and cancel any pending reconnect
+      if (subscribers.size === 0) {
+        disconnectWebSocket()
       }
     }
   }, [])
