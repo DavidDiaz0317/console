@@ -53,7 +53,8 @@ func (k *KubectlProxy) ListContexts() ([]protocol.ClusterInfo, string) {
 		if cluster != nil {
 			server = cluster.Server
 		}
-		authMethod := detectAuthMethod(k.config.AuthInfos[ctx.AuthInfo])
+		authInfo := k.config.AuthInfos[ctx.AuthInfo]
+		authMethod := detectAuthMethod(authInfo)
 		clusters = append(clusters, protocol.ClusterInfo{
 			Name: name, Context: name, Server: server,
 			User: ctx.AuthInfo, Namespace: ctx.Namespace,
@@ -318,11 +319,12 @@ func (k *KubectlProxy) PreviewKubeconfig(yamlContent string) ([]KubeconfigPrevie
 
 	var entries []KubeconfigPreviewEntry
 	for name, ctx := range incoming.Contexts {
+		authInfo := incoming.AuthInfos[ctx.AuthInfo]
 		entry := KubeconfigPreviewEntry{
 			ContextName: name,
 			ClusterName: ctx.Cluster,
 			UserName:    ctx.AuthInfo,
-			AuthMethod:  detectAuthMethod(incoming.AuthInfos[ctx.AuthInfo]),
+			AuthMethod:  detectAuthMethod(authInfo),
 		}
 		if cluster, ok := incoming.Clusters[ctx.Cluster]; ok {
 			entry.ServerURL = cluster.Server

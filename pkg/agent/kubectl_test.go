@@ -232,6 +232,32 @@ func TestKubectlProxy_ListContexts(t *testing.T) {
 	}
 }
 
+func TestKubectlProxy_ListContexts_MissingAuthInfo(t *testing.T) {
+	// A context that references a user not present in AuthInfos must not panic
+	// and should report authMethod as "unknown".
+	config := &api.Config{
+		CurrentContext: "ctx-1",
+		Contexts: map[string]*api.Context{
+			"ctx-1": {Cluster: "cluster-1", AuthInfo: "missing-user", Namespace: "ns-1"},
+		},
+		Clusters: map[string]*api.Cluster{
+			"cluster-1": {Server: "https://c1.example.com"},
+		},
+		AuthInfos: map[string]*api.AuthInfo{},
+	}
+
+	proxy := &KubectlProxy{config: config}
+
+	clusters, _ := proxy.ListContexts()
+
+	if len(clusters) != 1 {
+		t.Fatalf("Got %d clusters, want 1", len(clusters))
+	}
+	if clusters[0].AuthMethod != "unknown" {
+		t.Errorf("AuthMethod = %q, want %q", clusters[0].AuthMethod, "unknown")
+	}
+}
+
 func TestKubectlProxy_RenameContext(t *testing.T) {
 	// Restore original execCommand after tests
 	defer func() { execCommand = exec.Command }()
