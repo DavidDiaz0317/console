@@ -931,6 +931,7 @@ func (s *Server) setupRoutes() {
 	notificationHandler := handlers.NewNotificationHandler(s.store, s.notificationService)
 	api.Post("/notifications/test", notificationHandler.TestNotification)
 	api.Post("/notifications/send", notificationHandler.SendAlertNotification)
+	api.Post("/notifications/send-batch", notificationHandler.SendBatchAlertNotifications)
 	api.Get("/notifications/config", notificationHandler.GetNotificationConfig)
 	api.Post("/notifications/config", notificationHandler.SaveNotificationConfig)
 

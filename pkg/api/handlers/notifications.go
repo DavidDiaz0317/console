@@ -91,6 +91,51 @@ func (h *NotificationHandler) SendAlertNotification(c *fiber.Ctx) error {
 	})
 }
 
+// BatchSendAlertNotificationRequest represents a batched alert notification request
+type BatchSendAlertNotificationRequest struct {
+	Notifications []SendAlertNotificationRequest `json:"notifications"`
+}
+
+// SendBatchAlertNotifications sends multiple alert notifications in a single request,
+// reducing HTTP round-trips when many alerts fire in the same evaluation cycle.
+// POST /api/notifications/send-batch
+func (h *NotificationHandler) SendBatchAlertNotifications(c *fiber.Ctx) error {
+	var req BatchSendAlertNotificationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if len(req.Notifications) == 0 {
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": "No notifications to send",
+		})
+	}
+
+	var errs []string
+	for _, item := range req.Notifications {
+		if err := h.service.SendAlertToChannels(item.Alert, item.Channels); err != nil {
+			slog.Error("[Notifications] batch item failed", "error", err)
+			errs = append(errs, err.Error())
+		}
+	}
+
+	if len(errs) > 0 {
+		return c.JSON(fiber.Map{
+			"success": false,
+			"errors":  errs,
+			"message": "One or more notifications failed to send",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Batch alert notifications sent successfully",
+	})
+}
+
 // GetNotificationConfig gets the notification configuration for a user
 // GET /api/notifications/config
 func (h *NotificationHandler) GetNotificationConfig(c *fiber.Ctx) error {

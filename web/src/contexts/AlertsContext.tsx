@@ -253,6 +253,26 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   const rulesRef = useRef(rules)
   rulesRef.current = rules
 
+  // Ref to always hold the latest alerts snapshot, used by the batch evaluator
+  // to run dedup checks and determine which new alerts require notifications.
+  const alertsRef = useRef(alerts)
+  alertsRef.current = alerts
+
+  // ── Batch evaluation state ──────────────────────────────────────────────
+  // During evaluateConditions, all alert state updates are accumulated here
+  // and applied in a single setAlerts call at the end of the cycle.
+  // This eliminates O(rules × alerts) sequential React state updates.
+  const evalBatchUpdaters = useRef<Array<(prev: Alert[]) => Alert[]>>([])
+  // Working copy of alerts maintained during batch evaluation so that each
+  // createAlert call can perform correct dedup against in-cycle mutations.
+  const evalWorkingAlertsRef = useRef<Alert[]>([])
+  // Flag: true while evaluateConditions is executing.
+  const isInBatchEvalRef = useRef(false)
+  // HTTP notifications queued during batch evaluation; sent as a single
+  // /api/notifications/send-batch request at the end of the cycle.
+  const pendingNotificationsRef = useRef<Array<{ alert: Alert; channels: AlertChannel[] }>>([])
+  // ────────────────────────────────────────────────────────────────────────
+
   // Track which alert dedup keys have already triggered a browser notification.
   // Maps dedup key → timestamp (ms) of last notification. Prevents the same alert
   // from sending repeated macOS notifications on every evaluation cycle.
@@ -526,7 +546,12 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       const firedAt = new Date().toISOString()
       let newAlert: Alert | undefined
 
-      setAlerts(prev => {
+      // Updater function shared by both the batch and non-batch paths.
+      // Setting `newAlert` inside the updater is intentional: it is a controlled
+      // side-effect that communicates the creation result out of the updater.
+      // React may replay this in Strict Mode, which is safe because the notification
+      // is only dispatched *after* the updater commits (see batch / queueMicrotask paths).
+      const updater = (prev: Alert[]): Alert[] => {
         // For per-resource alert types (pod_crash), each distinct resource (pod name) gets its
         // own alert. For cluster-aggregate types (gpu_usage, gpu_health_cronjob, node_not_ready,
         // etc.) use (ruleId, cluster) only so that dynamic resource strings like nodeNames
@@ -588,21 +613,41 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
           .sort((a, b) => new Date(b.resolvedAt ?? b.firedAt).getTime() - new Date(a.resolvedAt ?? a.firedAt).getTime())
           .slice(0, Math.max(0, MAX_ALERTS - firingAlerts.length))
         return [...firingAlerts, ...resolvedAlerts]
-      })
+      }
 
-      // Send notifications outside the state updater to avoid duplicate side effects
-      // if React replays the updater (Strict Mode / concurrent rendering).
-      // We use queueMicrotask so the notification runs after the state update commits.
-      queueMicrotask(() => {
-        if (newAlert && rule.channels && rule.channels.length > 0) {
+      if (isInBatchEvalRef.current) {
+        // Batch evaluation path: apply the updater synchronously to the working copy
+        // so subsequent createAlert calls in the same cycle see up-to-date dedup state,
+        // then queue it for the single setAlerts flush at the end of the cycle.
+        evalWorkingAlertsRef.current = updater(evalWorkingAlertsRef.current)
+        evalBatchUpdaters.current.push(updater)
+
+        // Collect notification if a genuinely new alert was created.
+        if (newAlert && rule.channels?.length) {
           const enabledChannels = rule.channels.filter(ch => ch.enabled)
           if (enabledChannels.length > 0) {
-            sendNotifications(newAlert, enabledChannels).catch(() => {
-              // Silent failure - notifications are best-effort
-            })
+            pendingNotificationsRef.current.push({ alert: newAlert, channels: enabledChannels })
           }
         }
-      })
+      } else {
+        // Non-batch path (direct calls outside evaluateConditions): apply immediately
+        // and send notifications via queueMicrotask after the state update commits.
+        setAlerts(updater)
+
+        // Send notifications outside the state updater to avoid duplicate side effects
+        // if React replays the updater (Strict Mode / concurrent rendering).
+        // We use queueMicrotask so the notification runs after the state update commits.
+        queueMicrotask(() => {
+          if (newAlert && rule.channels && rule.channels.length > 0) {
+            const enabledChannels = rule.channels.filter(ch => ch.enabled)
+            if (enabledChannels.length > 0) {
+              sendNotifications(newAlert, enabledChannels).catch(() => {
+                // Silent failure - notifications are best-effort
+              })
+            }
+          }
+        })
+      }
     },
     [isDemoMode]
   )
@@ -641,6 +686,53 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       }
     }
   }
+
+  // Send multiple alert notifications in a single HTTP request (batch endpoint).
+  // Called at the end of each evaluateConditions cycle to replace N individual
+  // /api/notifications/send requests with one /api/notifications/send-batch call.
+  const sendBatchNotifications = async (items: Array<{ alert: Alert; channels: AlertChannel[] }>) => {
+    if (items.length === 0) return
+    try {
+      const token = localStorage.getItem(STORAGE_KEY_AUTH_TOKEN)
+      if (!token) return
+
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+
+      const response = await fetch(`${API_BASE}/api/notifications/send-batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notifications: items }),
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
+      })
+
+      if (response.status === 401 || response.status === 403) return
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to send batch notifications')
+      }
+    } catch (error) {
+      if (error instanceof Error && !error.message.includes('fetch')) {
+        console.warn('Batch notification send failed:', error.message)
+      }
+    }
+  }
+
+  // Stable wrapper that routes a state-updater through the batch queue during
+  // an evaluation cycle, or applies it immediately via setAlerts otherwise.
+  // Using useCallback with empty deps ensures referential stability so evaluators
+  // don't need to be recreated when this is added to their dependency arrays.
+  const batchableSetAlerts = useCallback((updater: (prev: Alert[]) => Alert[]) => {
+    if (isInBatchEvalRef.current) {
+      evalWorkingAlertsRef.current = updater(evalWorkingAlertsRef.current)
+      evalBatchUpdaters.current.push(updater)
+    } else {
+      setAlerts(updater)
+    }
+  }, []) // stable — only reads refs and the stable useState setter
 
   // Run AI diagnosis on an alert
   const runAIDiagnosis = useCallback(
@@ -759,7 +851,7 @@ Please provide:
             'Resource'
           )
         } else {
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(
               a =>
                 a.ruleId === rule.id &&
@@ -778,7 +870,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate node ready condition — reads from refs for stable identity
@@ -804,7 +896,7 @@ Please provide:
             'Cluster'
           )
         } else {
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(
               a =>
                 a.ruleId === rule.id &&
@@ -823,7 +915,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate pod crash condition — reads from refs for stable identity
@@ -919,7 +1011,7 @@ Please provide:
         )
       } else {
         // Auto-resolve if condition clears
-        setAlerts(prev => {
+        batchableSetAlerts(prev => {
           const firingAlert = prev.find(
             a => a.ruleId === rule.id && a.status === 'firing'
           )
@@ -934,7 +1026,7 @@ Please provide:
         })
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate GPU Health CronJob — reads cached results from ref
@@ -1003,7 +1095,7 @@ Please provide:
           }
         } else {
           // Auto-resolve if all nodes are healthy
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(
               a =>
                 a.ruleId === rule.id &&
@@ -1022,7 +1114,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate disk pressure condition — checks for DiskPressure in cluster issues
@@ -1077,7 +1169,7 @@ Please provide:
           }
         } else {
           // Auto-resolve if DiskPressure clears — also clear the notification dedup key
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(
               a =>
                 a.ruleId === rule.id &&
@@ -1096,7 +1188,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate memory pressure condition — checks for MemoryPressure in cluster issues
@@ -1127,7 +1219,7 @@ Please provide:
             'Cluster'
           )
         } else {
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(
               a =>
                 a.ruleId === rule.id &&
@@ -1146,7 +1238,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate DNS failures — checks for CoreDNS pods crashing or not ready
@@ -1202,14 +1294,14 @@ Please provide:
 
       // Auto-resolve clusters that no longer have DNS issues
       const clustersWithIssues = new Set(clusterDNSIssues.keys())
-      setAlerts(prev => prev.map(a => {
+      batchableSetAlerts(prev => prev.map(a => {
         if (a.ruleId === rule.id && a.status === 'firing' && a.cluster && !clustersWithIssues.has(a.cluster)) {
           return { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() }
         }
         return a
       }))
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate certificate errors — checks for clusters with certificate connection failures
@@ -1258,7 +1350,7 @@ Please provide:
           // Auto-resolve if cert error clears — also clear dedup so next failure re-notifies
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           notifiedAlertKeysRef.current.delete(notifKey)
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === cluster.name)
             if (firingAlert) {
               return prev.map(a => a.id === firingAlert.id ? { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() } : a)
@@ -1268,7 +1360,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate cluster unreachable — checks for clusters with network/auth/timeout failures
@@ -1321,7 +1413,7 @@ Please provide:
           // Auto-resolve when cluster becomes reachable — clear dedup so next failure re-notifies
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           notifiedAlertKeysRef.current.delete(notifKey)
-          setAlerts(prev => {
+          batchableSetAlerts(prev => {
             const firingAlert = prev.find(a => a.ruleId === rule.id && a.status === 'firing' && a.cluster === cluster.name)
             if (firingAlert) {
               return prev.map(a => a.id === firingAlert.id ? { ...a, status: 'resolved' as const, resolvedAt: new Date().toISOString() } : a)
@@ -1331,7 +1423,7 @@ Please provide:
         }
       }
     },
-    [createAlert]
+    [createAlert, batchableSetAlerts]
   )
 
   // Evaluate nightly E2E failures — reads cached run data from ref
@@ -1415,6 +1507,16 @@ Please provide:
     isEvaluatingRef.current = true
     setIsEvaluating(true)
 
+    // Initialise batch evaluation workspace.
+    // All alert state mutations that occur during the evaluation loop are
+    // accumulated in evalBatchUpdaters / evalWorkingAlertsRef and flushed in a
+    // single setAlerts call below — eliminating O(rules × alerts) sequential
+    // React state updates that previously caused main-thread jank.
+    isInBatchEvalRef.current = true
+    evalWorkingAlertsRef.current = alertsRef.current
+    evalBatchUpdaters.current = []
+    pendingNotificationsRef.current = []
+
     try {
       const enabledRules = rulesRef.current.filter(r => r.enabled)
 
@@ -1458,6 +1560,27 @@ Please provide:
         }
       }
     } finally {
+      // Flush all accumulated state mutations in a single React state update,
+      // composing each queued updater sequentially so the final result is
+      // identical to N individual setAlerts calls — but with only one render.
+      if (evalBatchUpdaters.current.length > 0) {
+        const updaters = evalBatchUpdaters.current
+        setAlerts(prev => updaters.reduce((acc, fn) => fn(acc), prev))
+      }
+
+      // Dispatch all queued HTTP notifications as a single batch request,
+      // replacing N concurrent /api/notifications/send calls with one
+      // /api/notifications/send-batch call.
+      const pendingNotifs = pendingNotificationsRef.current
+      if (pendingNotifs.length > 0) {
+        sendBatchNotifications(pendingNotifs).catch(() => {})
+      }
+
+      // Clean up batch workspace before releasing the guard flag.
+      isInBatchEvalRef.current = false
+      evalBatchUpdaters.current = []
+      pendingNotificationsRef.current = []
+
       saveNotifiedAlertKeys(notifiedAlertKeysRef.current)
       isEvaluatingRef.current = false
       setIsEvaluating(false)

@@ -4367,4 +4367,138 @@ describe('AlertsContext — wave 2 deep coverage', () => {
     expect(result.current.isLoadingData).toBe(true)
     expect(result.current.dataError).toBeNull()
   })
+
+  // ── W2-35. Batch evaluation: single setAlerts call per cycle ─────────
+
+  it('evaluateConditions batches multiple alert creations into a single state update', async () => {
+    // Create two rules that will both fire on the same cluster data
+    const gpuRule: AlertRule = {
+      id: 'batch-gpu',
+      name: 'Batch GPU',
+      description: '',
+      enabled: true,
+      condition: { type: 'gpu_usage', threshold: 50 },
+      severity: 'warning',
+      channels: [],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    const nodeRule: AlertRule = {
+      id: 'batch-node',
+      name: 'Batch Node',
+      description: '',
+      enabled: true,
+      condition: { type: 'node_not_ready' },
+      severity: 'critical',
+      channels: [],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([gpuRule, nodeRule]))
+    localStorage.setItem('kc_alerts', JSON.stringify([]))
+
+    // Both rules fire: GPU at 80% and node unhealthy
+    mockMCPData = {
+      gpuNodes: [{ cluster: 'batch-cluster', gpuCount: 10, gpuAllocated: 8 }],
+      podIssues: [],
+      clusters: [{ name: 'batch-cluster', healthy: false, nodeCount: 2 }],
+      isLoading: false,
+      error: null,
+    }
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.evaluateConditions()
+    })
+
+    // Both alerts should have been created in the same cycle
+    const gpuAlerts = result.current.alerts.filter(a => a.ruleId === 'batch-gpu')
+    const nodeAlerts = result.current.alerts.filter(a => a.ruleId === 'batch-node')
+    expect(gpuAlerts.length).toBe(1)
+    expect(nodeAlerts.length).toBe(1)
+  })
+
+  // ── W2-36. Batch evaluation: single batch HTTP request for notifications ─
+
+  it('evaluateConditions sends a single send-batch request when multiple alerts fire', async () => {
+    localStorage.setItem('auth_token', 'test-token')
+
+    const rule1: AlertRule = {
+      id: 'batch-notif-1',
+      name: 'Batch Notif 1',
+      description: '',
+      enabled: true,
+      condition: { type: 'node_not_ready' },
+      severity: 'critical',
+      channels: [{ type: 'slack', enabled: true, config: { slackWebhookUrl: 'https://hooks.slack.com/test' } }],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    const rule2: AlertRule = {
+      id: 'batch-notif-2',
+      name: 'Batch Notif 2',
+      description: '',
+      enabled: true,
+      condition: { type: 'disk_pressure' },
+      severity: 'warning',
+      channels: [{ type: 'slack', enabled: true, config: { slackWebhookUrl: 'https://hooks.slack.com/test' } }],
+      aiDiagnose: false,
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    }
+    localStorage.setItem('kc_alert_rules', JSON.stringify([rule1, rule2]))
+    localStorage.setItem('kc_alerts', JSON.stringify([]))
+
+    mockMCPData = {
+      gpuNodes: [],
+      podIssues: [],
+      clusters: [
+        {
+          name: 'bn-cluster',
+          healthy: false,
+          nodeCount: 1,
+          issues: ['DiskPressure on bn-node-1'],
+        },
+      ],
+      isLoading: false,
+      error: null,
+    }
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), { status: 200 })
+    )
+
+    const { result } = renderHook(() => useAlertsContext(), { wrapper })
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    await act(async () => {
+      result.current.evaluateConditions()
+    })
+
+    // Let async batch send resolve
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+
+    // Only one call to the batch endpoint (not N individual /send calls)
+    const batchCalls = fetchSpy.mock.calls.filter(([url]) =>
+      typeof url === 'string' && url.includes('/api/notifications/send-batch')
+    )
+    const individualCalls = fetchSpy.mock.calls.filter(([url]) =>
+      typeof url === 'string' && url.endsWith('/api/notifications/send')
+    )
+    expect(batchCalls.length).toBe(1)
+    expect(individualCalls.length).toBe(0)
+
+    // The batch payload should contain both notifications
+    const batchBody = JSON.parse(batchCalls[0][1]?.body as string)
+    expect(batchBody.notifications.length).toBe(2)
+
+    fetchSpy.mockRestore()
+  })
 })
