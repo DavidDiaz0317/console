@@ -1026,7 +1026,7 @@ export function MissionSidebar() {
                     // Always show the mission's chat first (#4549)
                     setActiveMission(mission.id)
                     // Also open Mission Control dialog for planning missions
-                    if (mission.title === 'Mission Control Planning') {
+                    if (mission.context?.missionControlPlanning) {
                       setShowMissionControl(true)
                     }
                   }}
@@ -1035,7 +1035,7 @@ export function MissionSidebar() {
                   onExpand={() => {
                     setActiveMission(mission.id)
                     setFullScreen(true)
-                    if (mission.title === 'Mission Control Planning') {
+                    if (mission.context?.missionControlPlanning) {
                       setShowMissionControl(true)
                     }
                   }}

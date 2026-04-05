@@ -347,10 +347,11 @@ Include real CNCF projects only. Consider dependencies between projects.`
 
       if (!missionId) {
         missionId = startMission({
-          title: 'Mission Control Planning',
+          title: currentState.title || 'Mission Control',
           description: 'AI-assisted fix planning',
           type: 'custom',
           initialPrompt: prompt,
+          context: { missionControlPlanning: true },
         })
         setState((prev) => ({
           ...prev,
