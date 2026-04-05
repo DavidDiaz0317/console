@@ -1061,7 +1061,7 @@ export function MissionSidebar() {
               {/* Load More button */}
               {hasMoreMissions && (
                 <button
-                  onClick={() => setVisibleMissionCount(c => c + MISSIONS_PAGE_SIZE)}
+                  onClick={() => setVisibleMissionCount(c => Math.min(c + MISSIONS_PAGE_SIZE, activeMissions.length))}
                   className="w-full py-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-primary/50 rounded-lg transition-colors"
                 >
                   {t('missionSidebar.loadMore', {
