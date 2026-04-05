@@ -291,9 +291,9 @@ export function ComplianceChecksDrillDown({ data }: Props) {
               <span className="text-right w-20">Tool</span>
             </div>
 
-            {pagedRows.map((row, i) => (
+            {pagedRows.map((row) => (
               <div
-                key={`${row.tool}-${row.cluster}-${row.id}-${i}`}
+                key={`${row.tool}-${row.cluster}-${row.id}`}
                 className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-2 text-xs rounded-lg hover:bg-secondary/30 transition-colors items-center"
               >
                 {/* Name + cluster */}
