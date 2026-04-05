@@ -602,10 +602,12 @@ func (s *Server) handleCancelChat(conn *websocket.Conn, msg protocol.Message, wr
 
 	s.activeChatCtxsMu.Lock()
 	cancelFn, ok := s.activeChatCtxs[req.SessionID]
+	if ok {
+		cancelFn()
+	}
 	s.activeChatCtxsMu.Unlock()
 
 	if ok {
-		cancelFn()
 		slog.Info("[Chat] cancelled chat", "sessionID", req.SessionID)
 	} else {
 		slog.Info("[Chat] no active chat to cancel", "sessionID", req.SessionID)
@@ -658,10 +660,12 @@ func (s *Server) handleCancelChatHTTP(w http.ResponseWriter, r *http.Request) {
 
 	s.activeChatCtxsMu.Lock()
 	cancelFn, ok := s.activeChatCtxs[req.SessionID]
+	if ok {
+		cancelFn()
+	}
 	s.activeChatCtxsMu.Unlock()
 
 	if ok {
-		cancelFn()
 		slog.Info("[Chat] cancelled chat via HTTP", "sessionID", req.SessionID)
 	} else {
 		slog.Info("[Chat] no active chat to cancel via HTTP", "sessionID", req.SessionID)
