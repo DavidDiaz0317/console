@@ -273,27 +273,23 @@ export function GlobalFiltersProvider({ children }: { children: ReactNode }) {
   }, [availableClusters.length])
 
   const toggleCluster = useCallback((cluster: string) => {
-    setSelectedClustersState(prev => {
-      // If currently "all" (empty), switch to all except this one
-      if (prev.length === 0) {
-        return availableClusters.filter(c => c !== cluster)
-      }
-
-      if (prev.includes(cluster)) {
-        // Remove cluster - if last one, revert to all
-        const newSelection = prev.filter(c => c !== cluster)
-        return newSelection.length === 0 ? [] : newSelection
-      } else {
-        // Add cluster
-        const newSelection = [...prev, cluster]
-        // If all clusters are now selected, switch to "all" mode
-        if (newSelection.length === availableClusters.length) {
-          return []
-        }
-        return newSelection
-      }
-    })
-  }, [availableClusters])
+    let newSelection: string[]
+    // If currently "all" (empty), switch to all except this one
+    if (selectedClusters.length === 0) {
+      newSelection = availableClusters.filter(c => c !== cluster)
+    } else if (selectedClusters.includes(cluster)) {
+      // Remove cluster - if last one, revert to all
+      const filtered = selectedClusters.filter(c => c !== cluster)
+      newSelection = filtered.length === 0 ? [] : filtered
+    } else {
+      // Add cluster
+      const added = [...selectedClusters, cluster]
+      // If all clusters are now selected, switch to "all" mode
+      newSelection = added.length === availableClusters.length ? [] : added
+    }
+    setSelectedClustersState(newSelection)
+    emitGlobalClusterFilterChanged(newSelection.length, availableClusters.length)
+  }, [selectedClusters, availableClusters])
 
   const selectAllClusters = useCallback(() => {
     setSelectedClustersState([])
@@ -338,27 +334,23 @@ export function GlobalFiltersProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toggleSeverity = useCallback((severity: SeverityLevel) => {
-    setSelectedSeveritiesState(prev => {
-      // If currently "all" (empty), switch to all except this one
-      if (prev.length === 0) {
-        return SEVERITY_LEVELS.filter(s => s !== severity)
-      }
-
-      if (prev.includes(severity)) {
-        // Remove severity - if last one, revert to all
-        const newSelection = prev.filter(s => s !== severity)
-        return newSelection.length === 0 ? [] : newSelection
-      } else {
-        // Add severity
-        const newSelection = [...prev, severity]
-        // If all severities are now selected, switch to "all" mode
-        if (newSelection.length === SEVERITY_LEVELS.length) {
-          return []
-        }
-        return newSelection
-      }
-    })
-  }, [])
+    let newSelection: SeverityLevel[]
+    // If currently "all" (empty), switch to all except this one
+    if (selectedSeverities.length === 0) {
+      newSelection = SEVERITY_LEVELS.filter(s => s !== severity)
+    } else if (selectedSeverities.includes(severity)) {
+      // Remove severity - if last one, revert to all
+      const filtered = selectedSeverities.filter(s => s !== severity)
+      newSelection = filtered.length === 0 ? [] : filtered
+    } else {
+      // Add severity
+      const added = [...selectedSeverities, severity]
+      // If all severities are now selected, switch to "all" mode
+      newSelection = added.length === SEVERITY_LEVELS.length ? [] : added
+    }
+    setSelectedSeveritiesState(newSelection)
+    emitGlobalSeverityFilterChanged(newSelection.length)
+  }, [selectedSeverities])
 
   const selectAllSeverities = useCallback(() => {
     setSelectedSeveritiesState([])
@@ -381,27 +373,23 @@ export function GlobalFiltersProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toggleStatus = useCallback((status: StatusLevel) => {
-    setSelectedStatusesState(prev => {
-      // If currently "all" (empty), switch to all except this one
-      if (prev.length === 0) {
-        return STATUS_LEVELS.filter(s => s !== status)
-      }
-
-      if (prev.includes(status)) {
-        // Remove status - if last one, revert to all
-        const newSelection = prev.filter(s => s !== status)
-        return newSelection.length === 0 ? [] : newSelection
-      } else {
-        // Add status
-        const newSelection = [...prev, status]
-        // If all statuses are now selected, switch to "all" mode
-        if (newSelection.length === STATUS_LEVELS.length) {
-          return []
-        }
-        return newSelection
-      }
-    })
-  }, [])
+    let newSelection: StatusLevel[]
+    // If currently "all" (empty), switch to all except this one
+    if (selectedStatuses.length === 0) {
+      newSelection = STATUS_LEVELS.filter(s => s !== status)
+    } else if (selectedStatuses.includes(status)) {
+      // Remove status - if last one, revert to all
+      const filtered = selectedStatuses.filter(s => s !== status)
+      newSelection = filtered.length === 0 ? [] : filtered
+    } else {
+      // Add status
+      const added = [...selectedStatuses, status]
+      // If all statuses are now selected, switch to "all" mode
+      newSelection = added.length === STATUS_LEVELS.length ? [] : added
+    }
+    setSelectedStatusesState(newSelection)
+    emitGlobalStatusFilterChanged(newSelection.length)
+  }, [selectedStatuses])
 
   const selectAllStatuses = useCallback(() => {
     setSelectedStatusesState([])

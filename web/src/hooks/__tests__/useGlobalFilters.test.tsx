@@ -1652,15 +1652,40 @@ describe('analytics emissions', () => {
     expect(mockEmitStatus).toHaveBeenCalledWith(1)
   })
 
-  it('does not emit analytics for toggle operations (only setState)', () => {
+  it('emits cluster filter changed when toggleCluster is called', () => {
     const { result } = renderHook(() => useGlobalFilters(), { wrapper })
 
+    // Starting from all-selected (empty), toggling cluster-a selects all except cluster-a
     act(() => {
       result.current.toggleCluster('cluster-a')
     })
 
-    // toggleCluster uses setSelectedClustersState directly, not setSelectedClusters
-    expect(mockEmitCluster).not.toHaveBeenCalled()
+    expect(mockEmitCluster).toHaveBeenCalledTimes(1)
+    expect(mockEmitCluster).toHaveBeenCalledWith(1, 2)  // 1 selected, 2 available
+  })
+
+  it('emits severity filter changed when toggleSeverity is called', () => {
+    const { result } = renderHook(() => useGlobalFilters(), { wrapper })
+
+    // Starting from all-selected (empty), toggling 'critical' selects all except critical
+    act(() => {
+      result.current.toggleSeverity('critical')
+    })
+
+    expect(mockEmitSeverity).toHaveBeenCalledTimes(1)
+    expect(mockEmitSeverity).toHaveBeenCalledWith(SEVERITY_LEVELS.length - 1)
+  })
+
+  it('emits status filter changed when toggleStatus is called', () => {
+    const { result } = renderHook(() => useGlobalFilters(), { wrapper })
+
+    // Starting from all-selected (empty), toggling 'pending' selects all except pending
+    act(() => {
+      result.current.toggleStatus('pending')
+    })
+
+    expect(mockEmitStatus).toHaveBeenCalledTimes(1)
+    expect(mockEmitStatus).toHaveBeenCalledWith(STATUS_LEVELS.length - 1)
   })
 
   it('does not emit analytics for selectAll/deselectAll operations', () => {
