@@ -317,8 +317,11 @@ describe('useActiveUsers', () => {
 
   // ── Smoothing takes max of recent counts ──────────────────────────────
   it('smoothing uses max of recent counts to prevent flicker', async () => {
-    // Use mockResolvedValue (not Once) so the POST heartbeat and the GET
-    // fetchActiveUsers both return the high count — no mock-queue ordering issues.
+    // Use mockResolvedValue (not Once) so both the POST heartbeat (sendHeartbeat)
+    // and the GET fetchActiveUsers call receive the high count without depending
+    // on mock-queue ordering. Using mockResolvedValueOnce here caused the POST
+    // to consume the once-value first, leaving the GET to fall back to the default
+    // { activeUsers: 5 } mock — causing activeUsers to read 5 instead of 10.
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ activeUsers: 10, totalConnections: 10 }), {
         status: 200,

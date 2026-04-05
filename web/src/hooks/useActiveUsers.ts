@@ -55,6 +55,19 @@ const SMOOTHING_WINDOW = 5 // Keep last 5 counts
 
 /**
  * Reset all singleton state. Only for use in tests.
+ *
+ * Call this in `beforeEach` to ensure each test starts with a clean slate —
+ * module-level singletons otherwise persist across test runs within the same
+ * vitest worker, causing cross-test state pollution.
+ *
+ * @example
+ * ```ts
+ * import { useActiveUsers, _resetForTesting } from '../useActiveUsers'
+ *
+ * beforeEach(() => {
+ *   _resetForTesting()
+ * })
+ * ```
  * @internal
  */
 export function _resetForTesting() {
