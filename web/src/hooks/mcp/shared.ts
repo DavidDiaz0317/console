@@ -1145,13 +1145,10 @@ async function processClusterHealth(cluster: ClusterInfo): Promise<void> {
         // Distinguish between definitive errors and transient timeouts.
         // A timeout means the health check took too long (large cluster, slow network)
         // but does NOT mean the cluster is genuinely unreachable.
-        const errorMsg = health.errorMessage?.toLowerCase() || ''
-        const isDefinitiveError = errorMsg.includes('connection refused') ||
-          errorMsg.includes('connection reset') ||
-          errorMsg.includes('no such host') ||
-          errorMsg.includes('network is unreachable') ||
-          errorMsg.includes('certificate') ||
-          errorMsg.includes('unauthorized') ||
+        // Rely on errorType (set by the backend classifier) rather than raw error message
+        // strings, since error messages are sanitized server-side to avoid leaking
+        // internal infrastructure details.
+        const isDefinitiveError =
           health.errorType === 'network' ||
           health.errorType === 'certificate' ||
           health.errorType === 'auth'

@@ -189,7 +189,8 @@ func TestMCPGetPods_NetworkErrorReturnsUnavailable(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "network", payload["errorType"])
-	assert.Contains(t, payload["errorMessage"], "connection refused")
+	// Raw error details must not be exposed in the response
+	assert.Nil(t, payload["errorMessage"], "raw error message must not be returned to clients")
 }
 
 func TestMCPGetDaemonSets_SingleClusterEmptyIsArray(t *testing.T) {

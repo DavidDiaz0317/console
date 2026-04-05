@@ -45,6 +45,7 @@ func classifyError(errMsg string) string {
 
 	// Network errors
 	if strings.Contains(lowerMsg, "connection refused") ||
+		strings.Contains(lowerMsg, "connection reset") ||
 		strings.Contains(lowerMsg, "no route to host") ||
 		strings.Contains(lowerMsg, "network unreachable") ||
 		strings.Contains(lowerMsg, "dial tcp") ||
@@ -62,6 +63,25 @@ func classifyError(errMsg string) string {
 	}
 
 	return "unknown"
+}
+
+// sanitizedClusterErrorMessage returns a generic, user-friendly error message
+// for a given error type. Raw error details are logged server-side only and
+// must never be returned in API responses to avoid leaking internal
+// infrastructure details (IPs, endpoints, certificates, etc.).
+func sanitizedClusterErrorMessage(errorType string) string {
+	switch errorType {
+	case "network":
+		return "Unable to connect to cluster"
+	case "auth":
+		return "Authentication failed"
+	case "timeout":
+		return "Connection timed out"
+	case "certificate":
+		return "Certificate validation failed"
+	default:
+		return "Cluster unavailable"
+	}
 }
 
 // GetClusterHealth returns health status for a cluster
@@ -89,13 +109,14 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 	client, err := m.GetClient(contextName)
 	if err != nil {
 		errMsg := err.Error()
+		errType := classifyError(errMsg)
 		return &ClusterHealth{
 			Cluster:      contextName,
 			Healthy:      false,
 			Reachable:    false,
-			ErrorType:    classifyError(errMsg),
-			ErrorMessage: errMsg,
-			Issues:       []string{fmt.Sprintf("Failed to connect: %v", err)},
+			ErrorType:    errType,
+			ErrorMessage: sanitizedClusterErrorMessage(errType),
+			Issues:       []string{"Failed to connect to cluster"},
 			CheckedAt:    now,
 		}, nil
 	}
@@ -139,11 +160,12 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 	// Process nodes - determines reachability
 	if nodesErr != nil {
 		errMsg := nodesErr.Error()
+		errType := classifyError(errMsg)
 		health.Healthy = false
 		health.Reachable = false
-		health.ErrorType = classifyError(errMsg)
-		health.ErrorMessage = errMsg
-		health.Issues = append(health.Issues, fmt.Sprintf("Failed to list nodes: %v", nodesErr))
+		health.ErrorType = errType
+		health.ErrorMessage = sanitizedClusterErrorMessage(errType)
+		health.Issues = append(health.Issues, "Failed to retrieve cluster nodes")
 	} else if nodes != nil {
 		health.NodeCount = len(nodes.Items)
 		var totalCPU int64

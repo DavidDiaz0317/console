@@ -56,6 +56,7 @@ func waitWithDeadline(wg *sync.WaitGroup, cancel context.CancelFunc, deadline ti
 // certificate) are returned as 200 with a "clusterStatus":"unavailable"
 // payload so the frontend can show a degraded state instead of a broken page.
 // All other errors are returned as 500 Internal Server Error.
+// Raw error details are logged server-side only and never exposed to clients.
 func handleK8sError(c *fiber.Ctx, err error) error {
 	errType := k8s.ClassifyError(err.Error())
 	switch errType {
@@ -64,7 +65,6 @@ func handleK8sError(c *fiber.Ctx, err error) error {
 		return c.JSON(fiber.Map{
 			"clusterStatus": "unavailable",
 			"errorType":     errType,
-			"errorMessage":  err.Error(),
 		})
 	default:
 		slog.Error("[MCP] internal error", "error", err)
