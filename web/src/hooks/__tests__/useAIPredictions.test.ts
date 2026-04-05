@@ -591,6 +591,32 @@ describe('useAIPredictions', () => {
     clearIntervalSpy.mockRestore()
   })
 
+  it('multiple instances share a single polling interval', () => {
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+
+    const { unmount: unmount1 } = renderHook(() => useAIPredictions())
+    const { unmount: unmount2 } = renderHook(() => useAIPredictions())
+
+    // Only one interval should have been created for the shared key
+    const pollIntervalCalls = setIntervalSpy.mock.calls.filter(
+      args => args[1] === 30000
+    )
+    expect(pollIntervalCalls.length).toBe(1)
+
+    // Unmounting the first instance should NOT clear the interval (second still active)
+    const clearCallsBefore = clearIntervalSpy.mock.calls.length
+    unmount1()
+    expect(clearIntervalSpy.mock.calls.length).toBe(clearCallsBefore)
+
+    // Unmounting the last instance SHOULD clear the interval
+    unmount2()
+    expect(clearIntervalSpy.mock.calls.length).toBeGreaterThan(clearCallsBefore)
+
+    setIntervalSpy.mockRestore()
+    clearIntervalSpy.mockRestore()
+  })
+
   // ---------- NEW: settings change event listener cleanup ----------
 
   it('removes settings change event listener on unmount', () => {

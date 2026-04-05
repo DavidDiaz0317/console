@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type {
   AIPrediction,
   AIPredictionsResponse,
@@ -9,6 +9,7 @@ import { getDemoMode } from './useDemoMode'
 import { isAgentUnavailable, reportAgentDataSuccess, reportAgentDataError } from './useLocalAgent'
 import { setActiveTokenCategory } from './useTokenUsage'
 import { fullFetchClusters, clusterCache } from './mcp/shared'
+import { subscribePolling } from './mcp/pollingManager'
 
 import { LOCAL_AGENT_WS_URL, LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 import { FETCH_DEFAULT_TIMEOUT_MS, AI_PREDICTION_TIMEOUT_MS, WS_RECONNECT_DELAY_MS, UI_FEEDBACK_TIMEOUT_MS, RETRY_DELAY_MS } from '../lib/constants/network'
@@ -241,7 +242,6 @@ export function useAIPredictions() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [stale, setStale] = useState(isStale)
   const [activeProviders, setActiveProviders] = useState<string[]>(providers)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Subscribe to state updates
   useEffect(() => {
@@ -261,14 +261,12 @@ export function useAIPredictions() {
     // Initial fetch
     fetchAIPredictions()
 
-    // Set up polling as fallback
-    pollRef.current = setInterval(fetchAIPredictions, POLL_INTERVAL)
+    // Set up shared polling as fallback (deduplicated across all hook instances)
+    const unsubscribePolling = subscribePolling('ai-predictions', POLL_INTERVAL, fetchAIPredictions)
 
     return () => {
       subscribers.delete(handleUpdate)
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-      }
+      unsubscribePolling()
     }
   }, [])
 
