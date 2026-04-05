@@ -121,3 +121,32 @@ func TestPredictionWorker(t *testing.T) {
 		t.Error("Worker still running analysis")
 	}
 }
+
+func TestPredictionWorkerStopCancelsContext(t *testing.T) {
+	m, _ := k8s.NewMultiClusterClient("")
+	reg := &Registry{
+		providers:     make(map[string]AIProvider),
+		selectedAgent: make(map[string]string),
+	}
+	broadcast := func(msg string, payload interface{}) {}
+	trackTokens := func(usage *ProviderTokenUsage) {}
+
+	worker := NewPredictionWorker(m, reg, broadcast, trackTokens)
+
+	// Verify that the worker's context is not yet cancelled before Stop()
+	select {
+	case <-worker.ctx.Done():
+		t.Fatal("Worker context should not be cancelled before Stop()")
+	default:
+	}
+
+	worker.Stop()
+
+	// After Stop(), the worker's context must be cancelled promptly
+	select {
+	case <-worker.ctx.Done():
+		// expected
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Worker context was not cancelled after Stop()")
+	}
+}

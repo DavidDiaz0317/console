@@ -79,6 +79,8 @@ type PredictionWorker struct {
 	running     bool
 	mu          sync.RWMutex
 	stopCh      chan struct{}
+	ctx         context.Context
+	ctxCancel   context.CancelFunc
 
 	// WebSocket broadcast function
 	broadcast func(msgType string, payload interface{})
@@ -90,6 +92,7 @@ type PredictionWorker struct {
 
 // NewPredictionWorker creates a new prediction worker
 func NewPredictionWorker(k8sClient *k8s.MultiClusterClient, registry *Registry, broadcast func(string, interface{}), trackTokens func(*ProviderTokenUsage)) *PredictionWorker {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &PredictionWorker{
 		k8sClient:   k8sClient,
 		registry:    registry,
@@ -97,6 +100,8 @@ func NewPredictionWorker(k8sClient *k8s.MultiClusterClient, registry *Registry, 
 		predictions: []AIPrediction{},
 		providers:   []string{},
 		stopCh:      make(chan struct{}),
+		ctx:         ctx,
+		ctxCancel:   cancel,
 		broadcast:   broadcast,
 		trackTokens: trackTokens,
 	}
@@ -109,6 +114,7 @@ func (w *PredictionWorker) Start() {
 
 // Stop gracefully shuts down the worker
 func (w *PredictionWorker) Stop() {
+	w.ctxCancel()
 	close(w.stopCh)
 }
 
@@ -222,7 +228,7 @@ func (w *PredictionWorker) runAnalysis(specificProviders []string) {
 	slog.Info("[PredictionWorker] Starting AI prediction analysis")
 
 	// Gather cluster data
-	ctx, cancel := context.WithTimeout(context.Background(), predictionTimeout)
+	ctx, cancel := context.WithTimeout(w.ctx, predictionTimeout)
 	defer cancel()
 
 	clusterData, err := w.gatherClusterData(ctx)
