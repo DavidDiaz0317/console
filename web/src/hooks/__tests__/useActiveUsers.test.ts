@@ -14,7 +14,7 @@ vi.mock('../../lib/constants', () => ({
   STORAGE_KEY_TOKEN: 'kc-auth-token',
 }))
 
-import { useActiveUsers } from '../useActiveUsers'
+import { useActiveUsers, _resetForTesting } from '../useActiveUsers'
 
 describe('useActiveUsers', () => {
   beforeEach(() => {
@@ -22,6 +22,7 @@ describe('useActiveUsers', () => {
     localStorage.clear()
     sessionStorage.clear()
     vi.clearAllMocks()
+    _resetForTesting()
     mockGetDemoMode.mockReturnValue(true)
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ activeUsers: 5, totalConnections: 8 }), {
@@ -316,8 +317,9 @@ describe('useActiveUsers', () => {
 
   // ── Smoothing takes max of recent counts ──────────────────────────────
   it('smoothing uses max of recent counts to prevent flicker', async () => {
-    // First response: high count
-    vi.mocked(fetch).mockResolvedValueOnce(
+    // Use mockResolvedValue (not Once) so the POST heartbeat and the GET
+    // fetchActiveUsers both return the high count — no mock-queue ordering issues.
+    vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ activeUsers: 10, totalConnections: 10 }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

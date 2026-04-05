@@ -53,6 +53,26 @@ let heartbeatTimeoutId: ReturnType<typeof setTimeout> | null = null
 const recentCounts: number[] = []
 const SMOOTHING_WINDOW = 5 // Keep last 5 counts
 
+/**
+ * Reset all singleton state. Only for use in tests.
+ * @internal
+ */
+export function _resetForTesting() {
+  sharedInfo = { activeUsers: 0, totalConnections: 0 }
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
+  pollStarted = false
+  consecutiveFailures = 0
+  hasFetchedOnce = false
+  subscribers.clear()
+  stateSubscribers.clear()
+  stopHeartbeat()
+  stopPresenceConnection()
+  recentCounts.length = 0
+}
+
 // Generate a unique session ID per browser tab (survives page navigation, not tab close)
 function getSessionId(): string {
   let id = sessionStorage.getItem('kc-session-id')
@@ -86,8 +106,9 @@ function startHeartbeat() {
   if (heartbeatStarted) return
   heartbeatStarted = true
 
-  // Send initial heartbeat immediately, then poll for count
-  sendHeartbeat().then(() => fetchActiveUsers()).catch(() => { /* best-effort */ })
+  // Send initial heartbeat to register this session (best-effort; count is
+  // fetched independently by startPolling so we don't chain fetchActiveUsers here).
+  sendHeartbeat().catch(() => { /* best-effort */ })
 
   // Subsequent heartbeats with jitter to spread them out
   function scheduleNextHeartbeat() {

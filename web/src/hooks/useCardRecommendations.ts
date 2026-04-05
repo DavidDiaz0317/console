@@ -125,9 +125,10 @@ export function useCardRecommendations(currentCardTypes: string[]) {
       })
     }
 
-    // Check for security issues
+    // Check for security issues — always surface security findings regardless
+    // of whether the card is already in the dashboard (critical visibility).
     const highSeveritySecurityIssues = (securityIssues || []).filter(i => i.severity === 'high')
-    if ((securityIssues || []).length > 0 && !currentCardTypes.includes('security_issues')) {
+    if ((securityIssues || []).length > 0) {
       newRecommendations.push({
         id: 'rec-security',
         cardType: 'security_issues',
