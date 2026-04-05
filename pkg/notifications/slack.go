@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -155,7 +156,10 @@ func (s *SlackNotifier) sendSlackMessage(msg slackMessage) error {
 	if err != nil {
 		return fmt.Errorf("failed to send slack notification: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("slack API returned status %d", resp.StatusCode)
