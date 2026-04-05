@@ -114,6 +114,8 @@ export function NodeConditions() {
     )
   }
 
+  const isCordonAction = confirmAction?.action === 'cordon'
+
   return (
     <div className="space-y-2 p-1">
       <div className="flex gap-2 text-xs">
@@ -201,10 +203,10 @@ export function NodeConditions() {
         isOpen={confirmAction !== null}
         onClose={() => setConfirmAction(null)}
         onConfirm={handleConfirm}
-        title={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordonConfirmTitle' : 'nodeConditions.uncordonConfirmTitle')}
-        message={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordonConfirmMessage' : 'nodeConditions.uncordonConfirmMessage', { node: confirmAction?.nodeName ?? '' })}
-        confirmLabel={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordon' : 'nodeConditions.uncordon')}
-        variant={confirmAction?.action === 'cordon' ? 'warning' : 'info'}
+        title={t(isCordonAction ? 'nodeConditions.cordonConfirmTitle' : 'nodeConditions.uncordonConfirmTitle')}
+        message={t(isCordonAction ? 'nodeConditions.cordonConfirmMessage' : 'nodeConditions.uncordonConfirmMessage', { node: confirmAction?.nodeName ?? '' })}
+        confirmLabel={t(isCordonAction ? 'nodeConditions.cordon' : 'nodeConditions.uncordon')}
+        variant={isCordonAction ? 'warning' : 'info'}
         isLoading={actionPending !== null}
       />
     </div>
