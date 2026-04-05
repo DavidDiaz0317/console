@@ -320,10 +320,26 @@ describe('useDashboardCards', () => {
       })
 
       expect(result.current.cards).toEqual(DEFAULT_CARDS)
-      // Note: resetToDefaults calls localStorage.removeItem, but the useEffect
-      // that watches `cards` re-persists the defaultCards immediately after.
-      // The net effect is that localStorage contains the default cards again.
-      expect(readStoredCards()).toEqual(DEFAULT_CARDS)
+      // After fix: the persistence effect removes the key instead of
+      // re-writing it, so localStorage should have no entry for this key.
+      expect(localStorage.getItem(TEST_STORAGE_KEY)).toBeNull()
+    })
+
+    it('isCustomized returns false after resetToDefaults', () => {
+      const { result } = renderHook(() =>
+        useDashboardCards({ storageKey: TEST_STORAGE_KEY, defaultCards: DEFAULT_CARDS }),
+      )
+
+      act(() => {
+        result.current.addCard('extra')
+      })
+      expect(result.current.isCustomized()).toBe(true)
+
+      act(() => {
+        result.current.resetToDefaults()
+      })
+
+      expect(result.current.isCustomized()).toBe(false)
     })
 
     it('restores to empty array when no defaultCards were provided', () => {
