@@ -1244,6 +1244,8 @@ describe('runSavedMission', () => {
     // Should have a user message now
     const mission = result.current.missions.find(m => m.id === missionId)
     expect(mission?.messages.some(m => m.role === 'user')).toBe(true)
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     // Should transition to running when WS opens
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
     const updated = result.current.missions.find(m => m.id === missionId)
@@ -1274,6 +1276,8 @@ describe('runSavedMission', () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
 
     act(() => { result.current.runSavedMission(missionId) })
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
     const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
@@ -1290,6 +1294,8 @@ describe('runSavedMission', () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
 
     act(() => { result.current.runSavedMission(missionId, 'cluster-a') })
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
     const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
@@ -1305,6 +1311,8 @@ describe('runSavedMission', () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
 
     act(() => { result.current.runSavedMission(missionId, 'cluster-a, cluster-b') })
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
     const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
@@ -1324,6 +1332,26 @@ describe('runSavedMission', () => {
     const mission = result.current.missions.find(m => m.id === missionId)
     expect(mission?.status).toBe('failed')
     expect(mission?.messages.some(m => m.content.includes('Local Agent Not Connected'))).toBe(true)
+  })
+
+  it('blocks mission with preflight error when cluster credentials are invalid', async () => {
+    const { runPreflightCheck } = await import('../lib/missions/preflightCheck')
+    vi.mocked(runPreflightCheck).mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'MISSING_CREDENTIALS', message: 'Credentials expired', remediations: [] },
+    })
+
+    const missionId = seedSavedMission()
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    act(() => { result.current.runSavedMission(missionId, 'my-cluster') })
+    // Flush preflight Promise
+    await act(async () => { await Promise.resolve() })
+
+    const mission = result.current.missions.find(m => m.id === missionId)
+    expect(mission?.status).toBe('blocked')
+    expect(mission?.preflightError?.code).toBe('MISSING_CREDENTIALS')
+    expect(mission?.messages.some(m => m.content.includes('Preflight Check Failed'))).toBe(true)
   })
 })
 
@@ -4885,6 +4913,8 @@ describe('runSavedMission edge cases', () => {
 
     const { result } = renderHook(() => useMissions(), { wrapper })
     act(() => { result.current.runSavedMission('desc-only-1') })
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
     const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
@@ -4914,6 +4944,8 @@ describe('runSavedMission edge cases', () => {
 
     const { result } = renderHook(() => useMissions(), { wrapper })
     act(() => { result.current.runSavedMission('multi-cluster-1', 'cluster-a, cluster-b') })
+    // Flush preflight Promise so executeMission is called and WebSocket is created
+    await act(async () => { await Promise.resolve() })
     await act(async () => { MockWebSocket.lastInstance?.simulateOpen() })
 
     const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
@@ -5586,6 +5618,9 @@ describe('runSavedMission wsSend failure', () => {
 
       const { result } = renderHook(() => useMissions(), { wrapper })
       act(() => { result.current.runSavedMission('wsfail-1') })
+
+      // Flush preflight Promise so ensureConnection registers its timer
+      await act(async () => { await Promise.resolve() })
 
       // Do NOT simulate WS open — let ensureConnection's 5s timeout fire
       await act(async () => { vi.advanceTimersByTime(6_000) })

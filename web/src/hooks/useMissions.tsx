@@ -1466,46 +1466,51 @@ Install the console locally with the KubeStellar Console agent to use AI mission
     setActiveMissionId(missionId)
     setIsSidebarOpen(true)
     setIsSidebarMinimized(false)
+    emitMissionStarted(mission.type, selectedAgentRef.current || defaultAgentRef.current || 'unknown')
 
-    ensureConnection().then(() => {
-      const requestId = `claude-${Date.now()}`
-      pendingRequests.current.set(requestId, missionId)
+    // Run preflight permission check for missions that target a cluster.
+    // This catches missing credentials, expired tokens, RBAC denials, etc.
+    // before the agent starts executing mutating steps.
+    const missionNeedsCluster = !!cluster || ['deploy', 'repair', 'upgrade'].includes(mission.type)
+    const preflightPromise = missionNeedsCluster
+      ? runPreflightCheck(
+          (args, opts) => kubectlProxy.exec(args, opts),
+          (cluster || mission.cluster)?.split(',')[0]?.trim(),
+        )
+      : Promise.resolve({ ok: true } as { ok: true })
 
-      setMissions(prev => prev.map(m =>
-        m.id === missionId ? { ...m, status: 'running', currentStep: 'Connecting to agent...' } : m
-      ))
-
-      setActiveTokenCategory('missions')
-
-      wsSend(JSON.stringify({
-        id: requestId,
-        type: 'chat',
-        payload: {
-          prompt: initialPrompt,
-          sessionId: missionId,
-          agent: selectedAgentRef.current || undefined,
-        }
-      }), () => {
+    preflightPromise.then(preflight => {
+      if (!preflight.ok && 'error' in preflight && preflight.error) {
+        // Preflight failed — block the mission with a structured error
         setMissions(prev => prev.map(m =>
-          m.id === missionId ? { ...m, status: 'failed', currentStep: 'WebSocket connection lost' } : m
+          m.id === missionId ? {
+            ...m,
+            status: 'blocked' as MissionStatus,
+            currentStep: 'Preflight check failed',
+            preflightError: preflight.error,
+            messages: [
+              ...m.messages,
+              {
+                id: `msg-${Date.now()}-preflight`,
+                role: 'system' as const,
+                content: `**Preflight Check Failed**\n\nThe mission cannot proceed because cluster access verification failed. See the details below for how to fix this.\n\nError: ${preflight.error?.message || 'Unknown error'}`,
+                timestamp: new Date(),
+              }
+            ]
+          } : m
         ))
-      })
+        emitMissionError(mission.type, preflight.error?.code || 'preflight_unknown')
+        return
+      }
+
+      // Preflight passed — delegate to executeMission so it inherits
+      // ensureConnection, wsSend, and status-update logic
+      executeMission(missionId, initialPrompt, { context: mission.context, type: mission.type })
     }).catch(() => {
-      setMissions(prev => prev.map(m =>
-        m.id === missionId ? {
-          ...m,
-          status: 'failed',
-          currentStep: undefined,
-          messages: [{
-            id: `msg-${Date.now()}`,
-            role: 'system' as const,
-            content: '**Local Agent Not Connected**\n\nInstall the console locally with the KubeStellar Console agent to use AI missions.',
-            timestamp: new Date(),
-          }]
-        } : m
-      ))
+      // Preflight itself threw unexpectedly — still allow mission to proceed
+      executeMission(missionId, initialPrompt, { context: mission.context, type: mission.type })
     })
-  }, [missions, ensureConnection, wsSend])
+  }, [missions, executeMission])
 
   // Cancel a running mission — sends cancel signal to backend to kill agent process.
   // Uses WebSocket if connected, otherwise falls back to HTTP POST endpoint.
