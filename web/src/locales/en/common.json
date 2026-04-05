@@ -94,6 +94,11 @@
     "ready": "Ready",
     "activeViewers_one": "{{count}} active viewer",
     "activeViewers_other": "{{count}} active viewers",
+    "olderCommitWarning_one": "1 new commit on main — click to update",
+    "olderCommitWarning_other": "{{count}} new commits on main — click to update",
+    "olderCommitBehind_zero": "Behind main",
+    "olderCommitBehind_one": "1 commit behind",
+    "olderCommitBehind_other": "{{count}} commits behind",
     "customizer": {
       "title": "Customize Sidebar",
       "description": "Add, remove, or reorder menu items",

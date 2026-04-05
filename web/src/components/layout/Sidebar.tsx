@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Plus, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, WifiOff, GripVertical, X, User, Pin, PinOff } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle, WifiOff, GripVertical, X, User, Pin, PinOff, GitCommitHorizontal } from 'lucide-react'
 import { iconRegistry } from '../../lib/icons'
 import { cn } from '../../lib/cn'
 import { SnoozedCards } from './SnoozedCards'
@@ -15,7 +15,8 @@ import type { SnoozedRecommendation } from '../../hooks/useSnoozedRecommendation
 import type { SnoozedMission } from '../../hooks/useSnoozedMissions'
 import { useActiveUsers } from '../../hooks/useActiveUsers'
 import { useMissions } from '../../hooks/useMissions'
-import { ROUTES } from '../../config/routes'
+import { useVersionCheck } from '../../hooks/useVersionCheck'
+import { ROUTES, getSettingsWithHash } from '../../config/routes'
 import { DASHBOARD_CONFIGS } from '../../config/dashboards/index'
 import { emitSidebarNavigated, emitDashboardRenamed } from '../../lib/analytics'
 import { prefetchDashboard } from '../../lib/prefetchDashboard'
@@ -51,6 +52,7 @@ export function Sidebar() {
   const dashboardContext = useDashboardContextOptional()
   const { isFullScreen: isMissionFullScreen } = useMissions()
   const { viewerCount, hasError: viewersError, isLoading: viewersLoading } = useActiveUsers()
+  const { channel, hasUpdate, recentCommits } = useVersionCheck()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -529,19 +531,32 @@ export function Sidebar() {
 
         {/* Viewer count + commit hash */}
         {!isCollapsed && (
-          <div className="mt-auto pt-4 flex items-center justify-center gap-2">
-            <div
-              className="flex items-center gap-1 px-2 text-muted-foreground/60"
-              title={t('sidebar.activeViewers', { count: viewerCount })}
-            >
-              <User className={cn('w-3 h-3', viewersError && 'text-red-400')} />
-              <span className="text-2xs tabular-nums">
-                {viewersError ? '!' : viewersLoading ? '…' : viewerCount}
+          <div className="mt-auto pt-4 flex flex-col items-center gap-1.5">
+            <div className="flex items-center justify-center gap-2">
+              <div
+                className="flex items-center gap-1 px-2 text-muted-foreground/60"
+                title={t('sidebar.activeViewers', { count: viewerCount })}
+              >
+                <User className={cn('w-3 h-3', viewersError && 'text-red-400')} />
+                <span className="text-2xs tabular-nums">
+                  {viewersError ? '!' : viewersLoading ? '…' : viewerCount}
+                </span>
+              </div>
+              <span className="text-2xs text-muted-foreground/40 font-mono" title={`Commit: ${__COMMIT_HASH__}`}>
+                {__COMMIT_HASH__.substring(0, 7)}
               </span>
             </div>
-            <span className="text-2xs text-muted-foreground/40 font-mono" title={`Commit: ${__COMMIT_HASH__}`}>
-              {__COMMIT_HASH__.substring(0, 7)}
-            </span>
+            {/* Older commit warning — only shown in developer mode when behind main */}
+            {channel === 'developer' && hasUpdate && (
+              <button
+                onClick={() => navigate(getSettingsWithHash('system-updates-settings'))}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-2xs text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 transition-colors"
+                title={t('sidebar.olderCommitWarning', { count: recentCommits.length })}
+              >
+                <GitCommitHorizontal className="w-3 h-3 flex-shrink-0" />
+                <span>{t('sidebar.olderCommitBehind', { count: recentCommits.length })}</span>
+              </button>
+            )}
           </div>
         )}
       </aside>
