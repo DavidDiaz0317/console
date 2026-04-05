@@ -124,6 +124,22 @@ describe('SecurityIssues', () => {
     expect(container).toBeTruthy()
   })
 
+  it('passes isRefreshing from hook directly to useCardLoadingState', () => {
+    mockSecurityIssues.mockReturnValue({ issues: [], isLoading: false, isRefreshing: true, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockUseCardDemoState.mockReturnValue({ shouldUseDemoData: false })
+    render(<SecurityIssues />)
+    const callArgs = mockUseCardLoadingState.mock.calls[0][0]
+    expect(callArgs.isRefreshing).toBe(true)
+  })
+
+  it('sets isRefreshing to false in demo mode regardless of hook value', () => {
+    mockSecurityIssues.mockReturnValue({ issues: [], isLoading: false, isRefreshing: true, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockUseCardDemoState.mockReturnValue({ shouldUseDemoData: true })
+    render(<SecurityIssues />)
+    const callArgs = mockUseCardLoadingState.mock.calls[0][0]
+    expect(callArgs.isRefreshing).toBe(false)
+  })
+
   it('reports demo fallback state', () => {
     mockSecurityIssues.mockReturnValue({ issues: [], isLoading: false, isRefreshing: false, isDemoFallback: true, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
     render(<SecurityIssues />)
