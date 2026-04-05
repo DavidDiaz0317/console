@@ -26,10 +26,42 @@ vi.mock('../../../hooks/useKubectl', () => ({
   useKubectl: () => ({ execute: mockExecute }),
 }))
 
+const mockShowToast = vi.fn()
+vi.mock('../../ui/Toast', () => ({
+  useToast: () => ({ showToast: mockShowToast }),
+}))
+
+// ConfirmDialog — rendered inline so tests can interact with it directly
+vi.mock('../../../lib/modals', () => ({
+  ConfirmDialog: ({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    confirmLabel,
+  }: {
+    isOpen: boolean
+    onClose: () => void
+    onConfirm: () => void
+    title: string
+    confirmLabel?: string
+  }) => {
+    if (!isOpen) return null
+    return (
+      <div data-testid="confirm-dialog">
+        <span data-testid="confirm-title">{title}</span>
+        <button data-testid="confirm-btn" onClick={onConfirm}>{confirmLabel ?? 'Confirm'}</button>
+        <button data-testid="cancel-btn" onClick={onClose}>Cancel</button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, opts?: Record<string, unknown>) => {
       if (opts && 'count' in opts) return key.replace('{{count}}', String(opts.count))
+      if (opts && 'node' in opts) return key.replace('{{node}}', String(opts.node))
       return key
     },
     i18n: { language: 'en', changeLanguage: vi.fn() },
@@ -115,6 +147,7 @@ describe('NodeConditions', () => {
     mockUseDemoMode.mockReturnValue({ isDemoMode: false, setDemoMode: vi.fn() })
     mockUseCardLoadingState.mockReturnValue(undefined)
     mockExecute.mockResolvedValue(undefined)
+    mockShowToast.mockReturnValue(undefined)
   })
 
   // -------------------------------------------------------------------------
@@ -438,7 +471,7 @@ describe('NodeConditions', () => {
   // Cordon / Uncordon actions
   // -------------------------------------------------------------------------
   describe('cordon/uncordon actions', () => {
-    it('calls execute with cordon when Cordon button is clicked on a healthy node', async () => {
+    it('shows a confirmation dialog when Cordon button is clicked on a healthy node', async () => {
       const user = userEvent.setup()
       const nodes = [healthyNode('worker-1', 'prod')]
       mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
@@ -448,10 +481,12 @@ describe('NodeConditions', () => {
       const cordonBtn = screen.getByText('nodeConditions.cordon')
       await user.click(cordonBtn)
 
-      expect(mockExecute).toHaveBeenCalledWith('prod', ['cordon', 'worker-1'])
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-title').textContent).toBe('nodeConditions.cordonConfirmTitle')
+      expect(mockExecute).not.toHaveBeenCalled()
     })
 
-    it('calls execute with uncordon when Uncordon button is clicked on a cordoned node', async () => {
+    it('shows a confirmation dialog when Uncordon button is clicked on a cordoned node', async () => {
       const user = userEvent.setup()
       const nodes = [cordonedNode('worker-1', 'prod')]
       mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
@@ -461,7 +496,117 @@ describe('NodeConditions', () => {
       const uncordonBtn = screen.getByText('nodeConditions.uncordon')
       await user.click(uncordonBtn)
 
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('confirm-title').textContent).toBe('nodeConditions.uncordonConfirmTitle')
+      expect(mockExecute).not.toHaveBeenCalled()
+    })
+
+    it('calls execute with cordon after confirming the dialog', async () => {
+      const user = userEvent.setup()
+      const nodes = [healthyNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.cordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
+      expect(mockExecute).toHaveBeenCalledWith('prod', ['cordon', 'worker-1'])
+    })
+
+    it('calls execute with uncordon after confirming the dialog', async () => {
+      const user = userEvent.setup()
+      const nodes = [cordonedNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.uncordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
       expect(mockExecute).toHaveBeenCalledWith('prod', ['uncordon', 'worker-1'])
+    })
+
+    it('does not call execute when confirmation dialog is cancelled', async () => {
+      const user = userEvent.setup()
+      const nodes = [healthyNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.cordon'))
+      await user.click(screen.getByTestId('cancel-btn'))
+
+      expect(mockExecute).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+    })
+
+    it('shows a success toast after cordon succeeds', async () => {
+      const user = userEvent.setup()
+      const nodes = [healthyNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+      mockExecute.mockResolvedValue(undefined)
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.cordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'nodeConditions.cordonSuccess'.replace('{{node}}', 'worker-1'),
+        'success'
+      )
+    })
+
+    it('shows a success toast after uncordon succeeds', async () => {
+      const user = userEvent.setup()
+      const nodes = [cordonedNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+      mockExecute.mockResolvedValue(undefined)
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.uncordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'nodeConditions.uncordonSuccess'.replace('{{node}}', 'worker-1'),
+        'success'
+      )
+    })
+
+    it('shows an error toast when cordon fails', async () => {
+      const user = userEvent.setup()
+      const nodes = [healthyNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+      mockExecute.mockRejectedValue(new Error('connection refused'))
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.cordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'nodeConditions.cordonError'.replace('{{node}}', 'worker-1'),
+        'error'
+      )
+    })
+
+    it('shows an error toast when uncordon fails', async () => {
+      const user = userEvent.setup()
+      const nodes = [cordonedNode('worker-1', 'prod')]
+      mockUseCachedNodes.mockReturnValue(cachedNodesDefaults(nodes))
+      mockExecute.mockRejectedValue(new Error('connection refused'))
+
+      render(<NodeConditions />)
+
+      await user.click(screen.getByText('nodeConditions.uncordon'))
+      await user.click(screen.getByTestId('confirm-btn'))
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'nodeConditions.uncordonError'.replace('{{node}}', 'worker-1'),
+        'error'
+      )
     })
   })
 

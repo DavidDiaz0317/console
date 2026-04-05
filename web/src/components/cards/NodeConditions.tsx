@@ -5,14 +5,23 @@ import { StatusBadge } from '../ui/StatusBadge'
 import { useKubectl } from '../../hooks/useKubectl'
 import { useCardLoadingState } from './CardDataContext'
 import { useDemoMode } from '../../hooks/useDemoMode'
+import { ConfirmDialog } from '../../lib/modals'
+import { useToast } from '../ui/Toast'
 
 type ConditionFilter = 'all' | 'healthy' | 'cordoned' | 'pressure'
+
+type ConfirmAction = {
+  nodeName: string
+  cluster: string
+  action: 'cordon' | 'uncordon'
+} | null
 
 export function NodeConditions() {
   const { t } = useTranslation('cards')
   const { nodes, isLoading, isRefreshing, isDemoFallback, isFailed, consecutiveFailures } = useCachedNodes()
   const { isDemoMode } = useDemoMode()
   const { execute } = useKubectl()
+  const { showToast } = useToast()
 
   const hasData = nodes.length > 0
   useCardLoadingState({
@@ -26,6 +35,7 @@ export function NodeConditions() {
 
   const [filter, setFilter] = useState<ConditionFilter>('all')
   const [actionPending, setActionPending] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
 
   const summary = useMemo(() => {
     const cordoned = nodes.filter(n => n.unschedulable)
@@ -65,29 +75,34 @@ export function NodeConditions() {
     }
   }, [nodes, filter])
 
-  const handleCordon = useCallback(async (nodeName: string, cluster: string) => {
-    setActionPending(nodeName)
-    try {
-      await execute(cluster, ['cordon', nodeName])
-    } catch {
-      // Ignore kubectl errors (connection failures, timeouts) — they are
-      // expected when the local agent is unavailable and must not surface
-      // as unhandled promise rejections from the onClick handler.
-    } finally {
-      setActionPending(null)
-    }
-  }, [execute])
+  const handleCordon = useCallback((nodeName: string, cluster: string) => {
+    setConfirmAction({ nodeName, cluster, action: 'cordon' })
+  }, [])
 
-  const handleUncordon = useCallback(async (nodeName: string, cluster: string) => {
+  const handleUncordon = useCallback((nodeName: string, cluster: string) => {
+    setConfirmAction({ nodeName, cluster, action: 'uncordon' })
+  }, [])
+
+  const handleConfirm = useCallback(async () => {
+    if (!confirmAction) return
+    const { nodeName, cluster, action } = confirmAction
+    setConfirmAction(null)
     setActionPending(nodeName)
     try {
-      await execute(cluster, ['uncordon', nodeName])
+      await execute(cluster, [action, nodeName])
+      showToast(
+        t(action === 'cordon' ? 'nodeConditions.cordonSuccess' : 'nodeConditions.uncordonSuccess', { node: nodeName }),
+        'success'
+      )
     } catch {
-      // Same rationale as handleCordon above.
+      showToast(
+        t(action === 'cordon' ? 'nodeConditions.cordonError' : 'nodeConditions.uncordonError', { node: nodeName }),
+        'error'
+      )
     } finally {
       setActionPending(null)
     }
-  }, [execute])
+  }, [confirmAction, execute, showToast, t])
 
   if (isLoading && nodes.length === 0) {
     return (
@@ -181,6 +196,17 @@ export function NodeConditions() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmAction !== null}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirm}
+        title={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordonConfirmTitle' : 'nodeConditions.uncordonConfirmTitle')}
+        message={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordonConfirmMessage' : 'nodeConditions.uncordonConfirmMessage', { node: confirmAction?.nodeName ?? '' })}
+        confirmLabel={t(confirmAction?.action === 'cordon' ? 'nodeConditions.cordon' : 'nodeConditions.uncordon')}
+        variant={confirmAction?.action === 'cordon' ? 'warning' : 'info'}
+        isLoading={actionPending !== null}
+      />
     </div>
   )
 }
