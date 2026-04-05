@@ -1,12 +1,38 @@
 package handlers
 
 import (
+	"bytes"
+	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/kubestellar/console/pkg/api/v1alpha1"
 	"github.com/kubestellar/console/pkg/k8s"
+	"github.com/kubestellar/console/pkg/models"
+	"github.com/kubestellar/console/pkg/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// persistenceRBACStore embeds MockStore and overrides GetUser so tests can
+// control the role returned for testAdminUserID.
+type persistenceRBACStore struct {
+	test.MockStore
+	user *models.User
+}
+
+func (s *persistenceRBACStore) GetUser(id uuid.UUID) (*models.User, error) {
+	return s.user, nil
+}
+
+// newPersistenceHandlerWithRole creates a ConsolePersistenceHandlers that
+// reports the given role for any GetUser call.
+func newPersistenceHandlerWithRole(role models.UserRole) *ConsolePersistenceHandlers {
+	s := &persistenceRBACStore{
+		user: &models.User{ID: testAdminUserID, Role: role},
+	}
+	return &ConsolePersistenceHandlers{store: s}
+}
 
 // newTestHandler returns a minimal ConsolePersistenceHandlers for unit tests
 // (no persistence store or k8s client needed for pure filter tests).
@@ -180,4 +206,99 @@ func TestClusterMatchesFilters_OneFails(t *testing.T) {
 	}
 
 	assert.False(t, h.clusterMatchesFilters(cluster, health, nil, filters))
+}
+
+// =============================================================================
+// RBAC tests for mutation endpoints
+// =============================================================================
+
+// mutationEndpoint describes an HTTP mutation the persistence handler exposes.
+type mutationEndpoint struct {
+	method string
+	path   string
+	route  string
+}
+
+// adminOnlyEndpoints are endpoints that require the admin role.
+var adminOnlyEndpoints = []mutationEndpoint{
+	{http.MethodPut, "/api/persistence/config", "/api/persistence/config"},
+	{http.MethodPost, "/api/persistence/sync", "/api/persistence/sync"},
+	{http.MethodPost, "/api/persistence/test", "/api/persistence/test"},
+}
+
+// editorEndpoints are endpoints accessible to admin and editor but not viewer.
+var editorEndpoints = []mutationEndpoint{
+	{http.MethodPost, "/api/persistence/workloads", "/api/persistence/workloads"},
+	{http.MethodPut, "/api/persistence/workloads/my-workload", "/api/persistence/workloads/:name"},
+	{http.MethodDelete, "/api/persistence/workloads/my-workload", "/api/persistence/workloads/:name"},
+	{http.MethodPost, "/api/persistence/groups", "/api/persistence/groups"},
+	{http.MethodPut, "/api/persistence/groups/my-group", "/api/persistence/groups/:name"},
+	{http.MethodDelete, "/api/persistence/groups/my-group", "/api/persistence/groups/:name"},
+	{http.MethodPost, "/api/persistence/deployments", "/api/persistence/deployments"},
+	{http.MethodPut, "/api/persistence/deployments/my-dep/status", "/api/persistence/deployments/:name/status"},
+	{http.MethodDelete, "/api/persistence/deployments/my-dep", "/api/persistence/deployments/:name"},
+}
+
+// registerPersistenceRoutes wires the handler routes onto a test Fiber app.
+func registerPersistenceRoutes(env *testEnv, h *ConsolePersistenceHandlers) {
+	env.App.Put("/api/persistence/config", h.UpdateConfig)
+	env.App.Post("/api/persistence/sync", h.SyncNow)
+	env.App.Post("/api/persistence/test", h.TestConnection)
+	env.App.Post("/api/persistence/workloads", h.CreateManagedWorkload)
+	env.App.Put("/api/persistence/workloads/:name", h.UpdateManagedWorkload)
+	env.App.Delete("/api/persistence/workloads/:name", h.DeleteManagedWorkload)
+	env.App.Post("/api/persistence/groups", h.CreateClusterGroup)
+	env.App.Put("/api/persistence/groups/:name", h.UpdateClusterGroup)
+	env.App.Delete("/api/persistence/groups/:name", h.DeleteClusterGroup)
+	env.App.Post("/api/persistence/deployments", h.CreateWorkloadDeployment)
+	env.App.Put("/api/persistence/deployments/:name/status", h.UpdateWorkloadDeploymentStatus)
+	env.App.Delete("/api/persistence/deployments/:name", h.DeleteWorkloadDeployment)
+}
+
+func TestPersistenceMutations_ViewerForbidden(t *testing.T) {
+	allEndpoints := append(adminOnlyEndpoints, editorEndpoints...)
+	for _, ep := range allEndpoints {
+		ep := ep
+		t.Run(ep.method+" "+ep.route, func(t *testing.T) {
+			env := setupTestEnv(t)
+			h := newPersistenceHandlerWithRole(models.UserRoleViewer)
+			registerPersistenceRoutes(env, h)
+
+			// An empty JSON body is sufficient because RBAC checks are performed
+			// before the request body is parsed, so the handler rejects the
+			// request before reaching body-validation logic.
+			req, err := http.NewRequest(ep.method, ep.path, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := env.App.Test(req, 5000)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode,
+				"viewer should be forbidden from %s %s", ep.method, ep.path)
+		})
+	}
+}
+
+func TestPersistenceAdminOnlyEndpoints_EditorForbidden(t *testing.T) {
+	for _, ep := range adminOnlyEndpoints {
+		ep := ep
+		t.Run(ep.method+" "+ep.route, func(t *testing.T) {
+			env := setupTestEnv(t)
+			h := newPersistenceHandlerWithRole(models.UserRoleEditor)
+			registerPersistenceRoutes(env, h)
+
+			// An empty JSON body is sufficient because RBAC checks are performed
+			// before the request body is parsed.
+			req, err := http.NewRequest(ep.method, ep.path, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := env.App.Test(req, 5000)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			assert.Equal(t, http.StatusForbidden, resp.StatusCode,
+				"editor should be forbidden from admin-only %s %s", ep.method, ep.path)
+		})
+	}
 }

@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kubestellar/console/pkg/api/middleware"
 	"github.com/kubestellar/console/pkg/api/v1alpha1"
 	"github.com/kubestellar/console/pkg/k8s"
+	"github.com/kubestellar/console/pkg/models"
 	"github.com/kubestellar/console/pkg/store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
@@ -19,6 +21,7 @@ import (
 type ConsolePersistenceHandlers struct {
 	persistenceStore *store.PersistenceStore
 	k8sClient        *k8s.MultiClusterClient
+	store            store.Store
 	watcher          *k8s.ConsoleWatcher
 	hub              *Hub
 }
@@ -27,11 +30,13 @@ type ConsolePersistenceHandlers struct {
 func NewConsolePersistenceHandlers(
 	persistenceStore *store.PersistenceStore,
 	k8sClient *k8s.MultiClusterClient,
+	s store.Store,
 	hub *Hub,
 ) *ConsolePersistenceHandlers {
 	h := &ConsolePersistenceHandlers{
 		persistenceStore: persistenceStore,
 		k8sClient:        k8sClient,
+		store:            s,
 		hub:              hub,
 	}
 
@@ -127,6 +132,39 @@ func (h *ConsolePersistenceHandlers) handleResourceEvent(event k8s.ConsoleResour
 }
 
 // =============================================================================
+// RBAC helpers
+// =============================================================================
+
+// requireAdmin returns a 403 error if the current user is not an admin.
+func (h *ConsolePersistenceHandlers) requireAdmin(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	user, err := h.store.GetUser(userID)
+	if err != nil {
+		slog.Warn("[ConsolePersistence] could not fetch user for admin check", "userID", userID, "error", err)
+		return fiber.NewError(fiber.StatusForbidden, "Admin access required")
+	}
+	if user == nil || user.Role != models.UserRoleAdmin {
+		return fiber.NewError(fiber.StatusForbidden, "Admin access required")
+	}
+	return nil
+}
+
+// requireEditorOrAdmin returns a 403 error if the current user is neither an
+// admin nor an editor.
+func (h *ConsolePersistenceHandlers) requireEditorOrAdmin(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	user, err := h.store.GetUser(userID)
+	if err != nil {
+		slog.Warn("[ConsolePersistence] could not fetch user for role check", "userID", userID, "error", err)
+		return fiber.NewError(fiber.StatusForbidden, "Editor or admin access required")
+	}
+	if user == nil || (user.Role != models.UserRoleAdmin && user.Role != models.UserRoleEditor) {
+		return fiber.NewError(fiber.StatusForbidden, "Editor or admin access required")
+	}
+	return nil
+}
+
+// =============================================================================
 // Config endpoints
 // =============================================================================
 
@@ -140,6 +178,10 @@ func (h *ConsolePersistenceHandlers) GetConfig(c *fiber.Ctx) error {
 // UpdateConfig updates the persistence configuration
 // PUT /api/persistence/config
 func (h *ConsolePersistenceHandlers) UpdateConfig(c *fiber.Ctx) error {
+	if err := h.requireAdmin(c); err != nil {
+		return err
+	}
+
 	var config store.PersistenceConfig
 	if err := c.BodyParser(&config); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
@@ -223,6 +265,10 @@ func (h *ConsolePersistenceHandlers) GetManagedWorkload(c *fiber.Ctx) error {
 // CreateManagedWorkload creates a new managed workload
 // POST /api/persistence/workloads
 func (h *ConsolePersistenceHandlers) CreateManagedWorkload(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	var workload v1alpha1.ManagedWorkload
 	if err := c.BodyParser(&workload); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
@@ -259,6 +305,10 @@ func (h *ConsolePersistenceHandlers) CreateManagedWorkload(c *fiber.Ctx) error {
 // UpdateManagedWorkload updates an existing managed workload
 // PUT /api/persistence/workloads/:name
 func (h *ConsolePersistenceHandlers) UpdateManagedWorkload(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	var workload v1alpha1.ManagedWorkload
@@ -291,6 +341,10 @@ func (h *ConsolePersistenceHandlers) UpdateManagedWorkload(c *fiber.Ctx) error {
 // DeleteManagedWorkload deletes a managed workload
 // DELETE /api/persistence/workloads/:name
 func (h *ConsolePersistenceHandlers) DeleteManagedWorkload(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	client, _, err := h.persistenceStore.GetActiveClient(c.Context())
@@ -361,6 +415,10 @@ func (h *ConsolePersistenceHandlers) GetClusterGroup(c *fiber.Ctx) error {
 // CreateClusterGroup creates a new cluster group
 // POST /api/persistence/groups
 func (h *ConsolePersistenceHandlers) CreateClusterGroup(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	var group v1alpha1.ClusterGroup
 	if err := c.BodyParser(&group); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
@@ -403,6 +461,10 @@ func (h *ConsolePersistenceHandlers) CreateClusterGroup(c *fiber.Ctx) error {
 // UpdateClusterGroup updates an existing cluster group
 // PUT /api/persistence/groups/:name
 func (h *ConsolePersistenceHandlers) UpdateClusterGroup(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	var group v1alpha1.ClusterGroup
@@ -441,6 +503,10 @@ func (h *ConsolePersistenceHandlers) UpdateClusterGroup(c *fiber.Ctx) error {
 // DeleteClusterGroup deletes a cluster group
 // DELETE /api/persistence/groups/:name
 func (h *ConsolePersistenceHandlers) DeleteClusterGroup(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	client, _, err := h.persistenceStore.GetActiveClient(c.Context())
@@ -646,6 +712,10 @@ func (h *ConsolePersistenceHandlers) GetWorkloadDeployment(c *fiber.Ctx) error {
 // CreateWorkloadDeployment creates a new workload deployment
 // POST /api/persistence/deployments
 func (h *ConsolePersistenceHandlers) CreateWorkloadDeployment(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	var deployment v1alpha1.WorkloadDeployment
 	if err := c.BodyParser(&deployment); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
@@ -690,6 +760,10 @@ func (h *ConsolePersistenceHandlers) CreateWorkloadDeployment(c *fiber.Ctx) erro
 // UpdateWorkloadDeploymentStatus updates the status of a workload deployment
 // PUT /api/persistence/deployments/:name/status
 func (h *ConsolePersistenceHandlers) UpdateWorkloadDeploymentStatus(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	var status v1alpha1.WorkloadDeploymentStatus
@@ -728,6 +802,10 @@ func (h *ConsolePersistenceHandlers) UpdateWorkloadDeploymentStatus(c *fiber.Ctx
 // DeleteWorkloadDeployment deletes a workload deployment
 // DELETE /api/persistence/deployments/:name
 func (h *ConsolePersistenceHandlers) DeleteWorkloadDeployment(c *fiber.Ctx) error {
+	if err := h.requireEditorOrAdmin(c); err != nil {
+		return err
+	}
+
 	name := c.Params("name")
 
 	client, _, err := h.persistenceStore.GetActiveClient(c.Context())
@@ -781,6 +859,10 @@ func (h *ConsolePersistenceHandlers) reconcileDeployment(ctx context.Context, wd
 // SyncNow triggers an immediate sync of all console resources
 // POST /api/persistence/sync
 func (h *ConsolePersistenceHandlers) SyncNow(c *fiber.Ctx) error {
+	if err := h.requireAdmin(c); err != nil {
+		return err
+	}
+
 	if !h.persistenceStore.IsEnabled() {
 		return c.Status(400).JSON(fiber.Map{"error": "Persistence not enabled"})
 	}
@@ -797,6 +879,10 @@ func (h *ConsolePersistenceHandlers) SyncNow(c *fiber.Ctx) error {
 // TestConnection tests the connection to the persistence cluster
 // POST /api/persistence/test
 func (h *ConsolePersistenceHandlers) TestConnection(c *fiber.Ctx) error {
+	if err := h.requireAdmin(c); err != nil {
+		return err
+	}
+
 	var req struct {
 		Cluster string `json:"cluster"`
 	}
