@@ -116,6 +116,7 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 			Reachable:    false,
 			ErrorType:    errType,
 			ErrorMessage: sanitizedClusterErrorMessage(errType),
+			Issues:       []string{},
 			CheckedAt:    now,
 		}, nil
 	}
