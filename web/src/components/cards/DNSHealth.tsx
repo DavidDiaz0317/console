@@ -6,8 +6,22 @@ import { useCardLoadingState } from './CardDataContext'
 export function DNSHealth() {
   const { t } = useTranslation('cards')
   // Fetch from kube-system (standard K8s / CoreDNS) and openshift-dns (OpenShift dns-default)
-  const { pods: kubeSystemPods, isLoading: isLoadingKS, isRefreshing: isRefreshingKS, isDemoFallback: isDemoFallbackKS, isFailed: isFailedKS, consecutiveFailures: consecutiveFailuresKS } = useCachedPods(undefined, 'kube-system')
-  const { pods: openshiftDnsPods, isLoading: isLoadingOS, isRefreshing: isRefreshingOS, isDemoFallback: isDemoFallbackOS, isFailed: isFailedOS, consecutiveFailures: consecutiveFailuresOS } = useCachedPods(undefined, 'openshift-dns')
+  const {
+    pods: kubeSystemPods,
+    isLoading: isLoadingKS,
+    isRefreshing: isRefreshingKS,
+    isDemoFallback: isDemoFallbackKS,
+    isFailed: isFailedKS,
+    consecutiveFailures: consecutiveFailuresKS,
+  } = useCachedPods(undefined, 'kube-system')
+  const {
+    pods: openshiftDnsPods,
+    isLoading: isLoadingOS,
+    isRefreshing: isRefreshingOS,
+    isDemoFallback: isDemoFallbackOS,
+    isFailed: isFailedOS,
+    consecutiveFailures: consecutiveFailuresOS,
+  } = useCachedPods(undefined, 'openshift-dns')
 
   const pods = useMemo(() => [...kubeSystemPods, ...openshiftDnsPods], [kubeSystemPods, openshiftDnsPods])
   const isLoading = isLoadingKS || isLoadingOS
