@@ -134,7 +134,7 @@ const getStatusColors = (status: GatewayStatusType) => {
     case 'NotAccepted':
       return { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/20' }
     default:
-      return { bg: 'bg-gray-500/20', text: 'text-muted-foreground', border: 'border-gray-500/20' }
+      return { bg: 'bg-gray-500/20 dark:bg-gray-400/20', text: 'text-muted-foreground', border: 'border-gray-500/20 dark:border-gray-400/20' }
   }
 }
 

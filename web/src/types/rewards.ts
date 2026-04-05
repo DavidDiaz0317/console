@@ -228,9 +228,9 @@ export const CONTRIBUTOR_LEVELS: ContributorLevel[] = [
     icon: 'Telescope',
     minCoins: 0,
     color: 'gray',
-    bgClass: 'bg-gray-500/20',
+    bgClass: 'bg-gray-500/20 dark:bg-gray-400/20',
     textClass: 'text-muted-foreground',
-    borderClass: 'border-gray-500/30',
+    borderClass: 'border-gray-500/30 dark:border-gray-400/30',
   },
   {
     rank: 2,

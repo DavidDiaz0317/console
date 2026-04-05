@@ -47,7 +47,7 @@ const STATE_BADGE: Record<string, string> = {
   running: 'bg-blue-500/20 text-blue-400',
   pending: 'bg-yellow-500/20 text-yellow-400',
   triggered: 'bg-purple-500/20 text-purple-400',
-  aborted: 'bg-gray-500/20 text-muted-foreground',
+  aborted: 'bg-gray-500/20 dark:bg-gray-400/20 text-muted-foreground',
 }
 
 const STATE_ICON: Record<string, typeof CheckCircle> = {

@@ -234,7 +234,7 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
                   {(cardDefinition.columns || []).map(col => {
                     const val = String((item as Record<string, unknown>)[col.field] ?? '-')
                     if (col.format === 'badge') {
-                      const badgeColor = col.badgeColors?.[val] || 'bg-gray-500/20 text-muted-foreground'
+                      const badgeColor = col.badgeColors?.[val] || 'bg-gray-500/20 dark:bg-gray-400/20 text-muted-foreground'
                       return (
                         <span
                           key={col.field}

@@ -22,7 +22,7 @@ export function NamespaceCard({ namespace, isSelected, onSelect, onDelete, isSys
       }`}
     >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-        isSystem ? 'bg-gray-500/20' : 'bg-blue-500/20'
+        isSystem ? 'bg-gray-500/20 dark:bg-gray-400/20' : 'bg-blue-500/20'
       }`}>
         <Folder className={`w-5 h-5 ${isSystem ? 'text-muted-foreground' : 'text-blue-400'}`} />
       </div>

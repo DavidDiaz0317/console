@@ -80,7 +80,7 @@ function getStatusInfo(status: RequestStatus, closedByUser?: boolean): { label: 
     fix_ready: { color: 'text-green-400', bgColor: 'bg-green-500/20' },
     fix_complete: { color: 'text-green-400', bgColor: 'bg-green-500/20' },
     unable_to_fix: { color: 'text-orange-400', bgColor: 'bg-orange-500/20' },
-    closed: { color: 'text-muted-foreground', bgColor: 'bg-gray-500/20' },
+    closed: { color: 'text-muted-foreground', bgColor: 'bg-gray-500/20 dark:bg-gray-400/20' },
   }
   // Show different label for closed status based on who closed it
   let label = STATUS_LABELS[status]
@@ -1043,7 +1043,7 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
                                       {statusInfo.label}
                                     </span>
                                     {request.status === 'fix_complete' && (
-                                      <span className="px-1.5 py-0.5 text-2xs font-medium rounded bg-gray-500/20 text-muted-foreground">
+                                      <span className="px-1.5 py-0.5 text-2xs font-medium rounded bg-gray-500/20 dark:bg-gray-400/20 text-muted-foreground">
                                         Closed
                                       </span>
                                     )}
@@ -1372,7 +1372,7 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
                               </StatusBadge>
                             )}
                             {githubRewards.breakdown.other_issues > 0 && (
-                              <StatusBadge color="purple" size="xs" rounded="full" className="!bg-gray-500/20 !text-muted-foreground" icon={<AlertCircle className="w-2.5 h-2.5" />}>
+                              <StatusBadge color="gray" size="xs" rounded="full" icon={<AlertCircle className="w-2.5 h-2.5" />}>
                                 {githubRewards.breakdown.other_issues} Issues
                               </StatusBadge>
                             )}

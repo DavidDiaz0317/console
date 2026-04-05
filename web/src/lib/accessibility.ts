@@ -116,8 +116,8 @@ export const STATUS_CONFIG: Record<StatusLevel, AccessibleStatusConfig> = {
     pattern: 'none',
     shape: 'none',
     colorClass: 'text-gray-400',
-    bgClass: 'bg-gray-500/20',
-    borderClass: 'border-gray-500/30',
+    bgClass: 'bg-gray-500/20 dark:bg-gray-400/20',
+    borderClass: 'border-gray-500/30 dark:border-gray-400/30',
     textClass: 'text-gray-400',
     label: 'Unknown',
     ariaLabel: 'Status: Unknown',
@@ -312,8 +312,8 @@ export const SEVERITY_COLORS: Record<SeverityLevel, {
   },
   none: {
     text: 'text-gray-400',
-    bg: 'bg-gray-500/20',
-    border: 'border-gray-500/30',
+    bg: 'bg-gray-500/20 dark:bg-gray-400/20',
+    border: 'border-gray-500/30 dark:border-gray-400/30',
     solid: 'bg-gray-500',
   },
 }

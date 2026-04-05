@@ -111,7 +111,7 @@ const CLUSTER_STATUS_CONFIG: Record<DeployClusterStatus['status'], {
   barColor: string
   label: string
 }> = {
-  pending: { color: 'text-muted-foreground', bg: 'bg-gray-500/20', barColor: 'bg-gray-500', label: 'Pending' },
+  pending: { color: 'text-muted-foreground', bg: 'bg-gray-500/20 dark:bg-gray-400/20', barColor: 'bg-gray-500', label: 'Pending' },
   applying: { color: 'text-yellow-400', bg: 'bg-yellow-500/20', barColor: 'bg-yellow-500', label: 'Applying' },
   running: { color: 'text-green-400', bg: 'bg-green-500/20', barColor: 'bg-green-500', label: 'Running' },
   failed: { color: 'text-red-400', bg: 'bg-red-500/20', barColor: 'bg-red-500', label: 'Failed' },

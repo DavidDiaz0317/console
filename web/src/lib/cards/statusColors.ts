@@ -69,9 +69,9 @@ export const STATUS_COLORS: Record<StatusSeverity, StatusColorSet> = {
   },
   muted: {
     text: 'text-gray-400',
-    bg: 'bg-gray-500/20',
-    border: 'border-gray-500/20',
-    iconBg: 'bg-gray-500/10',
+    bg: 'bg-gray-500/20 dark:bg-gray-400/20',
+    border: 'border-gray-500/20 dark:border-gray-400/20',
+    iconBg: 'bg-gray-500/10 dark:bg-gray-400/10',
     barColor: 'bg-gray-500',
   },
 }
