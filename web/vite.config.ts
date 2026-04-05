@@ -230,6 +230,7 @@ export default defineConfig(({ mode }) => ({
       // When the watchdog runs with TLS on port 8080, the backend listens
       // on BACKEND_LISTEN_PORT (default 8081) in plain HTTP. Proxy directly
       // to the backend to avoid "Client sent an HTTP request to an HTTPS server".
+      // start-dev.sh sets BACKEND_LISTEN_PORT=8080 (no watchdog, direct backend).
       const backendPort = process.env.BACKEND_LISTEN_PORT || '8081'
       const target = `http://localhost:${backendPort}`
       const wsTarget = `ws://localhost:${backendPort}`
