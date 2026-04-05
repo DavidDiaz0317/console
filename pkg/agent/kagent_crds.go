@@ -151,8 +151,8 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 
 	agents := make([]kagentCRDAgent, 0, len(list.Items))
 	for _, item := range list.Items {
-		specMap, _ := item.Object["spec"].(map[string]any)
-		statusMap, _ := item.Object["status"].(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+		statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 		a := kagentCRDAgent{
 			Name:      item.GetName(),
@@ -238,8 +238,8 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		for _, item := range tsList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
-			statusMap, _ := item.Object["status"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+			statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 			t := kagentCRDTool{
 				Name:      item.GetName(),
@@ -267,8 +267,8 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		for _, item := range rmsList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
-			statusMap, _ := item.Object["status"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+			statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 			t := kagentCRDTool{
 				Name:      item.GetName(),
@@ -352,7 +352,7 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		for _, item := range mcList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 
 			m := kagentCRDModel{
 				Name:      item.GetName(),
@@ -377,8 +377,8 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		for _, item := range mpcList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
-			statusMap, _ := item.Object["status"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+			statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 			m := kagentCRDModel{
 				Name:      item.GetName(),
@@ -464,7 +464,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 
 	memories := make([]kagentCRDMemory, 0, len(list.Items))
 	for _, item := range list.Items {
-		specMap, _ := item.Object["spec"].(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 
 		m := kagentCRDMemory{
 			Name:      item.GetName(),
@@ -542,7 +542,7 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	if mcList, err := dynClient.Resource(modelConfigGVR).List(ctx, metav1.ListOptions{}); err == nil {
 		modelConfigCount = len(mcList.Items)
 		for _, item := range mcList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 			if specMap != nil {
 				provider := nestedString(specMap, "provider")
 				if provider != "" {
@@ -556,7 +556,7 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	if mpcList, err := dynClient.Resource(modelProviderConfigGVR).List(ctx, metav1.ListOptions{}); err == nil {
 		modelProviderConfigCount = len(mpcList.Items)
 		for _, item := range mpcList.Items {
-			specMap, _ := item.Object["spec"].(map[string]any)
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 			if specMap != nil {
 				provider := nestedString(specMap, "provider")
 				if provider != "" {

@@ -112,6 +112,20 @@ func nestedStringSlice(obj map[string]any, fields ...string) []string {
 	return val
 }
 
+// assertStringMap safely asserts a value to map[string]any.
+// If the value is non-nil but cannot be asserted to a map, it logs a warning and returns nil.
+func assertStringMap(val any, objectName, fieldName, namespace string) map[string]any {
+	if val == nil {
+		return nil
+	}
+	m, ok := val.(map[string]any)
+	if !ok {
+		slog.Warn("kagent: unexpected type for field, skipping", "field", fieldName, "name", objectName, "namespace", namespace)
+		return nil
+	}
+	return m
+}
+
 // handleKagentiAgents returns kagenti Agent CRDs for a cluster
 func (s *Server) handleKagentiAgents(w http.ResponseWriter, r *http.Request) {
 	s.setCORSHeaders(w, r)
@@ -157,10 +171,8 @@ func (s *Server) handleKagentiAgents(w http.ResponseWriter, r *http.Request) {
 
 	agents := make([]kagentiAgent, 0, len(list.Items))
 	for _, item := range list.Items {
-		spec := item.Object["spec"]
-		specMap, _ := spec.(map[string]any)
-		status := item.Object["status"]
-		statusMap, _ := status.(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+		statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 		a := kagentiAgent{
 			Name:      item.GetName(),
@@ -233,10 +245,8 @@ func (s *Server) handleKagentiBuilds(w http.ResponseWriter, r *http.Request) {
 
 	builds := make([]kagentiBuild, 0, len(list.Items))
 	for _, item := range list.Items {
-		spec := item.Object["spec"]
-		specMap, _ := spec.(map[string]any)
-		status := item.Object["status"]
-		statusMap, _ := status.(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
+		statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 
 		b := kagentiBuild{
 			Name:      item.GetName(),
@@ -305,8 +315,7 @@ func (s *Server) handleKagentiCards(w http.ResponseWriter, r *http.Request) {
 
 	cards := make([]kagentiCard, 0, len(list.Items))
 	for _, item := range list.Items {
-		spec := item.Object["spec"]
-		specMap, _ := spec.(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 
 		c := kagentiCard{
 			Name:      item.GetName(),
@@ -369,8 +378,7 @@ func (s *Server) handleKagentiTools(w http.ResponseWriter, r *http.Request) {
 
 	tools := make([]kagentiTool, 0, len(list.Items))
 	for _, item := range list.Items {
-		spec := item.Object["spec"]
-		specMap, _ := spec.(map[string]any)
+		specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 
 		t := kagentiTool{
 			Name:      item.GetName(),
@@ -434,8 +442,8 @@ func (s *Server) handleKagentiSummary(w http.ResponseWriter, r *http.Request) {
 	if agentList, err := dynClient.Resource(kagentiAgentGVR).List(ctx, metav1.ListOptions{}); err == nil {
 		agentCount = len(agentList.Items)
 		for _, item := range agentList.Items {
-			statusMap, _ := item.Object["status"].(map[string]any)
-			specMap, _ := item.Object["spec"].(map[string]any)
+			statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
+			specMap := assertStringMap(item.Object["spec"], item.GetName(), "spec", item.GetNamespace())
 			if statusMap != nil {
 				phase := nestedString(statusMap, "phase")
 				if phase == "Running" || phase == "Ready" {
@@ -455,7 +463,7 @@ func (s *Server) handleKagentiSummary(w http.ResponseWriter, r *http.Request) {
 	if buildList, err := dynClient.Resource(kagentiBuildGVR).List(ctx, metav1.ListOptions{}); err == nil {
 		buildCount = len(buildList.Items)
 		for _, item := range buildList.Items {
-			statusMap, _ := item.Object["status"].(map[string]any)
+			statusMap := assertStringMap(item.Object["status"], item.GetName(), "status", item.GetNamespace())
 			if statusMap != nil {
 				phase := nestedString(statusMap, "phase")
 				if phase == "Building" || phase == "Pending" {
