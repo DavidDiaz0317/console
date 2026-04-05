@@ -253,7 +253,12 @@ func (s *Server) handleSettingsImport(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBodyBytes))
-	if err != nil || len(body) == 0 {
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(protocol.ErrorPayload{Code: "read_error", Message: "Could not read request body"})
+		return
+	}
+	if len(body) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(protocol.ErrorPayload{Code: "empty_body", Message: "Empty request body"})
 		return
