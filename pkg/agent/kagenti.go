@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -114,13 +115,14 @@ func nestedStringSlice(obj map[string]any, fields ...string) []string {
 
 // assertStringMap safely asserts a value to map[string]any.
 // If the value is non-nil but cannot be asserted to a map, it logs a warning and returns nil.
+// This is a package-level helper shared across kagent_crds.go and kagenti.go.
 func assertStringMap(val any, objectName, fieldName, namespace string) map[string]any {
 	if val == nil {
 		return nil
 	}
 	m, ok := val.(map[string]any)
 	if !ok {
-		slog.Warn("kagent: unexpected type for field, skipping", "field", fieldName, "name", objectName, "namespace", namespace)
+		slog.Warn("kagent: unexpected type for field, skipping", "field", fieldName, "name", objectName, "namespace", namespace, "actualType", fmt.Sprintf("%T", val))
 		return nil
 	}
 	return m
