@@ -170,6 +170,10 @@ func streamViaOpenAICompatible(ctx context.Context, req *ChatRequest, providerKe
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading stream: %w", err)
+	}
+
 	return &ChatResponse{
 		Content:    fullContent.String(),
 		Agent:      agentName,
