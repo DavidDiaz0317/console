@@ -212,16 +212,18 @@ vi.mock('../WelcomeCard', () => ({ WelcomeCard: () => <div data-testid="welcome-
 vi.mock('../../shared/DashboardHeader', () => ({
   DashboardHeader: ({ title }: { title: string }) => <div data-testid="dashboard-header">{title}</div>,
 }))
-vi.mock('../../ui/StatsOverview', () => ({
-  StatsOverview: ({ getStatValue, hasData }: { getStatValue?: (id: string) => { value: unknown }, hasData?: boolean }) => (
-    <div
-      data-testid="stats-overview"
-      data-clusters={getStatValue ? String(getStatValue('clusters').value) : ''}
-      data-has-data={String(hasData ?? true)}
-    />
-  ),
-  StatBlockValue: {},
-}))
+vi.mock('../../ui/StatsOverview', () => {
+  function MockStatsOverview({ getStatValue, hasData }: { getStatValue?: (id: string) => { value: unknown }, hasData?: boolean }) {
+    return (
+      <div
+        data-testid="stats-overview"
+        data-clusters={getStatValue ? String(getStatValue('clusters').value) : ''}
+        data-has-data={String(hasData ?? true)}
+      />
+    )
+  }
+  return { StatsOverview: MockStatsOverview, StatBlockValue: {} }
+})
 vi.mock('../dashboardUtils', () => ({
   isLocalOnlyCard: (id: string) => /^(new|demo|rec|template|restored|ai|default)-/.test(id),
   mapVisualizationToCardType: (_v: string, type: string) => type,
@@ -360,7 +362,7 @@ describe('Dashboard', () => {
 
   // ── Global-filter scoping for Stats Overview ────────────────────────
   describe('Stats Overview — global filter scoping', () => {
-    it('shows all cluster counts when no filter is active (isAllClustersSelected=true)', () => {
+    it('shows all cluster counts when no filter is active', () => {
       mockGlobalFilters.isAllClustersSelected = true
       mockGlobalFilters.selectedClusters = []
       render(<Dashboard />)

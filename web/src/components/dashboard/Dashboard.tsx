@@ -157,10 +157,12 @@ export function Dashboard() {
   // Global cluster filter — used to scope stats to only the selected clusters
   const { selectedClusters, isAllClustersSelected } = useGlobalFilters()
 
-  // Apply global filter to clusters for Stats Overview scoping
+  // Apply global filter to clusters for Stats Overview scoping.
+  // Use a Set for O(1) membership checks when the selection is non-empty.
   const filteredClusters = useMemo(() => {
     if (isAllClustersSelected) return clusters
-    return clusters.filter(c => selectedClusters.includes(c.name))
+    const selectedSet = new Set(selectedClusters)
+    return clusters.filter(c => selectedSet.has(c.name))
   }, [clusters, selectedClusters, isAllClustersSelected])
 
   // Reset hook for dashboard
