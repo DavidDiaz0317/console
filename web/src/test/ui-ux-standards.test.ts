@@ -450,28 +450,6 @@ describe('UI/UX Standards Scanner', () => {
   })
 
   it('reports violation summary for debugging', () => {
-    // This test always passes — logs the current state for CI visibility
-    const grouped = new Map<ViolationCategory, Violation[]>()
-    for (const v of violations) {
-      const list = grouped.get(v.category) || []
-      list.push(v)
-      grouped.set(v.category, list)
-    }
-
-    const total = violations.length
-    const summary: string[] = [
-      '',
-      `UI/UX Standards: ${total} total violations`,
-      '',
-    ]
-
-    for (const [category, items] of grouped) {
-      summary.push(`  ${category}: ${items.length}`)
-    }
-
-    if (total > 0) {
-      summary.push('')
-      console.log(summary.join('\n'))
-    }
+    // This test always passes — violation counts are enforced by the tests above
   })
 })

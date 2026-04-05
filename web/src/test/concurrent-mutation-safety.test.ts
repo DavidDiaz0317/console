@@ -524,22 +524,7 @@ describe('Concurrent Mutation Safety Scan', () => {
 
   describe('Violation detail report', () => {
     it('prints all violations for diagnostic purposes', () => {
-      if (allViolations.length === 0) return
-
-      const report = (allViolations || []).map(v => {
-        const known = KNOWN_VIOLATIONS[v.relFilePath] ? ' [KNOWN]' : ' [NEW]'
-        return `  ${v.relFilePath}:${v.lineNumber} — ${v.mutationLabel} on "${v.mutatedIdentifier}"${known}`
-      }).join('\n')
-
-      // This test always passes — it just logs the report for visibility
-      console.log(
-        `\n──── Concurrent Mutation Report ────\n` +
-        `Total violations: ${allViolations.length} across ${violationsByFile.size} files\n` +
-        `Known: ${Object.keys(KNOWN_VIOLATIONS).length} files | ` +
-        `Ratchet baseline: ${EXPECTED_MUTATION_COUNT}\n\n` +
-        report +
-        `\n────────────────────────────────────\n`
-      )
+      // This test always passes — violation counts are enforced by the tests above
     })
   })
 })

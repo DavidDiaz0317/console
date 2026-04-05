@@ -336,16 +336,6 @@ describe('Magic Numbers Ratchet (P4-A)', () => {
   })
 
   it('reports violation details for debugging', () => {
-    // This test always passes — it just logs the current violations for visibility
-    if (violations.length > 0) {
-      const summary = violations
-        .map(v => `  [${v.category}] ${v.file}:${v.line}: ${v.snippet}`)
-        .join('\n')
-
-      // Log to console for CI visibility (not a failure)
-      console.log(
-        `\nMagic number violations (${violations.length}/${EXPECTED_MAGIC_NUMBER_COUNT} budget):\n${summary}\n`,
-      )
-    }
+    // This test always passes — violation counts are enforced by the tests above
   })
 })
