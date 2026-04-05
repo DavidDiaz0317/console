@@ -415,6 +415,70 @@ describe('useClusterCapabilities', () => {
       expect(result.current.error!.message).toBe('Unknown error')
     })
   })
+
+  it('fetches data when enabled transitions from false to true', async () => {
+    const capabilities = [
+      { cluster: 'prod', nodeCount: 5, cpuCapacity: '32', memCapacity: '128Gi', available: true },
+    ]
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(capabilities), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const { useClusterCapabilities } = await importFresh()
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useClusterCapabilities(enabled),
+      { initialProps: { enabled: false } }
+    )
+
+    // Initially disabled: no data fetched, not loading
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.isLoading).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+
+    // Transition to enabled=true
+    rerender({ enabled: true })
+
+    // Should now fetch and return data
+    await waitFor(() => {
+      expect(result.current.data).toEqual(capabilities)
+      expect(result.current.isLoading).toBe(false)
+    })
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears data when enabled transitions from true to false', async () => {
+    const capabilities = [
+      { cluster: 'prod', nodeCount: 5, cpuCapacity: '32', memCapacity: '128Gi', available: true },
+    ]
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(capabilities), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    )
+    const { useClusterCapabilities } = await importFresh()
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useClusterCapabilities(enabled),
+      { initialProps: { enabled: true } }
+    )
+
+    // Wait for initial fetch to complete
+    await waitFor(() => {
+      expect(result.current.data).toEqual(capabilities)
+    })
+
+    // Transition to enabled=false
+    rerender({ enabled: false })
+
+    await waitFor(() => {
+      expect(result.current.data).toBeUndefined()
+      expect(result.current.isLoading).toBe(false)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
