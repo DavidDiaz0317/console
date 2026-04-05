@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useCachedNodes, useCachedPods } from '../../hooks/useCachedData'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useCardLoadingState } from './CardDataContext'
+import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 
 interface Prediction {
   id: string
@@ -52,6 +53,7 @@ export function PredictiveHealth() {
   const { t } = useTranslation('cards')
   const { nodes, isLoading: nodesLoading, isDemoFallback: nodesDemoFallback, isFailed: nodesFailed, consecutiveFailures: nodesFailures } = useCachedNodes()
   const { pods, isLoading: podsLoading, isDemoFallback: podsDemoFallback, isFailed: podsFailed, consecutiveFailures: podsFailures } = useCachedPods()
+  const { selectedClusters, isAllClustersSelected } = useGlobalFilters()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const isLoading = nodesLoading || podsLoading
@@ -63,13 +65,24 @@ export function PredictiveHealth() {
     consecutiveFailures: Math.max(nodesFailures, podsFailures),
   })
 
+  // Filter nodes and pods to only those belonging to the selected clusters
+  const filteredNodes = useMemo(() => {
+    if (isAllClustersSelected) return nodes
+    return nodes.filter(n => n.cluster && selectedClusters.includes(n.cluster))
+  }, [nodes, selectedClusters, isAllClustersSelected])
+
+  const filteredPods = useMemo(() => {
+    if (isAllClustersSelected) return pods
+    return pods.filter(p => p.cluster && selectedClusters.includes(p.cluster))
+  }, [pods, selectedClusters, isAllClustersSelected])
+
   const predictions = useMemo((): Prediction[] => {
-    if (nodes.length === 0 && pods.length === 0) return []
+    if (filteredNodes.length === 0 && filteredPods.length === 0) return []
 
     const results: Prediction[] = []
     // Group nodes by cluster
-    const clusterNodes = new Map<string, typeof nodes>()
-    for (const node of nodes) {
+    const clusterNodes = new Map<string, typeof filteredNodes>()
+    for (const node of filteredNodes) {
       const c = node.cluster || 'unknown'
       if (!clusterNodes.has(c)) clusterNodes.set(c, [])
       clusterNodes.get(c)!.push(node)
@@ -77,7 +90,7 @@ export function PredictiveHealth() {
 
     // Analyze per-cluster patterns
     for (const [cluster, cNodes] of clusterNodes) {
-      const clusterPods = pods.filter(p => p.cluster === cluster)
+      const clusterPods = filteredPods.filter(p => p.cluster === cluster)
       const podDensity = cNodes.length > 0 ? clusterPods.length / cNodes.length : 0
 
       // High pod density warning — treat density as a % of a ~110 pods/node ceiling
@@ -144,7 +157,7 @@ export function PredictiveHealth() {
       const order = { critical: 0, warning: 1, info: 2 }
       return order[a.severity] - order[b.severity]
     })
-  }, [nodes, pods])
+  }, [filteredNodes, filteredPods])
 
   if (showSkeleton) {
     return (

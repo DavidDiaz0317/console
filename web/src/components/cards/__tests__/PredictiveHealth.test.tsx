@@ -47,6 +47,11 @@ vi.mock('../../../hooks/useCachedData', () => ({
   useCachedPods: () => mockPods(),
 }))
 
+const mockUseGlobalFilters = vi.fn()
+vi.mock('../../../hooks/useGlobalFilters', () => ({
+  useGlobalFilters: () => mockUseGlobalFilters(),
+}))
+
 import { PredictiveHealth } from '../PredictiveHealth'
 
 describe('PredictiveHealth', () => {
@@ -56,6 +61,7 @@ describe('PredictiveHealth', () => {
     mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: true, isRefreshing: false })
     mockNodes.mockReturnValue({ nodes: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
     mockPods.mockReturnValue({ pods: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockUseGlobalFilters.mockReturnValue({ selectedClusters: [], isAllClustersSelected: true })
   })
 
   it('renders without crashing', () => {
@@ -87,4 +93,65 @@ describe('PredictiveHealth', () => {
     expect(container).toBeTruthy()
   })
 
+  it('subscribes to global cluster filter via useGlobalFilters', () => {
+    render(<PredictiveHealth />)
+    expect(mockUseGlobalFilters).toHaveBeenCalled()
+  })
+
+  it('shows all predictions when no cluster filter is active (isAllClustersSelected=true)', () => {
+    const nodes = [
+      { cluster: 'cluster-a', name: 'node-1', unschedulable: false, conditions: [], restarts: 0 },
+      { cluster: 'cluster-b', name: 'node-2', unschedulable: false, conditions: [], restarts: 0 },
+    ]
+    const pods = [
+      ...Array.from({ length: 12 }, (_, i) => ({ cluster: 'cluster-a', name: `pod-${i}`, restarts: 8 })),
+      ...Array.from({ length: 12 }, (_, i) => ({ cluster: 'cluster-b', name: `pod-b-${i}`, restarts: 8 })),
+    ]
+    mockNodes.mockReturnValue({ nodes, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockPods.mockReturnValue({ pods, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockUseGlobalFilters.mockReturnValue({ selectedClusters: ['cluster-a', 'cluster-b'], isAllClustersSelected: true })
+
+    const { getByText } = render(<PredictiveHealth />)
+    // Both clusters produce restart predictions — total should reference both
+    expect(getByText(/cluster-a/i)).toBeTruthy()
+    expect(getByText(/cluster-b/i)).toBeTruthy()
+  })
+
+  it('shows only predictions for the selected cluster when a filter is active', () => {
+    const nodes = [
+      { cluster: 'cluster-a', name: 'node-1', unschedulable: false, conditions: [], restarts: 0 },
+      { cluster: 'cluster-b', name: 'node-2', unschedulable: false, conditions: [], restarts: 0 },
+    ]
+    const pods = [
+      ...Array.from({ length: 12 }, (_, i) => ({ cluster: 'cluster-a', name: `pod-${i}`, restarts: 8 })),
+      ...Array.from({ length: 12 }, (_, i) => ({ cluster: 'cluster-b', name: `pod-b-${i}`, restarts: 8 })),
+    ]
+    mockNodes.mockReturnValue({ nodes, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockPods.mockReturnValue({ pods, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    // Only cluster-a is selected
+    mockUseGlobalFilters.mockReturnValue({ selectedClusters: ['cluster-a'], isAllClustersSelected: false })
+
+    const { queryByText, getByText } = render(<PredictiveHealth />)
+    expect(getByText(/cluster-a/i)).toBeTruthy()
+    expect(queryByText(/cluster-b/i)).toBeNull()
+  })
+
+  it('shows all-clear state when filtered cluster has no predictions', () => {
+    const nodes = [
+      { cluster: 'cluster-a', name: 'node-1', unschedulable: false, conditions: [], restarts: 0 },
+      { cluster: 'cluster-b', name: 'node-2', unschedulable: false, conditions: [], restarts: 0 },
+    ]
+    const pods = [
+      ...Array.from({ length: 12 }, (_, i) => ({ cluster: 'cluster-a', name: `pod-${i}`, restarts: 8 })),
+      // cluster-b pods have low restarts — no predictions expected
+      { cluster: 'cluster-b', name: 'pod-b-1', restarts: 0 },
+    ]
+    mockNodes.mockReturnValue({ nodes, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    mockPods.mockReturnValue({ pods, isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: false, consecutiveFailures: 0, error: null, lastRefresh: Date.now() })
+    // Only cluster-b is selected — it has no alerts
+    mockUseGlobalFilters.mockReturnValue({ selectedClusters: ['cluster-b'], isAllClustersSelected: false })
+
+    const { getByText } = render(<PredictiveHealth />)
+    expect(getByText('predictiveHealth.allClear')).toBeTruthy()
+  })
 })
