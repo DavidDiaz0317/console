@@ -185,6 +185,13 @@ const MISSION_INACTIVITY_TIMEOUT_MS = 90_000 // 90 seconds of stream silence
  */
 const CANCEL_ACK_TIMEOUT_MS = 10_000 // 10 seconds
 
+/**
+ * Mission types that always require cluster access.
+ * Used to decide whether to run the preflight check when no explicit cluster
+ * is specified.  Keep in sync with any new types added to Mission['type'].
+ */
+const CLUSTER_REQUIRED_MISSION_TYPES: ReadonlyArray<string> = ['deploy', 'repair', 'upgrade']
+
 // Load missions from localStorage
 function loadMissions(): Mission[] {
   try {
@@ -1166,7 +1173,7 @@ Install the console locally with the KubeStellar Console agent to use AI mission
     // Run preflight permission check for missions that target a cluster.
     // This catches missing credentials, expired tokens, RBAC denials, etc.
     // before the agent starts executing mutating steps (#3742).
-    const missionNeedsCluster = !!params.cluster || ['deploy', 'repair', 'upgrade'].includes(params.type)
+    const missionNeedsCluster = !!params.cluster || CLUSTER_REQUIRED_MISSION_TYPES.includes(params.type)
     const preflightPromise = missionNeedsCluster
       ? runPreflightCheck(
           (args, opts) => kubectlProxy.exec(args, opts),
@@ -1471,7 +1478,7 @@ Install the console locally with the KubeStellar Console agent to use AI mission
     // Run preflight permission check for missions that target a cluster.
     // This catches missing credentials, expired tokens, RBAC denials, etc.
     // before the agent starts executing mutating steps.
-    const missionNeedsCluster = !!cluster || ['deploy', 'repair', 'upgrade'].includes(mission.type)
+    const missionNeedsCluster = !!cluster || CLUSTER_REQUIRED_MISSION_TYPES.includes(mission.type)
     const preflightPromise = missionNeedsCluster
       ? runPreflightCheck(
           (args, opts) => kubectlProxy.exec(args, opts),
