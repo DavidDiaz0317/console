@@ -207,7 +207,6 @@ export function NodeConditions() {
         message={t(isCordonAction ? 'nodeConditions.cordonConfirmMessage' : 'nodeConditions.uncordonConfirmMessage', { node: confirmAction?.nodeName ?? '' })}
         confirmLabel={t(isCordonAction ? 'nodeConditions.cordon' : 'nodeConditions.uncordon')}
         variant={isCordonAction ? 'warning' : 'info'}
-        isLoading={actionPending !== null}
       />
     </div>
   )

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 // ---------------------------------------------------------------------------
@@ -511,7 +511,9 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.cordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockExecute).toHaveBeenCalledWith('prod', ['cordon', 'worker-1'])
+      await waitFor(() => {
+        expect(mockExecute).toHaveBeenCalledWith('prod', ['cordon', 'worker-1'])
+      })
     })
 
     it('calls execute with uncordon after confirming the dialog', async () => {
@@ -524,7 +526,9 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.uncordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockExecute).toHaveBeenCalledWith('prod', ['uncordon', 'worker-1'])
+      await waitFor(() => {
+        expect(mockExecute).toHaveBeenCalledWith('prod', ['uncordon', 'worker-1'])
+      })
     })
 
     it('does not call execute when confirmation dialog is cancelled', async () => {
@@ -552,10 +556,12 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.cordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockShowToast).toHaveBeenCalledWith(
-        'nodeConditions.cordonSuccess'.replace('{{node}}', 'worker-1'),
-        'success'
-      )
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          'nodeConditions.cordonSuccess'.replace('{{node}}', 'worker-1'),
+          'success'
+        )
+      })
     })
 
     it('shows a success toast after uncordon succeeds', async () => {
@@ -569,10 +575,12 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.uncordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockShowToast).toHaveBeenCalledWith(
-        'nodeConditions.uncordonSuccess'.replace('{{node}}', 'worker-1'),
-        'success'
-      )
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          'nodeConditions.uncordonSuccess'.replace('{{node}}', 'worker-1'),
+          'success'
+        )
+      })
     })
 
     it('shows an error toast when cordon fails', async () => {
@@ -586,10 +594,12 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.cordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockShowToast).toHaveBeenCalledWith(
-        'nodeConditions.cordonError'.replace('{{node}}', 'worker-1'),
-        'error'
-      )
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          'nodeConditions.cordonError'.replace('{{node}}', 'worker-1'),
+          'error'
+        )
+      })
     })
 
     it('shows an error toast when uncordon fails', async () => {
@@ -603,10 +613,12 @@ describe('NodeConditions', () => {
       await user.click(screen.getByText('nodeConditions.uncordon'))
       await user.click(screen.getByTestId('confirm-btn'))
 
-      expect(mockShowToast).toHaveBeenCalledWith(
-        'nodeConditions.uncordonError'.replace('{{node}}', 'worker-1'),
-        'error'
-      )
+      await waitFor(() => {
+        expect(mockShowToast).toHaveBeenCalledWith(
+          'nodeConditions.uncordonError'.replace('{{node}}', 'worker-1'),
+          'error'
+        )
+      })
     })
   })
 
