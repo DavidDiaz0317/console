@@ -248,6 +248,21 @@ describe('useGPUUtilizations', () => {
     expect(mockGet.mock.calls.length).toBe(callCount)
   })
 
+  // ---------- Input mutation guard ----------
+
+  it('does not mutate the caller-provided reservationIds array', async () => {
+    mockGet.mockResolvedValue({ data: {} })
+
+    const ids = ['res-3', 'res-1', 'res-2']
+    const originalOrder = [...ids]
+
+    renderHook(() => useGPUUtilizations(ids))
+    await act(async () => { vi.advanceTimersByTime(0) })
+
+    // The original array must be unchanged
+    expect(ids).toEqual(originalOrder)
+  })
+
   // ---------- Timeout ----------
 
   it('passes a timeout to the API call', async () => {
