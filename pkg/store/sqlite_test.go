@@ -386,9 +386,8 @@ func TestCardCRUD(t *testing.T) {
 		cards, err := store.GetDashboardCards(dash.ID)
 		require.NoError(t, err)
 		var found *models.Card
-		for i := range cards {
-			if cards[i].ID == card.ID {
-				c := cards[i]
+		for _, c := range cards {
+			if c.ID == card.ID {
 				found = &c
 				break
 			}
