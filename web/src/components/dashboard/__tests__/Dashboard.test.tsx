@@ -174,6 +174,15 @@ vi.mock('../../../hooks/useRefreshIndicator', () => ({
 }))
 vi.mock('../../../hooks/useDemoMode', () => ({ getDemoMode: () => false }))
 
+// Controllable global-filter mock — tests can override selectedClusters / isAllClustersSelected
+const mockGlobalFilters = {
+  selectedClusters: [] as string[],
+  isAllClustersSelected: true,
+}
+vi.mock('../../../hooks/useGlobalFilters', () => ({
+  useGlobalFilters: () => mockGlobalFilters,
+}))
+
 // Mock child components as minimal stubs
 vi.mock('../DashboardDropZone', () => ({ DashboardDropZone: () => <div data-testid="drop-zone" /> }))
 vi.mock('../CardRecommendations', () => ({ CardRecommendations: () => <div data-testid="card-recs" /> }))
@@ -204,7 +213,13 @@ vi.mock('../../shared/DashboardHeader', () => ({
   DashboardHeader: ({ title }: { title: string }) => <div data-testid="dashboard-header">{title}</div>,
 }))
 vi.mock('../../ui/StatsOverview', () => ({
-  StatsOverview: () => <div data-testid="stats-overview" />,
+  StatsOverview: ({ getStatValue, hasData }: { getStatValue?: (id: string) => { value: unknown }, hasData?: boolean }) => (
+    <div
+      data-testid="stats-overview"
+      data-clusters={getStatValue ? String(getStatValue('clusters').value) : ''}
+      data-has-data={String(hasData ?? true)}
+    />
+  ),
   StatBlockValue: {},
 }))
 vi.mock('../dashboardUtils', () => ({
@@ -247,6 +262,10 @@ describe('Dashboard', () => {
     mockSafeGetJSON.mockReturnValue(null)
     mockLocation.pathname = '/'
     mockLocation.key = 'test-key'
+
+    // Reset global filter to "all clusters" before each test
+    mockGlobalFilters.selectedClusters = []
+    mockGlobalFilters.isAllClustersSelected = true
 
     // Return empty dashboards to avoid recursive API calls
     mockApiGet.mockResolvedValue({ data: [] })
@@ -337,5 +356,46 @@ describe('Dashboard', () => {
   it('shows drop zone component', () => {
     render(<Dashboard />)
     expect(screen.getByTestId('drop-zone')).toBeInTheDocument()
+  })
+
+  // ── Global-filter scoping for Stats Overview ────────────────────────
+  describe('Stats Overview — global filter scoping', () => {
+    it('shows all cluster counts when no filter is active (isAllClustersSelected=true)', () => {
+      mockGlobalFilters.isAllClustersSelected = true
+      mockGlobalFilters.selectedClusters = []
+      render(<Dashboard />)
+      // mockClusters has 2 entries → total clusters = 2
+      expect(screen.getByTestId('stats-overview')).toHaveAttribute('data-clusters', '2')
+    })
+
+    it('scopes cluster count to the active filter selection', () => {
+      // Select only the 'prod' cluster
+      mockGlobalFilters.isAllClustersSelected = false
+      mockGlobalFilters.selectedClusters = ['prod']
+      render(<Dashboard />)
+      // Only 1 cluster matches → total clusters = 1
+      expect(screen.getByTestId('stats-overview')).toHaveAttribute('data-clusters', '1')
+    })
+
+    it('shows 0 clusters when filter selects a non-existent cluster', () => {
+      mockGlobalFilters.isAllClustersSelected = false
+      mockGlobalFilters.selectedClusters = ['nonexistent']
+      render(<Dashboard />)
+      expect(screen.getByTestId('stats-overview')).toHaveAttribute('data-clusters', '0')
+    })
+
+    it('sets hasData=false when filter produces no matching clusters', () => {
+      mockGlobalFilters.isAllClustersSelected = false
+      mockGlobalFilters.selectedClusters = ['nonexistent']
+      render(<Dashboard />)
+      expect(screen.getByTestId('stats-overview')).toHaveAttribute('data-has-data', 'false')
+    })
+
+    it('sets hasData=true when filter matches at least one cluster', () => {
+      mockGlobalFilters.isAllClustersSelected = false
+      mockGlobalFilters.selectedClusters = ['staging']
+      render(<Dashboard />)
+      expect(screen.getByTestId('stats-overview')).toHaveAttribute('data-has-data', 'true')
+    })
   })
 })

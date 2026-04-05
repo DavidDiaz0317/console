@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense, useMemo } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   DndContext,
@@ -28,6 +28,7 @@ import { useDashboards } from '../../hooks/useDashboards'
 import { useClusters } from '../../hooks/useMCP'
 import { useCardHistory } from '../../hooks/useCardHistory'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
+import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { useDashboardContext } from '../../hooks/useDashboardContext'
 import { DashboardDropZone } from './DashboardDropZone'
 import { useToast } from '../ui/Toast'
@@ -153,6 +154,15 @@ export function Dashboard() {
   const isFetching = isClustersLoading || isRefreshing || showIndicator
   const { drillToAllClusters, drillToAllPods, drillToAllNodes } = useDrillDownActions()
 
+  // Global cluster filter — used to scope stats to only the selected clusters
+  const { selectedClusters, isAllClustersSelected } = useGlobalFilters()
+
+  // Apply global filter to clusters for Stats Overview scoping
+  const filteredClusters = useMemo(() => {
+    if (isAllClustersSelected) return clusters
+    return clusters.filter(c => selectedClusters.includes(c.name))
+  }, [clusters, selectedClusters, isAllClustersSelected])
+
   // Reset hook for dashboard
   const { reset, isCustomized } = useDashboardReset({
     storageKey: DASHBOARD_STORAGE_KEY,
@@ -194,18 +204,18 @@ export function Dashboard() {
     groupName: string
   } | null>(null)
 
-  // Stats calculations for StatsOverview
-  const healthyClusters = (clusters || []).filter(c => c.healthy).length
-  const unhealthyClusters = (clusters || []).filter(c => !c.healthy).length
-  const totalPods = (clusters || []).reduce((sum, c) => sum + (c.podCount || 0), 0)
-  const totalNamespaces = (clusters || []).reduce((sum, c) => sum + (c.namespaces?.length || 0), 0)
-  const totalNodes = (clusters || []).reduce((sum, c) => sum + (c.nodeCount || 0), 0)
+  // Stats calculations for StatsOverview — scoped to the active global cluster filter
+  const healthyClusters = filteredClusters.filter(c => c.healthy).length
+  const unhealthyClusters = filteredClusters.filter(c => !c.healthy).length
+  const totalPods = filteredClusters.reduce((sum, c) => sum + (c.podCount || 0), 0)
+  const totalNamespaces = filteredClusters.reduce((sum, c) => sum + (c.namespaces?.length || 0), 0)
+  const totalNodes = filteredClusters.reduce((sum, c) => sum + (c.nodeCount || 0), 0)
 
-  // Dashboard-specific stats value getter
+  // Dashboard-specific stats value getter — values are scoped to filteredClusters
   const getDashboardStatValue = useCallback((blockId: string): StatBlockValue => {
     switch (blockId) {
       case 'clusters':
-        return { value: clusters.length, sublabel: 'total clusters', onClick: () => drillToAllClusters(), isClickable: clusters.length > 0 }
+        return { value: filteredClusters.length, sublabel: 'total clusters', onClick: () => drillToAllClusters(), isClickable: filteredClusters.length > 0 }
       case 'healthy':
         return { value: healthyClusters, sublabel: 'healthy', onClick: () => drillToAllClusters('healthy'), isClickable: healthyClusters > 0 }
       case 'warnings':
@@ -221,7 +231,7 @@ export function Dashboard() {
       default:
         return { value: '-' }
     }
-  }, [clusters, healthyClusters, unhealthyClusters, totalNamespaces, totalNodes, totalPods, drillToAllClusters, drillToAllNodes, drillToAllPods, navigate])
+  }, [filteredClusters, healthyClusters, unhealthyClusters, totalNamespaces, totalNodes, totalPods, drillToAllClusters, drillToAllNodes, drillToAllPods, navigate])
 
   // Merged getter: dashboard-specific values first, then universal fallback
   const getStatValue = useCallback(
@@ -987,7 +997,7 @@ export function Dashboard() {
       <StatsOverview
         dashboardType="dashboard"
         getStatValue={getStatValue}
-        hasData={clusters.length > 0}
+        hasData={filteredClusters.length > 0}
         isLoading={isClustersLoading && clusters.length === 0}
         lastUpdated={lastUpdated}
         collapsedStorageKey="kubestellar-dashboard-stats-collapsed"
