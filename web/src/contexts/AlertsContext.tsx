@@ -382,6 +382,10 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     loadFromStorage<Alert[]>(ALERTS_KEY, [])
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
+  // Toggle this to trigger the evaluation useEffect. Each flip causes a
+  // value-change that React detects as a new dependency, firing the effect
+  // after the isEvaluating=true render has been committed to the DOM.
+  const [pendingEvalTick, setPendingEvalTick] = useState(false)
 
   // MCP data arrives from the lazy-loaded AlertsDataFetcher bridge.
   // Until the fetcher chunk loads, we start with empty arrays (same as
@@ -1601,11 +1605,31 @@ Please provide:
   // All evaluate* functions push mutations into the accumulator; we flush
   // them in a single setAlerts call at the end, reducing O(rules × alerts)
   // state updates to O(1).
+  //
+  // The actual evaluation work lives in a useEffect (below) that is triggered
+  // by flipping pendingEvalTick. This two-phase approach ensures React commits
+  // the isEvaluating=true render (showing the loading indicator) to the DOM
+  // before the synchronous evaluation work begins. Without this deferral,
+  // React would batch setIsEvaluating(true) + setIsEvaluating(false) into a
+  // single render and the spinner would never appear.
   const isEvaluatingRef = useRef(false)
   const evaluateConditions = useCallback(() => {
     if (isEvaluatingRef.current) return
     isEvaluatingRef.current = true
     setIsEvaluating(true)
+    // Flip the toggle so the evaluation effect detects a dependency change
+    // and fires after the isEvaluating=true render has been committed.
+    setPendingEvalTick(t => !t)
+  }, [])
+
+  // Runs the heavy evaluation work in a useEffect so the browser can paint
+  // the isEvaluating=true state (loading indicator) before the synchronous
+  // work blocks the main thread. In test environments act() flushes effects
+  // synchronously, so existing tests require no changes.
+  useEffect(() => {
+    // Guard: skip the initial mount and any re-fires caused solely by
+    // evaluator-callback identity changes when no evaluation is pending.
+    if (!isEvaluatingRef.current) return
 
     // Initialize the batched mutation accumulator
     const acc: MutationAccumulator = { mutations: [], notifications: [] }
@@ -1677,7 +1701,7 @@ Please provide:
       isEvaluatingRef.current = false
       setIsEvaluating(false)
     }
-  }, [evaluateGPUUsage, evaluateGPUHealthCronJob, evaluateNodeReady, evaluatePodCrash, evaluateDiskPressure, evaluateMemoryPressure, evaluateWeatherAlerts, evaluateNightlyE2EFailure, evaluateDNSFailure, evaluateCertificateError, evaluateClusterUnreachable])
+  }, [pendingEvalTick, evaluateGPUUsage, evaluateGPUHealthCronJob, evaluateNodeReady, evaluatePodCrash, evaluateDiskPressure, evaluateMemoryPressure, evaluateWeatherAlerts, evaluateNightlyE2EFailure, evaluateDNSFailure, evaluateCertificateError, evaluateClusterUnreachable])
 
   // Stable ref for evaluateConditions so the interval never resets
   const evaluateConditionsRef = useRef(evaluateConditions)
