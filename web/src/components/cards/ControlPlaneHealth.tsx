@@ -7,15 +7,58 @@ import { useCardLoadingState } from './CardDataContext'
 
 const CP_LABELS: Record<string, string[]> = {
   'API Server': ['component=kube-apiserver', 'app=openshift-kube-apiserver'],
-  'Scheduler': ['component=kube-scheduler'],
-  'Controller Mgr': ['component=kube-controller-manager'],
-  'etcd': ['component=etcd'],
+  'Scheduler': ['component=kube-scheduler', 'app=openshift-kube-scheduler'],
+  'Controller Mgr': ['component=kube-controller-manager', 'app=openshift-kube-controller-manager'],
+  'etcd': ['component=etcd', 'app=etcd'],
   'CoreDNS': ['k8s-app=kube-dns'],
 }
 
+// Namespaces that may host control-plane pods.
+// kube-system covers vanilla Kubernetes; the openshift-* namespaces cover
+// OpenShift clusters where each component lives in its own isolated namespace.
+const CP_NAMESPACES = [
+  'kube-system',
+  'openshift-kube-apiserver',
+  'openshift-kube-controller-manager',
+  'openshift-kube-scheduler',
+  'openshift-etcd',
+] as const
+
 export function ControlPlaneHealth() {
   const { t } = useTranslation('cards')
-  const { pods, isLoading, isRefreshing, isDemoFallback, isFailed, consecutiveFailures } = useCachedPods(undefined, 'kube-system')
+
+  // Fetch from every control-plane namespace and merge the results.
+  // Using individual hook calls (one per namespace) satisfies React's
+  // rules-of-hooks requirement that hooks cannot be called inside loops.
+  const kubeSystem = useCachedPods(undefined, CP_NAMESPACES[0])
+  const osApiServer = useCachedPods(undefined, CP_NAMESPACES[1])
+  const osCtrlMgr = useCachedPods(undefined, CP_NAMESPACES[2])
+  const osScheduler = useCachedPods(undefined, CP_NAMESPACES[3])
+  const osEtcd = useCachedPods(undefined, CP_NAMESPACES[4])
+
+  const allResults = [kubeSystem, osApiServer, osCtrlMgr, osScheduler, osEtcd]
+
+  // Merge pod lists, deduplicating by (cluster, namespace, name).
+  // Tracking the .pods arrays is sufficient: each hook returns a new array
+  // reference whenever its data changes, so this memo will re-run exactly
+  // when any namespace's pod list is updated.
+  const pods = useMemo(() => {
+    const seen = new Set<string>()
+    return allResults.flatMap(r => r.pods).filter(p => {
+      const key = `${p.cluster}/${p.namespace}/${p.name}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [kubeSystem.pods, osApiServer.pods, osCtrlMgr.pods, osScheduler.pods, osEtcd.pods])
+
+  const isLoading = allResults.some(r => r.isLoading)
+  const isRefreshing = allResults.some(r => r.isRefreshing)
+  // Demo mode is a global flag — all hooks agree, so any one is representative.
+  const isDemoFallback = kubeSystem.isDemoFallback
+  // Only consider the card truly failed when every namespace fetch has failed.
+  const isFailed = allResults.every(r => r.isFailed)
+  const consecutiveFailures = Math.max(...allResults.map(r => r.consecutiveFailures))
   const { clusters } = useClusters()
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null)
 
