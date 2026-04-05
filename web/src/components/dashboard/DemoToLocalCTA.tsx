@@ -55,6 +55,12 @@ export function DemoToLocalCTA() {
     }
   }, [shouldShow])
 
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    }
+  }, [])
+
   if (!shouldShow) return null
 
   const handleDismiss = () => {
