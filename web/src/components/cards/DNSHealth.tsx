@@ -5,7 +5,18 @@ import { useCardLoadingState } from './CardDataContext'
 
 export function DNSHealth() {
   const { t } = useTranslation('cards')
-  const { pods, isLoading, isRefreshing, isDemoFallback, isFailed, consecutiveFailures } = useCachedPods(undefined, 'kube-system')
+  // Fetch from kube-system (standard K8s / CoreDNS) and openshift-dns (OpenShift dns-default)
+  const { pods: kubeSystemPods, isLoading: isLoadingKS, isRefreshing: isRefreshingKS, isDemoFallback: isDemoFallbackKS, isFailed: isFailedKS, consecutiveFailures: consecutiveFailuresKS } = useCachedPods(undefined, 'kube-system')
+  const { pods: openshiftDnsPods, isLoading: isLoadingOS, isRefreshing: isRefreshingOS, isDemoFallback: isDemoFallbackOS, isFailed: isFailedOS, consecutiveFailures: consecutiveFailuresOS } = useCachedPods(undefined, 'openshift-dns')
+
+  const pods = useMemo(() => [...kubeSystemPods, ...openshiftDnsPods], [kubeSystemPods, openshiftDnsPods])
+  const isLoading = isLoadingKS || isLoadingOS
+  const isRefreshing = isRefreshingKS || isRefreshingOS
+  const isDemoFallback = isDemoFallbackKS || isDemoFallbackOS
+  // Only mark failed if both namespaces fail; one succeeding means we have valid data
+  const isFailed = isFailedKS && isFailedOS
+  const consecutiveFailures = Math.max(consecutiveFailuresKS ?? 0, consecutiveFailuresOS ?? 0)
+
   const hasData = pods.length > 0
   const { showSkeleton } = useCardLoadingState({
     isLoading: isLoading && !hasData,
@@ -18,7 +29,7 @@ export function DNSHealth() {
 
   const dnsPods = useMemo(() => {
     return pods.filter(p =>
-      p.name?.includes('coredns') || p.name?.includes('kube-dns')
+      p.name?.includes('coredns') || p.name?.includes('kube-dns') || p.name?.includes('dns-default')
     )
   }, [pods])
 

@@ -1931,9 +1931,18 @@ const getDemoCoreDNSStatus = (): CoreDNSClusterStatus[] => [
     healthy: false,
     totalRestarts: 7,
   },
+  {
+    cluster: 'openshift-prod',
+    pods: [
+      { name: 'dns-default-abcde', status: 'Running', ready: '1/1', restarts: 0, version: '' },
+      { name: 'dns-default-fghij', status: 'Running', ready: '1/1', restarts: 0, version: '' },
+    ],
+    healthy: true,
+    totalRestarts: 0,
+  },
 ]
 
-// fetches coredns pods from kube-system and builds per-cluster health info
+// fetches DNS pods from kube-system (CoreDNS/kube-dns) and openshift-dns (dns-default) and builds per-cluster health info
 export function useCachedCoreDNSStatus(
   cluster?: string
 ): CachedHookResult<CoreDNSClusterStatus[]> & { clusters: CoreDNSClusterStatus[] } {
@@ -1947,14 +1956,24 @@ export function useCachedCoreDNSStatus(
     fetcher: async () => {
       let pods: PodInfo[]
       if (cluster) {
-        const data = await fetchAPI<{ pods: PodInfo[] }>('pods', { cluster, namespace: 'kube-system' })
-        pods = (data.pods || []).map(p => ({ ...p, cluster }))
+        const [ksData, osData] = await Promise.all([
+          fetchAPI<{ pods: PodInfo[] }>('pods', { cluster, namespace: 'kube-system' }),
+          fetchAPI<{ pods: PodInfo[] }>('pods', { cluster, namespace: 'openshift-dns' }),
+        ])
+        pods = [
+          ...(ksData.pods || []).map(p => ({ ...p, cluster })),
+          ...(osData.pods || []).map(p => ({ ...p, cluster })),
+        ]
       } else {
-        pods = await fetchFromAllClusters<PodInfo>('pods', 'pods', { namespace: 'kube-system' })
+        const [ksPods, osPods] = await Promise.all([
+          fetchFromAllClusters<PodInfo>('pods', 'pods', { namespace: 'kube-system' }),
+          fetchFromAllClusters<PodInfo>('pods', 'pods', { namespace: 'openshift-dns' }),
+        ])
+        pods = [...ksPods, ...osPods]
       }
 
       const corednsPods = pods.filter(p =>
-        p.name?.includes('coredns') || p.name?.includes('kube-dns')
+        p.name?.includes('coredns') || p.name?.includes('kube-dns') || p.name?.includes('dns-default')
       )
 
       const byCluster = new Map<string, PodInfo[]>()
