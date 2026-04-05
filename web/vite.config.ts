@@ -227,10 +227,12 @@ export default defineConfig(({ mode }) => ({
       ],
     },
     proxy: (() => {
-      // When the watchdog runs with TLS on port 8080, the backend listens
-      // on BACKEND_LISTEN_PORT (default 8081) in plain HTTP. Proxy directly
-      // to the backend to avoid "Client sent an HTTP request to an HTTPS server".
-      // start-dev.sh sets BACKEND_LISTEN_PORT=8080 (no watchdog, direct backend).
+      // When the watchdog runs with TLS on port 8080, Vite should proxy to the
+      // backend's plain-HTTP endpoint instead to avoid "Client sent an HTTP
+      // request to an HTTPS server". BACKEND_LISTEN_PORT here is the Vite proxy
+      // target (default 8081); the backend process itself listens based on PORT
+      // and, in some watchdog/OAuth flows, BACKEND_PORT. start-dev.sh sets
+      // BACKEND_LISTEN_PORT=8080 when talking directly to the backend.
       const backendPort = process.env.BACKEND_LISTEN_PORT || '8081'
       const target = `http://localhost:${backendPort}`
       const wsTarget = `ws://localhost:${backendPort}`

@@ -141,19 +141,20 @@ fi
 
 export DEV_MODE=${DEV_MODE:-true}
 export FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}
-# Tell Vite proxy to target port 8080 where the backend actually listens.
-# Without this, the proxy defaults to 8081 (used when a TLS watchdog sits on 8080).
-export BACKEND_LISTEN_PORT=${BACKEND_LISTEN_PORT:-8080}
+# PORT is what the Go backend listens on (matches LoadConfigFromEnv default 8080).
+# BACKEND_LISTEN_PORT tells Vite where to proxy; it must always match PORT.
+export PORT=${PORT:-8080}
+export BACKEND_LISTEN_PORT=${PORT}
 
 # Kill any existing project instances on required ports
-for p in 8080 5174 8585; do
+for p in "$PORT" 5174 8585; do
     kill_project_port "$p"
 done
 
 echo "Starting KubeStellar Console (dev mode)..."
 echo "  GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:0:10}..."
 echo "  Frontend: $FRONTEND_URL"
-echo "  Backend: http://localhost:8080"
+echo "  Backend: http://localhost:${PORT}"
 
 # Cleanup on exit
 cleanup() {
@@ -275,7 +276,7 @@ echo ""
 echo "=== Console is running in DEV mode ==="
 echo ""
 echo "  Frontend: http://localhost:5174"
-echo "  Backend:  http://localhost:8080"
+echo "  Backend:  http://localhost:${PORT}"
 if [ "$AGENT_RUNNING" = true ]; then
     echo "  Agent:    http://localhost:8585"
 else
