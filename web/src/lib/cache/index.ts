@@ -69,6 +69,18 @@ function ssWrite(key: string, data: unknown, timestamp: number): void {
   }
 }
 
+/** Remove all sessionStorage snapshot entries written by this cache layer (kcc:* keys). */
+function clearSessionStorageSnapshots(): void {
+  const keysToRemove: string[] = []
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    if (key && key.startsWith(SS_PREFIX)) {
+      keysToRemove.push(key)
+    }
+  }
+  keysToRemove.forEach(key => sessionStorage.removeItem(key))
+}
+
 /** Synchronous read from sessionStorage. Returns null on miss, version mismatch, or parse error. */
 function ssRead<T>(key: string): { data: T; timestamp: number } | null {
   try {
@@ -532,14 +544,7 @@ function clearAllInMemoryCaches(): void {
   preloadedMetaMap.clear()
 
   // 3. Clear sessionStorage snapshots (kcc:* keys)
-  const ssKeysToRemove: string[] = []
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i)
-    if (key && key.startsWith(SS_PREFIX)) {
-      ssKeysToRemove.push(key)
-    }
-  }
-  ssKeysToRemove.forEach(key => sessionStorage.removeItem(key))
+  clearSessionStorageSnapshots()
 
   // 4. Reset every in-memory store WITHOUT reloading from (now-empty) storage
   for (const store of cacheRegistry.values()) {
@@ -1295,14 +1300,7 @@ export async function clearAllCaches(): Promise<void> {
   keysToRemove.forEach(key => localStorage.removeItem(key))
 
   // Clear sessionStorage snapshots (kcc:* keys)
-  const ssKeysToRemove: string[] = []
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i)
-    if (key && key.startsWith(SS_PREFIX)) {
-      ssKeysToRemove.push(key)
-    }
-  }
-  ssKeysToRemove.forEach(key => sessionStorage.removeItem(key))
+  clearSessionStorageSnapshots()
 
   // Clear registry
   cacheRegistry.clear()
