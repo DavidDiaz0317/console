@@ -111,9 +111,10 @@ describe('PodIssues', () => {
   })
 
   it('handles data fetch failure', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: false, isRefreshing: false })
     mockPodIssues.mockReturnValue({ issues: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: true, consecutiveFailures: 3, error: 'Network error', lastRefresh: null })
-    const { container } = render(<PodIssues />)
-    expect(container).toBeTruthy()
+    const { getByText } = render(<PodIssues />)
+    expect(getByText('Failed to load pod data')).toBeTruthy()
   })
 
   it('renders during background refresh with cached data', () => {
