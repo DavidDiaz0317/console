@@ -146,7 +146,7 @@ export function ShareMissionDialog({ resolution, isOpen, onClose }: ShareMission
         a.href = url
         a.download = `${mission.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}.json`
         a.click()
-        URL.revokeObjectURL(url)
+        setTimeout(() => { URL.revokeObjectURL(url) }, 100)
         break
       }
       case 'clipboard':
@@ -163,7 +163,7 @@ export function ShareMissionDialog({ resolution, isOpen, onClose }: ShareMission
         yamlAnchor.href = yamlUrl
         yamlAnchor.download = `${mission.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}.yaml`
         yamlAnchor.click()
-        URL.revokeObjectURL(yamlUrl)
+        setTimeout(() => { URL.revokeObjectURL(yamlUrl) }, 100)
         break
       }
     }

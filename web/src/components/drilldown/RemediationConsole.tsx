@@ -383,7 +383,7 @@ Labels:       app=${resourceName.split('-')[0]}
     a.href = url
     a.download = `remediation-${resourceName}-${Date.now()}.log`
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => { URL.revokeObjectURL(url) }, 100)
   }
 
   if (!isOpen) return null

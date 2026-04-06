@@ -485,6 +485,8 @@ describe('usePersistedSettings', () => {
       expect.objectContaining({ method: 'POST' }),
     )
     expect(mockClick).toHaveBeenCalled()
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled()
+    vi.runAllTimers()
     expect(mockRevokeObjectURL).toHaveBeenCalled()
 
     mockAppendChild.mockRestore()

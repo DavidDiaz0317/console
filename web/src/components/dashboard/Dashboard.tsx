@@ -1155,7 +1155,7 @@ export function Dashboard() {
             a.href = url
             a.download = `${(dashboard.name || 'dashboard').replace(/\s+/g, '-').toLowerCase()}.json`
             a.click()
-            URL.revokeObjectURL(url)
+            setTimeout(() => { URL.revokeObjectURL(url) }, 100)
             showToast('Dashboard exported', 'success')
           } catch {
             showToast('Failed to export dashboard', 'error')

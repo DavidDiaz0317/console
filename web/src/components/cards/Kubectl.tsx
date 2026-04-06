@@ -432,7 +432,7 @@ data:
     a.href = url
     a.download = 'manifest.yaml'
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => { URL.revokeObjectURL(url) }, 100)
   }, [yamlContent])
 
   // Handle keyboard shortcuts

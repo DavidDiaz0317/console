@@ -173,7 +173,7 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    setTimeout(() => { URL.revokeObjectURL(url) }, 100)
   }, [mission])
 
   // Check if user is at bottom of scroll container

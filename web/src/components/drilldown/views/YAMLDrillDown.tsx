@@ -80,7 +80,7 @@ export function YAMLDrillDown({ data }: Props) {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    setTimeout(() => { URL.revokeObjectURL(url) }, 100)
     emitDataExported('yaml_download', resourceType)
   }
 
