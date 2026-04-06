@@ -38,23 +38,23 @@ vi.mock('../../../hooks/useFeatureRequests', () => ({
 
 const mockOpen = vi.fn()
 const mockSetFullScreen = vi.fn()
-let mockIsFullScreen = false
 
 vi.mock('../../../lib/modals', () => ({
   useModalState: () => ({ isOpen: false, open: mockOpen, close: vi.fn() }),
 }))
 
 vi.mock('../../../hooks/useMissions', () => ({
-  useMissions: () => ({ isFullScreen: mockIsFullScreen, setFullScreen: mockSetFullScreen }),
+  useMissions: vi.fn(),
 }))
 
+import { useMissions } from '../../../hooks/useMissions'
 import { FeatureRequestButton } from '../FeatureRequestButton'
 
 describe('FeatureRequestButton', () => {
   beforeEach(() => {
     mockOpen.mockClear()
     mockSetFullScreen.mockClear()
-    mockIsFullScreen = false
+    vi.mocked(useMissions).mockReturnValue({ isFullScreen: false, setFullScreen: mockSetFullScreen } as ReturnType<typeof useMissions>)
   })
 
   it('renders without crashing', () => {
@@ -70,10 +70,12 @@ describe('FeatureRequestButton', () => {
   })
 
   it('exits fullscreen mission sidebar before opening the modal', () => {
-    mockIsFullScreen = true
+    vi.mocked(useMissions).mockReturnValue({ isFullScreen: true, setFullScreen: mockSetFullScreen } as ReturnType<typeof useMissions>)
     const { getByTitle } = render(<FeatureRequestButton />)
     fireEvent.click(getByTitle('Report a bug or request a feature'))
     expect(mockSetFullScreen).toHaveBeenCalledWith(false)
     expect(mockOpen).toHaveBeenCalledTimes(1)
+    // Verify fullscreen is exited before the modal opens
+    expect(mockSetFullScreen.mock.invocationCallOrder[0]).toBeLessThan(mockOpen.mock.invocationCallOrder[0])
   })
 })
