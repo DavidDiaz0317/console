@@ -128,10 +128,20 @@ func (c *CodexProvider) StreamChat(ctx context.Context, req *ChatRequest, onChun
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
 		slog.Error("[Codex] scanner error", "error", scanErr)
+		return &ChatResponse{
+			Content: fullResponse.String(),
+			Agent:   c.Name(),
+			Done:    false,
+		}, fmt.Errorf("failed to read codex output: %w", scanErr)
 	}
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("[Codex] command finished with error", "error", err)
+		return &ChatResponse{
+			Content: fullResponse.String(),
+			Agent:   c.Name(),
+			Done:    false,
+		}, fmt.Errorf("codex command failed: %w", err)
 	}
 
 	return &ChatResponse{

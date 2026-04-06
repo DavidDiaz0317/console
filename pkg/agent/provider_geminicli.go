@@ -124,10 +124,21 @@ func (g *GeminiCLIProvider) StreamChat(ctx context.Context, req *ChatRequest, on
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
 		slog.Error("[GeminiCLI] scanner error", "error", scanErr)
+		_ = cmd.Wait()
+		return &ChatResponse{
+			Content: fullResponse.String(),
+			Agent:   g.Name(),
+			Done:    false,
+		}, fmt.Errorf("failed to read gemini output: %w", scanErr)
 	}
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("[GeminiCLI] command finished with error", "error", err)
+		return &ChatResponse{
+			Content: fullResponse.String(),
+			Agent:   g.Name(),
+			Done:    false,
+		}, fmt.Errorf("gemini command failed: %w", err)
 	}
 
 	return &ChatResponse{
