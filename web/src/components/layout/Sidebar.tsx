@@ -564,7 +564,7 @@ export function Sidebar() {
       {!isMobile && !isMissionFullScreen && (
         <div
           className="fixed top-[4.5rem] z-[45] flex flex-col gap-1.5 items-center transition-[left] duration-300"
-          style={{ left: sidebarWidth + 4 }}
+          style={{ left: sidebarWidth - 14 }}
         >
           <button
             data-testid="sidebar-collapse-toggle"
