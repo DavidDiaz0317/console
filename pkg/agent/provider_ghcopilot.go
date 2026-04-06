@@ -103,6 +103,9 @@ func (g *GHCopilotProvider) StreamChat(ctx context.Context, req *ChatRequest, on
 			onChunk(line + "\n")
 		}
 	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		slog.Error("[GHCopilot] scanner error", "error", scanErr)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("[GHCopilot] command finished with error", "error", err)

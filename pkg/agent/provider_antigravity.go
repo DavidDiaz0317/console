@@ -193,6 +193,9 @@ func (a *AntigravityProvider) StreamChat(ctx context.Context, req *ChatRequest, 
 			onChunk(line + "\n")
 		}
 	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		slog.Error("[Antigravity] scanner error", "error", scanErr)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("[Antigravity] command finished with error", "error", err)

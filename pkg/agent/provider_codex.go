@@ -126,6 +126,9 @@ func (c *CodexProvider) StreamChat(ctx context.Context, req *ChatRequest, onChun
 			onChunk(line + "\n")
 		}
 	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		slog.Error("[Codex] scanner error", "error", scanErr)
+	}
 
 	if err := cmd.Wait(); err != nil {
 		slog.Error("[Codex] command finished with error", "error", err)
