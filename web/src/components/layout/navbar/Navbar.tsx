@@ -113,7 +113,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
            shrink and prevents overlap with the right-side buttons (#4409).
            overflow-visible is required so the search results dropdown panel
            (absolute-positioned) is not clipped by this container. */}
-      <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-4">
+      <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-4 overflow-visible">
         <Suspense fallback={null}><SearchDropdown /></Suspense>
       </div>
 
