@@ -600,7 +600,8 @@ func (s *SQLiteStore) GetDashboardCards(dashboardID uuid.UUID) ([]models.Card, e
 	for rows.Next() {
 		c, err := s.scanCardRow(rows)
 		if err != nil {
-			return nil, err
+			slog.Warn("[Store] skipping card with corrupted position data")
+			continue
 		}
 		cards = append(cards, *c)
 	}
@@ -629,7 +630,7 @@ func (s *SQLiteStore) scanCard(row *sql.Row) (*models.Card, error) {
 		c.Config = json.RawMessage(config.String)
 	}
 	if err := json.Unmarshal([]byte(positionStr), &c.Position); err != nil {
-		slog.Error("[Store] failed to unmarshal card position — card will use zero position", "cardID", idStr, "error", err)
+		return nil, fmt.Errorf("corrupted card position data")
 	}
 	if lastSummary.Valid {
 		c.LastSummary = lastSummary.String
@@ -659,7 +660,7 @@ func (s *SQLiteStore) scanCardRow(rows *sql.Rows) (*models.Card, error) {
 		c.Config = json.RawMessage(config.String)
 	}
 	if err := json.Unmarshal([]byte(positionStr), &c.Position); err != nil {
-		slog.Error("[Store] failed to unmarshal card position — card will use zero position", "cardID", idStr, "error", err)
+		return nil, fmt.Errorf("corrupted card position data")
 	}
 	if lastSummary.Valid {
 		c.LastSummary = lastSummary.String

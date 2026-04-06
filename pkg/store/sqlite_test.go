@@ -363,6 +363,50 @@ func TestCardCRUD(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, got)
 	})
+
+	t.Run("GetCard returns error for corrupted position", func(t *testing.T) {
+		card := &models.Card{
+			DashboardID: dash.ID,
+			CardType:    models.CardTypeClusterHealth,
+			Position:    models.CardPosition{X: 1, Y: 2, W: 3, H: 4},
+		}
+		require.NoError(t, store.CreateCard(card))
+
+		_, err := store.db.Exec(`UPDATE cards SET position = ? WHERE id = ?`, "{invalid}", card.ID.String())
+		require.NoError(t, err)
+
+		got, err := store.GetCard(card.ID)
+		require.Error(t, err)
+		require.Nil(t, got)
+		require.Contains(t, err.Error(), "corrupted card position data")
+	})
+
+	t.Run("GetDashboardCards skips corrupted cards and returns valid ones", func(t *testing.T) {
+		dash2 := &models.Dashboard{UserID: user.ID, Name: "CorruptDash"}
+		require.NoError(t, store.CreateDashboard(dash2))
+
+		good := &models.Card{
+			DashboardID: dash2.ID,
+			CardType:    models.CardTypeClusterHealth,
+			Position:    models.CardPosition{X: 0, Y: 0, W: 4, H: 3},
+		}
+		require.NoError(t, store.CreateCard(good))
+
+		bad := &models.Card{
+			DashboardID: dash2.ID,
+			CardType:    models.CardTypePodIssues,
+			Position:    models.CardPosition{X: 4, Y: 0, W: 4, H: 3},
+		}
+		require.NoError(t, store.CreateCard(bad))
+
+		_, err := store.db.Exec(`UPDATE cards SET position = ? WHERE id = ?`, "{invalid}", bad.ID.String())
+		require.NoError(t, err)
+
+		cards, err := store.GetDashboardCards(dash2.ID)
+		require.NoError(t, err)
+		require.Len(t, cards, 1)
+		require.Equal(t, good.ID, cards[0].ID)
+	})
 }
 
 func TestOnboarding(t *testing.T) {
