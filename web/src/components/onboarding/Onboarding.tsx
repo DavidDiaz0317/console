@@ -241,6 +241,8 @@ export function Onboarding() {
                 <button
                   key={option}
                   onClick={() => handleSelect(option)}
+                  aria-label={option}
+                  aria-pressed={answers[currentQuestion.key] === option}
                   className={`w-full p-4 rounded-xl text-left transition-all duration-200 ${
                     answers[currentQuestion.key] === option
                       ? 'bg-purple-500/20 border-2 border-purple-500 text-foreground'
@@ -250,7 +252,7 @@ export function Onboarding() {
                   <div className="flex items-center justify-between">
                     <span>{option}</span>
                     {answers[currentQuestion.key] === option && (
-                      <Check className="w-5 h-5 text-purple-400" />
+                      <Check className="w-5 h-5 text-purple-400" aria-hidden="true" />
                     )}
                   </div>
                 </button>
