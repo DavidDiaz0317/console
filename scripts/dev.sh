@@ -19,6 +19,7 @@ kill_project_port() {
         cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
         # Check parent process — go run compiles a temp binary whose argv[0] is in
         # /tmp/go-build*/exe/ and does not contain "cmd/console" or $PROJECT_DIR.
+        # Matches paths like: /tmp/go-build1234567890/b001/exe/console
         local ppid pcmd
         ppid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ')
         pcmd=$([ -n "$ppid" ] && ps -p "$ppid" -o args= 2>/dev/null || true)
@@ -105,7 +106,7 @@ cleanup() {
     kill $BACKEND_PID 2>/dev/null || true
     kill $FRONTEND_PID 2>/dev/null || true
     # Also clean up any remaining processes on project ports (handles go run child binaries)
-    for p in "$PORT" 5174 8585; do
+    for p in "$PORT" "5174" "8585"; do
         kill_project_port "$p"
     done
     exit 0

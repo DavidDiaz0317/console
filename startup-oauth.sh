@@ -135,6 +135,7 @@ kill_project_port() {
         cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
         # Check parent process — go run compiles a temp binary whose argv[0] is in
         # /tmp/go-build*/exe/ and does not contain "cmd/console" or $SCRIPT_DIR.
+        # Matches paths like: /tmp/go-build1234567890/b001/exe/console
         local ppid pcmd
         ppid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ')
         pcmd=$([ -n "$ppid" ] && ps -p "$ppid" -o args= 2>/dev/null || true)
