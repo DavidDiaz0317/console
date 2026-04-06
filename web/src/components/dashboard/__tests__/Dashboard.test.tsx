@@ -6,7 +6,7 @@
  * the helper functions and sub-patterns directly, plus a minimal render.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
 
 // ── Minimal mock surface ────────────────────────────────────────────
@@ -23,11 +23,12 @@ vi.mock('../../../lib/utils/localStorage', () => ({
 }))
 
 const mockApiGet = vi.fn().mockResolvedValue({ data: [] })
+const mockApiPut = vi.fn().mockResolvedValue({ data: {} })
 vi.mock('../../../lib/api', () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
     post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
+    put: (...args: unknown[]) => mockApiPut(...args),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   },
   BackendUnavailableError: class extends Error {},
@@ -195,10 +196,12 @@ vi.mock('../CreateDashboardModal', () => ({ CreateDashboardModal: () => null }))
 vi.mock('../FloatingDashboardActions', () => ({
   FloatingDashboardActions: () => <div data-testid="floating-actions" />,
 }))
+let capturedWidthChangeHandlers: Record<string, (w: number) => void> = {}
 vi.mock('../SharedSortableCard', () => ({
-  SortableCard: ({ card }: { card: { id: string; card_type: string } }) => (
-    <div data-testid={`card-${card.id}`} data-card-type={card.card_type} />
-  ),
+  SortableCard: ({ card, onWidthChange }: { card: { id: string; card_type: string }; onWidthChange?: (w: number) => void }) => {
+    if (onWidthChange) capturedWidthChangeHandlers[card.id] = onWidthChange
+    return <div data-testid={`card-${card.id}`} data-card-type={card.card_type} />
+  },
   DragPreviewCard: () => null,
 }))
 vi.mock('../PostConnectBanner', () => ({ PostConnectBanner: () => null }))
@@ -262,6 +265,7 @@ describe('Dashboard', () => {
     mockLocation.pathname = '/'
     mockLocation.key = 'test-key'
     capturedGetStatValue = null
+    capturedWidthChangeHandlers = {}
     // Reset global filter to default (all clusters)
     mockGlobalFilters.selectedClusters = []
     mockGlobalFilters.isAllClustersSelected = true
@@ -394,6 +398,52 @@ describe('Dashboard', () => {
       expect(capturedGetStatValue!('clusters').value).toBe(0)
       expect(capturedGetStatValue!('pods').value).toBe(0)
       expect(capturedGetStatValue!('nodes').value).toBe(0)
+    })
+  })
+
+  describe('handleWidthChange', () => {
+    it('sends current card position to API without stale closure on rapid resizes', async () => {
+      // Arrange: card with a non-default height (h:3) so we can distinguish
+      // correct ref-based lookup from the stale-closure fallback (h:2).
+      const cardId = 'local-persist-1'
+      mockSafeGetJSON.mockReturnValue([
+        { id: cardId, card_type: 'cluster_health', config: {}, position: { x: 0, y: 0, w: 4, h: 3 } },
+      ])
+      // Provide a backend dashboard so the persistence branch is entered
+      mockApiGet.mockImplementation((url: string) => {
+        if (url === '/api/dashboards') {
+          return Promise.resolve({ data: [{ id: 'dash-1', cards: [], name: 'Main' }] })
+        }
+        if (url === '/api/dashboards/dash-1') {
+          return Promise.resolve({ data: { id: 'dash-1', cards: [
+            { id: cardId, card_type: 'cluster_health', config: {}, position: { x: 0, y: 0, w: 4, h: 3 } },
+          ], name: 'Main' } })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      render(<Dashboard />)
+
+      // Let the dashboard load (API calls complete + React state settles)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      // Act: trigger a width change via the captured callback
+      const onWidthChange = capturedWidthChangeHandlers[cardId]
+      expect(onWidthChange).toBeDefined()
+      await act(async () => {
+        await onWidthChange(6)
+      })
+
+      // Assert: api.put was called with the card's actual height (h:3),
+      // confirming the ref-based lookup used current data, not a stale closure.
+      await waitFor(() => {
+        expect(mockApiPut).toHaveBeenCalledWith(
+          `/api/cards/${cardId}`,
+          expect.objectContaining({ position: expect.objectContaining({ w: 6, h: 3 }) })
+        )
+      })
     })
   })
 })

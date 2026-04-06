@@ -781,7 +781,7 @@ export function Dashboard() {
   }, [openConfigureCard])
 
   const handleWidthChange = useCallback(async (cardId: string, newWidth: number) => {
-    snapshot(localCards)
+    snapshot(localCardsRef.current)
     setLocalCards((prev) =>
       prev.map((c) =>
         c.id === cardId
@@ -793,7 +793,7 @@ export function Dashboard() {
     // Persist width change to backend
     if (dashboard?.id && !cardId.startsWith('demo-') && !cardId.startsWith('new-') && !cardId.startsWith('rec-') && !cardId.startsWith('template-') && !cardId.startsWith('restored-') && !cardId.startsWith('ai-')) {
       try {
-        const card = localCards.find((c) => c.id === cardId)
+        const card = localCardsRef.current.find((c) => c.id === cardId)
         if (card) {
           await api.put(`/api/cards/${cardId}`, {
             position: { ...(card.position || { w: 4, h: 2 }), w: newWidth }
@@ -804,7 +804,7 @@ export function Dashboard() {
         showToast('Failed to update card width', 'error')
       }
     }
-  }, [dashboard, localCards, snapshot, showToast])
+  }, [dashboard, snapshot, showToast])
 
   const handleCardConfigured = useCallback(async (cardId: string, newConfig: Record<string, unknown>, newTitle?: string) => {
     const card = localCards.find((c) => c.id === cardId)
