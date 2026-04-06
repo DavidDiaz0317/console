@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -33,7 +34,8 @@ func TestImageTagValidation_RejectsPathTraversal(t *testing.T) {
 	}
 
 	for _, tag := range maliciousTags {
-		t.Run(tag, func(t *testing.T) {
+		tag := tag
+		t.Run(fmt.Sprintf("rejects_%q", tag), func(t *testing.T) {
 			body, err := json.Marshal(map[string]string{"imageTag": tag})
 			require.NoError(t, err)
 
@@ -67,7 +69,8 @@ func TestImageTagValidation_AcceptsValidTags(t *testing.T) {
 	}
 
 	for _, tag := range validTags {
-		t.Run(tag, func(t *testing.T) {
+		tag := tag
+		t.Run(fmt.Sprintf("accepts_%q", tag), func(t *testing.T) {
 			body, err := json.Marshal(map[string]string{"imageTag": tag})
 			require.NoError(t, err)
 
