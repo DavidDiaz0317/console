@@ -209,6 +209,10 @@ async function fetchViaSSE<T>(
         accumulated.push(...items)
         onProgress?.([...accumulated])
       },
+      onRetry: () => {
+        // Reset accumulated on retry to avoid mixing stale partial data with fresh data
+        accumulated.length = 0
+      },
     })
   } catch {
     // SSE failed — fall back to per-cluster REST
@@ -238,6 +242,10 @@ async function fetchViaGitOpsSSE<T>(
     onClusterData: (_cluster, items) => {
       accumulated.push(...items)
       onProgress?.([...accumulated])
+    },
+    onRetry: () => {
+      // Reset accumulated on retry to avoid mixing stale partial data with fresh data
+      accumulated.length = 0
     },
   })
 }

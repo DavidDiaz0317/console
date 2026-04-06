@@ -28,6 +28,12 @@ export interface SSEFetchOptions<T> {
   itemsKey: string
   /** AbortSignal for cleanup */
   signal?: AbortSignal
+  /**
+   * Called before each retry attempt (not the first attempt).
+   * Use this to reset any accumulated state in the caller so that
+   * partial data from a broken attempt is not mixed with fresh retry data.
+   */
+  onRetry?: () => void
 }
 
 /** Overall timeout for a single SSE stream (backend has 30s deadline) */
@@ -150,6 +156,7 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
     let aborted = false
     /** Timer ID for scheduled reconnect — cleared on unmount/abort */
     let reconnectTimerId: ReturnType<typeof setTimeout> | null = null
+    const { onRetry } = options
 
     const cleanup = (wasAborted = false) => {
       inflightRequests.delete(cacheKey)
@@ -195,6 +202,12 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
      * reconnects after a silent token refresh use the fresh token (#3897).
      */
     const attempt = (attemptNumber: number): void => {
+      // On retry: reset accumulated to avoid mixing partial stale data from
+      // a broken attempt with fresh data from the new attempt (#SSE-recovery).
+      if (attemptNumber > 0) {
+        accumulated.length = 0
+        onRetry?.()
+      }
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
       }
@@ -275,15 +288,10 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
             return
           }
 
-          // If we already collected some data, resolve with what we have
-          if (accumulated.length > 0) {
-            clearTimeout(timeoutId)
-            cleanup()
-            resolve(accumulated)
-            return
-          }
-
-          // Retry with exponential backoff if we haven't exceeded attempts
+          // Retry with exponential backoff if we haven't exceeded attempts.
+          // We always retry regardless of how much partial data was accumulated,
+          // because partial data from a broken stream is incomplete and stale.
+          // (#SSE-recovery: do NOT resolve early with partial data here)
           const retriesRemaining = SSE_MAX_RECONNECT_ATTEMPTS - attemptNumber
           if (retriesRemaining > 0 && !aborted) {
             const delay = Math.min(
@@ -303,10 +311,15 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
             return
           }
 
-          // All retries exhausted — clean up and reject
+          // All retries exhausted — resolve with best available data if any,
+          // otherwise reject so the caller can fall back to another data source.
           clearTimeout(timeoutId)
           cleanup()
-          reject(new Error(`SSE stream error: ${err.message}`))
+          if (accumulated.length > 0) {
+            resolve(accumulated)
+          } else {
+            reject(new Error(`SSE stream error: ${err.message}`))
+          }
         })
     }
 

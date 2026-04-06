@@ -436,11 +436,11 @@ describe('sseClient expanded', () => {
       expect(callCount).toBe(3)
     })
 
-    it('resolves with accumulated data on error after partial data', async () => {
+    it('retries on mid-stream break even when partial data was received', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {})
       let callCount = 0
 
-      // First call: returns partial data then errors
+      // First call: returns partial data then stream errors; subsequent calls fail too
       vi.mocked(fetch).mockImplementation(() => {
         callCount++
         if (callCount === 1) {
@@ -474,15 +474,75 @@ describe('sseClient expanded', () => {
         onClusterData,
       })
 
-      // Advance through the stream read + reconnect delays
+      // Attach catch before advancing timers to avoid unhandled rejection
+      const handled = promise.catch(() => [] as unknown[])
+
+      // Advance through the stream read + reconnect delays (all retries fail)
       for (let i = 0; i < 10; i++) {
         await vi.advanceTimersByTimeAsync(35_000)
       }
 
-      // The promise should have resolved with partial data since accumulated.length > 0
-      const result = await promise.catch(() => [] as unknown[])
-      // Should have at least got the first cluster data
+      // Mid-stream break triggers retries (not an immediate resolve with partial data).
+      // All retries also fail, so the promise rejects (accumulated reset on retry).
+      const result = await handled
       expect(Array.isArray(result)).toBe(true)
+      // Verify that retry was attempted (more than 1 fetch call made)
+      expect(callCount).toBeGreaterThan(1)
+    })
+
+    it('recovers and returns complete data when retry succeeds after mid-stream break', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      let callCount = 0
+
+      vi.mocked(fetch).mockImplementation(() => {
+        callCount++
+        if (callCount === 1) {
+          // First attempt: sends partial data then the stream errors mid-way
+          const encoder = new TextEncoder()
+          let chunksSent = 0
+          const stream = new ReadableStream<Uint8Array>({
+            pull(controller) {
+              if (chunksSent === 0) {
+                controller.enqueue(encoder.encode(
+                  'event: cluster_data\ndata: {"cluster":"c1","items":[{"id":1}]}\n\n',
+                ))
+                chunksSent++
+              } else {
+                controller.error(new Error('Connection dropped'))
+              }
+            },
+          })
+          return Promise.resolve(new Response(stream, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }))
+        }
+        // Second attempt: returns complete data with done event
+        return Promise.resolve(makeSSEResponse([
+          { event: 'cluster_data', data: { cluster: 'c1', items: [{ id: 1 }] } },
+          { event: 'cluster_data', data: { cluster: 'c2', items: [{ id: 2 }] } },
+          { event: 'done', data: {} },
+        ]))
+      })
+
+      const uniqueUrl = `/api/midstream-recovery-${testId++}`
+      const onRetry = vi.fn()
+      const promise = fetchSSE({
+        url: uniqueUrl,
+        itemsKey: 'items',
+        onClusterData: vi.fn(),
+        onRetry,
+      })
+
+      // Advance past the retry delay (1000ms for first retry)
+      await vi.advanceTimersByTimeAsync(2000)
+
+      const result = await promise
+      // Should have complete data from the successful retry (not partial data from attempt 0)
+      expect(result).toHaveLength(2)
+      expect(callCount).toBe(2)
+      // onRetry should have been called once (before attempt 1)
+      expect(onRetry).toHaveBeenCalledTimes(1)
     })
   })
 
