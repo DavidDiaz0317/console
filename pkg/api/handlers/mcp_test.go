@@ -189,7 +189,7 @@ func TestMCPGetPods_NetworkErrorReturnsUnavailable(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "network", payload["errorType"])
-	assert.Contains(t, payload["errorMessage"], "connection refused")
+	assert.Contains(t, payload["errorMessage"], "unreachable")
 }
 
 func TestMCPGetDaemonSets_SingleClusterEmptyIsArray(t *testing.T) {
@@ -320,4 +320,40 @@ func TestMCPGetPods_AuthErrorReturnsUnavailable(t *testing.T) {
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "auth", payload["errorType"])
+}
+
+func TestMCPGetPods_NonExistentClusterReturns404(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/pods", handler.GetPods)
+
+	// "does-not-exist-xyz" is not in the rawConfig set up by setupTestEnv,
+	// so the handler must return 404, not 500.
+	req, err := http.NewRequest("GET", "/api/mcp/pods?cluster=does-not-exist-xyz", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Contains(t, payload["error"], "not found")
+}
+
+func TestMCPGetNodes_NonExistentClusterReturns404(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/nodes", handler.GetNodes)
+
+	req, err := http.NewRequest("GET", "/api/mcp/nodes?cluster=does-not-exist-xyz", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Contains(t, payload["error"], "not found")
 }

@@ -1000,6 +1000,9 @@ func TestClassifyError(t *testing.T) {
 		{"tls handshake error", "certificate"},
 		{"ssl: bad certificate", "certificate"},
 		{"certificate has expired", "certificate"},
+		{`context "does-not-exist-xyz" not found in kubeconfig`, "not_found"},
+		{"failed to get config for context does-not-exist: context \"does-not-exist\" not found in kubeconfig", "not_found"},
+		{"context was not found for specified context: staging", "not_found"},
 		{"something else", "unknown"},
 		{"", "unknown"},
 	}
@@ -1008,6 +1011,43 @@ func TestClassifyError(t *testing.T) {
 		if got := classifyError(tt.msg); got != tt.want {
 			t.Errorf("classifyError(%q) = %q, want %q", tt.msg, got, tt.want)
 		}
+	}
+}
+
+// TestGetClient_UnknownContextReturnsNotFoundError verifies that GetClient
+// returns an error whose message triggers the "not_found" classification when
+// the requested context is absent from a loaded rawConfig.
+func TestGetClient_UnknownContextReturnsNotFoundError(t *testing.T) {
+	m, _ := NewMultiClusterClient("")
+	m.rawConfig = &api.Config{
+		Clusters: map[string]*api.Cluster{"c1": {Server: "https://c1:6443"}},
+		Contexts: map[string]*api.Context{"c1": {Cluster: "c1"}},
+	}
+
+	_, err := m.GetClient("does-not-exist")
+	if err == nil {
+		t.Fatal("expected error for unknown context, got nil")
+	}
+	if got := classifyError(err.Error()); got != "not_found" {
+		t.Errorf("classifyError(%q) = %q, want %q", err.Error(), got, "not_found")
+	}
+}
+
+// TestGetDynamicClient_UnknownContextReturnsNotFoundError mirrors the check
+// above but for GetDynamicClient.
+func TestGetDynamicClient_UnknownContextReturnsNotFoundError(t *testing.T) {
+	m, _ := NewMultiClusterClient("")
+	m.rawConfig = &api.Config{
+		Clusters: map[string]*api.Cluster{"c1": {Server: "https://c1:6443"}},
+		Contexts: map[string]*api.Context{"c1": {Cluster: "c1"}},
+	}
+
+	_, err := m.GetDynamicClient("does-not-exist")
+	if err == nil {
+		t.Fatal("expected error for unknown context, got nil")
+	}
+	if got := classifyError(err.Error()); got != "not_found" {
+		t.Errorf("classifyError(%q) = %q, want %q", err.Error(), got, "not_found")
 	}
 }
 

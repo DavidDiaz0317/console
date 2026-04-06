@@ -1210,6 +1210,15 @@ func (m *MultiClusterClient) GetClient(contextName string) (kubernetes.Interface
 	if isInCluster {
 		config = rest.CopyConfig(inClusterConfig)
 	} else {
+		// If the rawConfig is already loaded, validate that the requested context exists
+		// before attempting to dial the cluster. This converts a missing-context error
+		// (which would otherwise surface as a 500) into a clear "not found" sentinel
+		// that handleK8sError maps to HTTP 404.
+		if m.rawConfig != nil {
+			if _, exists := m.rawConfig.Contexts[contextName]; !exists {
+				return nil, fmt.Errorf("context %q not found in kubeconfig", contextName)
+			}
+		}
 		config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: m.kubeconfig},
 			&clientcmd.ConfigOverrides{CurrentContext: contextName},
@@ -1273,6 +1282,13 @@ func (m *MultiClusterClient) GetDynamicClient(contextName string) (dynamic.Inter
 		if isInCluster {
 			config = rest.CopyConfig(m.inClusterConfig)
 		} else {
+			// If the rawConfig is already loaded, validate that the requested context exists
+			// before attempting to dial the cluster (mirrors the check in GetClient).
+			if m.rawConfig != nil {
+				if _, exists := m.rawConfig.Contexts[contextName]; !exists {
+					return nil, fmt.Errorf("context %q not found in kubeconfig", contextName)
+				}
+			}
 			config, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&clientcmd.ClientConfigLoadingRules{ExplicitPath: m.kubeconfig},
 				&clientcmd.ConfigOverrides{CurrentContext: contextName},

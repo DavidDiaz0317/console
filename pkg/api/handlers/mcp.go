@@ -58,12 +58,14 @@ var sanitizedErrorMessages = map[string]string{
 	"auth":        "Authentication to cluster failed — check credentials",
 	"timeout":     "Cluster request timed out — the cluster may be overloaded or unreachable",
 	"certificate": "TLS certificate error — check cluster certificate configuration",
+	"not_found":   "Cluster not found — check the cluster name",
 }
 
 // handleK8sError inspects a Kubernetes API error and returns the appropriate
 // HTTP response. Cluster-connectivity errors (network, auth, timeout,
 // certificate) are returned as 200 with a "clusterStatus":"unavailable"
 // payload so the frontend can show a degraded state instead of a broken page.
+// A "not_found" error (unknown cluster name) is returned as 404.
 // All other errors are returned as 500 Internal Server Error.
 // Raw error details are only logged server-side and never sent to the client (#4753).
 func handleK8sError(c *fiber.Ctx, err error) error {
@@ -76,6 +78,9 @@ func handleK8sError(c *fiber.Ctx, err error) error {
 			"errorType":     errType,
 			"errorMessage":  sanitizedErrorMessages[errType],
 		})
+	case "not_found":
+		slog.Info("[MCP] cluster not found", "errorType", errType, "error", err)
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": sanitizedErrorMessages[errType]})
 	default:
 		slog.Error("[MCP] internal error", "error", err)
 		return c.Status(500).JSON(fiber.Map{"error": "internal server error"})

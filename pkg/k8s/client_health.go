@@ -61,6 +61,14 @@ func classifyError(errMsg string) string {
 		return "certificate"
 	}
 
+	// Context/cluster not found — returned by GetClient/GetDynamicClient when the
+	// kubeconfig is loaded but the requested context does not exist. Also catches the
+	// clientcmd message for the same condition.
+	if strings.Contains(lowerMsg, "not found in kubeconfig") ||
+		strings.Contains(lowerMsg, "context was not found for specified context") {
+		return "not_found"
+	}
+
 	return "unknown"
 }
 
