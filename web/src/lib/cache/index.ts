@@ -531,7 +531,17 @@ function clearAllInMemoryCaches(): void {
   // 2. Clear metadata
   preloadedMetaMap.clear()
 
-  // 3. Reset every in-memory store WITHOUT reloading from (now-empty) storage
+  // 3. Clear sessionStorage snapshots (kcc:* keys)
+  const ssKeysToRemove: string[] = []
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    if (key && key.startsWith(SS_PREFIX)) {
+      ssKeysToRemove.push(key)
+    }
+  }
+  ssKeysToRemove.forEach(key => sessionStorage.removeItem(key))
+
+  // 4. Reset every in-memory store WITHOUT reloading from (now-empty) storage
   for (const store of cacheRegistry.values()) {
     (store as CacheStore<unknown>).resetForModeTransition()
   }
@@ -1283,6 +1293,16 @@ export async function clearAllCaches(): Promise<void> {
     }
   }
   keysToRemove.forEach(key => localStorage.removeItem(key))
+
+  // Clear sessionStorage snapshots (kcc:* keys)
+  const ssKeysToRemove: string[] = []
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i)
+    if (key && key.startsWith(SS_PREFIX)) {
+      ssKeysToRemove.push(key)
+    }
+  }
+  ssKeysToRemove.forEach(key => sessionStorage.removeItem(key))
 
   // Clear registry
   cacheRegistry.clear()

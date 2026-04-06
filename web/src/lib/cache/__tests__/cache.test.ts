@@ -450,6 +450,22 @@ describe('cache module', () => {
       expect(() => resetFn!()).not.toThrow()
     })
 
+    it('clears kcc: sessionStorage snapshots when reset function is called', async () => {
+      seedSessionStorage('reset-snap-a', { x: 1 }, Date.now())
+      seedSessionStorage('reset-snap-b', { x: 2 }, Date.now())
+      sessionStorage.setItem('keep-this', 'value')
+
+      await importFresh()
+
+      const resetFn = registeredResets.get('unified-cache')
+      expect(resetFn).toBeDefined()
+      resetFn!()
+
+      expect(sessionStorage.getItem('kcc:reset-snap-a')).toBeNull()
+      expect(sessionStorage.getItem('kcc:reset-snap-b')).toBeNull()
+      expect(sessionStorage.getItem('keep-this')).toBe('value')
+    })
+
     it('clearAllCaches removes localStorage metadata and clears registry', async () => {
       const mod = await importFresh()
 
@@ -2782,6 +2798,19 @@ describe('cache module', () => {
 
       stats = await mod.getCacheStats()
       expect(stats.entries).toBe(0)
+    })
+
+    it('removes all kcc: keys from sessionStorage', async () => {
+      seedSessionStorage('snap-a', { items: [1] }, Date.now())
+      seedSessionStorage('snap-b', { items: [2] }, Date.now())
+      sessionStorage.setItem('other_ss_key', 'keep-me')
+
+      const mod = await importFresh()
+      await mod.clearAllCaches()
+
+      expect(sessionStorage.getItem('kcc:snap-a')).toBeNull()
+      expect(sessionStorage.getItem('kcc:snap-b')).toBeNull()
+      expect(sessionStorage.getItem('other_ss_key')).toBe('keep-me')
     })
   })
 
