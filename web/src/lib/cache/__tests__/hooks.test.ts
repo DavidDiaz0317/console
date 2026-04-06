@@ -782,4 +782,14 @@ describe('clearAllStorage', () => {
     const { clearAllStorage } = await importHooks()
     await expect(clearAllStorage()).resolves.toBeUndefined()
   })
+
+  it('awaits IndexedDB clear before resolving', async () => {
+    idbStore.set('test-key', { key: 'test-key', value: 'data' })
+    expect(idbStore.size).toBe(1)
+
+    const { clearAllStorage } = await importHooks()
+    await clearAllStorage()
+
+    expect(idbStore.size).toBe(0)
+  })
 })

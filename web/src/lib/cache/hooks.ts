@@ -335,9 +335,14 @@ export async function clearAllStorage(): Promise<void> {
   // Clear IndexedDB
   try {
     const db = await openDatabase()
-    const transaction = db.transaction(STORE_NAME, 'readwrite')
-    const store = transaction.objectStore(STORE_NAME)
-    store.clear()
+    await new Promise<void>((resolve) => {
+      const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).clear()
+      req.onsuccess = () => resolve()
+      req.onerror = () => {
+        console.warn('[Cache] Failed to clear IndexedDB store:', req.error)
+        resolve()
+      }
+    })
   } catch {
     // Ignore
   }
