@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,6 +23,13 @@ import (
 
 // Self-upgrade timeout for Kubernetes API calls
 const selfUpgradeTimeout = 30 * time.Second
+
+// imageTagRegex matches only valid Docker/OCI image tags.
+// Tags must start with an alphanumeric character and may only contain
+// alphanumeric characters, dots, hyphens, and underscores — no slashes,
+// colons, @ signs, or path-traversal sequences.
+// Maximum length follows the OCI distribution spec (128 characters).
+var imageTagRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$`)
 
 // SelfUpgradeHandler handles in-console Helm self-upgrade via Deployment patch.
 type SelfUpgradeHandler struct {
@@ -207,8 +215,10 @@ func (h *SelfUpgradeHandler) TriggerUpgrade(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate image tag format (prevent injection)
-	if strings.ContainsAny(req.ImageTag, " \t\n\"'\\{}") {
+	// Validate image tag format: only alphanumerics, dots, hyphens, and underscores
+	// are permitted. This prevents path traversal (e.g. "../../attacker:evil") and
+	// repository redirection attacks.
+	if !imageTagRegex.MatchString(req.ImageTag) {
 		return c.Status(fiber.StatusBadRequest).JSON(SelfUpgradeTriggerResponse{
 			Error: "invalid imageTag format",
 		})
