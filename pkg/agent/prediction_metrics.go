@@ -37,6 +37,17 @@ var (
 		"inaccurate": true,
 	}
 
+	// allowedErrorTypes lists the error categories for AI analysis failures.
+	allowedErrorTypes = map[string]bool{
+		"timeout":        true,
+		"rate_limit":     true,
+		"parse_error":    true,
+		"network":        true,
+		"auth":           true,
+		"quota_exceeded": true,
+		"unavailable":    true,
+	}
+
 	// allowedProviders lists every registered AI provider name.
 	// Add new entries here whenever a new provider is added to the registry.
 	allowedProviders = map[string]bool{
@@ -195,9 +206,12 @@ func RecordAnalysisDuration(provider string, duration time.Duration) {
 }
 
 // RecordAnalysisError records an AI analysis error.
-// Provider is validated against the known allowlist to prevent unbounded cardinality.
+// Provider and errorType are validated against known allowlists to prevent unbounded cardinality.
 func RecordAnalysisError(provider, errorType string) {
-	aiAnalysisErrors.WithLabelValues(sanitizeLabel(provider, allowedProviders), errorType).Inc()
+	aiAnalysisErrors.WithLabelValues(
+		sanitizeLabel(provider, allowedProviders),
+		sanitizeLabel(errorType, allowedErrorTypes),
+	).Inc()
 }
 
 // RecordMetricsSnapshot records a metrics snapshot capture
