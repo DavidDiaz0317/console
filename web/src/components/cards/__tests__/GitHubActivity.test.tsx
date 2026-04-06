@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, act, waitFor } from '@testing-library/react'
 
 // Standard mocks
 vi.mock('../../../lib/demoMode', () => ({
@@ -82,4 +82,43 @@ describe('GitHubActivity', () => {
     expect(container).toBeTruthy()
   })
 
+})
+
+describe('GitHubActivity — AbortController cleanup', () => {
+  let capturedSignals: AbortSignal[]
+  let originalFetch: typeof globalThis.fetch
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: false, hasData: false, isRefreshing: false })
+
+    capturedSignals = []
+    originalFetch = globalThis.fetch
+    // Stub fetch to capture signals and never resolve (simulates in-flight request)
+    globalThis.fetch = vi.fn(((_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.signal) capturedSignals.push(init.signal as AbortSignal)
+      return new Promise(() => { /* never resolves */ })
+    }) as typeof globalThis.fetch)
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    vi.restoreAllMocks()
+  })
+
+  it('aborts the in-flight fetch when the component unmounts', async () => {
+    const { unmount } = render(<GitHubActivity />)
+
+    // Wait for fetch to be called so we have captured signals
+    await waitFor(() => expect(capturedSignals.length).toBeGreaterThan(0))
+
+    // All captured signals should not yet be aborted
+    expect(capturedSignals.every(s => !s.aborted)).toBe(true)
+
+    // Unmount — effect cleanup should abort the controller, which aborts the signals
+    act(() => { unmount() })
+
+    expect(capturedSignals.every(s => s.aborted)).toBe(true)
+  })
 })
