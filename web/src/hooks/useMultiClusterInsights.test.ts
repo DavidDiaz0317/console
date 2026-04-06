@@ -10,6 +10,8 @@ import {
   detectResourceImbalance,
   detectRestartCorrelation,
   trackRolloutProgress,
+  isCausallyRelated,
+  causalRelationScore,
   EVENT_CORRELATION_WINDOW_MS,
   CASCADE_DETECTION_WINDOW_MS,
   RESTART_CORRELATION_THRESHOLD,
@@ -431,6 +433,85 @@ describe('detectCascadeImpact', () => {
     ]
     // 1ms past the window — should NOT be included in the chain
     expect(detectCascadeImpact(events)).toEqual([])
+  })
+
+  it('does not correlate unrelated events across clusters (false-positive regression)', () => {
+    // Reproduces the issue: ImagePullBackOff on cluster-A + NodeNotReady on
+    // cluster-B are within 15 min but belong to different reason families and
+    // different workload prefixes — they must NOT produce a cascade insight.
+    const base = new Date('2026-01-15T10:00:00Z')
+    const events = [
+      makeEvent({
+        cluster: 'cluster-a',
+        reason: 'ImagePullBackOff',
+        object: 'pod/nginx-abc123-xyz',
+        lastSeen: base.toISOString(),
+      }),
+      makeEvent({
+        cluster: 'cluster-b',
+        reason: 'NodeNotReady',
+        object: 'node/worker-node-1',
+        lastSeen: new Date(base.getTime() + 60000).toISOString(),
+      }),
+    ]
+    expect(detectCascadeImpact(events)).toEqual([])
+  })
+})
+
+// ── isCausallyRelated & causalRelationScore ───────────────────────────
+
+describe('isCausallyRelated', () => {
+  it('returns true for two events in the same reason family', () => {
+    const a = makeEvent({ reason: 'ImagePullBackOff', object: 'pod/app-abc' })
+    const b = makeEvent({ reason: 'ErrImagePull', object: 'pod/other-xyz' })
+    expect(isCausallyRelated(a, b)).toBe(true)
+  })
+
+  it('returns true for two events with the same workload prefix', () => {
+    const a = makeEvent({ reason: 'FailedMount', object: 'pod/api-server-abc123' })
+    const b = makeEvent({ reason: 'Unhealthy', object: 'pod/api-worker-xyz789' })
+    // Both share workload prefix 'pod/api'
+    expect(isCausallyRelated(a, b)).toBe(true)
+  })
+
+  it('returns false for events from different reason families and different workloads', () => {
+    const a = makeEvent({ reason: 'ImagePullBackOff', object: 'pod/nginx-abc123' })
+    const b = makeEvent({ reason: 'NodeNotReady', object: 'node/worker-1' })
+    expect(isCausallyRelated(a, b)).toBe(false)
+  })
+
+  it('returns false for events with unknown reasons and different object prefixes', () => {
+    const a = makeEvent({ reason: 'UnknownReasonA', object: 'pod/service-abc' })
+    const b = makeEvent({ reason: 'UnknownReasonB', object: 'node/worker-abc' })
+    expect(isCausallyRelated(a, b)).toBe(false)
+  })
+})
+
+describe('causalRelationScore', () => {
+  it('scores 1.0 when same reason family and same workload prefix', () => {
+    const a = makeEvent({ reason: 'BackOff', object: 'pod/test-pod' })
+    const b = makeEvent({ reason: 'CrashLoopBackOff', object: 'pod/test-worker' })
+    // same family (backoff) and same workload prefix (pod/test)
+    expect(causalRelationScore(a, b)).toBe(1.0)
+  })
+
+  it('scores 0.6 when same reason family only', () => {
+    const a = makeEvent({ reason: 'ImagePullBackOff', object: 'pod/app-abc' })
+    const b = makeEvent({ reason: 'ErrImagePull', object: 'pod/other-xyz' })
+    expect(causalRelationScore(a, b)).toBe(0.6)
+  })
+
+  it('scores 0.4 when same workload prefix only', () => {
+    const a = makeEvent({ reason: 'FailedMount', object: 'pod/api-abc' })
+    const b = makeEvent({ reason: 'OOMKilling', object: 'pod/api-xyz' })
+    // different families (volume vs oom), same prefix (pod/api)
+    expect(causalRelationScore(a, b)).toBe(0.4)
+  })
+
+  it('scores 0.0 for completely unrelated events', () => {
+    const a = makeEvent({ reason: 'ImagePullBackOff', object: 'pod/nginx-abc' })
+    const b = makeEvent({ reason: 'NodeNotReady', object: 'node/worker-1' })
+    expect(causalRelationScore(a, b)).toBe(0.0)
   })
 })
 

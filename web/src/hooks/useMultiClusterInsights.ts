@@ -55,6 +55,8 @@ export const RESTART_CRITICAL_THRESHOLD = 20
 export const INFRA_CRITICAL_WORKLOADS = 5
 /** Number of clusters in a correlated event or cascade at which severity escalates to critical */
 export const CRITICAL_CLUSTER_THRESHOLD = 3
+/** Minimum causal relation score required to link two events in a cascade chain */
+const MIN_CAUSAL_SCORE = 0.4
 
 /** Rollout per-cluster status indices (stored in metrics as ${cluster}_status): 0=pending, 1=in-progress, 2=complete, 3=failed */
 const ROLLOUT_STATUS_IN_PROGRESS = 1
@@ -71,6 +73,102 @@ const DEMO_OFFSET_5M_MS = 5 * 60 * 1000
 const DEMO_OFFSET_10M_MS = 10 * 60 * 1000
 /** Demo time offset: 15 minutes ago */
 const DEMO_OFFSET_15M_MS = 15 * 60 * 1000
+
+// ── Causal Relationship Helpers ───────────────────────────────────────
+
+/**
+ * Maps a Kubernetes warning reason to its reason family.
+ * Events in the same family share a common root cause (e.g. image-pull
+ * failures, node health issues) and are therefore plausibly causally linked.
+ */
+const REASON_FAMILIES: Record<string, string> = {
+  // Image-pull failures
+  ImagePullBackOff: 'image-pull',
+  ErrImagePull: 'image-pull',
+  // Generic container restart / back-off
+  BackOff: 'backoff',
+  CrashLoopBackOff: 'backoff',
+  // Node health
+  NodeNotReady: 'node',
+  NodeProblem: 'node',
+  EvictionThresholdMet: 'node',
+  Rebooted: 'node',
+  // Scheduling
+  FailedScheduling: 'scheduling',
+  Preempting: 'scheduling',
+  // Volume / storage
+  FailedMount: 'volume',
+  FailedAttachVolume: 'volume',
+  FailedDetachVolume: 'volume',
+  // Out-of-memory
+  OOMKilling: 'oom',
+  // Liveness / readiness probe failures
+  Unhealthy: 'health',
+  ProbeWarning: 'health',
+  // Crash
+  CrashLoop: 'crash',
+  // Network
+  NetworkNotReady: 'network',
+}
+
+/**
+ * Extracts a normalized workload prefix from a Kubernetes object reference
+ * of the form "type/name" (e.g. "pod/api-server-abc123-xyz").
+ * Returns "<type>/<first-name-segment>" so that pod replicas with generated
+ * suffixes still share the same prefix as their parent workload.
+ */
+function extractWorkloadPrefix(object: string): string {
+  const slashIdx = object.indexOf('/')
+  if (slashIdx < 0) return object
+  const resourceType = object.slice(0, slashIdx)
+  const name = object.slice(slashIdx + 1)
+  const dashIdx = name.indexOf('-')
+  const namePrefix = dashIdx >= 0 ? name.slice(0, dashIdx) : name
+  return `${resourceType}/${namePrefix}`
+}
+
+/**
+ * Scores the causal relationship strength between two warning events (0–1).
+ *
+ * | Score | Meaning |
+ * |-------|---------|
+ * | 1.0   | Same reason family **and** same workload prefix |
+ * | 0.6   | Same reason family only |
+ * | 0.4   | Same workload prefix only |
+ * | 0.0   | No detectable causal link |
+ *
+ * @internal Exported for testing
+ */
+export function causalRelationScore(a: ClusterEvent, b: ClusterEvent): number {
+  const familyA = REASON_FAMILIES[a.reason ?? '']
+  const familyB = REASON_FAMILIES[b.reason ?? '']
+  const sameFamily = !!(familyA && familyB && familyA === familyB)
+
+  const prefixA = extractWorkloadPrefix(a.object ?? '')
+  const prefixB = extractWorkloadPrefix(b.object ?? '')
+  const sameWorkload = prefixA.length > 0 && prefixA === prefixB
+
+  if (sameFamily && sameWorkload) return 1.0
+  if (sameFamily) return 0.6
+  if (sameWorkload) return 0.4
+  return 0.0
+}
+
+/**
+ * Returns true when two warning events are plausibly causally related —
+ * either they share a Kubernetes reason family (e.g. both are image-pull
+ * failures) or they share a workload prefix (same workload deployed across
+ * clusters).
+ *
+ * This prevents `detectCascadeImpact` from falsely correlating unrelated
+ * events such as an `ImagePullBackOff` on cluster-A with a `NodeNotReady`
+ * on cluster-B simply because they occurred within the same time window.
+ *
+ * @internal Exported for testing
+ */
+export function isCausallyRelated(a: ClusterEvent, b: ClusterEvent): boolean {
+  return causalRelationScore(a, b) >= MIN_CAUSAL_SCORE
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
@@ -264,6 +362,7 @@ export function detectCascadeImpact(events: ClusterEvent[]): MultiClusterInsight
       const ts = parseTimestamp(warnings[j].lastSeen)
       if (ts - baseTs > CASCADE_DETECTION_WINDOW_MS) break
       if (seenClusters.has(warnings[j].cluster)) continue
+      if (!isCausallyRelated(warnings[i], warnings[j])) continue
 
       chain.push({
         cluster: warnings[j].cluster || 'unknown',
