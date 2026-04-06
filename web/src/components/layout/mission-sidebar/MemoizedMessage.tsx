@@ -54,33 +54,44 @@ export const MemoizedMessage = memo(function MemoizedMessage({ msg, missionAgent
       return <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300">{children}</a>
     },
     h1: ({ children }: { children?: React.ReactNode }) => (
-      <h1 className="mt-6 mb-3 pt-3 border-t border-border/30 first:border-t-0 first:pt-0 first:mt-0 text-xl font-bold">{children}</h1>
+      <h1 className="mt-6 mb-3 pl-3 border-l-4 border-purple-500/70 text-xl font-bold first:mt-0">{children}</h1>
     ),
     h2: ({ children }: { children?: React.ReactNode }) => (
-      <h2 className="mt-6 mb-3 pt-3 border-t border-border/30 first:border-t-0 first:pt-0 first:mt-0 text-lg font-bold">{children}</h2>
+      <h2 className="mt-5 mb-2 pl-3 border-l-4 border-purple-400/50 text-lg font-bold first:mt-0">{children}</h2>
     ),
     h3: ({ children }: { children?: React.ReactNode }) => (
-      <h3 className="mt-5 mb-2 pt-2 border-t border-border/20 first:border-t-0 first:pt-0 first:mt-0 text-base font-semibold">{children}</h3>
+      <h3 className="mt-4 mb-2 pl-2 border-l-2 border-purple-300/60 text-base font-semibold first:mt-0">{children}</h3>
     ),
     h4: ({ children }: { children?: React.ReactNode }) => (
-      <h4 className="mt-4 mb-2 font-semibold">{children}</h4>
+      <h4 className="mt-3 mb-1.5 font-semibold first:mt-0">{children}</h4>
     ),
     h5: ({ children }: { children?: React.ReactNode }) => (
-      <h5 className="mt-4 mb-2 font-medium">{children}</h5>
+      <h5 className="mt-3 mb-1.5 font-medium first:mt-0">{children}</h5>
     ),
     h6: ({ children }: { children?: React.ReactNode }) => (
-      <h6 className="mt-3 mb-2 font-medium">{children}</h6>
+      <h6 className="mt-2 mb-1 font-medium first:mt-0">{children}</h6>
     ),
-    p: ({ children }: { children?: React.ReactNode }) => <p className="my-4 leading-relaxed">{children}</p>,
-    ul: ({ children }: { children?: React.ReactNode }) => <ul className="my-4 ml-4 list-disc space-y-2">{children}</ul>,
-    ol: ({ children }: { children?: React.ReactNode }) => <ol className="my-4 ml-4 list-decimal space-y-2">{children}</ol>,
-    li: ({ children }: { children?: React.ReactNode }) => <li className="my-1 leading-relaxed">{children}</li>,
+    p: ({ children }: { children?: React.ReactNode }) => <p className="my-3 leading-relaxed">{children}</p>,
+    ul: ({ children }: { children?: React.ReactNode }) => <ul className="my-3 ml-5 list-disc space-y-1.5 marker:text-purple-400 dark:marker:text-purple-400">{children}</ul>,
+    ol: ({ children }: { children?: React.ReactNode }) => <ol className="my-3 ml-5 list-decimal space-y-1.5 marker:text-purple-400 dark:marker:text-purple-400">{children}</ol>,
+    li: ({ children }: { children?: React.ReactNode }) => <li className="pl-0.5 leading-relaxed">{children}</li>,
+    blockquote: ({ children }: { children?: React.ReactNode }) => (
+      <blockquote className="my-4 pl-4 py-2 pr-3 border-l-4 border-blue-400/60 bg-blue-500/10 rounded-r-lg text-foreground not-italic">
+        {children}
+      </blockquote>
+    ),
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong className="font-semibold text-foreground">{children}</strong>
+    ),
     table: ({ children }: { children?: React.ReactNode }) => (
       <div className="overflow-x-auto w-full my-4 rounded border border-border">
         <table className="min-w-full border-collapse text-sm">{children}</table>
       </div>
     ),
     thead: ({ children }: { children?: React.ReactNode }) => <thead className="bg-secondary/50">{children}</thead>,
+    tr: ({ children }: { children?: React.ReactNode }) => (
+      <tr className="even:bg-secondary/20">{children}</tr>
+    ),
     th: ({ children }: { children?: React.ReactNode }) => (
       <th className="px-3 py-2 text-left text-xs font-semibold text-foreground border-b border-border whitespace-nowrap">{children}</th>
     ),
@@ -94,6 +105,7 @@ export const MemoizedMessage = memo(function MemoizedMessage({ msg, missionAgent
     "prose-pre:my-5 prose-pre:bg-transparent prose-pre:p-0 prose-pre:overflow-x-auto",
     "prose-code:text-purple-700 dark:prose-code:text-purple-300 prose-code:bg-black/5 dark:prose-code:bg-black/20 prose-code:px-1 prose-code:rounded prose-code:break-all",
     "prose-hr:my-6",
+    "[&_blockquote]:not-italic [&_blockquote]:border-l-0 [&_blockquote]:pl-0 [&_blockquote]:my-0",
     "break-words [word-break:break-word]",
     FONT_SIZE_CLASSES[fontSize],
     msg.role === 'system' ? 'text-yellow-700 dark:text-yellow-200' : 'text-foreground'
