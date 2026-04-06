@@ -28,9 +28,8 @@ vi.mock('../../../lib/chunkErrors', () => ({
 }))
 
 /** Component that throws an error during render */
-function ThrowError({ message }: { message: string }) {
+function ThrowError({ message }: { message: string }): never {
   throw new Error(message)
-  return null
 }
 
 // MAX_RETRY_ATTEMPTS matches the constant in DynamicCardErrorBoundary
@@ -211,7 +210,7 @@ describe('DynamicCardErrorBoundary', () => {
     )
 
     expect(onError).toHaveBeenCalledOnce()
-    const [error] = onError.mock.calls[0] as [Error, unknown]
+    const [error] = onError.mock.calls[0] as [Error, React.ErrorInfo]
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toBe('callback test error')
   })
