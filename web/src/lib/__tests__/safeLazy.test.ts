@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { safeLazy } from '../safeLazy'
 
+type LazyInternal = { _payload: { _result: () => Promise<unknown> } }
+
 describe('safeLazy', () => {
   it('returns a lazy component', () => {
     const LazyComp = safeLazy(
@@ -19,7 +21,7 @@ describe('safeLazy', () => {
 
     try {
       // Access the internal loader
-      const loader = (LazyComp as unknown as { _init: unknown; _payload: { _result: () => Promise<unknown> } })._payload._result
+      const loader = (LazyComp as unknown as LazyInternal)._payload._result
       await loader()
       expect.fail('should have thrown')
     } catch (e: unknown) {
@@ -34,12 +36,44 @@ describe('safeLazy', () => {
     )
 
     try {
-      const loader = (LazyComp as unknown as { _init: unknown; _payload: { _result: () => Promise<unknown> } })._payload._result
+      const loader = (LazyComp as unknown as LazyInternal)._payload._result
       await loader()
       expect.fail('should have thrown')
     } catch (e: unknown) {
       expect((e as Error).message).toContain('MissingExport')
       expect((e as Error).message).toContain('chunk may be stale')
+    }
+  })
+
+  it('wraps import rejection as a recognizable chunk-load error', async () => {
+    const LazyComp = safeLazy(
+      () => Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+      'Foo',
+    )
+
+    try {
+      const loader = (LazyComp as unknown as LazyInternal)._payload._result
+      await loader()
+      expect.fail('should have thrown')
+    } catch (e: unknown) {
+      expect((e as Error).message).toContain('chunk may be stale')
+      expect((e as Error).message).toContain('Failed to fetch dynamically imported module')
+    }
+  })
+
+  it('wraps non-chunk-load network errors as recognizable chunk errors', async () => {
+    const LazyComp = safeLazy(
+      () => Promise.reject(new Error('net::ERR_CONNECTION_REFUSED')),
+      'Foo',
+    )
+
+    try {
+      const loader = (LazyComp as unknown as LazyInternal)._payload._result
+      await loader()
+      expect.fail('should have thrown')
+    } catch (e: unknown) {
+      expect((e as Error).message).toContain('chunk may be stale')
+      expect((e as Error).message).toContain('ERR_CONNECTION_REFUSED')
     }
   })
 })
