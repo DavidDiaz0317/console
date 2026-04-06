@@ -36,6 +36,32 @@ var (
 		"accurate":   true,
 		"inaccurate": true,
 	}
+
+	// allowedProviders lists every registered AI provider name.
+	// Add new entries here whenever a new provider is added to the registry.
+	allowedProviders = map[string]bool{
+		"antigravity":  true,
+		"bob":          true,
+		"claude":       true,
+		"claude-code":  true,
+		"claude-desktop": true,
+		"cline":        true,
+		"codex":        true,
+		"continue":     true,
+		"copilot-cli":  true,
+		"cursor":       true,
+		"gemini":       true,
+		"gemini-cli":   true,
+		"gh-copilot":   true,
+		"goose":        true,
+		"jetbrains":    true,
+		"open-webui":   true,
+		"openai":       true,
+		"raycast":      true,
+		"vscode":       true,
+		"windsurf":     true,
+		"zed":          true,
+	}
 )
 
 // sanitizeLabel returns value if it exists in the allowed set, otherwise "unknown".
@@ -118,14 +144,14 @@ func InitPredictionMetrics() {
 }
 
 // RecordPrediction records a new prediction in metrics.
-// Category, severity, and source are validated against known allowlists to
+// Category, severity, source, and provider are validated against known allowlists to
 // prevent unbounded Prometheus label cardinality.
 func RecordPrediction(predType, severity, source, provider string) {
 	predictionsTotal.WithLabelValues(
 		sanitizeLabel(predType, allowedCategories),
 		sanitizeLabel(severity, allowedSeverities),
 		sanitizeLabel(source, allowedSources),
-		provider,
+		sanitizeLabel(provider, allowedProviders),
 	).Inc()
 }
 
@@ -154,19 +180,24 @@ func SetActivePredictions(predictions []AIPrediction) {
 }
 
 // RecordFeedback records prediction feedback in metrics.
-// Feedback is validated against the known allowlist to prevent unbounded cardinality.
+// Feedback and provider are validated against known allowlists to prevent unbounded cardinality.
 func RecordFeedback(feedback, provider string) {
-	predictionFeedback.WithLabelValues(sanitizeLabel(feedback, allowedFeedback), provider).Inc()
+	predictionFeedback.WithLabelValues(
+		sanitizeLabel(feedback, allowedFeedback),
+		sanitizeLabel(provider, allowedProviders),
+	).Inc()
 }
 
-// RecordAnalysisDuration records the time taken for AI analysis
+// RecordAnalysisDuration records the time taken for AI analysis.
+// Provider is validated against the known allowlist to prevent unbounded cardinality.
 func RecordAnalysisDuration(provider string, duration time.Duration) {
-	aiAnalysisDuration.WithLabelValues(provider).Observe(duration.Seconds())
+	aiAnalysisDuration.WithLabelValues(sanitizeLabel(provider, allowedProviders)).Observe(duration.Seconds())
 }
 
-// RecordAnalysisError records an AI analysis error
+// RecordAnalysisError records an AI analysis error.
+// Provider is validated against the known allowlist to prevent unbounded cardinality.
 func RecordAnalysisError(provider, errorType string) {
-	aiAnalysisErrors.WithLabelValues(provider, errorType).Inc()
+	aiAnalysisErrors.WithLabelValues(sanitizeLabel(provider, allowedProviders), errorType).Inc()
 }
 
 // RecordMetricsSnapshot records a metrics snapshot capture
