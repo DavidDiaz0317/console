@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,7 +16,23 @@ import (
 	"github.com/kubestellar/console/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
+
+// fakeWSCloser is a test double for wsCloser that records Close() calls.
+type fakeWSCloser struct {
+	closedCh chan struct{}
+	once     sync.Once
+}
+
+func newFakeWSCloser() *fakeWSCloser {
+	return &fakeWSCloser{closedCh: make(chan struct{}, 1)}
+}
+
+func (f *fakeWSCloser) Close() error {
+	f.once.Do(func() { close(f.closedCh) })
+	return nil
+}
 
 // setupAuthTest creates a fresh Fiber app and an AuthHandler with a mock store
 func setupAuthTest() (*fiber.App, *test.MockStore, *AuthHandler) {
@@ -298,3 +315,142 @@ func TestClassifyExchangeError(t *testing.T) {
 
 // We cannot easily test successful GitHubCallback flow without mocking oauth lib
 // or doing extensive interface extraction, but we covered the error paths above.
+
+func TestLogout(t *testing.T) {
+	t.Run("Valid token is revoked", func(t *testing.T) {
+		app, _, handler := setupAuthTest()
+		app.Post("/auth/logout", handler.Logout)
+
+		uid := uuid.New()
+		user := &models.User{ID: uid, GitHubLogin: "test"}
+		token, err := handler.generateJWT(user)
+		require.NoError(t, err)
+
+		req, _ := http.NewRequest("POST", "/auth/logout", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp, err := app.Test(req, 5000)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var body map[string]interface{}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.Equal(t, true, body["success"])
+	})
+
+	t.Run("Logout closes active WebSocket sessions for the revoked token", func(t *testing.T) {
+		hub := NewHub()
+		go hub.Run()
+		defer hub.Close()
+
+		app := fiber.New()
+		cfg := AuthConfig{
+			JWTSecret:   "test-secret",
+			FrontendURL: "http://frontend",
+			DevMode:     true,
+			Hub:         hub,
+		}
+		handler := NewAuthHandler(new(test.MockStore), cfg)
+		app.Post("/auth/logout", handler.Logout)
+
+		// Generate a token for a user
+		uid := uuid.New()
+		user := &models.User{ID: uid, GitHubLogin: "test"}
+		tokenStr, err := handler.generateJWT(user)
+		require.NoError(t, err)
+
+		// Parse the JTI from the token so we can inject a fake client into the hub
+		parsed, err := middleware.ParseJWT(tokenStr, "test-secret")
+		require.NoError(t, err)
+		claims := parsed.Claims.(*middleware.UserClaims)
+		jti := claims.ID
+
+		// Inject a fake client that tracks Close() calls via a closedCh channel.
+		// We don't need a real WebSocket connection for the hub-level test.
+		fakeConn := newFakeWSCloser()
+		client := &Client{
+			conn:   fakeConn,
+			userID: uid,
+			jti:    jti,
+			send:   make(chan []byte, 256),
+		}
+		hub.mu.Lock()
+		hub.clients[client] = true
+		hub.userIndex[uid] = append(hub.userIndex[uid], client)
+		hub.jtiIndex[jti] = append(hub.jtiIndex[jti], client)
+		hub.mu.Unlock()
+
+		// Call logout — this should revoke the token and disconnect the WebSocket client
+		req, _ := http.NewRequest("POST", "/auth/logout", nil)
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		resp, err := app.Test(req, 5000)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// The hub should have called Close() on the client connection
+		select {
+		case <-fakeConn.closedCh:
+			// expected — connection was closed
+		case <-time.After(time.Second):
+			t.Fatal("expected WebSocket connection to be closed after logout, but it was not")
+		}
+	})
+
+	t.Run("Missing authorization returns 401", func(t *testing.T) {
+		app, _, handler := setupAuthTest()
+		app.Post("/auth/logout", handler.Logout)
+
+		req, _ := http.NewRequest("POST", "/auth/logout", nil)
+		resp, _ := app.Test(req, 5000)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("Invalid token returns 401", func(t *testing.T) {
+		app, _, handler := setupAuthTest()
+		app.Post("/auth/logout", handler.Logout)
+
+		req, _ := http.NewRequest("POST", "/auth/logout", nil)
+		req.Header.Set("Authorization", "Bearer not-a-real-token")
+		resp, _ := app.Test(req, 5000)
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
+
+func TestHubDisconnectByJTI(t *testing.T) {
+	hub := NewHub()
+	go hub.Run()
+	defer hub.Close()
+
+	jti := uuid.NewString()
+	uid := uuid.New()
+
+	fakeConn := newFakeWSCloser()
+	client := &Client{
+		conn:   fakeConn,
+		userID: uid,
+		jti:    jti,
+		send:   make(chan []byte, 256),
+	}
+
+	hub.mu.Lock()
+	hub.clients[client] = true
+	hub.userIndex[uid] = append(hub.userIndex[uid], client)
+	hub.jtiIndex[jti] = append(hub.jtiIndex[jti], client)
+	hub.mu.Unlock()
+
+	hub.DisconnectByJTI(jti)
+
+	select {
+	case <-fakeConn.closedCh:
+		// expected
+	case <-time.After(time.Second):
+		t.Fatal("DisconnectByJTI did not close the WebSocket connection")
+	}
+}
+
+func TestHubDisconnectByJTI_EmptyJTI(t *testing.T) {
+	hub := NewHub()
+	// Should be a no-op and not panic
+	hub.DisconnectByJTI("")
+}

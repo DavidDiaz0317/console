@@ -505,6 +505,7 @@ func (s *Server) setupRoutes() {
 		GitHubToken:    s.config.GitHubToken,
 		DevMode:        s.config.DevMode,
 		SkipOnboarding: s.config.SkipOnboarding,
+		Hub:            s.hub,
 	})
 	// Rate limit auth endpoints — stricter to prevent brute-force
 	authLimiterMaxRequests := 10         // max requests per window

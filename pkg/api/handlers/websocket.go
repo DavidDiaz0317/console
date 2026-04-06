@@ -28,10 +28,17 @@ type Message struct {
 	Data any    `json:"data"`
 }
 
+// wsCloser is the minimal interface needed to close a WebSocket connection.
+// In production it is *websocket.Conn; in tests any implementation can be used.
+type wsCloser interface {
+	Close() error
+}
+
 // Client represents a WebSocket client
 type Client struct {
-	conn   *websocket.Conn
+	conn   wsCloser  // used by DisconnectByJTI to close the connection
 	userID uuid.UUID
+	jti    string // JWT ID — used to close connections when the token is revoked on logout
 	send   chan []byte
 }
 
@@ -39,6 +46,7 @@ type Client struct {
 type Hub struct {
 	clients      map[*Client]bool
 	userIndex    map[uuid.UUID][]*Client
+	jtiIndex     map[string][]*Client  // jti -> clients (for per-token disconnect on logout)
 	demoSessions map[string]time.Time // sessionId -> lastSeen (for demo mode heartbeats)
 	broadcast    chan broadcastMessage
 	register     chan *Client
@@ -60,6 +68,7 @@ func NewHub() *Hub {
 	return &Hub{
 		clients:      make(map[*Client]bool),
 		userIndex:    make(map[uuid.UUID][]*Client),
+		jtiIndex:     make(map[string][]*Client),
 		demoSessions: make(map[string]time.Time),
 		broadcast:    make(chan broadcastMessage, 256),
 		register:     make(chan *Client),
@@ -86,6 +95,9 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.userIndex[client.userID] = append(h.userIndex[client.userID], client)
+			if client.jti != "" {
+				h.jtiIndex[client.jti] = append(h.jtiIndex[client.jti], client)
+			}
 			h.mu.Unlock()
 			slog.Info("[WebSocket] client connected", "user", client.userID)
 
@@ -105,6 +117,20 @@ func (h *Hub) Run() {
 				}
 				if len(h.userIndex[client.userID]) == 0 {
 					delete(h.userIndex, client.userID)
+				}
+
+				// Remove from jti index
+				if client.jti != "" {
+					jtiClients := h.jtiIndex[client.jti]
+					for i, c := range jtiClients {
+						if c == client {
+							h.jtiIndex[client.jti] = append(jtiClients[:i], jtiClients[i+1:]...)
+							break
+						}
+					}
+					if len(h.jtiIndex[client.jti]) == 0 {
+						delete(h.jtiIndex, client.jti)
+					}
 				}
 			}
 			h.mu.Unlock()
@@ -172,6 +198,32 @@ func (h *Hub) GetTotalConnectionsCount() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return len(h.clients)
+}
+
+// DisconnectByJTI closes all WebSocket connections that were authenticated with the
+// given token JTI. This is called during logout so that an already-established
+// WebSocket session cannot continue after the token has been revoked.
+func (h *Hub) DisconnectByJTI(jti string) {
+	if jti == "" {
+		return
+	}
+
+	h.mu.RLock()
+	// Take a snapshot of the clients to avoid holding the lock while closing.
+	clients := make([]*Client, len(h.jtiIndex[jti]))
+	copy(clients, h.jtiIndex[jti])
+	h.mu.RUnlock()
+
+	if len(clients) == 0 {
+		return
+	}
+
+	for _, client := range clients {
+		// Closing the underlying connection causes the reader loop to break,
+		// which triggers unregister and cleans up all indexes.
+		client.conn.Close()
+	}
+	slog.Info("[WebSocket] closed sessions for revoked token", "jti", jti, "count", len(clients))
 }
 
 // RecordDemoSession records a heartbeat from a demo mode session
@@ -264,6 +316,7 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 	}
 
 	// Validate token
+	var jti string
 	if authMsg.Token == "demo-token" && h.devMode {
 		// Demo mode: accept connection for presence tracking (count only, no user data)
 		// SECURITY: Only allowed when DEV_MODE=true to prevent unauthenticated access in production
@@ -288,6 +341,7 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 			return
 		}
 		userID = claims.UserID
+		jti = claims.ID
 		authenticated = true
 		slog.Info("[WebSocket] authenticated connection", "user", claims.GitHubLogin)
 	} else {
@@ -328,6 +382,7 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 	client := &Client{
 		conn:   conn,
 		userID: userID,
+		jti:    jti,
 		send:   make(chan []byte, 256),
 	}
 

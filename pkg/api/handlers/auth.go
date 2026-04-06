@@ -126,6 +126,7 @@ type AuthConfig struct {
 	GitHubToken    string // Personal access token for dev mode profile lookup
 	DevMode        bool   // Force dev mode bypass even if OAuth credentials present
 	SkipOnboarding bool   // Skip onboarding questionnaire for new users
+	Hub            *Hub   // WebSocket hub — when set, active connections are closed on logout
 }
 
 // AuthHandler handles authentication
@@ -141,6 +142,7 @@ type AuthHandler struct {
 	githubToken    string
 	devMode        bool
 	skipOnboarding bool
+	hub            *Hub // optional — used to close WebSocket sessions on logout
 }
 
 // NewAuthHandler creates a new auth handler
@@ -196,6 +198,7 @@ func NewAuthHandler(s store.Store, cfg AuthConfig) *AuthHandler {
 		githubToken:    cfg.GitHubToken,
 		devMode:        cfg.DevMode,
 		skipOnboarding: cfg.SkipOnboarding,
+		hub:            cfg.Hub,
 	}
 }
 
@@ -490,6 +493,13 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 		expiresAt = claims.ExpiresAt.Time
 	}
 	middleware.RevokeToken(claims.ID, expiresAt)
+
+	// Close any active WebSocket connections that were authenticated with this token.
+	// This ensures that an already-established WebSocket session cannot continue
+	// after the token has been revoked (session invalidation on logout).
+	if h.hub != nil {
+		h.hub.DisconnectByJTI(claims.ID)
+	}
 
 	// Clear the HttpOnly cookie so the browser stops sending it
 	h.clearJWTCookie(c)
