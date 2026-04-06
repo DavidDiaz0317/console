@@ -1,8 +1,9 @@
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { Bug } from 'lucide-react'
 import { useNotifications } from '../../hooks/useFeatureRequests'
 import type { RequestType } from '../../hooks/useFeatureRequests'
 import { useModalState } from '../../lib/modals'
+import { useMissions } from '../../hooks/useMissions'
 
 // Lazy-load the modal (~67 KB) — only needed when the user clicks the bug icon
 const FeatureRequestModal = lazy(() =>
@@ -13,23 +14,31 @@ export function FeatureRequestButton() {
   const { isOpen: isModalOpen, open: openModal, close: closeModal } = useModalState()
   const [initialRequestType, setInitialRequestType] = useState<RequestType | undefined>()
   const { unreadCount } = useNotifications()
+  const { isFullScreen, setFullScreen } = useMissions()
+
+  // Exit fullscreen mission sidebar before opening the modal so it does not
+  // visually compete with the report dialog.
+  const openModalAndExitFullScreen = useCallback(() => {
+    if (isFullScreen) setFullScreen(false)
+    openModal()
+  }, [isFullScreen, setFullScreen, openModal])
 
   // Auto-open modal when navigated from /issue, /feedback, /feature routes
   useEffect(() => {
-    const handler = () => { setInitialRequestType(undefined); openModal() }
-    const featureHandler = () => { setInitialRequestType('feature'); openModal() }
+    const handler = () => { setInitialRequestType(undefined); openModalAndExitFullScreen() }
+    const featureHandler = () => { setInitialRequestType('feature'); openModalAndExitFullScreen() }
     window.addEventListener('open-feedback', handler)
     window.addEventListener('open-feedback-feature', featureHandler)
     return () => {
       window.removeEventListener('open-feedback', handler)
       window.removeEventListener('open-feedback-feature', featureHandler)
     }
-  }, [openModal])
+  }, [openModalAndExitFullScreen])
 
   return (
     <>
       <button
-        onClick={openModal}
+        onClick={openModalAndExitFullScreen}
         data-tour="feedback"
         className={`relative p-2 rounded-lg hover:bg-secondary/50 transition-colors ${
           unreadCount > 0 ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, fireEvent } from '@testing-library/react'
 
 vi.mock('../../../lib/demoMode', () => ({
   isDemoMode: () => true, getDemoMode: () => true, isNetlifyDeployment: false,
@@ -36,15 +36,44 @@ vi.mock('../../../hooks/useFeatureRequests', () => ({
   useNotifications: () => ({ unreadCount: 0 }),
 }))
 
+const mockOpen = vi.fn()
+const mockSetFullScreen = vi.fn()
+let mockIsFullScreen = false
+
 vi.mock('../../../lib/modals', () => ({
-  useModalState: () => ({ isOpen: false, open: vi.fn(), close: vi.fn() }),
+  useModalState: () => ({ isOpen: false, open: mockOpen, close: vi.fn() }),
+}))
+
+vi.mock('../../../hooks/useMissions', () => ({
+  useMissions: () => ({ isFullScreen: mockIsFullScreen, setFullScreen: mockSetFullScreen }),
 }))
 
 import { FeatureRequestButton } from '../FeatureRequestButton'
 
 describe('FeatureRequestButton', () => {
+  beforeEach(() => {
+    mockOpen.mockClear()
+    mockSetFullScreen.mockClear()
+    mockIsFullScreen = false
+  })
+
   it('renders without crashing', () => {
     const { container } = render(<FeatureRequestButton />)
     expect(container).toBeTruthy()
+  })
+
+  it('opens the modal without touching fullscreen when sidebar is not in fullscreen mode', () => {
+    const { getByTitle } = render(<FeatureRequestButton />)
+    fireEvent.click(getByTitle('Report a bug or request a feature'))
+    expect(mockOpen).toHaveBeenCalledTimes(1)
+    expect(mockSetFullScreen).not.toHaveBeenCalled()
+  })
+
+  it('exits fullscreen mission sidebar before opening the modal', () => {
+    mockIsFullScreen = true
+    const { getByTitle } = render(<FeatureRequestButton />)
+    fireEvent.click(getByTitle('Report a bug or request a feature'))
+    expect(mockSetFullScreen).toHaveBeenCalledWith(false)
+    expect(mockOpen).toHaveBeenCalledTimes(1)
   })
 })
