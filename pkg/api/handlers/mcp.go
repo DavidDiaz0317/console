@@ -58,20 +58,22 @@ var sanitizedErrorMessages = map[string]string{
 	"auth":        "Authentication to cluster failed — check credentials",
 	"timeout":     "Cluster request timed out — the cluster may be overloaded or unreachable",
 	"certificate": "TLS certificate error — check cluster certificate configuration",
+	"not_found":   "Cluster configuration not found — check that the cluster name is correct",
 }
 
 // handleK8sError inspects a Kubernetes API error and returns the appropriate
-// HTTP response. Cluster-connectivity errors (network, auth, timeout,
-// certificate) are returned as 200 with a "clusterStatus":"unavailable"
-// payload so the frontend can show a degraded state instead of a broken page.
-// All other errors are returned as 500 Internal Server Error.
-// Raw error details are only logged server-side and never sent to the client (#4753).
+// HTTP response. Cluster-related errors (network, auth, timeout, certificate,
+// not_found) are returned as 503 Service Unavailable with a structured
+// "clusterStatus":"unavailable" payload so the frontend can show a degraded
+// state instead of a broken page. All other errors are returned as 500
+// Internal Server Error. Raw error details are only logged server-side and
+// never sent to the client (#4753).
 func handleK8sError(c *fiber.Ctx, err error) error {
 	errType := k8s.ClassifyError(err.Error())
 	switch errType {
-	case "network", "auth", "timeout", "certificate":
+	case "network", "auth", "timeout", "certificate", "not_found":
 		slog.Info("[MCP] cluster unavailable", "errorType", errType, "error", err)
-		return c.JSON(fiber.Map{
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
 			"clusterStatus": "unavailable",
 			"errorType":     errType,
 			"errorMessage":  sanitizedErrorMessages[errType],

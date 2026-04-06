@@ -173,7 +173,7 @@ func TestMCPGetPods_NetworkErrorReturnsUnavailable(t *testing.T) {
 	fakeClient, ok := k8sClient.(*k8sfake.Clientset)
 	require.True(t, ok, "expected fake clientset for test-cluster")
 
-	// Simulate a network error (connection refused) — should NOT return 500
+	// Simulate a network error (connection refused) — should return 503, not 500 or 200
 	fakeClient.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("dial tcp 127.0.0.1:6443: connect: connection refused")
 	})
@@ -183,13 +183,13 @@ func TestMCPGetPods_NetworkErrorReturnsUnavailable(t *testing.T) {
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "network errors should return 200, not 500")
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "network errors should return 503")
 
 	var payload map[string]interface{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "network", payload["errorType"])
-	assert.Contains(t, payload["errorMessage"], "connection refused")
+	assert.Equal(t, "Cluster is unreachable — check network connectivity", payload["errorMessage"])
 }
 
 func TestMCPGetDaemonSets_SingleClusterEmptyIsArray(t *testing.T) {
@@ -246,7 +246,7 @@ func TestMCPGetEvents_NetworkErrorReturnsUnavailable(t *testing.T) {
 	fakeClient, ok := k8sClient.(*k8sfake.Clientset)
 	require.True(t, ok, "expected fake clientset for test-cluster")
 
-	// Simulate a connection-refused error — should NOT return 500
+	// Simulate a connection-refused error — should return 503, not 500 or 200
 	fakeClient.PrependReactor("list", "events", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("dial tcp 127.0.0.1:6443: connect: connection refused")
 	})
@@ -256,7 +256,7 @@ func TestMCPGetEvents_NetworkErrorReturnsUnavailable(t *testing.T) {
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "network errors should return 200, not 500")
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "network errors should return 503")
 
 	var payload map[string]interface{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
@@ -275,7 +275,7 @@ func TestMCPGetNodes_NetworkErrorReturnsUnavailable(t *testing.T) {
 	fakeClient, ok := k8sClient.(*k8sfake.Clientset)
 	require.True(t, ok, "expected fake clientset for test-cluster")
 
-	// Simulate a connection-refused error — should NOT return 500
+	// Simulate a connection-refused error — should return 503, not 500 or 200
 	fakeClient.PrependReactor("list", "nodes", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("dial tcp 10.0.0.1:443: connect: connection refused")
 	})
@@ -285,7 +285,7 @@ func TestMCPGetNodes_NetworkErrorReturnsUnavailable(t *testing.T) {
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "network errors should return 200, not 500")
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "network errors should return 503")
 
 	var payload map[string]interface{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
@@ -304,7 +304,7 @@ func TestMCPGetPods_AuthErrorReturnsUnavailable(t *testing.T) {
 	fakeClient, ok := k8sClient.(*k8sfake.Clientset)
 	require.True(t, ok, "expected fake clientset for test-cluster")
 
-	// Simulate an auth error — should NOT return 500
+	// Simulate an auth error — should return 503, not 500 or 200
 	fakeClient.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("Unauthorized: token expired")
 	})
@@ -314,10 +314,40 @@ func TestMCPGetPods_AuthErrorReturnsUnavailable(t *testing.T) {
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode, "auth errors should return 200, not 500")
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "auth errors should return 503")
 
 	var payload map[string]interface{}
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
 	assert.Equal(t, "unavailable", payload["clusterStatus"])
 	assert.Equal(t, "auth", payload["errorType"])
+}
+
+func TestMCPGetPods_NotFoundClusterReturnsUnavailable(t *testing.T) {
+	env := setupTestEnv(t)
+	handler := NewMCPHandlers(nil, env.K8sClient)
+	env.App.Get("/api/mcp/pods", handler.GetPods)
+
+	k8sClient, err := env.K8sClient.GetClient("test-cluster")
+	require.NoError(t, err)
+
+	fakeClient, ok := k8sClient.(*k8sfake.Clientset)
+	require.True(t, ok, "expected fake clientset for test-cluster")
+
+	// Simulate an error indicating the cluster context is not found in kubeconfig
+	fakeClient.PrependReactor("list", "pods", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("failed to get config for context unknown-cluster: context was not found for specified context: unknown-cluster")
+	})
+
+	req, err := http.NewRequest("GET", "/api/mcp/pods?cluster=test-cluster", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode, "not_found errors should return 503, not 500")
+
+	var payload map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&payload))
+	assert.Equal(t, "unavailable", payload["clusterStatus"])
+	assert.Equal(t, "not_found", payload["errorType"])
+	assert.Equal(t, "Cluster configuration not found — check that the cluster name is correct", payload["errorMessage"])
 }

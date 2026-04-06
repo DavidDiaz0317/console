@@ -1000,6 +1000,9 @@ func TestClassifyError(t *testing.T) {
 		{"tls handshake error", "certificate"},
 		{"ssl: bad certificate", "certificate"},
 		{"certificate has expired", "certificate"},
+		{"context was not found for specified context: my-cluster", "not_found"},
+		{"no configuration has been provided, try setting KUBERNETES_MASTER environment variable", "not_found"},
+		{"failed to get config for context my-cluster: stat /home/user/.kube/config: no such file or directory", "not_found"},
 		{"something else", "unknown"},
 		{"", "unknown"},
 	}
