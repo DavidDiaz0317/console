@@ -477,8 +477,14 @@ export function MissionProvider({ children }: { children: ReactNode }) {
       // Connection timeout - 5 seconds
       const timeout = setTimeout(() => {
         if (wsRef.current) {
-          wsRef.current.close()
+          const ws = wsRef.current
+          // Nullify handlers BEFORE closing to prevent onclose from triggering
+          // a reconnection attempt after the timeout has already rejected.
+          ws.onopen = null
+          ws.onclose = null
+          ws.onerror = null
           wsRef.current = null
+          ws.close()
         }
         setAgentsLoading(false)
         reject(new Error('CONNECTION_TIMEOUT'))
@@ -644,6 +650,15 @@ Install the console locally with the KubeStellar Console agent to use AI mission
 
         wsRef.current.onerror = () => {
           clearTimeout(timeout)
+          // Explicitly close and clear the socket so onclose cannot schedule
+          // a reconnection after onerror has already rejected the promise.
+          if (wsRef.current) {
+            const ws = wsRef.current
+            ws.onclose = null
+            ws.onopen = null
+            wsRef.current = null
+            ws.close()
+          }
           reject(new Error('CONNECTION_FAILED'))
         }
       } catch (err) {

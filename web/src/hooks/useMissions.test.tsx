@@ -2429,6 +2429,38 @@ describe('ensureConnection timeout', () => {
       vi.useRealTimers()
     }
   })
+
+  it('timeout handler nullifies onclose/onerror before close() so onclose cannot spawn a second WS', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useMissions(), { wrapper })
+
+      act(() => { result.current.startMission(defaultParams) })
+      await act(async () => { await Promise.resolve() })
+
+      const firstWs = MockWebSocket.lastInstance!
+
+      // Let the timeout fire
+      act(() => { vi.advanceTimersByTime(5_100) })
+      await act(async () => { await Promise.resolve() })
+
+      // Handlers must have been cleared so a subsequent browser-fired onclose
+      // cannot schedule a reconnect.
+      expect(firstWs.onclose).toBeNull()
+      expect(firstWs.onerror).toBeNull()
+
+      // Simulate close as the browser fires it after ws.close()
+      act(() => { firstWs.simulateClose() })
+      // Advance past any reconnect delay
+      act(() => { vi.advanceTimersByTime(5_000) })
+      await act(async () => { await Promise.resolve() })
+
+      // No second WebSocket should have been created
+      expect(MockWebSocket.lastInstance).toBe(firstWs)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 // ── WebSocket close fails pending missions ───────────────────────────────────
@@ -2464,6 +2496,37 @@ describe('WebSocket error handler', () => {
 
     const mission = result.current.missions.find(m => m.id === missionId)
     expect(mission?.status).toBe('failed')
+  })
+
+  it('onerror closes the socket and nullifies onclose so subsequent onclose cannot spawn a second WS', async () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useMissions(), { wrapper })
+
+      act(() => { result.current.startMission(defaultParams) })
+      await act(async () => { await Promise.resolve() })
+
+      const firstWs = MockWebSocket.lastInstance!
+
+      // Fire onerror before the socket ever opens
+      await act(async () => { firstWs.simulateError() })
+
+      // onerror must have explicitly closed the socket
+      expect(firstWs.close).toHaveBeenCalled()
+      // onclose must be nullified so the browser-fired close cannot reconnect
+      expect(firstWs.onclose).toBeNull()
+
+      // Simulate close as the browser fires it after ws.close()
+      act(() => { firstWs.simulateClose() })
+      // Advance past any reconnect delay
+      act(() => { vi.advanceTimersByTime(5_000) })
+      await act(async () => { await Promise.resolve() })
+
+      // No second WebSocket should have been created
+      expect(MockWebSocket.lastInstance).toBe(firstWs)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
