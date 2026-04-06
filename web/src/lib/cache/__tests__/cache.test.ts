@@ -512,6 +512,20 @@ describe('cache module', () => {
       // other key must be untouched
       expect(sessionStorage.getItem('kcc:other')).not.toBeNull()
     })
+
+    it('CacheStore.clear (via invalidateCache with existing store) wipes sessionStorage snapshot', async () => {
+      const mod = await importFresh()
+
+      // Create a store that populates sessionStorage
+      await mod.prefetchCache('store-clear-test', async () => ['item-1'], [])
+      // Seed sessionStorage to simulate a snapshot being present
+      sessionStorage.setItem('kcc:store-clear-test', JSON.stringify({ d: ['item-1'], t: Date.now(), v: 4 }))
+
+      // Calling invalidateCache routes through CacheStore.clear()
+      await mod.invalidateCache('store-clear-test')
+
+      expect(sessionStorage.getItem('kcc:store-clear-test')).toBeNull()
+    })
   })
 
   // ── CacheStore initialization ──────────────────────────────────────────
