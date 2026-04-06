@@ -1928,6 +1928,175 @@ describe('cache module', () => {
     })
   })
 
+  // ── CacheStore — progressive fetcher incremental UI updates ──────────
+
+  describe('CacheStore — progressive fetch updates UI incrementally', () => {
+    it('transitions isLoading→false and isRefreshing→true on first partial data (cold load)', async () => {
+      setDemoMode(false)
+      const mod = await importFresh()
+
+      let resolvePartial!: () => void
+      let resolveFetch!: () => void
+      const partialReady = new Promise<void>(r => { resolvePartial = r })
+      const fetchReady = new Promise<void>(r => { resolveFetch = r })
+
+      const progressiveFetcher = vi.fn(async (onProgress: (d: string[]) => void) => {
+        // First cluster arrives
+        onProgress(['item-1'])
+        resolvePartial()
+        // Wait before resolving so we can assert intermediate state
+        await fetchReady
+        // Second cluster arrives
+        onProgress(['item-1', 'item-2'])
+        return ['item-1', 'item-2']
+      })
+
+      const { result } = renderHook(() =>
+        mod.useCache({
+          key: 'prog-incremental-cold',
+          fetcher: vi.fn(),
+          initialData: [] as string[],
+          autoRefresh: false,
+          shared: false,
+          progressiveFetcher,
+        })
+      )
+
+      // Initially loading with no data
+      expect(result.current.isLoading).toBe(true)
+      expect(result.current.data).toEqual([])
+
+      // Wait for first partial data to arrive
+      await act(async () => { await partialReady })
+
+      // After first onProgress: should have data, no longer loading, but refreshing
+      expect(result.current.data).toEqual(['item-1'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(true)
+
+      // Let the fetch complete
+      await act(async () => {
+        resolveFetch()
+        await new Promise(r => setTimeout(r, 50))
+      })
+
+      // After fetch completes: final data, not loading, not refreshing
+      expect(result.current.data).toEqual(['item-1', 'item-2'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(false)
+    })
+
+    it('shows partial data during warm load (cached data present) without blocking on isLoading', async () => {
+      setDemoMode(false)
+      const mod = await importFresh()
+
+      // Seed cache so this is a warm load
+      seedSessionStorage('prog-incremental-warm', ['cached-item'], Date.now())
+
+      let resolvePartial!: () => void
+      let resolveFetch!: () => void
+      const partialReady = new Promise<void>(r => { resolvePartial = r })
+      const fetchReady = new Promise<void>(r => { resolveFetch = r })
+
+      const progressiveFetcher = vi.fn(async (onProgress: (d: string[]) => void) => {
+        onProgress(['new-item-1'])
+        resolvePartial()
+        await fetchReady
+        return ['new-item-1', 'new-item-2']
+      })
+
+      const { result } = renderHook(() =>
+        mod.useCache({
+          key: 'prog-incremental-warm',
+          fetcher: vi.fn(),
+          initialData: [] as string[],
+          autoRefresh: false,
+          shared: false,
+          progressiveFetcher,
+        })
+      )
+
+      // Should show cached data immediately (warm load — not in loading state)
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      await act(async () => { await partialReady })
+
+      // After first onProgress: partial data shown, not loading, still refreshing
+      expect(result.current.data).toEqual(['new-item-1'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(true)
+
+      // Let the fetch complete
+      await act(async () => {
+        resolveFetch()
+        await new Promise(r => setTimeout(r, 50))
+      })
+
+      // Final state after fetch completes
+      expect(result.current.data).toEqual(['new-item-1', 'new-item-2'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(false)
+    })
+
+    it('each async onProgress call updates data incrementally (multi-cluster simulation)', async () => {
+      setDemoMode(false)
+      const mod = await importFresh()
+
+      // Barriers to simulate each cluster completing in a separate async turn
+      let resolveClusterA!: () => void
+      let resolveClusterB!: () => void
+      let resolveClusterC!: () => void
+      const clusterA = new Promise<void>(r => { resolveClusterA = r })
+      const clusterB = new Promise<void>(r => { resolveClusterB = r })
+      const clusterC = new Promise<void>(r => { resolveClusterC = r })
+
+      const progressiveFetcher = vi.fn(async (onProgress: (d: string[]) => void) => {
+        await clusterA
+        onProgress(['cluster-a-pod'])
+        await clusterB
+        onProgress(['cluster-a-pod', 'cluster-b-pod'])
+        await clusterC
+        onProgress(['cluster-a-pod', 'cluster-b-pod', 'cluster-c-pod'])
+        return ['cluster-a-pod', 'cluster-b-pod', 'cluster-c-pod']
+      })
+
+      const { result } = renderHook(() =>
+        mod.useCache({
+          key: 'prog-multi-cluster-async',
+          fetcher: vi.fn(),
+          initialData: [] as string[],
+          autoRefresh: false,
+          shared: false,
+          progressiveFetcher,
+        })
+      )
+
+      // Initially loading
+      expect(result.current.isLoading).toBe(true)
+
+      // Cluster A completes — partial data arrives
+      await act(async () => { resolveClusterA(); await Promise.resolve() })
+      expect(result.current.data).toEqual(['cluster-a-pod'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(true)
+
+      // Cluster B completes — more data
+      await act(async () => { resolveClusterB(); await Promise.resolve() })
+      expect(result.current.data).toEqual(['cluster-a-pod', 'cluster-b-pod'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(true)
+
+      // Cluster C completes — fetch done
+      await act(async () => {
+        resolveClusterC()
+        await new Promise(r => setTimeout(r, 50))
+      })
+      expect(result.current.data).toEqual(['cluster-a-pod', 'cluster-b-pod', 'cluster-c-pod'])
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.isRefreshing).toBe(false)
+    })
+  })
+
   // ── CacheStore — merge function ────────────────────────────────────
 
   describe('CacheStore — merge function', () => {
