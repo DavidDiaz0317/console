@@ -109,9 +109,11 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
         </a>
       </div>
 
-      {/* Search - hidden on small mobile; min-w-0 + overflow-hidden prevent
-           overlap when the right-side AI Mission button is visible (#4409) */}
-      <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-4 overflow-hidden">
+      {/* Search - hidden on small mobile; min-w-0 allows the flex item to
+           shrink and prevents overlap with the right-side buttons (#4409).
+           overflow-visible is required so the search results dropdown panel
+           (absolute-positioned) is not clipped by this container. */}
+      <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-4">
         <Suspense fallback={null}><SearchDropdown /></Suspense>
       </div>
 
