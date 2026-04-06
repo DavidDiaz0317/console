@@ -1816,6 +1816,47 @@ describe('cache module', () => {
       // After enough failures, isFailed should be true
       expect(result.current.isFailed).toBe(true)
     })
+
+    it('exposes the error message to callers after a fetch failure', async () => {
+      setDemoMode(false)
+      const mod = await importFresh()
+      const fetcher = vi.fn().mockRejectedValue(new Error('network timeout'))
+
+      const { result } = renderHook(() =>
+        mod.useCache({
+          key: 'error-exposed',
+          fetcher,
+          initialData: [],
+          autoRefresh: false,
+          shared: false,
+        })
+      )
+
+      await act(async () => { await new Promise(r => setTimeout(r, 100)) })
+
+      // error should be the actual message, not null
+      expect(result.current.error).toBe('network timeout')
+    })
+
+    it('exposes a generic error message when a non-Error is thrown', async () => {
+      setDemoMode(false)
+      const mod = await importFresh()
+      const fetcher = vi.fn().mockRejectedValue('string error')
+
+      const { result } = renderHook(() =>
+        mod.useCache({
+          key: 'error-exposed-generic',
+          fetcher,
+          initialData: [],
+          autoRefresh: false,
+          shared: false,
+        })
+      )
+
+      await act(async () => { await new Promise(r => setTimeout(r, 100)) })
+
+      expect(result.current.error).toBe('Failed to fetch data')
+    })
   })
 
   // ── useCache hook — refetch method ────────────────────────────────

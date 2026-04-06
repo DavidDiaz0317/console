@@ -934,7 +934,7 @@ class CacheStore<T> {
         // After MAX_FAILURES, isFailed triggers failure state instead of skeleton.
         isLoading: !hasData && !reachedMaxFailures,
         isRefreshing: false,
-        error: null,
+        error: errorMessage,
         isFailed: hasData ? false : reachedMaxFailures,
         consecutiveFailures: hasData ? 0 : newFailures,
       })
