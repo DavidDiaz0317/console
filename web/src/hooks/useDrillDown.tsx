@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, ReactNode } from 'react'
 import { emitDrillDownOpened, emitDrillDownClosed } from '../lib/analytics'
 
 // Types for drill-down navigation
@@ -97,24 +97,25 @@ export function DrillDownProvider({ children }: { children: ReactNode }) {
     currentView: null,
   })
 
-  const open = useCallback((view: DrillDownView) => {
+  // React Compiler auto-memoizes these functions — no manual useCallback needed.
+  const open = (view: DrillDownView) => {
     setState({
       isOpen: true,
       stack: [view],
       currentView: view,
     })
     emitDrillDownOpened(view.type)
-  }, [])
+  }
 
-  const push = useCallback((view: DrillDownView) => {
+  const push = (view: DrillDownView) => {
     setState(prev => ({
       ...prev,
       stack: [...prev.stack, view],
       currentView: view,
     }))
-  }, [])
+  }
 
-  const pop = useCallback(() => {
+  const pop = () => {
     setState(prev => {
       if (prev.stack.length <= 1) {
         return { isOpen: false, stack: [], currentView: null }
@@ -126,9 +127,9 @@ export function DrillDownProvider({ children }: { children: ReactNode }) {
         currentView: newStack[newStack.length - 1],
       }
     })
-  }, [])
+  }
 
-  const goTo = useCallback((index: number) => {
+  const goTo = (index: number) => {
     setState(prev => {
       if (index < 0 || index >= prev.stack.length) return prev
       const newStack = prev.stack.slice(0, index + 1)
@@ -138,18 +139,18 @@ export function DrillDownProvider({ children }: { children: ReactNode }) {
         currentView: newStack[newStack.length - 1],
       }
     })
-  }, [])
+  }
 
-  const close = useCallback(() => {
+  const close = () => {
     setState(prev => {
       if (prev.currentView) {
         emitDrillDownClosed(prev.currentView.type, prev.stack.length)
       }
       return { isOpen: false, stack: [], currentView: null }
     })
-  }, [])
+  }
 
-  const replace = useCallback((view: DrillDownView) => {
+  const replace = (view: DrillDownView) => {
     setState(prev => {
       const newStack = [...prev.stack.slice(0, -1), view]
       return {
@@ -158,7 +159,7 @@ export function DrillDownProvider({ children }: { children: ReactNode }) {
         currentView: view,
       }
     })
-  }, [])
+  }
 
   return (
     <DrillDownContext.Provider value={{ state, open, push, pop, goTo, close, replace }}>
@@ -291,8 +292,10 @@ export function useDrillDownActions() {
   const push = context?.push ?? _noopPush
   const goTo = context?.goTo ?? _noopGoTo
 
+  // React Compiler auto-memoizes all functions below — no manual useCallback needed.
+
   // Helper to navigate - checks if view already exists in stack
-  const openOrPush = useCallback((view: DrillDownView) => {
+  const openOrPush = (view: DrillDownView) => {
     if (!context) return
     if (!state.isOpen) {
       open(view)
@@ -309,89 +312,89 @@ export function useDrillDownActions() {
     } else {
       push(view)
     }
-  }, [context, state.isOpen, state.stack, open, push, goTo])
+  }
 
-  const drillToCluster = useCallback((cluster: string, clusterData?: Record<string, unknown>) => {
+  const drillToCluster = (cluster: string, clusterData?: Record<string, unknown>) => {
     openOrPush({
       type: 'cluster',
       title: cluster.split('/').pop() || cluster,
       subtitle: 'Cluster Overview',
       data: { cluster, ...clusterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToNamespace = useCallback((cluster: string, namespace: string) => {
+  const drillToNamespace = (cluster: string, namespace: string) => {
     openOrPush({
       type: 'namespace',
       title: namespace,
       subtitle: `Namespace in ${cluster.split('/').pop()}`,
       data: { cluster, namespace },
     })
-  }, [openOrPush])
+  }
 
-  const drillToDeployment = useCallback((cluster: string, namespace: string, deployment: string, deploymentData?: Record<string, unknown>) => {
+  const drillToDeployment = (cluster: string, namespace: string, deployment: string, deploymentData?: Record<string, unknown>) => {
     openOrPush({
       type: 'deployment',
       title: deployment,
       subtitle: `Deployment in ${namespace}`,
       data: { cluster, namespace, deployment, ...deploymentData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToPod = useCallback((cluster: string, namespace: string, pod: string, podData?: Record<string, unknown>) => {
+  const drillToPod = (cluster: string, namespace: string, pod: string, podData?: Record<string, unknown>) => {
     openOrPush({
       type: 'pod',
       title: pod,
       data: { cluster, namespace, pod, ...podData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToLogs = useCallback((cluster: string, namespace: string, pod: string, container?: string) => {
+  const drillToLogs = (cluster: string, namespace: string, pod: string, container?: string) => {
     openOrPush({
       type: 'logs',
       title: `Logs: ${pod}`,
       subtitle: container ? `Container: ${container}` : 'All containers',
       data: { cluster, namespace, pod, container },
     })
-  }, [openOrPush])
+  }
 
-  const drillToEvents = useCallback((cluster: string, namespace?: string, objectName?: string) => {
+  const drillToEvents = (cluster: string, namespace?: string, objectName?: string) => {
     openOrPush({
       type: 'events',
       title: objectName ? `Events: ${objectName}` : 'Events',
       subtitle: namespace || cluster.split('/').pop(),
       data: { cluster, namespace, objectName },
     })
-  }, [openOrPush])
+  }
 
-  const drillToNode = useCallback((cluster: string, node: string, nodeData?: Record<string, unknown>) => {
+  const drillToNode = (cluster: string, node: string, nodeData?: Record<string, unknown>) => {
     openOrPush({
       type: 'node',
       title: node,
       subtitle: `Node in ${cluster.split('/').pop()}`,
       data: { cluster, node, ...nodeData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToGPUNode = useCallback((cluster: string, node: string, gpuData?: Record<string, unknown>) => {
+  const drillToGPUNode = (cluster: string, node: string, gpuData?: Record<string, unknown>) => {
     openOrPush({
       type: 'gpu-node',
       title: node,
       subtitle: 'GPU Node',
       data: { cluster, node, ...gpuData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToGPUNamespace = useCallback((namespace: string, gpuData?: Record<string, unknown>) => {
+  const drillToGPUNamespace = (namespace: string, gpuData?: Record<string, unknown>) => {
     openOrPush({
       type: 'gpu-namespace',
       title: namespace,
       subtitle: 'GPU Namespace Allocations',
       data: { namespace, ...gpuData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToYAML = useCallback((
+  const drillToYAML = (
     cluster: string,
     namespace: string,
     resourceType: string,
@@ -404,141 +407,141 @@ export function useDrillDownActions() {
       subtitle: `YAML definition`,
       data: { cluster, namespace, resourceType, resourceName, ...resourceData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToResources = useCallback(() => {
+  const drillToResources = () => {
     openOrPush({
       type: 'resources',
       title: 'Resource Usage',
       subtitle: 'All clusters',
       data: {},
     })
-  }, [openOrPush])
+  }
 
-  const drillToReplicaSet = useCallback((cluster: string, namespace: string, replicaset: string, replicasetData?: Record<string, unknown>) => {
+  const drillToReplicaSet = (cluster: string, namespace: string, replicaset: string, replicasetData?: Record<string, unknown>) => {
     openOrPush({
       type: 'replicaset',
       title: replicaset,
       data: { cluster, namespace, replicaset, ...replicasetData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToConfigMap = useCallback((cluster: string, namespace: string, configmap: string, configmapData?: Record<string, unknown>) => {
+  const drillToConfigMap = (cluster: string, namespace: string, configmap: string, configmapData?: Record<string, unknown>) => {
     openOrPush({
       type: 'configmap',
       title: configmap,
       data: { cluster, namespace, configmap, ...configmapData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToSecret = useCallback((cluster: string, namespace: string, secret: string, secretData?: Record<string, unknown>) => {
+  const drillToSecret = (cluster: string, namespace: string, secret: string, secretData?: Record<string, unknown>) => {
     openOrPush({
       type: 'secret',
       title: secret,
       data: { cluster, namespace, secret, ...secretData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToServiceAccount = useCallback((cluster: string, namespace: string, serviceaccount: string, serviceaccountData?: Record<string, unknown>) => {
+  const drillToServiceAccount = (cluster: string, namespace: string, serviceaccount: string, serviceaccountData?: Record<string, unknown>) => {
     openOrPush({
       type: 'serviceaccount',
       title: serviceaccount,
       data: { cluster, namespace, serviceaccount, ...serviceaccountData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToPVC = useCallback((cluster: string, namespace: string, pvc: string, pvcData?: Record<string, unknown>) => {
+  const drillToPVC = (cluster: string, namespace: string, pvc: string, pvcData?: Record<string, unknown>) => {
     openOrPush({
       type: 'pvc',
       title: pvc,
       subtitle: `PVC in ${namespace}`,
       data: { cluster, namespace, pvc, ...pvcData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToJob = useCallback((cluster: string, namespace: string, job: string, jobData?: Record<string, unknown>) => {
+  const drillToJob = (cluster: string, namespace: string, job: string, jobData?: Record<string, unknown>) => {
     openOrPush({
       type: 'job',
       title: job,
       subtitle: `Job in ${namespace}`,
       data: { cluster, namespace, job, ...jobData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToHPA = useCallback((cluster: string, namespace: string, hpa: string, hpaData?: Record<string, unknown>) => {
+  const drillToHPA = (cluster: string, namespace: string, hpa: string, hpaData?: Record<string, unknown>) => {
     openOrPush({
       type: 'hpa',
       title: hpa,
       subtitle: `HPA in ${namespace}`,
       data: { cluster, namespace, hpa, ...hpaData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToService = useCallback((cluster: string, namespace: string, service: string, serviceData?: Record<string, unknown>) => {
+  const drillToService = (cluster: string, namespace: string, service: string, serviceData?: Record<string, unknown>) => {
     openOrPush({
       type: 'service',
       title: service,
       subtitle: `Service in ${namespace}`,
       data: { cluster, namespace, service, ...serviceData },
     })
-  }, [openOrPush])
+  }
 
   // Phase 2: GitOps and operational drill actions
-  const drillToHelm = useCallback((cluster: string, namespace: string, release: string, helmData?: Record<string, unknown>) => {
+  const drillToHelm = (cluster: string, namespace: string, release: string, helmData?: Record<string, unknown>) => {
     openOrPush({
       type: 'helm',
       title: release,
       subtitle: `Helm Release in ${namespace}`,
       data: { cluster, namespace, release, ...helmData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToArgoApp = useCallback((cluster: string, namespace: string, app: string, argoData?: Record<string, unknown>) => {
+  const drillToArgoApp = (cluster: string, namespace: string, app: string, argoData?: Record<string, unknown>) => {
     openOrPush({
       type: 'argoapp',
       title: app,
       subtitle: `ArgoCD Application`,
       data: { cluster, namespace, app, ...argoData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToKustomization = useCallback((cluster: string, namespace: string, name: string, kustomizeData?: Record<string, unknown>) => {
+  const drillToKustomization = (cluster: string, namespace: string, name: string, kustomizeData?: Record<string, unknown>) => {
     openOrPush({
       type: 'kustomization',
       title: name,
       subtitle: `Kustomization in ${namespace}`,
       data: { cluster, namespace, name, ...kustomizeData },
     })
-  }, [openOrPush])
-  const drillToBuildpack = useCallback((cluster: string, namespace: string, name: string, buildpackData?: Record<string, unknown>) => {
+  }
+  const drillToBuildpack = (cluster: string, namespace: string, name: string, buildpackData?: Record<string, unknown>) => {
     openOrPush({
       type: 'buildpack',
       title: name,
       subtitle: `Buildpack in ${namespace}`,
       data: { cluster, namespace, name, ...buildpackData },
     })
-  }, [openOrPush])
-  
-  const drillToDrift = useCallback((cluster: string, driftData?: Record<string, unknown>) => {
+  }
+
+  const drillToDrift = (cluster: string, driftData?: Record<string, unknown>) => {
     openOrPush({
       type: 'drift',
       title: 'Configuration Drift',
       subtitle: cluster.split('/').pop() || cluster,
       data: { cluster, ...driftData },
     })
-  }, [openOrPush])
+  }
 
   // Phase 2: Policy and compliance drill actions
-  const drillToPolicy = useCallback((cluster: string, namespace: string | undefined, policy: string, policyData?: Record<string, unknown>) => {
+  const drillToPolicy = (cluster: string, namespace: string | undefined, policy: string, policyData?: Record<string, unknown>) => {
     openOrPush({
       type: 'policy',
       title: policy,
       subtitle: namespace ? `Policy in ${namespace}` : 'Cluster Policy',
       data: { cluster, namespace, policy, ...policyData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToCompliance = useCallback((filterStatus?: string, complianceData?: Record<string, unknown>) => {
+  const drillToCompliance = (filterStatus?: string, complianceData?: Record<string, unknown>) => {
     const title = filterStatus
       ? `${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)} Controls`
       : 'OSCAL Compliance Controls'
@@ -548,67 +551,67 @@ export function useDrillDownActions() {
       subtitle: 'Compliance Trestle Assessment',
       data: { filterStatus, ...complianceData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToCRD = useCallback((cluster: string, crd: string, crdData?: Record<string, unknown>) => {
+  const drillToCRD = (cluster: string, crd: string, crdData?: Record<string, unknown>) => {
     openOrPush({
       type: 'crd',
       title: crd,
       subtitle: 'Custom Resource Definition',
       data: { cluster, crd, ...crdData },
     })
-  }, [openOrPush])
+  }
 
   // Phase 2: Alerting and monitoring drill actions
-  const drillToAlert = useCallback((cluster: string, namespace: string | undefined, alert: string, alertData?: Record<string, unknown>) => {
+  const drillToAlert = (cluster: string, namespace: string | undefined, alert: string, alertData?: Record<string, unknown>) => {
     openOrPush({
       type: 'alert',
       title: alert,
       subtitle: namespace ? `Alert in ${namespace}` : 'Cluster Alert',
       data: { cluster, namespace, alert, ...alertData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAlertRule = useCallback((cluster: string, namespace: string, ruleName: string, ruleData?: Record<string, unknown>) => {
+  const drillToAlertRule = (cluster: string, namespace: string, ruleName: string, ruleData?: Record<string, unknown>) => {
     openOrPush({
       type: 'alertrule',
       title: ruleName,
       subtitle: `Alert Rule in ${namespace}`,
       data: { cluster, namespace, ruleName, ...ruleData },
     })
-  }, [openOrPush])
+  }
 
   // Phase 2: Cost and RBAC drill actions
-  const drillToCost = useCallback((cluster: string, costData?: Record<string, unknown>) => {
+  const drillToCost = (cluster: string, costData?: Record<string, unknown>) => {
     openOrPush({
       type: 'cost',
       title: 'Cost Analysis',
       subtitle: cluster.split('/').pop() || cluster,
       data: { cluster, ...costData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToRBAC = useCallback((cluster: string, namespace: string | undefined, subject: string, rbacData?: Record<string, unknown>) => {
+  const drillToRBAC = (cluster: string, namespace: string | undefined, subject: string, rbacData?: Record<string, unknown>) => {
     openOrPush({
       type: 'rbac',
       title: subject,
       subtitle: namespace ? `RBAC in ${namespace}` : 'Cluster RBAC',
       data: { cluster, namespace, subject, ...rbacData },
     })
-  }, [openOrPush])
+  }
 
   // Phase 2: Operator drill actions
-  const drillToOperator = useCallback((cluster: string, namespace: string, operator: string, operatorData?: Record<string, unknown>) => {
+  const drillToOperator = (cluster: string, namespace: string, operator: string, operatorData?: Record<string, unknown>) => {
     openOrPush({
       type: 'operator',
       title: operator,
       subtitle: `Operator in ${namespace}`,
       data: { cluster, namespace, operator, ...operatorData },
     })
-  }, [openOrPush])
+  }
 
   // Multi-cluster summary drill actions (for stat blocks)
-  const drillToAllClusters = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllClusters = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Clusters` : 'All Clusters'
     openOrPush({
       type: 'all-clusters',
@@ -616,9 +619,9 @@ export function useDrillDownActions() {
       subtitle: 'Multi-cluster overview',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllNamespaces = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllNamespaces = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Namespaces` : 'All Namespaces'
     openOrPush({
       type: 'all-namespaces',
@@ -626,9 +629,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllDeployments = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllDeployments = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Deployments` : 'All Deployments'
     openOrPush({
       type: 'all-deployments',
@@ -636,9 +639,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllPods = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllPods = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Pods` : 'All Pods'
     openOrPush({
       type: 'all-pods',
@@ -646,9 +649,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllServices = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllServices = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Services` : 'All Services'
     openOrPush({
       type: 'all-services',
@@ -656,9 +659,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllNodes = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllNodes = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Nodes` : 'All Nodes'
     openOrPush({
       type: 'all-nodes',
@@ -666,9 +669,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllEvents = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllEvents = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Events` : 'All Events'
     openOrPush({
       type: 'all-events',
@@ -676,9 +679,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllAlerts = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllAlerts = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Alerts` : 'All Alerts'
     openOrPush({
       type: 'all-alerts',
@@ -686,9 +689,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllHelm = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllHelm = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Helm Releases` : 'All Helm Releases'
     openOrPush({
       type: 'all-helm',
@@ -696,9 +699,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllOperators = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllOperators = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Operators` : 'All Operators'
     openOrPush({
       type: 'all-operators',
@@ -706,9 +709,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllSecurity = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllSecurity = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Security Issues` : 'Security Issues'
     openOrPush({
       type: 'all-security',
@@ -716,9 +719,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllGPU = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllGPU = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} GPUs` : 'All GPUs'
     openOrPush({
       type: 'all-gpu',
@@ -726,9 +729,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllStorage = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllStorage = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Storage` : 'All Storage'
     openOrPush({
       type: 'all-storage',
@@ -736,9 +739,9 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
-  const drillToAllJobs = useCallback((filter?: string, filterData?: Record<string, unknown>) => {
+  const drillToAllJobs = (filter?: string, filterData?: Record<string, unknown>) => {
     const title = filter ? `${filter.charAt(0).toUpperCase() + filter.slice(1)} Jobs` : 'All Jobs'
     openOrPush({
       type: 'all-jobs',
@@ -746,7 +749,7 @@ export function useDrillDownActions() {
       subtitle: 'Across all clusters',
       data: { filter, ...filterData },
     })
-  }, [openOrPush])
+  }
 
   return {
     drillToCluster,

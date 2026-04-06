@@ -217,7 +217,8 @@ export function StackProvider({ children }: StackProviderProps) {
     return null
   })
 
-  // Persist selection to localStorage
+  // Keep useCallback: this function appears in useEffect dependency arrays below.
+  // Removing it would cause the effect to re-run every render.
   const setSelectedStackId = useCallback((id: string | null) => {
     setSelectedStackIdState(id)
     if (typeof window !== 'undefined') {
@@ -249,22 +250,18 @@ export function StackProvider({ children }: StackProviderProps) {
     }
   }, [isLoading, stacks, selectedStackId, setSelectedStackId])
 
-  const getStackById = useCallback((id: string) => {
+  // React Compiler auto-memoizes these derivations — no manual useMemo/useCallback needed.
+  const getStackById = (id: string) => {
     return stacks.find(s => s.id === id)
-  }, [stacks])
+  }
 
-  const selectedStack = useMemo(() => {
-    if (!selectedStackId) return null
-    return stacks.find(s => s.id === selectedStackId) || null
-  }, [stacks, selectedStackId])
+  const selectedStack = selectedStackId
+    ? stacks.find(s => s.id === selectedStackId) || null
+    : null
 
-  const healthyStacks = useMemo(() => {
-    return stacks.filter(s => s.status === 'healthy')
-  }, [stacks])
+  const healthyStacks = stacks.filter(s => s.status === 'healthy')
 
-  const disaggregatedStacks = useMemo(() => {
-    return stacks.filter(s => s.hasDisaggregation)
-  }, [stacks])
+  const disaggregatedStacks = stacks.filter(s => s.hasDisaggregation)
 
   const value: StackContextType = {
     stacks,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useClusters } from './useMCP'
 
 interface ClusterFilterContextType {
@@ -38,11 +38,12 @@ export function ClusterFilterProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedClusters))
   }, [selectedClusters])
 
-  const setSelectedClusters = useCallback((clusters: string[]) => {
+  // React Compiler auto-memoizes these — no manual useCallback needed.
+  const setSelectedClusters = (clusters: string[]) => {
     setSelectedClustersState(clusters)
-  }, [])
+  }
 
-  const toggleCluster = useCallback((cluster: string) => {
+  const toggleCluster = (cluster: string) => {
     setSelectedClustersState(prev => {
       // If currently "all" (empty), switch to all except this one
       if (prev.length === 0) {
@@ -64,18 +65,18 @@ export function ClusterFilterProvider({ children }: { children: ReactNode }) {
         return newSelection
       }
     })
-  }, [availableClusters])
+  }
 
-  const selectAll = useCallback(() => {
+  const selectAll = () => {
     setSelectedClustersState([])
-  }, [])
+  }
 
-  const clearAll = useCallback(() => {
+  const clearAll = () => {
     // Select just the first cluster if available
     if (availableClusters.length > 0) {
       setSelectedClustersState([availableClusters[0]])
     }
-  }, [availableClusters])
+  }
 
   // Empty array means all clusters are selected
   const isAllSelected = selectedClusters.length === 0

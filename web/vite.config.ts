@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
 import istanbul from 'vite-plugin-istanbul'
 import { compression } from 'vite-plugin-compression2'
 import { execSync } from 'child_process'
@@ -59,6 +60,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    // React Compiler — auto-memoizes components and hooks at build time,
+    // making most manual useMemo/useCallback calls unnecessary.
+    // Target '18' uses react-compiler-runtime for React 18.x compat.
+    babel({ presets: [reactCompilerPreset({ target: '18' })] }),
     // Inject build commit hash into the HTML <meta name="app-build-id"> tag
     // so the stale-HTML detection script can compare against the server.
     {
