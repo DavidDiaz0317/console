@@ -493,6 +493,7 @@ describe('sseClient expanded', () => {
     it('recovers and returns complete data when retry succeeds after mid-stream break', async () => {
       vi.spyOn(console, 'warn').mockImplementation(() => {})
       let callCount = 0
+      const clusterDataCalls: Array<{ cluster: string; items: unknown[] }> = []
 
       vi.mocked(fetch).mockImplementation(() => {
         callCount++
@@ -530,7 +531,9 @@ describe('sseClient expanded', () => {
       const promise = fetchSSE({
         url: uniqueUrl,
         itemsKey: 'items',
-        onClusterData: vi.fn(),
+        onClusterData: (cluster, items) => {
+          clusterDataCalls.push({ cluster, items })
+        },
         onRetry,
       })
 
@@ -543,6 +546,13 @@ describe('sseClient expanded', () => {
       expect(callCount).toBe(2)
       // onRetry should have been called once (before attempt 1)
       expect(onRetry).toHaveBeenCalledTimes(1)
+      // onClusterData was called 3 times total: once with partial data (attempt 0),
+      // then twice with complete data from the successful retry (attempt 1).
+      // The final resolved data contains only the complete retry data (2 items).
+      expect(clusterDataCalls.length).toBe(3)
+      // The last two calls (from the successful retry) deliver the complete clusters
+      expect(clusterDataCalls[1].cluster).toBe('c1')
+      expect(clusterDataCalls[2].cluster).toBe('c2')
     })
   })
 

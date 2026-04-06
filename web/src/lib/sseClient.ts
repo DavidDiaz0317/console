@@ -311,8 +311,10 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
             return
           }
 
-          // All retries exhausted — resolve with best available data if any,
-          // otherwise reject so the caller can fall back to another data source.
+          // All retries exhausted — resolve with the best available partial data
+          // rather than rejecting completely. Returning partial data is a last-resort
+          // fallback so the UI can display something useful; if there is nothing at
+          // all, reject so the caller can fall back to an alternative data source.
           clearTimeout(timeoutId)
           cleanup()
           if (accumulated.length > 0) {
