@@ -486,7 +486,9 @@ describe('usePersistedSettings', () => {
     )
     expect(mockClick).toHaveBeenCalled()
     expect(mockRevokeObjectURL).not.toHaveBeenCalled()
-    vi.runAllTimers()
+    vi.advanceTimersByTime(99)
+    expect(mockRevokeObjectURL).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
     expect(mockRevokeObjectURL).toHaveBeenCalled()
 
     mockAppendChild.mockRestore()
