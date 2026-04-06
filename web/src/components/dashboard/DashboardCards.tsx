@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, LayoutGrid, ChevronDown, ChevronRight, Layout, AlertTriangle } from 'lucide-react'
+import { Plus, LayoutGrid, ChevronDown, ChevronRight, Layout } from 'lucide-react'
 import { useModalState } from '../../lib/modals'
 import { Button } from '../ui/Button'
 import { CardWrapper } from '../cards/CardWrapper'
 import { getCardComponent, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
+import { UnknownCardFallback } from '../cards/UnknownCardFallback'
 import { AddCardModal } from './AddCardModal'
 import { TemplatesModal } from './TemplatesModal'
 import { ConfigureCardModal } from './ConfigureCardModal'
@@ -179,11 +180,7 @@ export function DashboardCards({
                     {CardComponent ? (
                       <CardComponent config={card.config ?? {}} />
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
-                        <AlertTriangle className="w-6 h-6 text-yellow-500" />
-                        <p className="text-sm font-medium">Unknown card type: {card.card_type}</p>
-                        <p className="text-xs">This card type is not registered. You can remove it.</p>
-                      </div>
+                      <UnknownCardFallback cardType={card.card_type} />
                     )}
                   </CardWrapper>
                 )

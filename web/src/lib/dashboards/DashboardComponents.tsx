@@ -1,11 +1,12 @@
-import { memo, ReactNode } from 'react'
+import { memo, ReactNode, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, LayoutGrid, ChevronDown, ChevronRight, RefreshCw, Hourglass, AlertTriangle } from 'lucide-react'
+import { GripVertical, Plus, LayoutGrid, ChevronDown, ChevronRight, RefreshCw, Hourglass } from 'lucide-react'
 import { getIcon } from '../icons'
 import { DashboardCard } from './types'
 import { CardWrapper } from '../../components/cards/CardWrapper'
-import { CARD_COMPONENTS, DEMO_DATA_CARDS } from '../../components/cards/cardRegistry'
+import { CARD_COMPONENTS, getCardComponent, DEMO_DATA_CARDS } from '../../components/cards/cardRegistry'
+import { UnknownCardFallback } from '../../components/cards/UnknownCardFallback'
 import { formatCardTitle } from '../../lib/formatCardTitle'
 import { useMobile } from '../../hooks/useMobile'
 
@@ -67,6 +68,13 @@ export const SortableDashboardCard = memo(function SortableDashboardCard({
 
   const CardComponent = CARD_COMPONENTS[card.card_type]
 
+  // Use getCardComponent() in an effect to trigger its centralised console.warn
+  // when the type is unrecognised without causing a react-hooks/static-components
+  // lint violation (getCardComponent retrieves, not creates, a component).
+  useEffect(() => {
+    getCardComponent(card.card_type)
+  }, [card.card_type])
+
   return (
     <div ref={setNodeRef} style={style} className="relative group/card">
       {onInsertAfter && (
@@ -105,11 +113,7 @@ export const SortableDashboardCard = memo(function SortableDashboardCard({
         {CardComponent ? (
           <CardComponent config={card.config ?? {}} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <p className="text-sm font-medium">Unknown card type: {card.card_type}</p>
-            <p className="text-xs">This card type is not registered. You can remove it.</p>
-          </div>
+          <UnknownCardFallback cardType={card.card_type} />
         )}
       </CardWrapper>
     </div>

@@ -1,9 +1,10 @@
 import { memo, useState, useEffect, type KeyboardEvent } from 'react'
-import { GripVertical, AlertTriangle } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CardWrapper } from '../cards/CardWrapper'
 import { CARD_COMPONENTS, getCardComponent, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
+import { UnknownCardFallback } from '../cards/UnknownCardFallback'
 import { formatCardTitle } from '../../lib/formatCardTitle'
 import type { Card } from './dashboardUtils'
 
@@ -146,11 +147,7 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
         {CardComponent ? (
           <CardComponent config={card.config ?? {}} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <p className="text-sm font-medium">Unknown card type: {card.card_type}</p>
-            <p className="text-xs">This card type is not registered. You can remove it.</p>
-          </div>
+          <UnknownCardFallback cardType={card.card_type} />
         )}
       </CardWrapper>
     </div>

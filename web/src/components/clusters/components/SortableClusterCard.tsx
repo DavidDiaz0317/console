@@ -1,9 +1,10 @@
-import { memo } from 'react'
+import { memo, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, AlertTriangle } from 'lucide-react'
+import { GripVertical } from 'lucide-react'
 import { CardWrapper } from '../../cards/CardWrapper'
-import { CARD_COMPONENTS, DEMO_DATA_CARDS } from '../../cards/cardRegistry'
+import { CARD_COMPONENTS, getCardComponent, DEMO_DATA_CARDS } from '../../cards/cardRegistry'
+import { UnknownCardFallback } from '../../cards/UnknownCardFallback'
 import { DashboardCard } from '../../../lib/dashboards'
 import { formatCardTitle } from '../../../lib/formatCardTitle'
 import { useMobile } from '../../../hooks/useMobile'
@@ -49,6 +50,13 @@ export const SortableClusterCard = memo(function SortableClusterCard({
 
   const CardComponent = CARD_COMPONENTS[card.card_type]
 
+  // Use getCardComponent() in an effect to trigger its centralised console.warn
+  // when the type is unrecognised without causing a react-hooks/static-components
+  // lint violation (getCardComponent retrieves, not creates, a component).
+  useEffect(() => {
+    getCardComponent(card.card_type)
+  }, [card.card_type])
+
   return (
     <div ref={setNodeRef} style={style}>
       <CardWrapper
@@ -77,11 +85,7 @@ export const SortableClusterCard = memo(function SortableClusterCard({
         {CardComponent ? (
           <CardComponent config={card.config ?? {}} />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
-            <AlertTriangle className="w-6 h-6 text-yellow-500" />
-            <p className="text-sm font-medium">Unknown card type: {card.card_type}</p>
-            <p className="text-xs">This card type is not registered. You can remove it.</p>
-          </div>
+          <UnknownCardFallback cardType={card.card_type} />
         )}
       </CardWrapper>
     </div>
