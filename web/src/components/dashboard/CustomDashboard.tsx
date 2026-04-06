@@ -552,7 +552,7 @@ export function CustomDashboard() {
   // Loading skeleton
   if (isLoading && cards.length === 0) {
     return (
-      <div className="pt-16">
+      <div>
         <div className="animate-pulse space-y-6">
           <div className="h-8 w-64 bg-secondary/50 rounded" />
           <div className="h-4 w-96 bg-secondary/30 rounded" />
@@ -567,7 +567,7 @@ export function CustomDashboard() {
   }
 
   return (
-    <div className="pt-16">
+    <div>
       {/* Header - name from sidebar item takes priority for consistency */}
       <DashboardHeader
         title={sidebarItem?.name || dashboard?.name || 'Custom Dashboard'}

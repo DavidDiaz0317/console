@@ -287,7 +287,7 @@ export function DashboardPage({
   const emptyDescription = emptyState?.description || `Add cards to monitor your ${title.toLowerCase()} across clusters.`
 
   return (
-    <div className="pt-16">
+    <div>
       {/* Header */}
       <DashboardHeader
         title={title}
