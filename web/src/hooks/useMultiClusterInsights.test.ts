@@ -470,7 +470,8 @@ describe('isCausallyRelated', () => {
   it('returns true for two events with the same workload prefix', () => {
     const a = makeEvent({ reason: 'FailedMount', object: 'pod/api-server-abc123' })
     const b = makeEvent({ reason: 'Unhealthy', object: 'pod/api-worker-xyz789' })
-    // Both share workload prefix 'pod/api'
+    // extractWorkloadPrefix('pod/api-server-abc123') → 'pod/api'
+    // extractWorkloadPrefix('pod/api-worker-xyz789') → 'pod/api'
     expect(isCausallyRelated(a, b)).toBe(true)
   })
 
@@ -491,7 +492,7 @@ describe('causalRelationScore', () => {
   it('scores 1.0 when same reason family and same workload prefix', () => {
     const a = makeEvent({ reason: 'BackOff', object: 'pod/test-pod' })
     const b = makeEvent({ reason: 'CrashLoopBackOff', object: 'pod/test-worker' })
-    // same family (backoff) and same workload prefix (pod/test)
+    // same family (backoff); extractWorkloadPrefix: 'pod/test-pod'→'pod/test', 'pod/test-worker'→'pod/test'
     expect(causalRelationScore(a, b)).toBe(1.0)
   })
 
@@ -504,7 +505,7 @@ describe('causalRelationScore', () => {
   it('scores 0.4 when same workload prefix only', () => {
     const a = makeEvent({ reason: 'FailedMount', object: 'pod/api-abc' })
     const b = makeEvent({ reason: 'OOMKilling', object: 'pod/api-xyz' })
-    // different families (volume vs oom), same prefix (pod/api)
+    // different families (volume vs oom); extractWorkloadPrefix: 'pod/api-abc'→'pod/api', 'pod/api-xyz'→'pod/api'
     expect(causalRelationScore(a, b)).toBe(0.4)
   })
 
