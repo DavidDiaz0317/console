@@ -192,6 +192,9 @@ func (h *MCPHandlers) InstallGPUHealthCronJob(c *fiber.Ctx) error {
 	if body.Cluster == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "cluster is required"})
 	}
+	if err := mcpValidateCronSchedule(body.Schedule); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	ctx, cancel := context.WithTimeout(c.Context(), mcpExtendedTimeout)
 	defer cancel()

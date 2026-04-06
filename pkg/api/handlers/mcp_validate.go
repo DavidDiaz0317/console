@@ -102,3 +102,39 @@ func mcpValidateClusterAndNamespace(cluster, namespace string) error {
 	}
 	return mcpValidateName("namespace", namespace)
 }
+
+// cronFieldPattern matches a single field in a standard 5-field cron expression.
+// Each field may be a wildcard (*), a plain integer, a range (N-M), a step
+// (*/N or N/N or N-M/N), or a comma-separated list of those forms.
+var cronFieldPattern = regexp.MustCompile(
+	`^(\*|[0-9]+(-[0-9]+)?)(\/[0-9]+)?(,(\*|[0-9]+(-[0-9]+)?)(\/[0-9]+)?)*$`,
+)
+
+// mcpMaxCronScheduleLen is the maximum allowed length of a cron schedule string.
+const mcpMaxCronScheduleLen = 100
+
+// mcpValidateCronSchedule validates that a cron schedule string is a valid
+// standard 5-field cron expression (minute hour dom month dow).
+// An empty schedule is allowed — the caller will use the default schedule.
+// Returns a 400 fiber error when the schedule is non-empty but malformed.
+func mcpValidateCronSchedule(schedule string) error {
+	if schedule == "" {
+		return nil
+	}
+	if len(schedule) > mcpMaxCronScheduleLen {
+		return fiber.NewError(fiber.StatusBadRequest,
+			fmt.Sprintf("invalid schedule: exceeds maximum length of %d characters", mcpMaxCronScheduleLen))
+	}
+	fields := strings.Fields(schedule)
+	if len(fields) != 5 {
+		return fiber.NewError(fiber.StatusBadRequest,
+			"invalid schedule: must be a valid cron expression with exactly 5 fields (minute hour dom month dow)")
+	}
+	for _, field := range fields {
+		if !cronFieldPattern.MatchString(field) {
+			return fiber.NewError(fiber.StatusBadRequest,
+				fmt.Sprintf("invalid schedule: field %q is not a valid cron field", field))
+		}
+	}
+	return nil
+}
