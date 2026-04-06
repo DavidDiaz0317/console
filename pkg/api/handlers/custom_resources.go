@@ -56,6 +56,22 @@ func (h *MCPHandlers) GetCustomResources(c *fiber.Ctx) error {
 		return c.JSON(CustomResourceResponse{Items: []CustomResourceItem{}, IsDemoData: false})
 	}
 
+	// Validate GVR fields against Kubernetes naming conventions to prevent
+	// malformed values from reaching the Kubernetes dynamic client.
+	if err := mcpValidateName("group", group); err != nil {
+		return err
+	}
+	if err := mcpValidateName("version", version); err != nil {
+		return err
+	}
+	if err := mcpValidateName("resource", resource); err != nil {
+		return err
+	}
+	// Validate optional cluster and namespace filters.
+	if err := mcpValidateClusterAndNamespace(cluster, namespace); err != nil {
+		return err
+	}
+
 	if h.k8sClient == nil {
 		return c.Status(503).JSON(CustomResourceResponse{Items: []CustomResourceItem{}, IsDemoData: true})
 	}
