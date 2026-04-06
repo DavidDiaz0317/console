@@ -88,6 +88,8 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
 
   const CardComponent = CARD_COMPONENTS[card.card_type]
 
+  // Warn in development when a card type is unrecognised so misspellings and
+  // missing registrations surface in the console instead of silently vanishing.
   useEffect(() => {
     if (!CardComponent) {
       console.warn(
