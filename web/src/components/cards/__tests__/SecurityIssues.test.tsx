@@ -112,9 +112,12 @@ describe('SecurityIssues', () => {
   })
 
   it('handles data fetch failure', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: true, hasData: false, isRefreshing: false })
     mockSecurityIssues.mockReturnValue({ issues: [], isLoading: false, isRefreshing: false, isDemoFallback: false, isFailed: true, consecutiveFailures: 3, error: 'Network error', lastRefresh: null })
-    const { container } = render(<SecurityIssues />)
-    expect(container).toBeTruthy()
+    const { getByText, queryByText } = render(<SecurityIssues />)
+    expect(getByText('securityIssues.failedToLoad')).toBeTruthy()
+    // Should NOT show the green success message when failed
+    expect(queryByText('securityIssues.noSecurityIssues')).toBeNull()
   })
 
   it('renders during background refresh with cached data', () => {

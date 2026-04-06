@@ -56,7 +56,10 @@
     "noSecurityIssues": "No security issues",
     "allPodsPass": "All pods pass security checks",
     "securityScanPassed": "Security scan passed",
-    "clickViewPod": "Click to view pod {{name}} with security issue: {{issue}}"
+    "clickViewPod": "Click to view pod {{name}} with security issue: {{issue}}",
+    "failedToLoad": "Failed to load security scan",
+    "fetchFailed": "Security scan data unavailable after {{count}} failed attempts. Check agent connectivity.",
+    "checkConnectivity": "Check agent connectivity and retry."
   },
   "clusterHealth": {
     "clustersLabel": "clusters",

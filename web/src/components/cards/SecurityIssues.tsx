@@ -1,4 +1,4 @@
-import { Shield, AlertTriangle, User, Network, Server, ChevronRight } from 'lucide-react'
+import { Shield, AlertTriangle, User, Network, Server, ChevronRight, AlertCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import type { SecurityIssue } from '../../hooks/useMCP'
 import { useCachedSecurityIssues } from '../../hooks/useCachedData'
@@ -227,6 +227,17 @@ function SecurityIssuesInternal({ config }: SecurityIssuesProps) {
   }
 
   if (showEmptyState || (!isLoading && issues.length === 0)) {
+    if (isFailed) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+            <AlertCircle className="w-6 h-6 text-red-400" />
+          </div>
+          <p className="text-foreground font-medium">{t('securityIssues.failedToLoad')}</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('securityIssues.checkConnectivity')}</p>
+        </div>
+      )
+    }
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-end mb-3">
@@ -287,6 +298,17 @@ function SecurityIssuesInternal({ config }: SecurityIssuesProps) {
           />
         </div>
       </div>
+
+      {/* Error Banner (shown when failed but has cached data) */}
+      {isFailed && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-2 mb-3">
+          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-red-400">{t('securityIssues.failedToLoad')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('securityIssues.checkConnectivity')}</p>
+          </div>
+        </div>
+      )}
 
       {/* Local Search */}
       <CardSearchInput
