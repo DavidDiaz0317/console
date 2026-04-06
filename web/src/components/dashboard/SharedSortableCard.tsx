@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, type KeyboardEvent } from 'react'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, AlertTriangle } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CardWrapper } from '../cards/CardWrapper'
@@ -88,6 +88,15 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
 
   const CardComponent = CARD_COMPONENTS[card.card_type]
 
+  useEffect(() => {
+    if (!CardComponent) {
+      console.warn(
+        `[cardRegistry] Unknown card type: "${card.card_type}". ` +
+        'Check for misspellings or a missing registration in cardRegistry.ts.',
+      )
+    }
+  }, [CardComponent, card.card_type])
+
   return (
     <div
       ref={(el) => { setNodeRef(el); registerRef?.(el) }}
@@ -138,8 +147,10 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
         {CardComponent ? (
           <CardComponent config={card.config ?? {}} />
         ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>Card type: {card.card_type}</p>
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground p-4">
+            <AlertTriangle className="w-6 h-6 text-yellow-500" />
+            <p className="text-sm font-medium">Unknown card type: {card.card_type}</p>
+            <p className="text-xs">This card type is not registered. You can remove it.</p>
           </div>
         )}
       </CardWrapper>
@@ -179,7 +190,7 @@ export function DragPreviewCard({ card }: { card: Card }) {
         {formatCardTitle(card.card_type)}
       </div>
       <div className="h-24 flex items-center justify-center text-muted-foreground">
-        {CardComponent ? 'Moving card...' : `Card type: ${card.card_type}`}
+        {CardComponent ? 'Moving card...' : `Unknown card type: ${card.card_type}`}
       </div>
     </div>
   )

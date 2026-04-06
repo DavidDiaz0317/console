@@ -6,7 +6,7 @@
  * and ensures the dynamic card registry operates correctly.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   CARD_COMPONENTS,
   getCardComponent,
@@ -82,6 +82,26 @@ describe('Card Registry — static registration', () => {
 
   it('returns undefined for non-existent card types', () => {
     expect(getCardComponent('__nonexistent_card_type__')).toBeUndefined()
+  })
+
+  it('emits a console.warn for non-existent card types', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    getCardComponent('__totally_unknown_card__')
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[cardRegistry] Unknown card type: "__totally_unknown_card__"'),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('does NOT warn for registered card types', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const types = getRegisteredCardTypes()
+    // Pick any known card type
+    if (types.length > 0) {
+      getCardComponent(types[0])
+    }
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 
   it('reports non-existent types as not registered', () => {

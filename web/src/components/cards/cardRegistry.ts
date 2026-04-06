@@ -1484,6 +1484,8 @@ export function getDefaultCardWidth(cardType: string): number {
  * Get a card component by type.
  * Falls back to the DynamicCard meta-component for dynamically registered types.
  * Returns undefined if the card type is not registered anywhere.
+ * Emits a console.warn when the type is unrecognised so developers can catch
+ * misspellings / missing registrations without digging through silent failures.
  */
 export function getCardComponent(cardType: string): CardComponent | undefined {
   // Check static registry first
@@ -1495,6 +1497,10 @@ export function getCardComponent(cardType: string): CardComponent | undefined {
     return CARD_COMPONENTS['dynamic_card']
   }
 
+  console.warn(
+    `[cardRegistry] Unknown card type: "${cardType}". ` +
+    'Check for misspellings or a missing registration in cardRegistry.ts.',
+  )
   return undefined
 }
 

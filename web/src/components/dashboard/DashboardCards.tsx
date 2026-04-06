@@ -4,7 +4,7 @@ import { Plus, LayoutGrid, ChevronDown, ChevronRight, Layout, AlertTriangle } fr
 import { useModalState } from '../../lib/modals'
 import { Button } from '../ui/Button'
 import { CardWrapper } from '../cards/CardWrapper'
-import { CARD_COMPONENTS, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
+import { getCardComponent, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
 import { AddCardModal } from './AddCardModal'
 import { TemplatesModal } from './TemplatesModal'
 import { ConfigureCardModal } from './ConfigureCardModal'
@@ -164,7 +164,7 @@ export function DashboardCards({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cards.map(card => {
-                const CardComponent = CARD_COMPONENTS[card.card_type]
+                const CardComponent = getCardComponent(card.card_type)
                 return (
                   <CardWrapper
                     key={card.id}
