@@ -420,5 +420,9 @@ export function Tier2CardRuntime({ definition, config }: Tier2Props) {
     )
   }
 
-  return <CardComponent config={safeConfig} />
+  return (
+    <DynamicCardErrorBoundary cardId={`tier2:${definition.id}`}>
+      <CardComponent config={safeConfig} />
+    </DynamicCardErrorBoundary>
+  )
 }
