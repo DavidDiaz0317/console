@@ -9,6 +9,44 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Allowlists for Prometheus label values to prevent unbounded cardinality.
+// Any value not in the allowlist is replaced with "unknown".
+var (
+	allowedCategories = map[string]bool{
+		"pod-crash":            true,
+		"node-pressure":        true,
+		"gpu-exhaustion":       true,
+		"resource-exhaustion":  true,
+		"resource-trend":       true,
+		"capacity-risk":        true,
+		"anomaly":              true,
+	}
+
+	allowedSeverities = map[string]bool{
+		"warning":  true,
+		"critical": true,
+	}
+
+	allowedSources = map[string]bool{
+		"heuristic": true,
+		"ai":        true,
+	}
+
+	allowedFeedback = map[string]bool{
+		"accurate":   true,
+		"inaccurate": true,
+	}
+)
+
+// sanitizeLabel returns value if it exists in the allowed set, otherwise "unknown".
+// This prevents unbounded label cardinality in Prometheus metrics.
+func sanitizeLabel(value string, allowed map[string]bool) string {
+	if allowed[value] {
+		return value
+	}
+	return "unknown"
+}
+
 var (
 	// Prediction counters
 	predictionsTotal = prometheus.NewCounterVec(
@@ -79,12 +117,21 @@ func InitPredictionMetrics() {
 	})
 }
 
-// RecordPrediction records a new prediction in metrics
+// RecordPrediction records a new prediction in metrics.
+// Category, severity, and source are validated against known allowlists to
+// prevent unbounded Prometheus label cardinality.
 func RecordPrediction(predType, severity, source, provider string) {
-	predictionsTotal.WithLabelValues(predType, severity, source, provider).Inc()
+	predictionsTotal.WithLabelValues(
+		sanitizeLabel(predType, allowedCategories),
+		sanitizeLabel(severity, allowedSeverities),
+		sanitizeLabel(source, allowedSources),
+		provider,
+	).Inc()
 }
 
-// SetActivePredictions updates the gauge of active predictions
+// SetActivePredictions updates the gauge of active predictions.
+// Category and severity are validated against known allowlists to prevent
+// unbounded Prometheus label cardinality from AI-controlled values.
 func SetActivePredictions(predictions []AIPrediction) {
 	// Reset all gauges
 	predictionsActive.Reset()
@@ -92,7 +139,9 @@ func SetActivePredictions(predictions []AIPrediction) {
 	// Count by type, severity, source
 	counts := make(map[string]float64)
 	for _, p := range predictions {
-		key := p.Category + "|" + p.Severity + "|ai"
+		cat := sanitizeLabel(p.Category, allowedCategories)
+		sev := sanitizeLabel(p.Severity, allowedSeverities)
+		key := cat + "|" + sev + "|ai"
 		counts[key]++
 	}
 
@@ -104,9 +153,10 @@ func SetActivePredictions(predictions []AIPrediction) {
 	}
 }
 
-// RecordFeedback records prediction feedback in metrics
+// RecordFeedback records prediction feedback in metrics.
+// Feedback is validated against the known allowlist to prevent unbounded cardinality.
 func RecordFeedback(feedback, provider string) {
-	predictionFeedback.WithLabelValues(feedback, provider).Inc()
+	predictionFeedback.WithLabelValues(sanitizeLabel(feedback, allowedFeedback), provider).Inc()
 }
 
 // RecordAnalysisDuration records the time taken for AI analysis
