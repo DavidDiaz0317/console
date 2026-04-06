@@ -218,7 +218,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                 }`}
               />
               {errors.name && (
-                <p className="text-xs text-red-400 mt-1">{errors.name}</p>
+                <span className="block text-xs text-red-400 mt-1">{errors.name}</span>
               )}
             </div>
 
@@ -261,6 +261,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
+
                 <button
                   onClick={() => setEnabled(!enabled)}
                   className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors ${
@@ -326,7 +327,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                   <span className="text-sm text-muted-foreground">%</span>
                 </div>
                 {errors.threshold && (
-                  <p className="text-xs text-red-400 mt-1">{errors.threshold}</p>
+                  <span className="block text-xs text-red-400 mt-1">{errors.threshold}</span>
                 )}
               </div>
             )}
@@ -391,7 +392,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                       <span className="text-sm text-muted-foreground">°F</span>
                     </div>
                     {errors.temperatureThreshold && (
-                      <p className="text-xs text-red-400 mt-1">{errors.temperatureThreshold}</p>
+                      <span className="block text-xs text-red-400 mt-1">{errors.temperatureThreshold}</span>
                     )}
                   </div>
                 )}
@@ -415,7 +416,7 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                       <span className="text-sm text-muted-foreground">mph</span>
                     </div>
                     {errors.windSpeedThreshold && (
-                      <p className="text-xs text-red-400 mt-1">{errors.windSpeedThreshold}</p>
+                      <span className="block text-xs text-red-400 mt-1">{errors.windSpeedThreshold}</span>
                     )}
                   </div>
                 )}
@@ -473,46 +474,23 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium text-foreground">{t('alerts.notificationChannels')}</h4>
               <div className="flex gap-2">
-                <button
-                  onClick={() => addChannel('browser')}
-                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
-                  aria-label="Add browser notification channel"
-                >
-                  <Bell className="w-3 h-3" aria-hidden="true" />
-                  {t('alerts.browser')}
-                </button>
-                <button
-                  onClick={() => addChannel('slack')}
-                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
-                  aria-label="Add Slack notification channel"
-                >
-                  <Slack className="w-3 h-3" aria-hidden="true" />
-                  {t('alerts.slack')}
-                </button>
-                <button
-                  onClick={() => addChannel('webhook')}
-                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
-                  aria-label="Add webhook notification channel"
-                >
-                  <Webhook className="w-3 h-3" aria-hidden="true" />
-                  {t('alerts.webhook')}
-                </button>
-                <button
-                  onClick={() => addChannel('pagerduty')}
-                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
-                  aria-label="Add PagerDuty notification channel"
-                >
-                  <Siren className="w-3 h-3" aria-hidden="true" />
-                  PagerDuty
-                </button>
-                <button
-                  onClick={() => addChannel('opsgenie')}
-                  className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
-                  aria-label="Add OpsGenie notification channel"
-                >
-                  <ShieldAlert className="w-3 h-3" aria-hidden="true" />
-                  OpsGenie
-                </button>
+                {([
+                  { type: 'browser' as const, Icon: Bell, label: t('alerts.browser'), ariaLabel: 'Add browser notification channel' },
+                  { type: 'slack' as const, Icon: Slack, label: t('alerts.slack'), ariaLabel: 'Add Slack notification channel' },
+                  { type: 'webhook' as const, Icon: Webhook, label: t('alerts.webhook'), ariaLabel: 'Add webhook notification channel' },
+                  { type: 'pagerduty' as const, Icon: Siren, label: 'PagerDuty', ariaLabel: 'Add PagerDuty notification channel' },
+                  { type: 'opsgenie' as const, Icon: ShieldAlert, label: 'OpsGenie', ariaLabel: 'Add OpsGenie notification channel' },
+                ] as const).map(({ type, Icon, label, ariaLabel }) => (
+                  <button
+                    key={type}
+                    onClick={() => addChannel(type)}
+                    className="px-2 py-1 text-xs rounded bg-secondary hover:bg-secondary/80 text-foreground transition-colors flex items-center gap-1"
+                    aria-label={ariaLabel}
+                  >
+                    <Icon className="w-3 h-3" aria-hidden="true" />
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -534,28 +512,40 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          updateChannel(index, { enabled: !channel.enabled })
-                        }
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          channel.enabled
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-secondary text-muted-foreground'
-                        }`}
-                        aria-label={`${channel.enabled ? 'Disable' : 'Enable'} ${channel.type} channel`}
-                      >
-                        {channel.enabled ? 'On' : 'Off'}
-                      </button>
-                      {channels.length > 1 && (
+                      {([
+                        {
+                          key: 'toggle',
+                          show: true,
+                          content: channel.enabled ? 'On' : 'Off',
+                          onClick: () => updateChannel(index, { enabled: !channel.enabled }),
+                          className: `px-2 py-1 text-xs rounded transition-colors ${
+                            channel.enabled
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'bg-secondary text-muted-foreground'
+                          }`,
+                          ariaLabel: `${channel.enabled ? 'Disable' : 'Enable'} ${channel.type} channel`,
+                          icon: null as React.ReactNode,
+                        },
+                        {
+                          key: 'remove',
+                          show: channels.length > 1,
+                          content: null as React.ReactNode,
+                          onClick: () => removeChannel(index),
+                          className: 'p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors',
+                          ariaLabel: `Remove ${channel.type} channel`,
+                          icon: <Trash2 className="w-4 h-4" aria-hidden="true" />,
+                        },
+                      ] as const).filter(action => action.show).map((action) => (
                         <button
-                          onClick={() => removeChannel(index)}
-                          className="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
-                          aria-label={`Remove ${channel.type} channel`}
+                          key={action.key}
+                          onClick={action.onClick}
+                          className={action.className}
+                          aria-label={action.ariaLabel}
                         >
-                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          {action.icon}
+                          {action.content}
                         </button>
-                      )}
+                      ))}
                     </div>
                   </div>
 
@@ -664,18 +654,28 @@ export function AlertRuleEditor({ isOpen = true, rule, onSave, onCancel }: Alert
       <BaseModal.Footer>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 text-sm rounded-lg bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
-          >
-            {t('actions.cancel')}
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors"
-          >
-            {rule ? t('alerts.saveChanges') : t('alerts.createRule')}
-          </button>
+          {([
+            {
+              key: 'cancel',
+              label: t('actions.cancel'),
+              onClick: handleClose,
+              className: 'px-4 py-2 text-sm rounded-lg bg-secondary text-foreground hover:bg-secondary/80 transition-colors',
+            },
+            {
+              key: 'save',
+              label: rule ? t('alerts.saveChanges') : t('alerts.createRule'),
+              onClick: handleSave,
+              className: 'px-4 py-2 text-sm rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors',
+            },
+          ] as const).map((action) => (
+            <button
+              key={action.key}
+              onClick={action.onClick}
+              className={action.className}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
       </BaseModal.Footer>
     </BaseModal>

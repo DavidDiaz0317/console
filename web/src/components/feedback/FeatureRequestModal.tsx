@@ -1527,7 +1527,7 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
                           <li key={p.scope}><em>{p.scope}</em> — to {p.reason}</li>
                         ))}
                       </ul>
-                      <p className="text-muted-foreground text-xs mt-1.5">
+                      <p className="text-muted-foreground text-xs mt-1.5 flex items-center gap-2">
                         <a href={GITHUB_TOKEN_CREATE_URL} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 underline underline-offset-2">Create token on GitHub</a>
                         {' · '}
                         <button

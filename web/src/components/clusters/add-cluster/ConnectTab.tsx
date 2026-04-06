@@ -157,39 +157,24 @@ export function ConnectTab({
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">{t('cluster.connectAuthType')}</label>
               <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setAuthType('token')}
-                  className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-colors ${
-                    authType === 'token'
-                      ? 'border-purple-500 bg-purple-500/10 text-foreground'
-                      : 'border-border dark:border-white/10 bg-secondary text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <KeyRound className="w-4 h-4 shrink-0" />
-                  {t('cluster.connectAuthToken')}
-                </button>
-                <button
-                  onClick={() => setAuthType('certificate')}
-                  className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-colors ${
-                    authType === 'certificate'
-                      ? 'border-purple-500 bg-purple-500/10 text-foreground'
-                      : 'border-border dark:border-white/10 bg-secondary text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Shield className="w-4 h-4 shrink-0" />
-                  {t('cluster.connectAuthCert')}
-                </button>
-                <button
-                  onClick={() => setAuthType('cloud-iam')}
-                  className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-colors ${
-                    authType === 'cloud-iam'
-                      ? 'border-purple-500 bg-purple-500/10 text-foreground'
-                      : 'border-border dark:border-white/10 bg-secondary text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Cloud className="w-4 h-4 shrink-0" />
-                  {t('cluster.connectAuthIAM')}
-                </button>
+                {([
+                  { value: 'token' as const, Icon: KeyRound, label: t('cluster.connectAuthToken') },
+                  { value: 'certificate' as const, Icon: Shield, label: t('cluster.connectAuthCert') },
+                  { value: 'cloud-iam' as const, Icon: Cloud, label: t('cluster.connectAuthIAM') },
+                ] as const).map(({ value, Icon, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setAuthType(value)}
+                    className={`flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-colors ${
+                      authType === value
+                        ? 'border-purple-500 bg-purple-500/10 text-foreground'
+                        : 'border-border dark:border-white/10 bg-secondary text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {label}
+                  </button>
+                ))}
               </div>
 
               {authType === 'token' && (

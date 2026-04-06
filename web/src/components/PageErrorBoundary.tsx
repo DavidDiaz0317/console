@@ -13,6 +13,32 @@ interface State {
   error: Error | null
 }
 
+interface ErrorAction {
+  label: string
+  onClick: () => void
+  className: string
+  ariaLabel: string
+  icon: ReactNode
+}
+
+function ErrorRecoveryActions({ actions }: { actions: ErrorAction[] }) {
+  return (
+    <div className="flex items-center gap-3">
+      {actions.map((action, idx) => (
+        <button
+          key={idx}
+          onClick={action.onClick}
+          className={action.className}
+          aria-label={action.ariaLabel}
+        >
+          {action.icon}
+          {action.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /**
  * Page-level error boundary that catches render crashes within individual
  * route pages. Sits between ChunkErrorBoundary (which handles stale chunks)
@@ -76,35 +102,33 @@ export class PageErrorBoundary extends Component<Props, State> {
             )}
           </p>
           {this.state.error && (
-            <p className="text-xs text-muted-foreground/70 font-mono mb-6 break-all max-w-lg">
+            <div className="text-xs text-muted-foreground/70 font-mono mb-6 break-all max-w-lg">
               {this.state.error.message}
-            </p>
+            </div>
           )}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={this.handleRecover}
-              className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
-              aria-label="Try rendering the page again"
-            >
-              {i18next.t('common:pageError.tryAgain', 'Try again')}
-            </button>
-            <button
-              onClick={this.handleGoHome}
-              className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              aria-label="Go back to the dashboard"
-            >
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-              {i18next.t('common:pageError.goHome', 'Dashboard')}
-            </button>
-            <button
-              onClick={this.handleReload}
-              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              aria-label="Reload the page"
-            >
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              {i18next.t('common:pageError.reload', 'Reload')}
-            </button>
-          </div>
+          <ErrorRecoveryActions actions={[
+            {
+              label: i18next.t('common:pageError.tryAgain', 'Try again'),
+              onClick: this.handleRecover,
+              className: 'px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors',
+              ariaLabel: 'Try rendering the page again',
+              icon: null,
+            },
+            {
+              label: i18next.t('common:pageError.goHome', 'Dashboard'),
+              onClick: this.handleGoHome,
+              className: 'px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+              ariaLabel: 'Go back to the dashboard',
+              icon: <ArrowLeft className="w-4 h-4" aria-hidden="true" />,
+            },
+            {
+              label: i18next.t('common:pageError.reload', 'Reload'),
+              onClick: this.handleReload,
+              className: 'px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+              ariaLabel: 'Reload the page',
+              icon: <RefreshCw className="w-4 h-4" aria-hidden="true" />,
+            },
+          ]} />
         </div>
       )
     }

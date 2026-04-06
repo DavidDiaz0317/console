@@ -62,7 +62,7 @@ export function CommandLineTab({ cloudCLIs }: CommandLineTabProps) {
       {cloudCLIs.some(c => c.found) && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground">{t('cluster.cloudQuickConnect')}</h3>
-          <p className="text-xs text-muted-foreground">{t('cluster.cloudQuickConnectDesc')}</p>
+          <div className="text-xs text-muted-foreground">{t('cluster.cloudQuickConnectDesc')}</div>
           <div className="grid grid-cols-1 gap-2">
             {cloudCLIs.filter(c => c.found).map(cli => {
               const providerKey = cli.name === 'aws' ? 'eks' : cli.name === 'gcloud' ? 'gke' : cli.name === 'az' ? 'aks' : 'openshift'

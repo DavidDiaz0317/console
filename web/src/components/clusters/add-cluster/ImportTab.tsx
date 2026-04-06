@@ -67,20 +67,21 @@ export function ImportTab({
           </div>
 
           <div className="flex items-center gap-3">
+            <label
+              htmlFor="kubeconfig-file-upload"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors border border-border dark:border-white/10 cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {t('cluster.importUpload')}
+            </label>
             <input
+              id="kubeconfig-file-upload"
               ref={fileInputRef}
               type="file"
               accept=".yaml,.yml,.conf,.config"
               onChange={handleFileUpload}
               className="hidden"
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors border border-border dark:border-white/10"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {t('cluster.importUpload')}
-            </button>
             <button
               onClick={handlePreview}
               disabled={!kubeconfigYaml.trim() || importState === 'previewing'}

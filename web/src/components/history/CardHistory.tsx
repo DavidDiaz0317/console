@@ -78,6 +78,96 @@ function ActionBadge({ action }: { action: CardHistoryEntry['action'] }) {
   )
 }
 
+const HISTORY_FILTER_ACTIONS = ['all', 'added', 'removed', 'replaced', 'configured'] as const
+
+function HistoryFilterTabs({
+  filter,
+  history,
+  onFilterChange,
+}: {
+  filter: CardHistoryEntry['action'] | 'all'
+  history: CardHistoryEntry[]
+  onFilterChange: (action: CardHistoryEntry['action'] | 'all') => void
+}) {
+  return (
+    <div className="flex gap-2 mb-6">
+      {HISTORY_FILTER_ACTIONS.map((action) => (
+        <button
+          key={action}
+          onClick={() => onFilterChange(action)}
+          className={cn(
+            'px-3 py-1.5 rounded-lg text-sm transition-colors',
+            filter === action
+              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+              : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
+          )}
+          aria-label={`Filter by ${action === 'all' ? 'all actions' : action}`}
+          aria-pressed={filter === action}
+        >
+          {action === 'all' ? 'All' : action.charAt(0).toUpperCase() + action.slice(1)}
+          {action !== 'all' && (
+            <span className="ml-1 text-xs opacity-60">
+              ({history.filter((e) => e.action === action).length})
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+interface EntryActionItem {
+  icon: React.ReactNode
+  onClick: () => void
+  title: string
+  ariaLabel: string
+  className: string
+}
+
+function HistoryEntryActions({
+  entry,
+  onRestoreCard,
+  onRemoveEntry,
+}: {
+  entry: CardHistoryEntry
+  onRestoreCard?: (entry: CardHistoryEntry) => void
+  onRemoveEntry: (id: string) => void
+}) {
+  const actions: EntryActionItem[] = [
+    ...(entry.action === 'removed' && onRestoreCard
+      ? [{
+          icon: <RotateCcw className="w-4 h-4" aria-hidden="true" />,
+          onClick: () => onRestoreCard(entry),
+          title: 'Restore card',
+          ariaLabel: `Restore ${entry.cardTitle || 'card'}`,
+          className: 'p-2 rounded-lg hover:bg-green-500/20 text-muted-foreground hover:text-green-400 transition-colors',
+        }]
+      : []),
+    {
+      icon: <Trash2 className="w-4 h-4" aria-hidden="true" />,
+      onClick: () => onRemoveEntry(entry.id),
+      title: 'Remove from history',
+      ariaLabel: `Remove ${entry.cardTitle || 'card'} from history`,
+      className: 'p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors',
+    },
+  ]
+  return (
+    <div className="flex items-center gap-2">
+      {actions.map((action, idx) => (
+        <button
+          key={idx}
+          onClick={action.onClick}
+          className={action.className}
+          title={action.title}
+          aria-label={action.ariaLabel}
+        >
+          {action.icon}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface CardHistoryProps {
   onRestoreCard?: (entry: CardHistoryEntry) => void
 }
@@ -116,39 +206,17 @@ export function CardHistory({ onRestoreCard }: CardHistoryProps) {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-6">
-        {(['all', 'added', 'removed', 'replaced', 'configured'] as const).map((action) => (
-          <button
-            key={action}
-            onClick={() => setFilter(action)}
-            className={cn(
-              'px-3 py-1.5 rounded-lg text-sm transition-colors',
-              filter === action
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
-            )}
-            aria-label={`Filter by ${action === 'all' ? 'all actions' : action}`}
-            aria-pressed={filter === action}
-          >
-            {action === 'all' ? 'All' : action.charAt(0).toUpperCase() + action.slice(1)}
-            {action !== 'all' && (
-              <span className="ml-1 text-xs opacity-60">
-                ({history.filter((e) => e.action === action).length})
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <HistoryFilterTabs filter={filter} history={history} onFilterChange={setFilter} />
 
       {/* History List */}
       {filteredHistory.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 rounded-lg border border-dashed border-border">
           <History className="w-12 h-12 text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground text-center">
+          <div className="text-muted-foreground text-center">
             {filter === 'all'
               ? 'No card history yet. Changes to dashboard cards will appear here.'
               : `No ${filter} cards in history.`}
-          </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -203,26 +271,11 @@ export function CardHistory({ onRestoreCard }: CardHistoryProps) {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2">
-                {entry.action === 'removed' && onRestoreCard && (
-                  <button
-                    onClick={() => onRestoreCard(entry)}
-                    className="p-2 rounded-lg hover:bg-green-500/20 text-muted-foreground hover:text-green-400 transition-colors"
-                    title="Restore card"
-                    aria-label={`Restore ${entry.cardTitle || 'card'}`}
-                  >
-                    <RotateCcw className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                )}
-                <button
-                  onClick={() => removeEntry(entry.id)}
-                  className="p-2 rounded-lg hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
-                  title="Remove from history"
-                  aria-label={`Remove ${entry.cardTitle || 'card'} from history`}
-                >
-                  <Trash2 className="w-4 h-4" aria-hidden="true" />
-                </button>
-              </div>
+              <HistoryEntryActions
+                entry={entry}
+                onRestoreCard={onRestoreCard}
+                onRemoveEntry={removeEntry}
+              />
             </div>
           ))}
         </div>
