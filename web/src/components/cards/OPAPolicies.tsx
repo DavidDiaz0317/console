@@ -198,14 +198,19 @@ function OPAPoliciesInternal({ config: _config }: OPAPoliciesProps) {
   const [agentClusters, setAgentClusters] = useState<{ name: string; healthy?: boolean }[]>([])
   useEffect(() => {
     if (shouldUseDemoData) return
-    fetch(`${LOCAL_AGENT_HTTP_URL}/clusters`)
+    const controller = new AbortController()
+    fetch(`${LOCAL_AGENT_HTTP_URL}/clusters`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         if (data.clusters) {
           setAgentClusters(data.clusters.map((c: { name: string }) => ({ name: c.name, healthy: true })))
         }
       })
-      .catch(() => { /* agent not available */ })
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        /* agent not available */
+      })
+    return () => controller.abort()
   }, [shouldUseDemoData])
 
   // Use agent clusters if shared state is empty - memoize for stability
