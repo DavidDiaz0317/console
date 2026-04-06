@@ -2233,11 +2233,15 @@ func (h *GitOpsHandlers) TriggerArgoSync(c *fiber.Ctx) error {
 							"This should only be used in development/test environments with self-signed certificates.")
 					})
 				}
+				var transport http.RoundTripper
+				if skipVerify {
+					transport = &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- opt-in via ARGOCD_TLS_INSECURE=true; dev/test only
+					}
+				}
 				client := &http.Client{
-					Timeout: argocdQueryTimeout,
-					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: skipVerify},
-					},
+					Timeout:   argocdQueryTimeout,
+					Transport: transport,
 				}
 				resp, err := client.Do(httpReq)
 				if err == nil {
