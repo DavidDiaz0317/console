@@ -306,16 +306,14 @@ describe('CardWrapper — refresh button interaction', () => {
     expect(btn).not.toBeDisabled()
   })
 
-  it('clicking refresh calls onRefresh exactly once per click', () => {
+  it('calls onRefresh exactly once per click', () => {
     const onRefresh = vi.fn()
     renderCard({ onRefresh })
     act(() => { vi.advanceTimersByTime(100) })
 
     const btn = screen.getByRole('button', { name: 'cardWrapper.refreshData' })
     fireEvent.click(btn)
-    fireEvent.click(btn) // second click while spinner still showing is blocked by disabled state
 
-    // At minimum onRefresh must have been called once
-    expect(onRefresh.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 })
