@@ -69,6 +69,29 @@ function ssWrite(key: string, data: unknown, timestamp: number): void {
   }
 }
 
+/** Remove a single cache snapshot from sessionStorage. */
+function ssDelete(key: string): void {
+  try {
+    sessionStorage.removeItem(SS_PREFIX + key)
+  } catch {
+    // ignore
+  }
+}
+
+/** Remove all kcc:* cache snapshots from sessionStorage. */
+function ssClearAll(): void {
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i)
+      if (k?.startsWith(SS_PREFIX)) keysToRemove.push(k)
+    }
+    keysToRemove.forEach(k => sessionStorage.removeItem(k))
+  } catch {
+    // ignore
+  }
+}
+
 /** Synchronous read from sessionStorage. Returns null on miss, version mismatch, or parse error. */
 function ssRead<T>(key: string): { data: T; timestamp: number } | null {
   try {
@@ -531,7 +554,10 @@ function clearAllInMemoryCaches(): void {
   // 2. Clear metadata
   preloadedMetaMap.clear()
 
-  // 3. Reset every in-memory store WITHOUT reloading from (now-empty) storage
+  // 3. Clear all sessionStorage snapshots so next mount cannot rehydrate stale data
+  ssClearAll()
+
+  // 4. Reset every in-memory store WITHOUT reloading from (now-empty) storage
   for (const store of cacheRegistry.values()) {
     (store as CacheStore<unknown>).resetForModeTransition()
   }
@@ -947,6 +973,7 @@ class CacheStore<T> {
   async clear(): Promise<void> {
     await cacheStorage.delete(this.key)
     preloadedMetaMap.delete(this.key)
+    ssDelete(this.key)
     if (workerRpc) {
       workerRpc.setMeta(this.key, { consecutiveFailures: 0 })
     } else {
@@ -1274,6 +1301,9 @@ export async function clearAllCaches(): Promise<void> {
   // Clear preloaded metadata
   preloadedMetaMap.clear()
 
+  // Clear all sessionStorage snapshots so next mount cannot rehydrate stale data
+  ssClearAll()
+
   // Clear any remaining localStorage metadata (fallback/legacy)
   const keysToRemove: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
@@ -1302,6 +1332,7 @@ export async function invalidateCache(key: string): Promise<void> {
   }
   await cacheStorage.delete(key)
   preloadedMetaMap.delete(key)
+  ssDelete(key)
 }
 
 /**

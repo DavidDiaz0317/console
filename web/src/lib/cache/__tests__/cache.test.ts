@@ -466,6 +466,52 @@ describe('cache module', () => {
       // Unrelated keys should remain
       expect(localStorage.getItem('unrelated_key')).toBe('should stay')
     })
+
+    it('clearAllCaches also wipes sessionStorage kcc:* snapshots', async () => {
+      const mod = await importFresh()
+
+      // Pre-seed sessionStorage with cache snapshots
+      sessionStorage.setItem('kcc:pods', JSON.stringify({ d: ['pod-1'], t: Date.now(), v: 4 }))
+      sessionStorage.setItem('kcc:clusters', JSON.stringify({ d: ['cluster-1'], t: Date.now(), v: 4 }))
+      sessionStorage.setItem('other-key', 'should stay')
+
+      await mod.clearAllCaches()
+
+      // kcc:* snapshots must be gone
+      expect(sessionStorage.getItem('kcc:pods')).toBeNull()
+      expect(sessionStorage.getItem('kcc:clusters')).toBeNull()
+      // Unrelated sessionStorage keys should remain
+      expect(sessionStorage.getItem('other-key')).toBe('should stay')
+    })
+
+    it('mode-transition reset wipes sessionStorage kcc:* snapshots', async () => {
+      const mod = await importFresh()
+
+      sessionStorage.setItem('kcc:workloads', JSON.stringify({ d: ['deploy-1'], t: Date.now(), v: 4 }))
+      sessionStorage.setItem('kcc:alerts', JSON.stringify({ d: [], t: Date.now(), v: 4 }))
+      sessionStorage.setItem('unrelated', 'keep-me')
+
+      const resetFn = registeredResets.get('unified-cache')
+      expect(resetFn).toBeDefined()
+      resetFn!()
+
+      expect(sessionStorage.getItem('kcc:workloads')).toBeNull()
+      expect(sessionStorage.getItem('kcc:alerts')).toBeNull()
+      expect(sessionStorage.getItem('unrelated')).toBe('keep-me')
+    })
+
+    it('invalidateCache wipes the sessionStorage snapshot for that key', async () => {
+      const mod = await importFresh()
+
+      sessionStorage.setItem('kcc:nodes', JSON.stringify({ d: ['node-1'], t: Date.now(), v: 4 }))
+      sessionStorage.setItem('kcc:other', JSON.stringify({ d: ['x'], t: Date.now(), v: 4 }))
+
+      await mod.invalidateCache('nodes')
+
+      expect(sessionStorage.getItem('kcc:nodes')).toBeNull()
+      // other key must be untouched
+      expect(sessionStorage.getItem('kcc:other')).not.toBeNull()
+    })
   })
 
   // ── CacheStore initialization ──────────────────────────────────────────
