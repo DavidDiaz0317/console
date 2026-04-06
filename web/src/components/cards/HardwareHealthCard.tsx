@@ -11,6 +11,7 @@ import { useCachedHardwareHealth, type DeviceAlert, type NodeDeviceInventory, ty
 import { useSnoozedAlerts, SNOOZE_DURATIONS, formatSnoozeRemaining, type SnoozeDuration } from '../../hooks/useSnoozedAlerts'
 import { useTranslation } from 'react-i18next'
 import { LOCAL_AGENT_HTTP_URL, FETCH_DEFAULT_TIMEOUT_MS } from '../../lib/constants'
+import { useToast } from '../ui/Toast'
 
 // Sort field options — separated by view so only applicable fields are shown
 type SortField = 'severity' | 'nodeName' | 'cluster' | 'deviceType' | 'totalDevices'
@@ -105,6 +106,7 @@ export function HardwareHealthCard() {
   const { drillToNode } = useDrillDownActions()
   const { deduplicatedClusters } = useClusters()
   const { snoozeAlert, snoozeMultiple, unsnoozeAlert, isSnoozed, getSnoozeRemaining, clearAllSnoozed } = useSnoozedAlerts()
+  const { showToast } = useToast()
   const snoozeMenuRef = useRef<HTMLDivElement>(null)
   const snoozeAllMenuRef = useRef<HTMLDivElement>(null)
 
@@ -347,7 +349,7 @@ export function HardwareHealthCard() {
       // Refetch to update cached data (the cleared alert won't be in the response)
       refetch()
     } catch {
-      // Silently fail
+      showToast('Failed to clear alert. Please try again.', 'error')
     }
   }
 
