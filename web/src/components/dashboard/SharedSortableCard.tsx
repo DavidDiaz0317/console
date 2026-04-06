@@ -3,7 +3,7 @@ import { GripVertical, AlertTriangle } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CardWrapper } from '../cards/CardWrapper'
-import { CARD_COMPONENTS, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
+import { CARD_COMPONENTS, getCardComponent, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
 import { formatCardTitle } from '../../lib/formatCardTitle'
 import type { Card } from './dashboardUtils'
 
@@ -88,16 +88,13 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
 
   const CardComponent = CARD_COMPONENTS[card.card_type]
 
-  // Warn in development when a card type is unrecognised so misspellings and
-  // missing registrations surface in the console instead of silently vanishing.
+  // Use getCardComponent() in an effect to trigger its centralised console.warn
+  // when the type is unrecognised. We use CARD_COMPONENTS directly above to avoid
+  // the react-hooks/static-components lint rule (which flags getCardComponent as
+  // "creating" a component during render, even though it only retrieves one).
   useEffect(() => {
-    if (!CardComponent) {
-      console.warn(
-        `[cardRegistry] Unknown card type: "${card.card_type}". ` +
-        'Check for misspellings or a missing registration in cardRegistry.ts.',
-      )
-    }
-  }, [CardComponent, card.card_type])
+    getCardComponent(card.card_type)
+  }, [card.card_type])
 
   return (
     <div
