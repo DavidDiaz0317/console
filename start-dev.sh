@@ -96,9 +96,18 @@ kill_project_port() {
     for pid in $pids; do
         local cmd
         cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+        # Check parent process — go run compiles a temp binary whose argv[0] is in
+        # /tmp/go-build*/exe/ and does not contain "cmd/console" or $SCRIPT_DIR.
+        local ppid pcmd
+        ppid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ')
+        pcmd=$([ -n "$ppid" ] && ps -p "$ppid" -o args= 2>/dev/null || true)
         if echo "$cmd" | grep -qF "$SCRIPT_DIR" \
            || echo "$cmd" | grep -q "cmd/console" \
-           || echo "$cmd" | grep -q "kc-agent"; then
+           || echo "$cmd" | grep -q "kc-agent" \
+           || echo "$cmd" | grep -qE "go-build.+/exe/(console|kc-agent)" \
+           || echo "$pcmd" | grep -qF "$SCRIPT_DIR" \
+           || echo "$pcmd" | grep -q "cmd/console" \
+           || echo "$pcmd" | grep -q "kc-agent"; then
             to_kill+=("$pid")
             echo "Stopping project process on port ${port} (PID ${pid})..."
             kill -TERM "$pid" 2>/dev/null || true
@@ -162,6 +171,10 @@ cleanup() {
     kill $BACKEND_PID 2>/dev/null || true
     kill $FRONTEND_PID 2>/dev/null || true
     kill $AGENT_PID 2>/dev/null || true
+    # Also clean up any remaining processes on project ports (handles go run child binaries)
+    for p in 8080 5174 8585; do
+        kill_project_port "$p"
+    done
     exit 0
 }
 trap cleanup SIGINT SIGTERM

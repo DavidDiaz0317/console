@@ -133,9 +133,18 @@ kill_project_port() {
     for pid in $pids; do
         local cmd
         cmd=$(ps -p "$pid" -o args= 2>/dev/null || true)
+        # Check parent process — go run compiles a temp binary whose argv[0] is in
+        # /tmp/go-build*/exe/ and does not contain "cmd/console" or $SCRIPT_DIR.
+        local ppid pcmd
+        ppid=$(ps -p "$pid" -o ppid= 2>/dev/null | tr -d ' ')
+        pcmd=$([ -n "$ppid" ] && ps -p "$ppid" -o args= 2>/dev/null || true)
         if echo "$cmd" | grep -qF "$SCRIPT_DIR" \
            || echo "$cmd" | grep -q "cmd/console" \
-           || echo "$cmd" | grep -q "kc-agent"; then
+           || echo "$cmd" | grep -q "kc-agent" \
+           || echo "$cmd" | grep -qE "go-build.+/exe/(console|kc-agent)" \
+           || echo "$pcmd" | grep -qF "$SCRIPT_DIR" \
+           || echo "$pcmd" | grep -q "cmd/console" \
+           || echo "$pcmd" | grep -q "kc-agent"; then
             to_kill+=("$pid")
             echo -e "${YELLOW}Stopping project process on port ${port} (PID ${pid})...${NC}"
             kill -TERM "$pid" 2>/dev/null || true
@@ -307,6 +316,10 @@ cleanup() {
     kill $AGENT_LOOP_PID 2>/dev/null || true
     kill $AGENT_PID 2>/dev/null || true
     kill $WATCHDOG_PID 2>/dev/null || true
+    # Also clean up any remaining processes on project ports (handles go run child binaries)
+    for p in 8080 8081 8585 5174; do
+        kill_project_port "$p"
+    done
     rm -f "$SHUTDOWN_FLAG" "$STAGE_FILE"
     exit 0
 }
