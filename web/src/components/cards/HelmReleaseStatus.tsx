@@ -24,7 +24,7 @@ interface HelmReleaseDisplay {
   chart: string
   version: string
   appVersion: string
-  status: 'deployed' | 'failed' | 'pending' | 'superseded' | 'uninstalling'
+  status: 'deployed' | 'failed' | 'pending' | 'superseded' | 'uninstalling' | 'unknown'
   updated: string
   revision: number
   cluster?: string
@@ -85,7 +85,7 @@ export function HelmReleaseStatus({ config }: HelmReleaseStatusProps) {
         chart: chartName,
         version: chartVersion,
         appVersion: r.app_version || '',
-        status: r.status.toLowerCase() as 'deployed' | 'failed' | 'pending' | 'superseded' | 'uninstalling',
+        status: (r.status?.toLowerCase() ?? 'unknown') as 'deployed' | 'failed' | 'pending' | 'superseded' | 'uninstalling' | 'unknown',
         updated: r.updated,
         revision: parseInt(r.revision) || 1,
         cluster: r.cluster,
