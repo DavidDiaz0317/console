@@ -188,11 +188,11 @@ export function TrivyScan({ config: _config }: CardConfig) {
     const agg = { critical: 0, high: 0, medium: 0, low: 0, unknown: 0 }
     for (const [name, s] of Object.entries(statuses)) {
       if (!s.installed || !selectedClusters.includes(name)) continue
-      agg.critical += s.vulnerabilities.critical
-      agg.high += s.vulnerabilities.high
-      agg.medium += s.vulnerabilities.medium
-      agg.low += s.vulnerabilities.low
-      agg.unknown += s.vulnerabilities.unknown
+      agg.critical += s.vulnerabilities?.critical ?? 0
+      agg.high += s.vulnerabilities?.high ?? 0
+      agg.medium += s.vulnerabilities?.medium ?? 0
+      agg.low += s.vulnerabilities?.low ?? 0
+      agg.unknown += s.vulnerabilities?.unknown ?? 0
     }
     return agg
   }, [statuses, aggregated, selectedClusters])
@@ -314,8 +314,8 @@ Please proceed step by step.`,
         <div className="flex flex-wrap gap-1">
           {Object.values(statuses).filter(s => s.installed).map(s => (
             <button key={s.cluster} onClick={() => setModalCluster(s.cluster)} className="cursor-pointer">
-              <StatusBadge color={s.vulnerabilities.critical > 0 ? 'red' : 'green'} size="xs">
-                {s.cluster}: {s.vulnerabilities.critical}C/{s.vulnerabilities.high}H
+              <StatusBadge color={(s.vulnerabilities?.critical ?? 0) > 0 ? 'red' : 'green'} size="xs">
+                {s.cluster}: {s.vulnerabilities?.critical ?? 0}C/{s.vulnerabilities?.high ?? 0}H
               </StatusBadge>
             </button>
           ))}
