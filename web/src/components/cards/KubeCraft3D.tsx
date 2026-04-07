@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useCardExpanded } from './CardWrapper'
 import { useReportCardDataState } from './CardDataContext'
 import { DynamicCardErrorBoundary } from './DynamicCardErrorBoundary'
+import { ConfirmDialog } from '../../lib/modals'
 import {
   Scene,
   Color,
@@ -175,6 +176,7 @@ function KubeCraft3DInternal() {
   const [showGrid] = useState(false)
   const [position] = useState({ x: WORLD_SIZE / 2, y: 15, z: WORLD_SIZE / 2 })
   const [isLocked, setIsLocked] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   // Movement state
   const moveState = useRef({
@@ -570,7 +572,7 @@ function KubeCraft3DInternal() {
             {isDaytime ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-blue-300" />}
           </button>
           <button
-            onClick={resetWorld}
+            onClick={() => setShowResetConfirm(true)}
             className="flex items-center gap-1 px-3 py-1 bg-secondary hover:bg-secondary/80 rounded text-sm"
             title="Generate new world"
           >
@@ -583,6 +585,19 @@ function KubeCraft3DInternal() {
           Build in 3D! Select a block type and click to play.
         </p>
       </div>
+
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        onClose={() => setShowResetConfirm(false)}
+        onConfirm={() => {
+          setShowResetConfirm(false)
+          resetWorld()
+        }}
+        title="Generate New World"
+        message="This will permanently delete your current world and generate a new one. This action cannot be undone."
+        confirmLabel="Generate New"
+        variant="danger"
+      />
     </div>
   )
 }
