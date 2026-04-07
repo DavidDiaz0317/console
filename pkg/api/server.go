@@ -725,6 +725,11 @@ func (s *Server) setupRoutes() {
 	events := handlers.NewEventHandler(s.store)
 	api.Post("/events", events.RecordEvent)
 
+	// NPS (Net Promoter Score) feedback
+	nps := handlers.NewNPSHandler(s.store)
+	api.Post("/nps", nps.SubmitNPS)
+	api.Get("/nps/status", nps.GetNPSStatus)
+
 	// RBAC and User Management routes
 	rbac := handlers.NewRBACHandler(s.store, s.k8sClient)
 	api.Get("/users", rbac.ListConsoleUsers)

@@ -259,6 +259,17 @@ func (s *SQLiteStore) migrate() error {
 		expires_at DATETIME NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
+
+	-- NPS (Net Promoter Score) responses
+	CREATE TABLE IF NOT EXISTS nps_responses (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		score INTEGER NOT NULL CHECK (score >= 0 AND score <= 10),
+		reason TEXT DEFAULT '',
+		trigger TEXT DEFAULT '',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_nps_responses_user ON nps_responses(user_id, created_at);
 	`
 	_, err := s.db.Exec(schema)
 	if err != nil {
@@ -1610,4 +1621,80 @@ func (s *SQLiteStore) CleanupExpiredTokens() (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// NPS Response methods
+
+// CreateNPSResponse persists a new NPS response for a user.
+func (s *SQLiteStore) CreateNPSResponse(response *models.NPSResponse) error {
+if response.ID == uuid.Nil {
+response.ID = uuid.New()
+}
+response.CreatedAt = time.Now()
+
+_, err := s.db.Exec(
+`INSERT INTO nps_responses (id, user_id, score, reason, trigger, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+response.ID.String(), response.UserID.String(), response.Score,
+nullString(response.Reason), nullString(response.Trigger), response.CreatedAt,
+)
+return err
+}
+
+// GetNPSResponsesByUser returns all NPS responses for a user, newest first.
+func (s *SQLiteStore) GetNPSResponsesByUser(userID uuid.UUID) ([]models.NPSResponse, error) {
+rows, err := s.db.Query(
+`SELECT id, user_id, score, reason, trigger, created_at FROM nps_responses WHERE user_id = ? ORDER BY created_at DESC`,
+userID.String(),
+)
+if err != nil {
+return nil, err
+}
+defer rows.Close()
+
+var results []models.NPSResponse
+for rows.Next() {
+var r models.NPSResponse
+var idStr, userIDStr string
+var reason, trigger sql.NullString
+if err := rows.Scan(&idStr, &userIDStr, &r.Score, &reason, &trigger, &r.CreatedAt); err != nil {
+return nil, err
+}
+r.ID = parseUUID(idStr, "nps.ID")
+r.UserID = parseUUID(userIDStr, "nps.UserID")
+if reason.Valid {
+r.Reason = reason.String
+}
+if trigger.Valid {
+r.Trigger = trigger.String
+}
+results = append(results, r)
+}
+return results, rows.Err()
+}
+
+// GetLatestNPSResponse returns the most recent NPS response for a user, or nil if none.
+func (s *SQLiteStore) GetLatestNPSResponse(userID uuid.UUID) (*models.NPSResponse, error) {
+var r models.NPSResponse
+var idStr, userIDStr string
+var reason, trigger sql.NullString
+
+err := s.db.QueryRow(
+`SELECT id, user_id, score, reason, trigger, created_at FROM nps_responses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`,
+userID.String(),
+).Scan(&idStr, &userIDStr, &r.Score, &reason, &trigger, &r.CreatedAt)
+if err == sql.ErrNoRows {
+return nil, nil
+}
+if err != nil {
+return nil, err
+}
+r.ID = parseUUID(idStr, "nps.ID")
+r.UserID = parseUUID(userIDStr, "nps.UserID")
+if reason.Valid {
+r.Reason = reason.String
+}
+if trigger.Valid {
+r.Trigger = trigger.String
+}
+return &r, nil
 }

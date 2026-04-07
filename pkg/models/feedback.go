@@ -123,6 +123,23 @@ type SubmitFeedbackInput struct {
 	Comment      string       `json:"comment,omitempty" validate:"max=1000"`
 }
 
+// NPSResponse stores a Net Promoter Score submission from a user
+type NPSResponse struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Score     int       `json:"score"`     // 0–10
+	Reason    string    `json:"reason,omitempty"`
+	Trigger   string    `json:"trigger,omitempty"` // e.g. "workload_deployed", "cluster_added"
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// SubmitNPSInput is the input for submitting an NPS score
+type SubmitNPSInput struct {
+	Score   int    `json:"score"`            // 0–10
+	Reason  string `json:"reason,omitempty"` // optional follow-up text
+	Trigger string `json:"trigger,omitempty"`
+}
+
 // WebhookPayload represents the payload from GitHub webhooks for status updates
 type WebhookPayload struct {
 	Action           string `json:"action"`

@@ -17,6 +17,7 @@ import { useWorkloadDeployments, useManagedWorkloads } from '../../hooks/useCons
 import { useToast } from '../ui/Toast'
 import { useModalNavigation, useModalFocusTrap } from '../../lib/modals/useModalNavigation'
 import { useTranslation } from 'react-i18next'
+import { triggerNPS } from '../../hooks/useNPS'
 
 const DEPLOY_CARDS_KEY = 'kubestellar-deploy-cards'
 const DEFAULT_DEPLOY_CARDS = getDefaultCards('deploy')
@@ -149,6 +150,10 @@ export function Deploy() {
                 failedClusters: resp.failedClusters,
                 dependencies: resp.dependencies as DeployResultPayload['dependencies'],
                 warnings: resp.warnings } })
+            // Trigger NPS survey after a successful workload deploy
+            if (resp.success !== false) {
+              triggerNPS('workload_deployed')
+            }
           }
         } })
     } catch (err) {

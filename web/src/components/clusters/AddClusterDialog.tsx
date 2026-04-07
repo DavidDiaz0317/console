@@ -7,6 +7,7 @@ import { CommandLineTab } from './add-cluster/CommandLineTab'
 import { ImportTab } from './add-cluster/ImportTab'
 import { ConnectTab } from './add-cluster/ConnectTab'
 import type { TabId, ImportState, ConnectStep, ConnectState, PreviewContext, CloudProvider, CloudCLIInfo } from './add-cluster/types'
+import { triggerNPS } from '../../hooks/useNPS'
 
 interface AddClusterDialogProps {
   open: boolean
@@ -126,6 +127,9 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
       const count = data.importedCount ?? previewContexts.filter((c) => c.isNew).length
       setImportedCount(count)
       setImportState('done')
+      if (count > 0) {
+        triggerNPS('cluster_added')
+      }
       clearTimeout(closeTimerRef.current)
       closeTimerRef.current = setTimeout(() => {
         resetImportState()
@@ -188,6 +192,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
       }
       setConnectState('done')
       emitClusterCreated(clusterName, authType)
+      triggerNPS('cluster_added')
       clearTimeout(closeTimerRef.current)
       closeTimerRef.current = setTimeout(() => {
         resetConnectState()

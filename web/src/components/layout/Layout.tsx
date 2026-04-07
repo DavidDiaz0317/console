@@ -33,6 +33,8 @@ import { UpdateProgressBanner } from '../updates/UpdateProgressBanner'
 import { useUpdateProgress } from '../../hooks/useUpdateProgress'
 import { VersionCheckProvider } from '../../hooks/useVersionCheck'
 import { copyToClipboard } from '../../lib/clipboard'
+import { NPSModal } from '../feedback/NPSModal'
+import { useNPS } from '../../hooks/useNPS'
 
 // Lazy-load the AI mission sidebar so react-markdown and remark plugins are
 // not part of the initial bundle — they only load when the sidebar is first rendered.
@@ -107,6 +109,9 @@ export function Layout({ children: _children }: LayoutProps) {
   const [showSetupDialog, setShowSetupDialog] = useState(false)
   const [showInClusterAgentDialog, setShowInClusterAgentDialog] = useState(false)
   const [wasBackendDown, setWasBackendDown] = useState(false)
+
+  // NPS feedback modal
+  const nps = useNPS()
 
   // Allow any component to open the install dialog via a custom event
   useEffect(() => {
@@ -526,6 +531,14 @@ export function Layout({ children: _children }: LayoutProps) {
 
       {/* Agent Setup Dialog — shown when agent not connected; also triggered by open-agent-setup event */}
       <AgentSetupDialog />
+
+      {/* NPS (Net Promoter Score) feedback modal */}
+      <NPSModal
+        isOpen={nps.isOpen}
+        markSubmitted={nps.markSubmitted}
+        dismiss={nps.dismiss}
+        neverShow={nps.neverShow}
+      />
 
       {/* Backend connection lost snackbar — fixed bottom center */}
       {showBackendBanner && (

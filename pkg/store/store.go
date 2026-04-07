@@ -98,6 +98,11 @@ type Store interface {
 	DeleteOldUtilizationSnapshots(before time.Time) (int64, error)
 	ListActiveGPUReservations() ([]models.GPUReservation, error)
 
+	// NPS Responses
+	CreateNPSResponse(response *models.NPSResponse) error
+	GetNPSResponsesByUser(userID uuid.UUID) ([]models.NPSResponse, error)
+	GetLatestNPSResponse(userID uuid.UUID) (*models.NPSResponse, error)
+
 	// Token Revocation
 	RevokeToken(jti string, expiresAt time.Time) error
 	IsTokenRevoked(jti string) (bool, error)

@@ -154,4 +154,12 @@ func (m *MockStore) RevokeToken(jti string, expiresAt time.Time) error { return 
 func (m *MockStore) IsTokenRevoked(jti string) (bool, error)           { return false, nil }
 func (m *MockStore) CleanupExpiredTokens() (int64, error)              { return 0, nil }
 
+func (m *MockStore) CreateNPSResponse(response *models.NPSResponse) error { return nil }
+func (m *MockStore) GetNPSResponsesByUser(userID uuid.UUID) ([]models.NPSResponse, error) {
+	return nil, nil
+}
+func (m *MockStore) GetLatestNPSResponse(userID uuid.UUID) (*models.NPSResponse, error) {
+	return nil, nil
+}
+
 func (m *MockStore) Close() error { return nil }
