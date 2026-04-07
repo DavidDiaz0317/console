@@ -5,6 +5,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge'
 import type { Theme } from '../../../lib/themes'
 import { themeGroups, getCustomThemes, removeCustomTheme } from '../../../lib/themes'
 import { ConfirmDialog } from '../../../lib/modals'
+import { useToast } from '../../../components/ui/Toast'
 
 interface ThemeSectionProps {
   themeId: string
@@ -15,6 +16,7 @@ interface ThemeSectionProps {
 
 export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeSectionProps) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false)
   const [customThemes, setCustomThemes] = useState<Theme[]>(() => getCustomThemes())
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
@@ -33,7 +35,7 @@ export function ThemeSection({ themeId, setTheme, themes, currentTheme }: ThemeS
         setTheme('kubestellar')
       }
     } catch {
-      // localStorage may be unavailable; state remains consistent
+      showToast('Failed to remove theme. Your browser storage may be unavailable.', 'error')
     }
     setConfirmRemoveId(null)
   }

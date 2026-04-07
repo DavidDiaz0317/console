@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, la
 import { settledWithConcurrency } from '../lib/utils/concurrency'
 import { useMissions } from '../hooks/useMissions'
 import { useDemoMode } from '../hooks/useDemoMode'
+import { useToast } from '../components/ui/Toast'
 import type {
   Alert,
   AlertRule,
@@ -284,17 +285,18 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
 }
 
 // Save to localStorage
-function saveToStorage<T>(key: string, value: T): void {
+function saveToStorage<T>(key: string, value: T, onError?: (msg: string) => void): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (e) {
     console.error(`Failed to save ${key} to localStorage:`, e)
+    onError?.('Failed to save data. Your browser storage may be full.')
   }
 }
 
 // Save alerts to localStorage with a hard cap and quota-exceeded handling.
 // Keeps all firing alerts and trims resolved alerts by recency when the cap is hit.
-function saveAlerts(alerts: Alert[]): void {
+function saveAlerts(alerts: Alert[], onError?: (msg: string) => void): void {
   // Enforce a global cap before every write: keep all firing alerts and trim resolved by recency.
   let toSave = alerts
   if (toSave.length > MAX_ALERTS) {
@@ -327,9 +329,11 @@ function saveAlerts(alerts: Alert[]): void {
       } catch (retryError) {
         console.error('[Alerts] localStorage still full after pruning, clearing alerts', retryError)
         localStorage.removeItem(ALERTS_KEY)
+        onError?.('Alert history was cleared because your browser storage is full.')
       }
     } else {
       console.error(`Failed to save ${ALERTS_KEY} to localStorage:`, e)
+      onError?.('Failed to save alerts. Your browser storage may be full.')
     }
   }
 }
@@ -358,6 +362,7 @@ interface AlertsContextValue {
 export const AlertsContext = createContext<AlertsContextValue | null>(null)
 
 export function AlertsProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast()
   // Alert Rules State
   const [rules, setRules] = useState<AlertRule[]>(() => {
     const stored = loadFromStorage<AlertRule[]>(ALERT_RULES_KEY, [])
@@ -552,13 +557,13 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
 
   // Save rules whenever they change
   useEffect(() => {
-    saveToStorage(ALERT_RULES_KEY, rules)
-  }, [rules])
+    saveToStorage(ALERT_RULES_KEY, rules, (msg) => showToast(msg, 'warning'))
+  }, [rules, showToast])
 
   // Save alerts whenever they change
   useEffect(() => {
-    saveAlerts(alerts)
-  }, [alerts])
+    saveAlerts(alerts, (msg) => showToast(msg, 'warning'))
+  }, [alerts, showToast])
 
   // Clear demo-generated alerts when demo mode is turned off
   useEffect(() => {
