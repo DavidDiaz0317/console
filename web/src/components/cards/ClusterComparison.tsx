@@ -53,13 +53,13 @@ export function ClusterComparison({ config }: ClusterComparisonProps) {
       )
     }
 
-    // Healthy clusters first, then alphabetical within each group
-    result.sort((a, b) => {
+    // Healthy clusters first, then alphabetical within each group.
+    // Use [...result] to avoid mutating rawClusters or a filter result
+    // that might be referenced elsewhere (sort mutates in place).
+    return [...result].sort((a, b) => {
       if (a.healthy !== b.healthy) return a.healthy ? -1 : 1
       return a.name.localeCompare(b.name)
     })
-
-    return result
   }, [rawClusters, globalSelectedClusters, isAllClustersSelected, customFilter])
 
   // Reset local cluster selection when global filters change
@@ -75,22 +75,22 @@ export function ClusterComparison({ config }: ClusterComparisonProps) {
     })
   }, [allClusters])
 
-  const gpuByCluster = (() => {
+  const gpuByCluster = useMemo(() => {
     const map: Record<string, number> = {}
     gpuNodes.forEach(node => {
       const clusterKey = (node.cluster ?? '').split('/')[0]
       map[clusterKey] = (map[clusterKey] || 0) + node.gpuCount
     })
     return map
-  })()
+  }, [gpuNodes])
 
-  const clustersToCompare = (() => {
+  const clustersToCompare = useMemo(() => {
     if (selectedClusters.length >= 2) {
       return allClusters.filter(c => selectedClusters.includes(c.name))
     }
     // Default to first 2-3 clusters
     return allClusters.slice(0, 3)
-  })()
+  }, [selectedClusters, allClusters])
 
   const toggleCluster = (name: string) => {
     setSelectedClusters(prev => {

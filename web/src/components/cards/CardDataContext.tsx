@@ -166,8 +166,15 @@ export function useCardLoadingState(options: CardLoadingStateOptions) {
     lastRefresh,
   } = options
 
-  // Convert epoch-ms timestamp to Date for CardWrapper's "Updated Xm ago" display
-  const lastUpdatedDate = typeof lastRefresh === 'number' ? new Date(lastRefresh) : null
+  // Convert epoch-ms timestamp to Date for CardWrapper's "Updated Xm ago" display.
+  // Memoized so the Date identity is stable across renders when lastRefresh hasn't
+  // changed — an inline `new Date(lastRefresh)` produces a new object every render,
+  // which makes the useLayoutEffect in useReportCardDataState re-run every render
+  // and can contribute to cascading update cycles (React error #185).
+  const lastUpdatedDate = useMemo(
+    () => typeof lastRefresh === 'number' ? new Date(lastRefresh) : null,
+    [lastRefresh]
+  )
 
   // Safety-net timeout: if the caller keeps isLoading=true for longer than
   // CARD_LOADING_TIMEOUT_MS (30s), force the card out of loading state.

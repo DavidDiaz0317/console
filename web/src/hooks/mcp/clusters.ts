@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { api } from '../../lib/api'
 import { useDemoMode } from '../useDemoMode'
 import { isDemoMode } from '../../lib/demoMode'
@@ -151,14 +151,17 @@ export function useClusters() {
   }, [])
 
   // Deduplicated clusters (single cluster per server, with aliases)
-  // Use this for metrics, stats, and counts to avoid double-counting
-  const deduplicatedClusters = (() => {
+  // Use this for metrics, stats, and counts to avoid double-counting.
+  // Memoized to prevent a new array reference on every render — an unstable
+  // reference here propagates through useChartFilters / useGlobalFilters and
+  // causes excessive re-renders (React error #185 max update depth).
+  const deduplicatedClusters = useMemo(() => {
     // First share metrics between clusters with same server (so short names get metrics from long names)
     const sharedMetricsClusters = shareMetricsBetweenSameServerClusters(localState.clusters)
     const result = deduplicateClustersByServer(sharedMetricsClusters)
 
     return result
-  })()
+  }, [localState.clusters])
 
   return {
     // Raw clusters - all contexts including duplicates pointing to same server

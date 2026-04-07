@@ -178,8 +178,10 @@ export function ClusterMetrics() {
     }
   }, [realValues, isLoading, hasRealData, clusters])
 
-  // Transform history to chart data for selected metric
-  const data = (() => {
+  // Transform history to chart data for selected metric.
+  // Memoized to avoid recomputing on every render — the IIFE pattern runs on
+  // every render regardless of whether history/timeRange/selectedMetric changed.
+  const data = useMemo(() => {
     // Filter history based on time range
     const now = Date.now()
     const rangeMs = {
@@ -193,7 +195,7 @@ export function ClusterMetrics() {
     return filteredHistory.map(point => ({
       time: point.time,
       value: point[selectedMetric] }))
-  })()
+  }, [history, timeRange, selectedMetric])
 
   // Generate per-cluster data for comparison mode
   const perClusterData = useMemo(() => {

@@ -143,8 +143,10 @@ function EventsTimelineInternal() {
     })
   }
 
-  // Filter events by selected clusters AND exclude offline/unreachable clusters
-  const filteredEvents = (() => {
+  // Filter events by selected clusters AND exclude offline/unreachable clusters.
+  // Memoized to avoid recomputing on every render when clusterInfoMap (from context)
+  // changes reference — previously this was an IIFE that ran on every render.
+  const filteredEvents = useMemo(() => {
     // First filter to only events from reachable clusters
     let result = events.filter(e => {
       if (!e.cluster) return true // Include events without cluster info
@@ -159,7 +161,7 @@ function EventsTimelineInternal() {
       result = result.filter(e => e.cluster && localClusterFilter.includes(e.cluster))
     }
     return result
-  })()
+  }, [events, clusterInfoMap, isAllClustersSelected, selectedClusters, localClusterFilter])
 
   // Get time range config
   const timeRangeConfig = TIME_RANGE_OPTIONS.find(t => t.value === timeRange) || TIME_RANGE_OPTIONS[1]
