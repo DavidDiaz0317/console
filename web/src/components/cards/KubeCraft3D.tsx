@@ -593,9 +593,9 @@ function KubeCraft3DInternal() {
           setShowResetConfirm(false)
           resetWorld()
         }}
-        title="Generate New World"
+        title="Reset World"
         message="This will permanently delete your current world and generate a new one. This action cannot be undone."
-        confirmLabel="Generate New"
+        confirmLabel="Reset World"
         variant="danger"
       />
     </div>
