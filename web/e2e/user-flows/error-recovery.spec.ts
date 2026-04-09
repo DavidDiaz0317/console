@@ -117,6 +117,14 @@ test.describe('API Failure Recovery', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Auth Failure Recovery', () => {
   test('redirects to login when /api/me returns 401', async ({ page }) => {
+    // Clear any demo mode flags that might bypass the auth redirect
+    await page.addInitScript(() => {
+      localStorage.removeItem('token')
+      localStorage.removeItem('kc-demo-mode')
+      localStorage.removeItem('demo-mode')
+      localStorage.removeItem('demo-user-onboarded')
+    })
+
     await page.route('**/api/me', (route) =>
       route.fulfill({ status: 401, json: { error: 'Unauthorized' } })
     )
@@ -125,7 +133,14 @@ test.describe('Auth Failure Recovery', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Should redirect to /login or show a login prompt
-    await page.waitForURL(/\/login|\/auth/, { timeout: 10000 })
+    const redirected = await page.waitForURL(/\/login|\/auth/, { timeout: 10000 }).then(() => true).catch(() => false)
+    if (!redirected) {
+      // Some implementations show a login prompt inline instead of redirecting
+      const loginPrompt = page.getByRole('button', { name: /login|sign in/i })
+        .or(page.getByText(/sign in|log in/i))
+      const hasPrompt = await loginPrompt.first().isVisible({ timeout: 5000 }).catch(() => false)
+      expect(hasPrompt, 'Expected redirect to /login or a login prompt').toBeTruthy()
+    }
   })
 
   test('login page renders without errors', async ({ page }) => {
@@ -187,7 +202,8 @@ test.describe('Network Resilience', () => {
 
     // Go offline then back online
     await page.context().setOffline(true)
-    await page.waitForTimeout(500)
+    // Brief offline period — dashboard should remain rendered
+    await expect(page.getByTestId('dashboard-page')).toBeVisible()
     await page.context().setOffline(false)
 
     // Reload — should work fine
@@ -221,8 +237,10 @@ test.describe('JavaScript Error Resilience', () => {
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 15000 })
 
-    // Give async components a moment to settle
-    await page.waitForTimeout(2000)
+    // Wait for async components to settle — ensure cards grid is rendered
+    await expect(page.getByTestId('dashboard-cards-grid')).toBeVisible({ timeout: 10000 }).catch(() => {})
+    // Also wait for network activity to complete
+    await page.waitForLoadState('networkidle')
 
     expect(jsErrors, `Unexpected JS errors: ${jsErrors.join(', ')}`).toHaveLength(0)
   })

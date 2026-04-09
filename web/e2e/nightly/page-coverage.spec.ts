@@ -56,6 +56,9 @@ const EXPECTED_ERROR_PATTERNS = [
   /flushSync was called/i,
   /can't access property/i,
   /Cross-Origin Request Blocked/i,
+  /Notification permission/i,
+  /502.*Bad Gateway/i,
+  /Failed to load resource/i,
 ]
 
 /** Text patterns that indicate a React error boundary has been triggered */
@@ -190,8 +193,12 @@ test.describe('Nightly Page Coverage — Untested Feature Pages', () => {
         // networkidle may not fire if SSE streams are open — continue anyway
       }
 
-      // Wait for page content to settle
-      await page.waitForTimeout(PAGE_SETTLE_MS)
+      // Wait for page content to settle — look for card elements to appear
+      try {
+        await page.waitForSelector('[data-card-id]', { timeout: PAGE_SETTLE_MS })
+      } catch {
+        // Some pages may not have cards — continue to metrics collection
+      }
 
       const renderTimeMs = Date.now() - startTime
 

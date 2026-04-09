@@ -27,7 +27,9 @@ export const mockUser = {
 export const MOCK_DATA: Record<string, Record<string, unknown[]>> = {
   clusters: {
     clusters: [
-      { name: MOCK_CLUSTER, reachable: true, status: 'Ready', provider: 'kind', version: '1.28.0', nodes: 3, pods: 12, namespaces: 4 },
+      { name: MOCK_CLUSTER, reachable: true, status: 'Ready', provider: 'kind', version: '1.28.0', nodes: 3, pods: 12, namespaces: 4, cpuCores: 12, memoryGB: 24, nodeCount: 3, podCount: 12, storageGB: 100 },
+      { name: 'eks-prod', reachable: true, status: 'Ready', provider: 'aws', version: '1.28.0', nodes: 5, pods: 45, namespaces: 8, cpuCores: 20, memoryGB: 64, nodeCount: 5, podCount: 45, storageGB: 200 },
+      { name: 'gke-staging', reachable: true, status: 'Ready', provider: 'gcp', version: '1.28.0', nodes: 3, pods: 32, namespaces: 5, cpuCores: 12, memoryGB: 48, nodeCount: 3, podCount: 32, storageGB: 100 },
     ],
   },
   pods: {
@@ -58,6 +60,7 @@ export const MOCK_DATA: Record<string, Record<string, unknown[]>> = {
     services: [
       { name: 'kubernetes', namespace: 'default', cluster: MOCK_CLUSTER, type: 'ClusterIP', clusterIP: '10.96.0.1', ports: ['443/TCP'], age: '30d' },
       { name: 'nginx-svc', namespace: 'default', cluster: MOCK_CLUSTER, type: 'LoadBalancer', clusterIP: '10.96.1.10', ports: ['80/TCP'], age: '10d' },
+      { name: 'metrics-svc', namespace: 'monitoring', cluster: MOCK_CLUSTER, type: 'NodePort', clusterIP: '10.96.2.5', ports: ['9090:30090/TCP'], age: '15d' },
     ],
   },
   nodes: {
@@ -90,6 +93,20 @@ export const MOCK_DATA: Record<string, Record<string, unknown[]>> = {
   'resource-limits': {
     limits: [
       { namespace: 'default', cluster: MOCK_CLUSTER, cpuRequest: '500m', cpuLimit: '1', memoryRequest: '256Mi', memoryLimit: '512Mi' },
+    ],
+  },
+  pvcs: {
+    pvcs: [
+      { name: 'data-pvc', namespace: 'default', cluster: MOCK_CLUSTER, status: 'Bound', capacity: '10Gi', storageClass: 'standard', accessModes: ['ReadWriteOnce'] },
+      { name: 'logs-pvc', namespace: 'monitoring', cluster: MOCK_CLUSTER, status: 'Bound', capacity: '50Gi', storageClass: 'ssd', accessModes: ['ReadWriteOnce'] },
+      { name: 'pending-pvc', namespace: 'default', cluster: MOCK_CLUSTER, status: 'Pending', capacity: '100Gi', storageClass: 'premium', accessModes: ['ReadWriteMany'] },
+    ],
+  },
+  'prow-jobs': {
+    jobs: [
+      { id: '1', job: 'e2e-test', state: 'success', type: 'periodic', cluster: MOCK_CLUSTER, started: '2026-01-15T10:00:00Z', duration: 1800 },
+      { id: '2', job: 'lint', state: 'running', type: 'presubmit', cluster: MOCK_CLUSTER, started: '2026-01-15T10:00:00Z', duration: 0 },
+      { id: '3', job: 'build', state: 'failure', type: 'postsubmit', cluster: MOCK_CLUSTER, started: '2026-01-15T10:00:00Z', duration: 900 },
     ],
   },
 }
@@ -254,7 +271,7 @@ export async function setupLiveMocks(page: Page, options?: LiveMockOptions): Pro
   // 2. Specific MCP REST endpoints with richer data
   const specificMCPEndpoints = [
     { pattern: '**/api/mcp/gpu-nodes**', data: { nodes: [{ name: 'gpu-node-1', cluster: MOCK_CLUSTER, gpus: [{ model: 'A100', memory: '80Gi', index: 0 }], labels: {}, allocatable: {}, capacity: {} }] } },
-    { pattern: '**/api/mcp/helm-releases**', data: { releases: [{ name: 'ingress-nginx', namespace: 'default', cluster: MOCK_CLUSTER, chart: 'nginx-1.0.0', status: 'deployed', revision: 1, updated: new Date().toISOString() }] } },
+    { pattern: '**/api/mcp/helm-releases**', data: { releases: [{ name: 'ingress-nginx', namespace: 'default', cluster: MOCK_CLUSTER, chart: 'nginx-1.0.0', status: 'deployed', revision: 1, updated: '2026-01-15T10:00:00Z' }] } },
     { pattern: '**/api/mcp/operators**', data: { operators: [{ name: 'test-operator', namespace: 'openshift-operators', cluster: MOCK_CLUSTER, status: 'Succeeded', version: '1.0.0' }] } },
     { pattern: '**/api/mcp/operator-subscriptions**', data: { subscriptions: [{ name: 'test-sub', namespace: 'openshift-operators', cluster: MOCK_CLUSTER, package: 'test-operator', channel: 'stable', currentCSV: 'test-operator.v1.0.0', installedCSV: 'test-operator.v1.0.0' }] } },
     { pattern: '**/api/mcp/resource-quotas**', data: { quotas: [{ name: 'default-quota', namespace: 'default', cluster: MOCK_CLUSTER, hard: { cpu: '4', memory: '8Gi' }, used: { cpu: '1', memory: '2Gi' } }] } },
@@ -385,7 +402,7 @@ export async function setupLiveMocks(page: Page, options?: LiveMockOptions): Pro
           feature_issues: 0,
           other_issues: 0,
         },
-        cached_at: new Date().toISOString(),
+        cached_at: '2026-01-15T10:00:00Z',
         from_cache: false,
       }),
     })
@@ -420,9 +437,9 @@ export async function setupLiveMocks(page: Page, options?: LiveMockOptions): Pro
       body: JSON.stringify({
         status: 'ok',
         items: [
-          { title: 'Kubernetes 1.32 Released', link: 'https://example.com/1', description: 'Major release with new features', pubDate: new Date().toISOString(), author: 'CNCF' },
-          { title: 'Cloud Native Best Practices', link: 'https://example.com/2', description: 'Guide to cloud native development', pubDate: new Date().toISOString(), author: 'Tech Blog' },
-          { title: 'Container Security in 2026', link: 'https://example.com/3', description: 'Latest security trends', pubDate: new Date().toISOString(), author: 'Security Weekly' },
+          { title: 'Kubernetes 1.32 Released', link: 'https://example.com/1', description: 'Major release with new features', pubDate: '2026-01-15T10:00:00Z', author: 'CNCF' },
+          { title: 'Cloud Native Best Practices', link: 'https://example.com/2', description: 'Guide to cloud native development', pubDate: '2026-01-15T10:00:00Z', author: 'Tech Blog' },
+          { title: 'Container Security in 2026', link: 'https://example.com/3', description: 'Latest security trends', pubDate: '2026-01-15T10:00:00Z', author: 'Security Weekly' },
         ],
       }),
     })

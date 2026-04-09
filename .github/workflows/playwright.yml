@@ -52,15 +52,17 @@ jobs:
           path: web/dist
           retention-days: 1
 
-  # Test job - simplified to chromium-only until tests are stable
-  # TODO: Re-enable firefox, webkit, and sharding after test stabilization
+  # Test job — chromium with 4 shards for parallelism
+  # Firefox runs in nightly (playwright-nightly.yml) to avoid doubling CI time
   test:
-    name: Test (chromium)
+    name: Test (chromium, shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Reduced matrix: chromium only, no sharding until tests are stable
-    # Original matrix: browser: [chromium, firefox, webkit], shard: [1, 2]
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: web
@@ -92,7 +94,7 @@ jobs:
           npx wait-on http://localhost:4173 --timeout 60000
 
       - name: Run Playwright tests
-        run: npx playwright test --project=chromium
+        run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/4
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:4173
 
@@ -100,7 +102,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: blob-report-chromium
+          name: blob-report-chromium-${{ matrix.shard }}
           path: web/blob-report/
           retention-days: 1
 
@@ -236,11 +238,9 @@ jobs:
 
   # Cross-browser tests moved to playwright-nightly.yml to avoid cancellation by push/PR runs
 
-  # Mobile tests - DISABLED until tests are stable
-  # TODO: Re-enable after test stabilization
+  # Mobile tests — run core tests on mobile viewports
   mobile-tests:
     name: Mobile Browser Tests
-    if: false  # Disabled until tests are stable
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
