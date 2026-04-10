@@ -26,6 +26,49 @@ const QUOTA_NAME_TITLE_MAX_LEN = 40
 const DEFAULT_RESERVATION_DURATION_HOURS = 24
 
 /**
+ * Normalize any accepted start-date representation to the `YYYY-MM-DD`
+ * format required by `<input type="date">`. Accepts either a bare date
+ * (`2024-01-15`) or a full RFC 3339 timestamp (`2024-01-15T09:00:00Z`)
+ * and returns just the date portion. Empty input returns an empty string.
+ */
+function toDateInputValue(value: string | undefined | null): string {
+  if (!value) return ''
+  // Both `YYYY-MM-DD` and `YYYY-MM-DDT...` share the same date prefix.
+  return value.split('T')[0]
+}
+
+/**
+ * Convert a `<input type="date">` value (`YYYY-MM-DD`) to an RFC 3339
+ * timestamp representing local midnight with an explicit timezone offset
+ * (`YYYY-MM-DDT00:00:00±HH:MM`). If the input is already an RFC 3339
+ * timestamp, it is returned as-is.
+ *
+ * The local-offset form (rather than `Z`) prevents an off-by-one-day
+ * display in calendar views: downstream code parses `start_date` with
+ * `new Date(...)` and normalizes via `setHours(0, 0, 0, 0)`, which
+ * shifts a hard-coded UTC midnight back a day for any user west of UTC
+ * (e.g. Jan 15 00:00 UTC → Jan 14 in PST). Encoding the user's local
+ * offset keeps the calendar day stable across the wire.
+ */
+function toRFC3339StartDate(value: string): string {
+  if (!value) return ''
+  if (value.includes('T')) return value
+
+  // Date.getTimezoneOffset returns minutes WEST of UTC (positive for the
+  // Americas, negative for Europe/Asia), so flip the sign to get the
+  // signed offset that goes into the RFC 3339 string.
+  const offsetMinutesWestOfUTC = new Date().getTimezoneOffset()
+  const totalOffsetMinutes = -offsetMinutesWestOfUTC
+  const offsetSign = totalOffsetMinutes >= 0 ? '+' : '-'
+  const absoluteOffsetMinutes = Math.abs(totalOffsetMinutes)
+  const minutesPerHour = 60
+  const offsetHours = String(Math.floor(absoluteOffsetMinutes / minutesPerHour)).padStart(2, '0')
+  const offsetMinutes = String(absoluteOffsetMinutes % minutesPerHour).padStart(2, '0')
+
+  return `${value}T00:00:00${offsetSign}${offsetHours}:${offsetMinutes}`
+}
+
+/**
  * Derive the Kubernetes ResourceQuota name from a reservation title.
  * Exported as a local helper so both the current-title quota name and
  * the ORIGINAL-title quota name (used for cleanup on rename) are
@@ -84,7 +127,9 @@ export function ReservationFormModal({
   const [description, setDescription] = useState(editingReservation?.description || '')
   const [gpuCount, setGpuCount] = useState(editingReservation ? String(editingReservation.gpu_count) : '')
   const [gpuPreference, setGpuPreference] = useState(editingReservation?.gpu_type || '')
-  const [startDate, setStartDate] = useState(editingReservation?.start_date || prefillDate || new Date().toISOString().split('T')[0])
+  const [startDate, setStartDate] = useState(
+    toDateInputValue(editingReservation?.start_date) || prefillDate || new Date().toISOString().split('T')[0],
+  )
   const [durationHours, setDurationHours] = useState(editingReservation ? String(editingReservation.duration_hours) : '')
   const [notes, setNotes] = useState(editingReservation?.notes || '')
   const enforceQuota = true
@@ -105,7 +150,7 @@ export function ReservationFormModal({
       description: editingReservation?.description || '',
       gpuCount: editingReservation ? String(editingReservation.gpu_count) : '',
       gpuPreference: editingReservation?.gpu_type || '',
-      startDate: editingReservation?.start_date || prefillDate || new Date().toISOString().split('T')[0],
+      startDate: toDateInputValue(editingReservation?.start_date) || prefillDate || new Date().toISOString().split('T')[0],
       durationHours: editingReservation ? String(editingReservation.duration_hours) : '',
       notes: editingReservation?.notes || '' }),
     // Re-snapshot only when the modal is opened for a different reservation
@@ -220,6 +265,9 @@ export function ReservationFormModal({
     setIsSaving(true)
     try {
       let reservationId: string | void
+      // Backend requires RFC 3339; <input type="date"> only emits YYYY-MM-DD,
+      // so normalize to midnight UTC before sending.
+      const rfc3339StartDate = toRFC3339StartDate(startDate)
       if (editingReservation) {
         // Partial update
         const input: UpdateGPUReservationInput = {
@@ -229,7 +277,7 @@ export function ReservationFormModal({
           namespace,
           gpu_count: count,
           gpu_type: gpuPreference || clusterGPUTypes[0]?.type || '',
-          start_date: startDate,
+          start_date: rfc3339StartDate,
           duration_hours: parseInt(durationHours) || DEFAULT_RESERVATION_DURATION_HOURS,
           notes,
           quota_enforced: enforceQuota,
@@ -245,7 +293,7 @@ export function ReservationFormModal({
           namespace,
           gpu_count: count,
           gpu_type: gpuPreference || clusterGPUTypes[0]?.type || '',
-          start_date: startDate,
+          start_date: rfc3339StartDate,
           duration_hours: parseInt(durationHours) || DEFAULT_RESERVATION_DURATION_HOURS,
           notes,
           quota_enforced: enforceQuota,
