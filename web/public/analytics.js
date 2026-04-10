@@ -824,6 +824,13 @@
     // Reload when filter toggle changes
     document.getElementById('include-localhost').addEventListener('change', () => loadData(true));
 
+    // Wire the Refresh button via addEventListener so the strict CSP
+    // (script-src without 'unsafe-inline' in netlify.toml) does not block
+    // the click handler. The HTML used to have onclick="loadData(true)"
+    // inline; that was refused by the browser even after the main script
+    // moved to an external file (#6127).
+    document.getElementById('refresh-btn').addEventListener('click', () => loadData(true));
+
     // Auto-refresh every 15 minutes
     const AUTO_REFRESH_MS = 15 * 60 * 1000;
     setInterval(() => loadData(true), AUTO_REFRESH_MS);
