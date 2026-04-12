@@ -1235,10 +1235,13 @@ func (m *MultiClusterClient) GetClusterCapabilities(ctx context.Context) (*v1alp
 		}
 		cap.GPUCount = totalGPUs
 
-		// Use capacity from first node as representative for CPU/Memory
-		// (nodes is guaranteed non-empty here — zero-node clusters are skipped above)
-		cap.CPUCapacity = nodes[0].CPUCapacity
-		cap.MemCapacity = nodes[0].MemoryCapacity
+		// Use capacity from first node as representative for CPU/Memory.
+		// The zero-node check above ensures nodes is non-empty; the explicit
+		// guard below satisfies static nil-safety analysis.
+		if len(nodes) > 0 {
+			cap.CPUCapacity = nodes[0].CPUCapacity
+			cap.MemCapacity = nodes[0].MemoryCapacity
+		}
 
 		capabilities = append(capabilities, cap)
 	}
