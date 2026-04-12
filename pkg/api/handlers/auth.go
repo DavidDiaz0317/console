@@ -507,6 +507,13 @@ func classifyExchangeError(err error) (code, detail string) {
 
 // GitHubCallback handles the OAuth callback
 func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
+	slog.Info("[Auth] GitHubCallback entered",
+		"hasCode", c.Query("code") != "",
+		"hasState", c.Query("state") != "",
+		"hasError", c.Query("error") != "",
+		"redirectURI", h.oauthConfig.RedirectURL,
+		"frontendURL", h.frontendURL)
+
 	// GitHub may redirect with an error parameter when the user denies access
 	// or the OAuth app is misconfigured (e.g., suspended, wrong callback URL).
 	if ghError := c.Query("error"); ghError != "" {
@@ -559,10 +566,11 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 	// OAuth exchange instead of leaking the goroutine until timeout.
 	ctx, cancel := context.WithTimeout(c.UserContext(), githubHTTPTimeout)
 	defer cancel()
+	slog.Info("[Auth] exchanging code with GitHub", "codeLen", len(code), "tokenURL", h.oauthConfig.Endpoint.TokenURL)
 	token, err := h.oauthConfig.Exchange(ctx, code)
 	if err != nil {
 		errCode, detail := classifyExchangeError(err)
-		slog.Error("[Auth] token exchange failed", "code", errCode, "error", err)
+		slog.Error("[Auth] token exchange failed", "code", errCode, "error", err, "detail", detail)
 		return h.oauthErrorRedirect(c, errCode, detail)
 	}
 
@@ -623,6 +631,7 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 	// to prevent leakage via browser history, Referer headers, and server logs (#4278).
 	// The frontend reads the token from the cookie via POST /auth/refresh.
 	h.setJWTCookie(c, jwtToken)
+	slog.Info("[Auth] OAuth callback complete", "user", user.GitHubLogin, "frontendURL", h.frontendURL)
 
 	c.Set("Cache-Control", "no-store")
 	redirectURL := fmt.Sprintf("%s/auth/callback?onboarded=%t", h.frontendURL, user.Onboarded)
@@ -800,11 +809,15 @@ func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate token")
 	}
 
-	// Update HttpOnly cookie with the fresh token. The token is NOT
-	// returned in the JSON body (#6590) so JavaScript cannot read it.
+	// Update HttpOnly cookie with the fresh token.
 	h.setJWTCookie(c, newToken)
 
+	// Return the token in the JSON body so AuthCallback can pass it to
+	// setToken() and refreshUser(). The cookie is HttpOnly (JS can't read
+	// it directly), so the token must also be in the response for the
+	// initial OAuth callback flow.
 	return c.JSON(fiber.Map{
+		"token":     newToken,
 		"refreshed": true,
 		"onboarded": user.Onboarded,
 	})
