@@ -67,6 +67,7 @@ export function AuthCallback() {
     fetch('/auth/refresh', {
       method: 'POST',
       credentials: 'same-origin', // send the HttpOnly cookie
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
       signal: controller.signal,
     })
       .then((res) => {
