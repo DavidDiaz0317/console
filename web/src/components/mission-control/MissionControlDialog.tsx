@@ -161,6 +161,13 @@ export function MissionControlDialog({ open, onClose }: MissionControlDialogProp
     }
   }, [open])
 
+  // #6828 — Ref-based guard prevents double-click from skipping a phase.
+  // The guard resets after one React render cycle via useEffect.
+  // MUST be before the early return — React Rules of Hooks require
+  // hooks to run in the same order on every render.
+  const phaseAdvancingRef = useRef(false)
+  useEffect(() => { phaseAdvancingRef.current = false }, [state.phase])
+
   if (!open) return null
 
   const isLaunching = state.phase === 'launching'
@@ -176,11 +183,6 @@ export function MissionControlDialog({ open, onClose }: MissionControlDialogProp
 
   const canGoBack =
     state.phase === 'assign' || state.phase === 'blueprint'
-
-  // #6828 — Ref-based guard prevents double-click from skipping a phase.
-  // The guard resets after one React render cycle via useEffect.
-  const phaseAdvancingRef = useRef(false)
-  useEffect(() => { phaseAdvancingRef.current = false }, [state.phase])
 
   const handleNext = () => {
     if (phaseAdvancingRef.current) return
