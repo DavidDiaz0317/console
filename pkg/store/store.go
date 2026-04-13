@@ -246,6 +246,15 @@ type Store interface {
 	DeleteClusterGroup(name string) error
 	ListClusterGroups() (map[string][]byte, error)
 
+	// Console attributions — HMAC nonces for anti-gaming on the rewards
+	// leaderboard. InsertConsoleAttribution is called when the backend
+	// creates an issue on behalf of a user; LookupConsoleAttribution is
+	// called by the rewards classifier to verify the footer wasn't forged
+	// or replayed.
+	InsertConsoleAttribution(nonce, userID, title string, createdAt time.Time) error
+	LookupConsoleAttribution(nonce string) (userID, title string, createdAt time.Time, consumed bool, err error)
+	MarkConsoleAttributionConsumed(nonce, issueRepo string, issueNumber int) error
+
 	// Lifecycle
 	Close() error
 }

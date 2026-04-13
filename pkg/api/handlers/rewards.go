@@ -32,6 +32,16 @@ const (
 type RewardsConfig struct {
 	GitHubToken string // PAT with public_repo scope
 	Orgs        string // GitHub search org filter, e.g. "org:kubestellar org:llm-d"
+	// Store is used to verify console attribution nonces (anti-gaming for
+	// the 300-pt bug / 100-pt feature reward tiers). If nil, all issues
+	// are treated as web-UI submissions (50 pts for bugs) — safe default.
+	Store attributionStore
+}
+
+// attributionStore is the subset of store.Store the rewards handler needs
+// for attribution verification. Kept narrow so tests can pass a minimal mock.
+type attributionStore interface {
+	LookupConsoleAttribution(nonce string) (userID, title string, createdAt time.Time, consumed bool, err error)
 }
 
 // GitHubContribution represents a single scored contribution.
@@ -73,6 +83,7 @@ type RewardsHandler struct {
 	githubToken string
 	orgs        string
 	httpClient  *http.Client
+	store       attributionStore // nil is allowed — see RewardsConfig.Store
 
 	mu    sync.RWMutex
 	cache map[string]*rewardsCacheEntry // keyed by github_login
@@ -84,6 +95,7 @@ func NewRewardsHandler(cfg RewardsConfig) *RewardsHandler {
 		githubToken: cfg.GitHubToken,
 		orgs:        cfg.Orgs,
 		httpClient:  &http.Client{Timeout: rewardsAPITimeout},
+		store:       cfg.Store,
 		cache:       make(map[string]*rewardsCacheEntry),
 	}
 }
@@ -160,7 +172,7 @@ func (h *RewardsHandler) fetchUserRewards(login, token string) (*GitHubRewardsRe
 		fetchErr = fmt.Errorf("issue search failed: %w", err)
 	} else {
 		for _, item := range issues {
-			c := classifyIssue(item)
+			c := h.classifyIssue(item)
 			contributions = append(contributions, c)
 		}
 	}
@@ -213,6 +225,7 @@ func (h *RewardsHandler) fetchUserRewards(login, token string) (*GitHubRewardsRe
 // searchItem is the subset of GitHub Search issue/PR item we care about.
 type searchItem struct {
 	Title       string        `json:"title"`
+	Body        string        `json:"body"` // needed for console attribution verification (#anti-gaming)
 	HTMLURL     string        `json:"html_url"`
 	Number      int           `json:"number"`
 	CreatedAt   string        `json:"created_at"`
@@ -287,19 +300,32 @@ func (h *RewardsHandler) searchItems(login, itemType, token string) ([]searchIte
 	return allItems, nil
 }
 
-// classifyIssue determines the issue type based on labels.
-func classifyIssue(item searchItem) GitHubContribution {
+// classifyIssue determines the issue type and point value. Bug and feature
+// labels only award the console-tier points (300 / 100) if the issue body
+// contains a valid HMAC-signed attribution footer — proving the issue was
+// submitted through the console UI rather than opened directly on
+// github.com. This stops the "open a github.com issue with a bug label
+// for 300 pts" abuse. Issues without a valid footer fall through to the
+// web-UI tier (50 pts for all label categories).
+func (h *RewardsHandler) classifyIssue(item searchItem) GitHubContribution {
 	typ := "issue_other"
 	points := pointsOtherIssue
+
+	consoleSubmitted := h.isConsoleSubmission(item)
 
 	for _, label := range item.Labels {
 		switch label.Name {
 		case "bug", "kind/bug", "type/bug":
 			typ = "issue_bug"
-			points = pointsBugIssue
+			if consoleSubmitted {
+				points = pointsBugIssue
+			}
+			// else: keep pointsOtherIssue (50) — web-UI submission
 		case "enhancement", "feature", "kind/feature", "type/feature":
 			typ = "issue_feature"
-			points = pointsFeatureIssue
+			if consoleSubmitted {
+				points = pointsFeatureIssue
+			}
 		}
 	}
 
@@ -312,6 +338,34 @@ func classifyIssue(item searchItem) GitHubContribution {
 		Points:    points,
 		CreatedAt: item.CreatedAt,
 	}
+}
+
+// isConsoleSubmission verifies the HMAC-signed attribution footer on an
+// issue body. Returns false for any of: missing footer, bad signature,
+// expired signature, unknown nonce, or nonce already consumed on a
+// different issue.
+func (h *RewardsHandler) isConsoleSubmission(item searchItem) bool {
+	if h.store == nil {
+		// Attribution disabled — treat everything as web-UI submission.
+		return false
+	}
+	attr, err := ParseAttributionFooter(item.Body)
+	if err != nil || attr == nil {
+		return false
+	}
+	// Stateless check: HMAC must match the title that was signed.
+	if !VerifyAttributionSignature(attr, item.Title) {
+		return false
+	}
+	// Stateful check: nonce must be known to this backend (prevents
+	// forgery even if the secret leaks to someone with read-only access).
+	userID, _, _, _, err := h.store.LookupConsoleAttribution(attr.Nonce)
+	if err != nil {
+		return false
+	}
+	// The stored user must match the footer's user — otherwise someone
+	// may have copy-pasted a valid footer from another user's issue.
+	return userID == attr.UserID
 }
 
 // classifyPR returns one or two contributions: pr_opened (always) + pr_merged (if merged).

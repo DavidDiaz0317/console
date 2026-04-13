@@ -1890,6 +1890,21 @@ func (h *FeedbackHandler) createGitHubIssueInRepo(request *models.FeatureRequest
 *This issue was automatically created from the KubeStellar Console.*
 `, request.RequestType, repoLabel, user.GitHubLogin, request.ID.String(), request.Description)
 
+	// Append HMAC-signed attribution footer so the rewards classifier can
+	// distinguish console-submitted issues from issues opened directly on
+	// github.com (anti-gaming — see handlers/attribution.go). If the
+	// secret is not configured, footer and attr will both be empty/nil
+	// and we proceed without attribution (issue falls through to the
+	// web-UI reward tier).
+	logAttributionStartupOnce()
+	footer, attr, attrErr := BuildAttributionFooter(user.GitHubLogin, request.Title)
+	if attrErr != nil {
+		slog.Warn("[Feedback] attribution footer generation failed — proceeding without it", "error", attrErr)
+	}
+	if footer != "" {
+		issueBody += footer
+	}
+
 	// First attempt: create issue with labels
 	number, htmlURL, err := h.postGitHubIssue(repoOwner, repoName, request.Title, issueBody, labels)
 	if err != nil && isLabelPermissionError(err) {
@@ -1898,6 +1913,20 @@ func (h *FeedbackHandler) createGitHubIssueInRepo(request *models.FeatureRequest
 		// so maintainers can triage and label it manually.
 		slog.Info("[Feedback] label permission denied, retrying without labels", "repo", repoOwner+"/"+repoName)
 		number, htmlURL, err = h.postGitHubIssue(repoOwner, repoName, request.Title, issueBody, nil)
+	}
+
+	// Persist the attribution nonce so the rewards classifier can verify
+	// it later. Done AFTER the GitHub POST so we don't store nonces for
+	// issues that never got created. If persistence fails we log and
+	// continue — the issue exists on GitHub, and the worst case is the
+	// rewards side treats it as a web-UI submission (50 pts instead of
+	// the 300 the user earned). Better to under-award than double-award.
+	if err == nil && attr != nil {
+		if dbErr := h.store.InsertConsoleAttribution(attr.Nonce, attr.UserID, request.Title, time.Unix(attr.Timestamp, 0)); dbErr != nil {
+			slog.Warn("[Feedback] failed to persist attribution nonce — issue will be scored as web-UI submission", "error", dbErr, "issue", number)
+		} else if markErr := h.store.MarkConsoleAttributionConsumed(attr.Nonce, repoOwner+"/"+repoName, number); markErr != nil {
+			slog.Warn("[Feedback] failed to mark attribution consumed", "error", markErr, "issue", number)
+		}
 	}
 
 	// Add screenshots as separate comments (one per screenshot) so they

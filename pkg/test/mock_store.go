@@ -369,4 +369,19 @@ func (m *MockStore) ListClusterGroups() (map[string][]byte, error) {
 	return args.Get(0).(map[string][]byte), args.Error(1)
 }
 
+func (m *MockStore) InsertConsoleAttribution(nonce, userID, title string, createdAt time.Time) error {
+	args := m.Called(nonce, userID, title, createdAt)
+	return args.Error(0)
+}
+
+func (m *MockStore) LookupConsoleAttribution(nonce string) (userID, title string, createdAt time.Time, consumed bool, err error) {
+	args := m.Called(nonce)
+	return args.String(0), args.String(1), args.Get(2).(time.Time), args.Bool(3), args.Error(4)
+}
+
+func (m *MockStore) MarkConsoleAttributionConsumed(nonce, issueRepo string, issueNumber int) error {
+	args := m.Called(nonce, issueRepo, issueNumber)
+	return args.Error(0)
+}
+
 func (m *MockStore) Close() error { return nil }

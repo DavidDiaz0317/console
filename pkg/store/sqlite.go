@@ -463,6 +463,24 @@ func (s *SQLiteStore) migrate() error {
 		data BLOB NOT NULL,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	-- Console attribution nonces — see pkg/api/handlers/attribution.go.
+	-- Each row corresponds to one HMAC-signed footer issued by the console
+	-- backend. Used by the rewards classifier to distinguish console
+	-- submissions (300/100 pts) from github.com submissions (50 pts).
+	-- issue_number/issue_repo are NULL until the rewards scanner confirms
+	-- the footer showed up on a real issue; at that point we mark consumed.
+	CREATE TABLE IF NOT EXISTS console_attributions (
+		nonce TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		title TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		issue_repo TEXT,
+		issue_number INTEGER,
+		consumed_at DATETIME
+	);
+	CREATE INDEX IF NOT EXISTS idx_console_attributions_user ON console_attributions(user_id);
+	CREATE INDEX IF NOT EXISTS idx_console_attributions_issue ON console_attributions(issue_repo, issue_number);
 	`
 	_, err := s.db.Exec(schema)
 	if err != nil {
@@ -2920,4 +2938,61 @@ func (s *SQLiteStore) ListClusterGroups() (map[string][]byte, error) {
 		groups[name] = data
 	}
 	return groups, rows.Err()
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Console attributions — anti-gaming nonces for the rewards leaderboard
+// ───────────────────────────────────────────────────────────────────────
+
+// InsertConsoleAttribution records a freshly-generated attribution nonce.
+// Called by the feedback handler just before it POSTs the issue to GitHub.
+func (s *SQLiteStore) InsertConsoleAttribution(nonce, userID, title string, createdAt time.Time) error {
+	_, err := s.db.Exec(
+		`INSERT INTO console_attributions (nonce, user_id, title, created_at) VALUES (?, ?, ?, ?)`,
+		nonce, userID, title, createdAt,
+	)
+	return err
+}
+
+// LookupConsoleAttribution fetches a stored attribution by nonce. Returns
+// sql.ErrNoRows if the nonce is unknown (either forged or never issued
+// by this backend). The consumed flag indicates whether the attribution
+// has already been linked to an issue — a fresh nonce being looked up
+// during rewards classification has `consumed=false`.
+func (s *SQLiteStore) LookupConsoleAttribution(nonce string) (userID, title string, createdAt time.Time, consumed bool, err error) {
+	var consumedAt sql.NullTime
+	err = s.db.QueryRow(
+		`SELECT user_id, title, created_at, consumed_at FROM console_attributions WHERE nonce = ?`,
+		nonce,
+	).Scan(&userID, &title, &createdAt, &consumedAt)
+	if err != nil {
+		return "", "", time.Time{}, false, err
+	}
+	return userID, title, createdAt, consumedAt.Valid, nil
+}
+
+// MarkConsoleAttributionConsumed links an attribution nonce to the GitHub
+// issue it appeared on and marks it consumed. Idempotent — re-marking an
+// already-consumed nonce with the SAME issue is a no-op, but marking with
+// a DIFFERENT issue fails (indicates replay).
+func (s *SQLiteStore) MarkConsoleAttributionConsumed(nonce, issueRepo string, issueNumber int) error {
+	// Atomic: only mark if not already consumed OR if consumed with the same issue.
+	res, err := s.db.Exec(
+		`UPDATE console_attributions
+		 SET issue_repo = ?, issue_number = ?, consumed_at = CURRENT_TIMESTAMP
+		 WHERE nonce = ?
+		   AND (consumed_at IS NULL OR (issue_repo = ? AND issue_number = ?))`,
+		issueRepo, issueNumber, nonce, issueRepo, issueNumber,
+	)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("attribution nonce %s cannot be consumed (either unknown or replayed on a different issue)", nonce)
+	}
+	return nil
 }

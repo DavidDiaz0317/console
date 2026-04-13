@@ -1095,6 +1095,10 @@ func (s *Server) setupRoutes() {
 	rewardsHandler := handlers.NewRewardsHandler(handlers.RewardsConfig{
 		GitHubToken: s.config.GitHubToken,
 		Orgs:        s.config.RewardsGitHubOrgs,
+		// Store enables console-attribution verification: bug issues only
+		// get 300 pts if they were submitted through the console UI.
+		// See pkg/api/handlers/attribution.go.
+		Store: s.store,
 	})
 	api.Get("/rewards/github", rewardsHandler.GetGitHubRewards)
 
