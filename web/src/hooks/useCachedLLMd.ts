@@ -328,15 +328,13 @@ export async function fetchLLMdServers(
     }
   })
 
-  const settled = await settledWithConcurrency(tasks)
-
   const accumulated: LLMdServer[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     }
-  }
+  })
   return accumulated
 }
 
@@ -422,14 +420,13 @@ export async function fetchLLMdModels(
     }
   })
 
-  const settled = await settledWithConcurrency(tasks)
   const accumulated: LLMdModel[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     }
-  }
+  })
   return accumulated
 }
 

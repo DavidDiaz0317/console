@@ -278,16 +278,14 @@ async function fetchISO27001AuditViaKubectl(
       }
     })
 
-  const results = await settledWithConcurrency(tasks)
-
-  // Aggregate after settlement and report progress
+  // Report progress as each cluster settles instead of waiting for all
   const allFindings: ISO27001Finding[] = []
-  for (const result of results) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       allFindings.push(...result.value)
       onProgress?.([...allFindings])
     }
-  }
+  })
   return allFindings
 }
 
