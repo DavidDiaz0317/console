@@ -161,17 +161,29 @@ async function fetchFromAllClusters<T>(
     return addClusterField ? items.map(item => ({ ...item, cluster })) : items
   })
 
-  const settled = await settledWithConcurrency(tasks)
-
-  // Aggregate fulfilled results and count failures
+  // Use onSettled callback to push partial results to the UI as each
+  // cluster responds, instead of waiting for all clusters (including
+  // unreachable ones with long timeouts) to complete.
   const accumulated: T[] = []
   let failedCount = 0
-  for (const result of settled) {
+
+  const settled = await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     } else {
       failedCount++
+    }
+  })
+
+  // Final aggregation pass for callers that don't use onProgress
+  if (accumulated.length === 0) {
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        accumulated.push(...result.value)
+      } else {
+        failedCount++
+      }
     }
   }
 
@@ -338,14 +350,13 @@ async function fetchPodIssuesViaAgent(namespace?: string, onProgress?: (partial:
     return issues.map(i => ({ ...i, cluster: name }))
   })
 
-  const settled = await settledWithConcurrency(tasks)
   const accumulated: PodIssue[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     }
-  }
+  })
   return accumulated
 }
 
@@ -378,14 +389,13 @@ async function fetchDeploymentsViaAgent(namespace?: string, onProgress?: (partia
       cluster: name }))
   })
 
-  const settled = await settledWithConcurrency(tasks)
   const accumulated: Deployment[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     }
-  }
+  })
   return accumulated
 }
 
@@ -577,21 +587,22 @@ export function useCachedEvents(
       if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
         const clusters = getAgentClusters()
         const accumulated: ClusterEvent[] = []
-        for (const ci of (clusters || [])) {
-          try {
-            const ctx = ci.context || ci.name
-            const events = await kubectlProxy.getEvents(ctx, namespace, limit)
-            accumulated.push(...events.map(e => ({ ...e, cluster: ci.name })))
+        const tasks = (clusters || []).map((ci) => async () => {
+          const ctx = ci.context || ci.name
+          const events = await kubectlProxy.getEvents(ctx, namespace, limit)
+          return events.map(e => ({ ...e, cluster: ci.name }))
+        })
+        await settledWithConcurrency(tasks, undefined, (result) => {
+          if (result.status === 'fulfilled') {
+            accumulated.push(...result.value)
             accumulated.sort((a, b) => {
               const timeA = a.lastSeen ? new Date(a.lastSeen).getTime() : 0
               const timeB = b.lastSeen ? new Date(b.lastSeen).getTime() : 0
               return timeB - timeA
             })
             onProgress([...accumulated].slice(0, limit))
-          } catch {
-            // Skip failed clusters, continue with others
           }
-        }
+        })
         return accumulated.slice(0, limit)
       }
       // Fall back to SSE via backend
@@ -966,14 +977,13 @@ async function fetchWorkloadsFromAgent(onProgress?: (partial: Workload[]) => voi
     })
   })
 
-  const settled = await settledWithConcurrency(tasks)
   const accumulated: Workload[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       onProgress?.([...accumulated])
     }
-  }
+  })
   return accumulated.length > 0 ? accumulated : null
 }
 
@@ -1134,15 +1144,14 @@ async function fetchSecurityIssuesViaKubectl(cluster?: string, namespace?: strin
       return issues
     })
 
-  const settled = await settledWithConcurrency(tasks)
   const accumulated: SecurityIssue[] = []
-  for (const result of settled) {
+  await settledWithConcurrency(tasks, undefined, (result) => {
     if (result.status === 'fulfilled') {
       accumulated.push(...result.value)
       accumulated.sort((a, b) => (severityOrder[a.severity] || 5) - (severityOrder[b.severity] || 5))
       onProgress?.([...accumulated])
     }
-  }
+  })
   // Final sort
   return accumulated.sort((a, b) => (severityOrder[a.severity] || 5) - (severityOrder[b.severity] || 5))
 }
