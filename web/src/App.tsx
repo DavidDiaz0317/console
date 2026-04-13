@@ -160,6 +160,13 @@ if (typeof window !== 'undefined') {
 /** Runs orbit auto-maintenance checks — must be inside provider tree */
 function OrbitAutoRunner() { useOrbitAutoRun(); return null }
 
+// Wrap lazy route elements in their own Suspense boundary so the route
+// change is immediate. Without this, React 18's concurrent transitions
+// keep the OLD route visible while the new lazy component loads.
+function SuspenseRoute({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+}
+
 // Loading fallback component with delay to prevent flash on fast navigation
 function LoadingFallback() {
   const [showLoading, setShowLoading] = useState(false)
@@ -520,44 +527,44 @@ function FullDashboardApp() {
           {/* Test routes — rendered with Layout but not cached by KeepAlive */}
           <Route path={ROUTES.PERF_ALL_CARDS} element={<AllCardsPerfTest />} />
           <Route path={ROUTES.PERF_COMPLIANCE} element={<CompliancePerfTest />} />
-          <Route path={ROUTES.CLUSTERS} element={<Clusters />} />
-          <Route path={ROUTES.WORKLOADS} element={<Workloads />} />
-          <Route path={ROUTES.NODES} element={<Nodes />} />
-          <Route path={ROUTES.DEPLOYMENTS} element={<Deployments />} />
-          <Route path={ROUTES.PODS} element={<Pods />} />
-          <Route path={ROUTES.SERVICES} element={<Services />} />
-          <Route path={ROUTES.OPERATORS} element={<Operators />} />
-          <Route path={ROUTES.HELM} element={<HelmReleases />} />
-          <Route path={ROUTES.LOGS} element={<Logs />} />
-          <Route path={ROUTES.COMPUTE} element={<Compute />} />
-          <Route path={ROUTES.COMPUTE_COMPARE} element={<ClusterComparisonPage />} />
-          <Route path={ROUTES.STORAGE} element={<Storage />} />
-          <Route path={ROUTES.NETWORK} element={<Network />} />
-          <Route path={ROUTES.EVENTS} element={<Events />} />
-          <Route path={ROUTES.SECURITY} element={<Security />} />
-          <Route path={ROUTES.GITOPS} element={<GitOps />} />
-          <Route path={ROUTES.ALERTS} element={<Alerts />} />
-          <Route path={ROUTES.COST} element={<Cost />} />
-          <Route path={ROUTES.SECURITY_POSTURE} element={<Compliance />} />
+          <Route path={ROUTES.CLUSTERS} element={<SuspenseRoute><Clusters /></SuspenseRoute>} />
+          <Route path={ROUTES.WORKLOADS} element={<SuspenseRoute><Workloads /></SuspenseRoute>} />
+          <Route path={ROUTES.NODES} element={<SuspenseRoute><Nodes /></SuspenseRoute>} />
+          <Route path={ROUTES.DEPLOYMENTS} element={<SuspenseRoute><Deployments /></SuspenseRoute>} />
+          <Route path={ROUTES.PODS} element={<SuspenseRoute><Pods /></SuspenseRoute>} />
+          <Route path={ROUTES.SERVICES} element={<SuspenseRoute><Services /></SuspenseRoute>} />
+          <Route path={ROUTES.OPERATORS} element={<SuspenseRoute><Operators /></SuspenseRoute>} />
+          <Route path={ROUTES.HELM} element={<SuspenseRoute><HelmReleases /></SuspenseRoute>} />
+          <Route path={ROUTES.LOGS} element={<SuspenseRoute><Logs /></SuspenseRoute>} />
+          <Route path={ROUTES.COMPUTE} element={<SuspenseRoute><Compute /></SuspenseRoute>} />
+          <Route path={ROUTES.COMPUTE_COMPARE} element={<SuspenseRoute><ClusterComparisonPage /></SuspenseRoute>} />
+          <Route path={ROUTES.STORAGE} element={<SuspenseRoute><Storage /></SuspenseRoute>} />
+          <Route path={ROUTES.NETWORK} element={<SuspenseRoute><Network /></SuspenseRoute>} />
+          <Route path={ROUTES.EVENTS} element={<SuspenseRoute><Events /></SuspenseRoute>} />
+          <Route path={ROUTES.SECURITY} element={<SuspenseRoute><Security /></SuspenseRoute>} />
+          <Route path={ROUTES.GITOPS} element={<SuspenseRoute><GitOps /></SuspenseRoute>} />
+          <Route path={ROUTES.ALERTS} element={<SuspenseRoute><Alerts /></SuspenseRoute>} />
+          <Route path={ROUTES.COST} element={<SuspenseRoute><Cost /></SuspenseRoute>} />
+          <Route path={ROUTES.SECURITY_POSTURE} element={<SuspenseRoute><Compliance /></SuspenseRoute>} />
           {/* Legacy route for backwards compatibility */}
-          <Route path={ROUTES.COMPLIANCE} element={<Compliance />} />
-          <Route path={ROUTES.DATA_COMPLIANCE} element={<DataCompliance />} />
-          <Route path={ROUTES.GPU_RESERVATIONS} element={<GPUReservations />} />
-          <Route path={ROUTES.KARMADA_OPS} element={<KarmadaOps />} />
-          <Route path={ROUTES.HISTORY} element={<CardHistoryWithRestore />} />
-          <Route path={ROUTES.SETTINGS} element={<Settings />} />
-          <Route path={ROUTES.USERS} element={<UserManagementPage />} />
-          <Route path={ROUTES.NAMESPACES} element={<NamespaceManager />} />
-          <Route path={ROUTES.ARCADE} element={<Arcade />} />
-          <Route path={ROUTES.DEPLOY} element={<Deploy />} />
-          <Route path={ROUTES.AI_ML} element={<AIML />} />
-          <Route path={ROUTES.AI_AGENTS} element={<AIAgents />} />
-          <Route path={ROUTES.LLM_D_BENCHMARKS} element={<LLMdBenchmarks />} />
-          <Route path={ROUTES.CLUSTER_ADMIN} element={<ClusterAdmin />} />
-          <Route path={ROUTES.CI_CD} element={<CICD />} />
-          <Route path={ROUTES.INSIGHTS} element={<Insights />} />
-          <Route path={ROUTES.MULTI_TENANCY} element={<MultiTenancy />} />
-          <Route path={ROUTES.MARKETPLACE} element={<Marketplace />} />
+          <Route path={ROUTES.COMPLIANCE} element={<SuspenseRoute><Compliance /></SuspenseRoute>} />
+          <Route path={ROUTES.DATA_COMPLIANCE} element={<SuspenseRoute><DataCompliance /></SuspenseRoute>} />
+          <Route path={ROUTES.GPU_RESERVATIONS} element={<SuspenseRoute><GPUReservations /></SuspenseRoute>} />
+          <Route path={ROUTES.KARMADA_OPS} element={<SuspenseRoute><KarmadaOps /></SuspenseRoute>} />
+          <Route path={ROUTES.HISTORY} element={<SuspenseRoute><CardHistoryWithRestore /></SuspenseRoute>} />
+          <Route path={ROUTES.SETTINGS} element={<SuspenseRoute><Settings /></SuspenseRoute>} />
+          <Route path={ROUTES.USERS} element={<SuspenseRoute><UserManagementPage /></SuspenseRoute>} />
+          <Route path={ROUTES.NAMESPACES} element={<SuspenseRoute><NamespaceManager /></SuspenseRoute>} />
+          <Route path={ROUTES.ARCADE} element={<SuspenseRoute><Arcade /></SuspenseRoute>} />
+          <Route path={ROUTES.DEPLOY} element={<SuspenseRoute><Deploy /></SuspenseRoute>} />
+          <Route path={ROUTES.AI_ML} element={<SuspenseRoute><AIML /></SuspenseRoute>} />
+          <Route path={ROUTES.AI_AGENTS} element={<SuspenseRoute><AIAgents /></SuspenseRoute>} />
+          <Route path={ROUTES.LLM_D_BENCHMARKS} element={<SuspenseRoute><LLMdBenchmarks /></SuspenseRoute>} />
+          <Route path={ROUTES.CLUSTER_ADMIN} element={<SuspenseRoute><ClusterAdmin /></SuspenseRoute>} />
+          <Route path={ROUTES.CI_CD} element={<SuspenseRoute><CICD /></SuspenseRoute>} />
+          <Route path={ROUTES.INSIGHTS} element={<SuspenseRoute><Insights /></SuspenseRoute>} />
+          <Route path={ROUTES.MULTI_TENANCY} element={<SuspenseRoute><MultiTenancy /></SuspenseRoute>} />
+          <Route path={ROUTES.MARKETPLACE} element={<SuspenseRoute><Marketplace /></SuspenseRoute>} />
           {/* Dev test routes for unified framework validation */}
           <Route path={ROUTES.TEST_UNIFIED_CARD} element={<UnifiedCardTest />} />
           <Route path={ROUTES.TEST_UNIFIED_STATS} element={<UnifiedStatsTest />} />

@@ -1,15 +1,12 @@
 name: Nightly UX Journey Tests
 
 # Journey-oriented Playwright tests that exercise every major user
-# interaction in demo mode and produce a UX findings report. These tests
-# don't gate PRs — they surface UX improvement opportunities.
+# interaction against the real Go backend in dev mode. Produces a UX
+# findings report highlighting improvement opportunities.
 #
-# Uses the real Go backend in dev mode so MSW/demo data is fully active
-# and all card interactions (drilldown, expand, search, tour) work exactly
-# as they do for real users.
+# Uses the same backend pattern as fullstack-e2e.yml (proven to work).
 #
 # Runs nightly at 05:00 UTC and on manual dispatch.
-# Artifacts: HTML report, UX findings markdown, screenshots.
 
 on:
   schedule:
@@ -27,6 +24,9 @@ concurrency:
 env:
   CI: true
   NODE_VERSION: "22"
+  BACKEND_PORT: "8080"
+  DEV_JWT_SECRET: "ux-nightly-not-a-real-secret-ci-only"
+  HEALTH_TIMEOUT_S: "60"
 
 jobs:
   ux-journeys:
@@ -62,32 +62,41 @@ jobs:
         run: npm run build
 
       - name: Build backend
-        run: go build -o console-bin ./cmd/console
+        run: go build -o /tmp/console-binary ./cmd/console
 
-      - name: Start backend and run UX journey tests
+      - name: Start Go backend
+        env:
+          JWT_SECRET: ${{ env.DEV_JWT_SECRET }}
+          DEV_MODE: "true"
+          PORT: ${{ env.BACKEND_PORT }}
         run: |
-          # Start Go backend in dev mode (background, nohup to survive step shell)
-          JWT_SECRET="ux-nightly-$(openssl rand -hex 16)" \
-          DEV_MODE=true \
-          nohup ./console-bin > /tmp/console.log 2>&1 &
+          /tmp/console-binary > /tmp/console.log 2>&1 &
+          echo $! > /tmp/console.pid
+          echo "Backend PID: $(cat /tmp/console.pid)"
 
-          # Wait for FULL initialization (not just the loading page).
-          # /healthz returns {"status":"ok"} only after DB, k8s, and MCP init
-          # complete. /health returns 200 immediately from the loading server.
-          for i in $(seq 1 60); do
-            STATUS=$(curl -sf http://localhost:8080/healthz 2>/dev/null | grep -o '"status":"ok"' || true)
-            if [ -n "$STATUS" ]; then
-              echo "Backend fully initialized after ${i}s"
-              break
+      - name: Wait for /healthz
+        run: |
+          for i in $(seq 1 ${HEALTH_TIMEOUT_S}); do
+            if curl -sf "http://localhost:${BACKEND_PORT}/healthz" > /dev/null; then
+              echo "Backend up after ${i}s"
+              exit 0
             fi
             sleep 1
           done
+          echo "Backend did not become healthy in ${HEALTH_TIMEOUT_S}s"
+          echo "--- console.log ---"
+          cat /tmp/console.log || true
+          exit 1
 
-          # Run tests from web/ directory
-          cd web
-          npx playwright test e2e/user-flows/ --project=chromium --reporter=list,html,./e2e/helpers/ux-reporter.ts
+      - name: Run UX journey tests
+        working-directory: web
+        run: npx playwright test e2e/user-flows/ --project=chromium --reporter=list,html,./e2e/helpers/ux-reporter.ts
         env:
-          PLAYWRIGHT_BASE_URL: "http://localhost:8080"
+          PLAYWRIGHT_BASE_URL: http://localhost:${{ env.BACKEND_PORT }}
+
+      - name: Dump backend log on failure
+        if: failure()
+        run: cat /tmp/console.log || true
 
       - name: Upload UX findings report
         if: always()
@@ -121,7 +130,13 @@ jobs:
             echo "No UX findings report generated." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # Run responsive + a11y tests (also with Go backend for full demo data)
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/console.pid ]; then
+            kill "$(cat /tmp/console.pid)" || true
+          fi
+
   ux-mobile:
     if: github.repository == 'kubestellar/console'
     name: UX Mobile Tests
@@ -155,27 +170,40 @@ jobs:
         run: npm run build
 
       - name: Build backend
-        run: go build -o console-bin ./cmd/console
+        run: go build -o /tmp/console-binary ./cmd/console
 
-      - name: Start backend and run responsive + a11y tests
+      - name: Start Go backend
+        env:
+          JWT_SECRET: ${{ env.DEV_JWT_SECRET }}
+          DEV_MODE: "true"
+          PORT: ${{ env.BACKEND_PORT }}
         run: |
-          JWT_SECRET="ux-mobile-$(openssl rand -hex 16)" \
-          DEV_MODE=true \
-          nohup ./console-bin > /tmp/console.log 2>&1 &
+          /tmp/console-binary > /tmp/console.log 2>&1 &
+          echo $! > /tmp/console.pid
+          echo "Backend PID: $(cat /tmp/console.pid)"
 
-          for i in $(seq 1 60); do
-            STATUS=$(curl -sf http://localhost:8080/healthz 2>/dev/null | grep -o '"status":"ok"' || true)
-            if [ -n "$STATUS" ]; then
-              echo "Backend fully initialized after ${i}s"
-              break
+      - name: Wait for /healthz
+        run: |
+          for i in $(seq 1 ${HEALTH_TIMEOUT_S}); do
+            if curl -sf "http://localhost:${BACKEND_PORT}/healthz" > /dev/null; then
+              echo "Backend up after ${i}s"
+              exit 0
             fi
             sleep 1
           done
+          echo "Backend did not become healthy in ${HEALTH_TIMEOUT_S}s"
+          cat /tmp/console.log || true
+          exit 1
 
-          cd web
-          npx playwright test e2e/user-flows/responsive-layouts.spec.ts e2e/user-flows/a11y-audit.spec.ts --project=chromium --reporter=list,html
+      - name: Run responsive + a11y tests
+        working-directory: web
+        run: npx playwright test e2e/user-flows/responsive-layouts.spec.ts e2e/user-flows/a11y-audit.spec.ts --project=chromium --reporter=list,html
         env:
-          PLAYWRIGHT_BASE_URL: "http://localhost:8080"
+          PLAYWRIGHT_BASE_URL: http://localhost:${{ env.BACKEND_PORT }}
+
+      - name: Dump backend log on failure
+        if: failure()
+        run: cat /tmp/console.log || true
 
       - name: Upload mobile screenshots
         if: always()
@@ -184,3 +212,10 @@ jobs:
           name: mobile-responsive-screenshots
           path: web/test-results/ux/
           retention-days: 30
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f /tmp/console.pid ]; then
+            kill "$(cat /tmp/console.pid)" || true
+          fi
