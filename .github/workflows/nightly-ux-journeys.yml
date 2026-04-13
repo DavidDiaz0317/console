@@ -71,10 +71,13 @@ jobs:
           DEV_MODE=true \
           nohup ./console-bin > /tmp/console.log 2>&1 &
 
-          # Wait for backend health
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-              echo "Backend healthy after ${i}s"
+          # Wait for FULL initialization (not just the loading page).
+          # /healthz returns {"status":"ok"} only after DB, k8s, and MCP init
+          # complete. /health returns 200 immediately from the loading server.
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf http://localhost:8080/healthz 2>/dev/null | grep -o '"status":"ok"' || true)
+            if [ -n "$STATUS" ]; then
+              echo "Backend fully initialized after ${i}s"
               break
             fi
             sleep 1
@@ -160,9 +163,10 @@ jobs:
           DEV_MODE=true \
           nohup ./console-bin > /tmp/console.log 2>&1 &
 
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-              echo "Backend healthy after ${i}s"
+          for i in $(seq 1 60); do
+            STATUS=$(curl -sf http://localhost:8080/healthz 2>/dev/null | grep -o '"status":"ok"' || true)
+            if [ -n "$STATUS" ]; then
+              echo "Backend fully initialized after ${i}s"
               break
             fi
             sleep 1

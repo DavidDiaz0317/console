@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
@@ -200,27 +202,65 @@ func runWatchdog(cfg WatchdogConfig) error {
 		IdleTimeout:       watchdogIdleTimeout,
 	}
 
-	// Graceful shutdown
-	go func() {
+	if cfg.TLS {
+		certFile, keyFile, tlsErr := ensureTLSCert()
+		if tlsErr != nil {
+			return fmt.Errorf("TLS cert generation failed: %w", tlsErr)
+		}
+
+		// Load TLS config
+		cert, certLoadErr := tls.LoadX509KeyPair(certFile, keyFile)
+		if certLoadErr != nil {
+			return fmt.Errorf("TLS cert load error: %w", certLoadErr)
+		}
+		tlsCfg := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "http/1.1"},
+		}
+
+		// Listen on raw TCP, then peek each connection's first byte.
+		// TLS handshakes start with 0x16 (ContentType: Handshake).
+		// Plain HTTP starts with a letter (G for GET, P for POST, etc.).
+		// This lets OAuth callbacks arrive via http:// and get redirected
+		// to https:// without users changing their GitHub OAuth app URLs.
+		ln, listenErr := net.Listen("tcp", addr)
+		if listenErr != nil {
+			return fmt.Errorf("listen error: %w", listenErr)
+		}
+
+		slog.Info("[Watchdog] listening (HTTPS/H2 + HTTP redirect)", "addr", addr, "backend", backendURL.String())
+
+		go func() {
+			for {
+				conn, acceptErr := ln.Accept()
+				if acceptErr != nil {
+					return // listener closed
+				}
+				go handleConn(conn, tlsCfg, srv, cfg.ListenPort)
+			}
+		}()
+
+		// Block on signal (the accept loop runs in goroutines above)
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		slog.Info("[Watchdog] Shutting down...")
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), watchdogShutdownTimeout)
 		defer shutdownCancel()
+		ln.Close()
 		srv.Shutdown(shutdownCtx)
-	}()
-
-	if cfg.TLS {
-		certFile, keyFile, tlsErr := ensureTLSCert()
-		if tlsErr != nil {
-			return fmt.Errorf("TLS cert generation failed: %w", tlsErr)
-		}
-		slog.Info("[Watchdog] listening (HTTPS/H2)", "addr", addr, "backend", backendURL.String())
-		if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
-			return fmt.Errorf("watchdog TLS listen error: %w", err)
-		}
 	} else {
+		// Graceful shutdown for HTTP mode
+		go func() {
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+			<-sigCh
+			slog.Info("[Watchdog] Shutting down...")
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), watchdogShutdownTimeout)
+			defer shutdownCancel()
+			srv.Shutdown(shutdownCtx)
+		}()
+
 		slog.Info("[Watchdog] listening (HTTP/1.1)", "addr", addr, "backend", backendURL.String())
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			return fmt.Errorf("watchdog listen error: %w", err)
@@ -228,6 +268,74 @@ func runWatchdog(cfg WatchdogConfig) error {
 	}
 	return nil
 }
+
+// handleConn peeks the first byte of a new connection to determine if it's
+// TLS (0x16) or plain HTTP. TLS connections are upgraded and served by the
+// HTTPS server. Plain HTTP connections get a 307 redirect to HTTPS — this
+// handles OAuth callbacks that arrive via http://localhost:8080.
+func handleConn(conn net.Conn, tlsCfg *tls.Config, srv *http.Server, listenPort int) {
+	br := bufio.NewReader(conn)
+	// Peek 1 byte without consuming it
+	first, err := br.Peek(1)
+	if err != nil {
+		conn.Close()
+		return
+	}
+
+	// TLS ClientHello starts with 0x16 (ContentType: Handshake)
+	if first[0] == 0x16 {
+		// TLS connection — wrap with TLS and let the server handle it
+		tlsConn := tls.Server(newPeekedConn(conn, br), tlsCfg)
+		srv.ConnState = nil // avoid double-tracking
+		// Serve this single connection
+		go srv.Serve(&singleConnListener{conn: tlsConn})
+		return
+	}
+
+	// Plain HTTP — read the request and redirect to HTTPS
+	peekConn := newPeekedConn(conn, br)
+	req, reqErr := http.ReadRequest(bufio.NewReader(peekConn))
+	if reqErr != nil {
+		conn.Close()
+		return
+	}
+	target := fmt.Sprintf("https://localhost:%d%s", listenPort, req.RequestURI)
+	resp := fmt.Sprintf("HTTP/1.1 307 Temporary Redirect\r\nLocation: %s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", target)
+	conn.Write([]byte(resp))
+	conn.Close()
+}
+
+// peekedConn wraps a net.Conn with a bufio.Reader that has peeked bytes.
+type peekedConn struct {
+	net.Conn
+	r *bufio.Reader
+}
+
+func newPeekedConn(c net.Conn, r *bufio.Reader) *peekedConn {
+	return &peekedConn{Conn: c, r: r}
+}
+
+func (c *peekedConn) Read(b []byte) (int, error) {
+	return c.r.Read(b)
+}
+
+// singleConnListener wraps a single net.Conn as a net.Listener for http.Server.Serve().
+type singleConnListener struct {
+	conn net.Conn
+	done bool
+}
+
+func (l *singleConnListener) Accept() (net.Conn, error) {
+	if l.done {
+		// Block forever (the server will close us on shutdown)
+		select {}
+	}
+	l.done = true
+	return l.conn, nil
+}
+
+func (l *singleConnListener) Close() error   { return nil }
+func (l *singleConnListener) Addr() net.Addr { return l.conn.LocalAddr() }
 
 // ensureTLSCert returns paths to a TLS cert and key. Order of precedence:
 //  1. TLS_CERT_FILE / TLS_KEY_FILE env vars (user-supplied cert)
