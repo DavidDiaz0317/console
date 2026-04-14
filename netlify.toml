@@ -29,7 +29,10 @@
 [build.environment]
   # Enable demo mode with mock data for Netlify previews
   VITE_DEMO_MODE = "true"
-  NODE_VERSION = "20"
+  # Node 22 — node 20 triggers npm's optional-dependency bug (#4828)
+  # with @rolldown/binding-* platform packages, causing every Netlify
+  # build to fail with "Cannot find native binding" during npm ci.
+  NODE_VERSION = "22"
 
 # GitHub avatar proxy — avatars.githubusercontent.com is blocked by browser
 # when loaded inside SVG foreignObject. Proxy through our domain to avoid CORS.
