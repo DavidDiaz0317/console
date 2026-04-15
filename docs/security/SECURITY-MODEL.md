@@ -17,7 +17,7 @@ Everything below is grounded in the current source tree. File and line reference
 The three-process architecture: a browser, a Go backend (serves UI, bootstrap-only identity), and kc-agent running on the user's own laptop (identity is the user's kubeconfig). Every cluster mutation flows through kc-agent.
 
 ```mermaid
-%%{init: {'flowchart': {'htmlLabels': false, 'useMaxWidth': false}}}%%
+%%{init: {'flowchart': {'htmlLabels': false, 'padding': 25, 'nodeSpacing': 60, 'rankSpacing': 60}, 'themeVariables': {'fontSize': '13px'}}}%%
 flowchart LR
     subgraph User["User machine"]
         B[Browser]
@@ -120,7 +120,7 @@ If you need to audit what leaves the machine, the provider files under `pkg/agen
 - **CSP**: the backend's Content-Security-Policy explicitly includes `http://127.0.0.1:8585` and `http://localhost:8585` in `connect-src` so the browser can reach a local kc-agent (`pkg/api/server.go:429-432`).
 
 ```mermaid
-%%{init: {'flowchart': {'htmlLabels': false, 'useMaxWidth': false}}}%%
+%%{init: {'flowchart': {'htmlLabels': false, 'padding': 25, 'nodeSpacing': 60, 'rankSpacing': 60}, 'themeVariables': {'fontSize': '13px'}}}%%
 flowchart LR
     RB[Remote browser<br/>any other LAN host]
     LB[Local browser<br/>127.0.0.1]
@@ -190,7 +190,7 @@ Card proxies that call third-party APIs (ArgoCD, Prometheus, etc.) are only used
 ### Posture comparison
 
 ```mermaid
-%%{init: {'flowchart': {'htmlLabels': false, 'useMaxWidth': false}}}%%
+%%{init: {'flowchart': {'htmlLabels': false, 'padding': 25, 'nodeSpacing': 60, 'rankSpacing': 60}, 'themeVariables': {'fontSize': '13px'}}}%%
 flowchart TB
     subgraph A["Posture A — fully online (default)"]
         direction LR
@@ -256,7 +256,7 @@ Note the asymmetry: **the upstream OpenAI provider does not currently honor an `
 ### Routing a local LLM through an overridable provider slot
 
 ```mermaid
-%%{init: {'flowchart': {'htmlLabels': false, 'useMaxWidth': false}}}%%
+%%{init: {'flowchart': {'htmlLabels': false, 'padding': 25, 'nodeSpacing': 60, 'rankSpacing': 60}, 'themeVariables': {'fontSize': '13px'}}}%%
 flowchart LR
     KA[kc-agent] -->|provider: groq<br/>GROQ_BASE_URL=...| SLOT[Groq provider slot<br/>pkg/agent/provider_groq.go]
     SLOT -.default.-> GRQ[api.groq.com/v1]
