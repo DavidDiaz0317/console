@@ -229,6 +229,7 @@ export const CARD_CATALOG = {
     { type: 'iso27001_audit', title: 'ISO 27001 Audit', description: 'Interactive ISO 27001 compliance checklist with 70 Kubernetes security controls', visualization: 'status' },
     { type: 'opa_policies', title: 'OPA Gatekeeper', description: 'Policy enforcement with OPA Gatekeeper - shows installed status per cluster', visualization: 'status' },
     { type: 'kyverno_policies', title: 'Kyverno Policies', description: 'Kubernetes-native policy management with Kyverno', visualization: 'status' },
+    { type: 'intoto_supply_chain', title: 'in-toto Supply Chain', description: 'Monitor supply chain security and verify layout steps across clusters', visualization: 'status' },
     { type: 'falco_alerts', title: 'Falco Alerts', description: 'Runtime security monitoring - syscall anomalies, container escapes, privilege escalation', visualization: 'events' },
     { type: 'trivy_scan', title: 'Trivy Scanner', description: 'Vulnerability scanning for container images, IaC, and secrets', visualization: 'table' },
     { type: 'kubescape_scan', title: 'Kubescape', description: 'Security posture management and NSA/CISA hardening compliance', visualization: 'status' },
@@ -336,6 +337,12 @@ export const CARD_CATALOG = {
   'Drasi': [
     { type: 'drasi_reactive_graph', title: 'Drasi Reactive Graph', description: 'Reactive data pipeline — sources, continuous queries, reactions, and live results with animated flow', visualization: 'status' },
   ],
+  'Maturity': [
+    { type: 'acmm_level', title: 'Current Level', description: "The repo's current level on the AI Codebase Maturity Model (L1–L5)", visualization: 'gauge' },
+    { type: 'acmm_balance', title: 'Human vs AI Balance', description: 'Weekly AI vs human contribution trend with a balance target slider anchored to ACMM levels', visualization: 'timeseries' },
+    { type: 'acmm_feedback_loops', title: 'Feedback Loop Inventory', description: 'Inventory of criteria from ACMM + Fullsend + Agentic Engineering Framework + Claude Reflect', visualization: 'status' },
+    { type: 'acmm_recommendations', title: 'Your Role + Next Steps', description: 'Current role and prioritized missing criteria for the next level', visualization: 'status' },
+  ],
 } as const
 
 // ---------------------------------------------------------------------------
@@ -385,6 +392,7 @@ export const CATEGORY_LOCALE_KEYS: Record<string, string> = {
   'Orchestration': 'orchestration',
   'Serverless': 'serverless',
   'Streaming & Messaging': 'streamingMessaging',
+  'Maturity': 'maturity',
 }
 
 // ---------------------------------------------------------------------------

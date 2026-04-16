@@ -2,6 +2,11 @@
 // Pure data — no runtime dependencies
 
 export const CARD_TITLES: Record<string, string> = {
+  // ACMM (AI Codebase Maturity Model)
+  acmm_level: 'Current Level',
+  acmm_balance: 'Human vs AI Balance',
+  acmm_feedback_loops: 'Feedback Loop Inventory',
+  acmm_recommendations: 'Your Role + Next Steps',
   // Core cluster cards
   cluster_health: 'Cluster Health',
   cluster_focus: 'Cluster Focus',
@@ -113,6 +118,7 @@ export const CARD_TITLES: Record<string, string> = {
   policy_violations: 'Policy Violations',
   opa_policies: 'OPA Policies',
   kyverno_policies: 'Kyverno Policies',
+  intoto_supply_chain: 'in-toto Supply Chain',
   falco_alerts: 'Falco Alerts',
   trestle_scan: 'Compliance Trestle (OSCAL)',
   trivy_scan: 'Trivy Scan',
@@ -313,6 +319,10 @@ export const CARD_TITLES: Record<string, string> = {
 
 // Short descriptions shown via info icon tooltip in the card header
 export const CARD_DESCRIPTIONS: Record<string, string> = {
+  acmm_level: "The repo's current level on the AI Codebase Maturity Model (L1–L5).",
+  acmm_balance: 'Weekly AI vs human contribution trend with a balance target slider.',
+  acmm_feedback_loops: 'Inventory of criteria from ACMM, Fullsend, AEF, and Claude-Reflect.',
+  acmm_recommendations: 'Your current role and prioritized missing criteria for the next level.',
   cluster_health: 'Overall health status of all connected Kubernetes clusters.',
   cluster_focus: 'Deep-dive view of a single cluster with key metrics and resources.',
   cluster_network: 'Network connectivity and traffic flow between clusters.',
@@ -400,6 +410,7 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   policy_violations: 'Active policy violations from OPA, Kyverno, or other engines.',
   opa_policies: 'OPA (Open Policy Agent) Gatekeeper enforces policies on Kubernetes resources — for example, blocking containers running as root or requiring resource limits. This card shows which policies are active and whether any are being violated.',
   kyverno_policies: 'Kyverno is a Kubernetes-native policy engine that can validate, mutate, and generate resources. This card shows active policies, their enforcement mode (audit vs enforce), and violation counts.',
+  intoto_supply_chain: 'in-toto is a CNCF supply chain security framework that verifies every step of your software delivery pipeline. This card shows active layouts, step verification status, and any failed or missing attestations across your clusters.',
   falco_alerts: 'Falco is a runtime security tool that detects unexpected behavior in your containers (e.g., shell access, file modifications, network connections). This card shows recent alerts and their severity.',
   trestle_scan: 'Compliance Trestle (CNCF Sandbox) performs OSCAL-based compliance assessments against standards like NIST 800-53 and FedRAMP. This card shows which security controls pass or fail across your clusters.',
   trivy_scan: 'Trivy scans container images for known vulnerabilities (CVEs), misconfigurations, and exposed secrets. This card shows scan results with severity levels so you can prioritize fixes.',
