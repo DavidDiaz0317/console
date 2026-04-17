@@ -315,8 +315,10 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
                 </pre>
               </div>
             ) : (
-              <div className="flex-1 bg-secondary/50 rounded-lg p-4 flex items-center justify-center">
-                <WidgetPreview config={exportConfig} />
+              <div className="flex-1 bg-secondary/50 rounded-lg p-4 flex items-center justify-center overflow-hidden">
+                <div style={{ transform: 'scale(1.5)', transformOrigin: 'center center' }}>
+                  <WidgetPreview config={exportConfig} />
+                </div>
               </div>
             )}
 
