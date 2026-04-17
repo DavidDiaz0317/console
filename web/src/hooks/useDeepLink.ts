@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useDrillDownActions } from './useDrillDown'
 import { scrollToCard } from '../lib/scrollToCard'
 import { ROUTES } from '../config/routes'
+import { isDNDActive } from './useDoNotDisturb'
 
 /**
  * Deep linking support for notifications and external links.
@@ -106,6 +107,11 @@ export function sendNotificationWithDeepLink(
   if (!('Notification' in window) || Notification.permission !== 'granted') {
     return
   }
+
+  // Respect Do Not Disturb / quiet hours — skip silently.
+  // isDNDActive reads from localStorage directly so it works in
+  // non-React contexts (evaluator callbacks in AlertsContext).
+  if (isDNDActive()) return
 
   const url = buildDeepLinkURL(params)
 
