@@ -142,7 +142,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 300, // 5 minutes
     },
     severity: 'critical',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: true,
   },
   {
@@ -154,7 +154,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 60, // 1 minute
     },
     severity: 'warning',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: true,
   },
   {
@@ -167,7 +167,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 600, // 10 minutes
     },
     severity: 'warning',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: true,
   },
   {
@@ -180,7 +180,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 300, // 5 minutes
     },
     severity: 'info',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: false,
   },
   {
@@ -204,7 +204,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 0, // Immediate — CronJob already ran checks
     },
     severity: 'warning',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: true,
   },
   {
@@ -217,7 +217,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 300,
     },
     severity: 'warning',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: false,
   },
   {
@@ -229,7 +229,7 @@ export const PRESET_ALERT_RULES: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt
       duration: 0,
     },
     severity: 'warning',
-    channels: [{ type: 'browser', enabled: true, config: {} }],
+    channels: [{ type: 'browser', enabled: false, config: {} }],
     aiDiagnose: true,
   },
   {

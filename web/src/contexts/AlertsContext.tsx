@@ -240,8 +240,21 @@ const MAX_ALERTS = 500
 /** Maximum number of resolved alerts to keep after a quota-exceeded prune. */
 const MAX_RESOLVED_ALERTS_AFTER_PRUNE = 50
 
-/** Minimum time (ms) between repeat notifications for the same alert */
-const NOTIFICATION_COOLDOWN_MS = 300_000 // 5 minutes
+/** Minimum time (ms) between repeat notifications for the same alert,
+ *  tiered by severity so critical alerts re-notify quickly while
+ *  lower-severity alerts don't spam the desktop. */
+const NOTIFICATION_COOLDOWN_BY_SEVERITY: Record<string, number> = {
+  critical: 5 * 60 * 1000,    // 5 min — urgent, re-notify quickly
+  warning: 30 * 60 * 1000,    // 30 min — important but not urgent
+  info: 4 * 60 * 60 * 1000,   // 4 hours — informational, minimal interruption
+}
+/** Fallback cooldown when severity is unknown */
+const DEFAULT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000 // 30 min
+
+/** Get the notification cooldown for a given severity level */
+function getNotificationCooldown(severity: string): number {
+  return NOTIFICATION_COOLDOWN_BY_SEVERITY[severity] ?? DEFAULT_NOTIFICATION_COOLDOWN_MS
+}
 
 /** Condition types that represent persistent cluster-level errors.
  *  These fire only once and suppress until the cluster recovers —
@@ -1343,7 +1356,7 @@ Please provide:
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           if (
             rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) &&
-            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS)
+            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity))
           ) {
             setNotifiedKey(notifKey, Date.now())
             const firstNode = failedNodes[0]
@@ -1405,7 +1418,7 @@ Please provide:
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           if (
             rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) &&
-            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS)
+            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity))
           ) {
             setNotifiedKey(notifKey, Date.now())
             sendNotificationWithDeepLink(
@@ -1500,7 +1513,7 @@ Please provide:
         const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster)
         if (
           rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) &&
-          (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS)
+          (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity))
         ) {
           setNotifiedKey(notifKey, Date.now())
           sendNotificationWithDeepLink(
@@ -1547,7 +1560,7 @@ Please provide:
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           const isPersistent = PERSISTENT_CLUSTER_CONDITIONS.has(rule.condition.type)
           const alreadyNotified = notifiedAlertKeysRef.current.has(notifKey)
-          const cooldownExpired = !alreadyNotified || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS
+          const cooldownExpired = !alreadyNotified || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity)
           // Persistent cluster errors: notify once, suppress until recovery.
           // Transient alerts: use the standard 5-minute cooldown.
           const shouldNotify = isPersistent ? !alreadyNotified : cooldownExpired
@@ -1602,7 +1615,7 @@ Please provide:
           const notifKey = alertDedupKey(rule.id, rule.condition.type, cluster.name)
           const isPersistent = PERSISTENT_CLUSTER_CONDITIONS.has(rule.condition.type)
           const alreadyNotified = notifiedAlertKeysRef.current.has(notifKey)
-          const cooldownExpired = !alreadyNotified || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS
+          const cooldownExpired = !alreadyNotified || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity)
           const shouldNotify = isPersistent ? !alreadyNotified : cooldownExpired
           if (
             rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) && shouldNotify
@@ -1673,7 +1686,7 @@ Please provide:
           const notifKey = `${rule.id}::${guide.acronym}::${run.runNumber}`
           if (
             rule.channels?.some(ch => ch.type === 'browser' && ch.enabled) &&
-            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > NOTIFICATION_COOLDOWN_MS)
+            (!notifiedAlertKeysRef.current.has(notifKey) || (Date.now() - (notifiedAlertKeysRef.current.get(notifKey) ?? 0)) > getNotificationCooldown(rule.severity))
           ) {
             setNotifiedKey(notifKey, Date.now())
             sendNotificationWithDeepLink(
