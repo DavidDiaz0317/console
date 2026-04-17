@@ -132,7 +132,7 @@ export function GatewayStatus({ config: _config }: GatewayStatusProps) {
   if (isLoading) {
     return (
       <div className="h-full flex flex-col min-h-card">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
           <Skeleton variant="text" width={120} height={20} />
           <Skeleton variant="rounded" width={80} height={28} />
         </div>
@@ -164,7 +164,7 @@ export function GatewayStatus({ config: _config }: GatewayStatusProps) {
   return (
     <div className="h-full flex flex-col min-h-card">
       {/* Header with controls */}
-      <div className="flex items-center justify-between mb-2 flex-shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 mb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">
             {t('gatewayStatus.nGateways', { count: totalItems })}
@@ -234,7 +234,7 @@ export function GatewayStatus({ config: _config }: GatewayStatusProps) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
         <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
           <p className="text-2xs text-purple-400">{t('gatewayStatus.gateways')}</p>
           <p className="text-lg font-bold text-foreground">{stats.totalGateways}</p>
@@ -259,7 +259,7 @@ export function GatewayStatus({ config: _config }: GatewayStatusProps) {
               key={`${gw.cluster}-${gw.namespace}-${gw.name}-${idx}`}
               className="p-2.5 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
             >
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-y-2 mb-1">
                 <div className="flex items-center gap-2">
                   <Icon className={`w-4 h-4 ${colors.text}`} />
                   <span className="text-sm font-medium text-foreground truncate">{gw.name}</span>
@@ -271,7 +271,7 @@ export function GatewayStatus({ config: _config }: GatewayStatusProps) {
                   {t('gatewayStatus.nRoutes', { count: gw.attachedRoutes })}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-y-2 text-xs">
                 <div className="flex items-center gap-2">
                   <ClusterBadge cluster={gw.cluster} />
                   <span className="text-muted-foreground">{gw.namespace}</span>
