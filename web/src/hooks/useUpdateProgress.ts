@@ -3,7 +3,12 @@ import type { UpdateProgress, UpdateStepEntry } from '../types/updates'
 import { LOCAL_AGENT_WS_URL, FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { isNetlifyDeployment } from '../lib/demoMode'
 
-const WS_RECONNECT_MS = 5000  // Reconnect interval after WebSocket disconnect
+// WebSocket reconnection with exponential backoff
+const WS_RECONNECT_BASE_DELAY_MS = 2_000  // Base delay for reconnection attempts
+const WS_RECONNECT_MAX_DELAY_MS = 30_000   // Maximum delay between reconnection attempts
+const MAX_WS_RECONNECT_ATTEMPTS = 5        // Maximum reconnection attempts before giving up
+const BACKOFF_JITTER_MAX_MS = 1_000        // Random jitter to avoid thundering herd
+
 const BACKEND_POLL_MS = 2000  // Poll interval when waiting for backend to come up
 const BACKEND_POLL_MAX = 90   // Max attempts (~3 min) before giving up
 
@@ -27,6 +32,19 @@ const DEV_UPDATE_STEP_LABELS: Record<number, string> = {
 const ACTIVE_UPDATE_STATUSES = new Set(['pulling', 'building', 'restarting'])
 
 /**
+ * Calculate exponential backoff delay with jitter.
+ * Delay = min(base * 2^attempt, max) + random jitter
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    WS_RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
+    WS_RECONNECT_MAX_DELAY_MS,
+  )
+  const jitter = Math.random() * BACKOFF_JITTER_MAX_MS
+  return delay + jitter
+}
+
+/**
  * Hook that listens for update_progress WebSocket broadcasts from kc-agent.
  * Uses a separate WebSocket connection to avoid interfering with the shared one.
  * Also tracks step history for detailed progress display.
@@ -40,6 +58,8 @@ export function useUpdateProgress() {
   const [stepHistory, setStepHistory] = useState<UpdateStepEntry[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const progressRef = useRef<UpdateProgress | null>(null)
+  /** Track current reconnect attempt number */
+  const reconnectAttemptsRef = useRef(0)
 
   // Track the last time we received a WebSocket message during an active update.
   // Used for stale-state detection.
@@ -129,6 +149,7 @@ export function useUpdateProgress() {
   }, [])
 
   useEffect(() => {
+    let unmounted = false
     let reconnectTimer: ReturnType<typeof setTimeout>
 
     // After kc-agent reconnects during a restart, the Go backend may still
@@ -184,16 +205,18 @@ export function useUpdateProgress() {
       setProgress({ status: 'done', message: 'Update complete — restart successful', progress: 100 })
     }
 
-    function connect() {
+    function connect(attemptNumber = 0) {
       try {
         const ws = new WebSocket(LOCAL_AGENT_WS_URL)
         wsRef.current = ws
+        reconnectAttemptsRef.current = attemptNumber
 
         ws.onopen = () => {
-          // Reset stale timer on successful connection
+          // Reset reconnect attempts and stale timer on successful connection
+          reconnectAttemptsRef.current = 0
           lastMessageTimeRef.current = Date.now()
 
-          // If we reconnected while showing "restarting", kc-agent is back —
+          // If we reconnected while showing "restarting", kc-agent is back -
           // but backend may still be building. Wait for it.
           const cur = progressRef.current
           if (cur && cur.status === 'restarting') {
@@ -233,16 +256,41 @@ export function useUpdateProgress() {
 
         ws.onclose = () => {
           wsRef.current = null
-          // Reconnect after 5 seconds (faster during restarts)
-          reconnectTimer = setTimeout(connect, WS_RECONNECT_MS)
+
+          // Check if we've exceeded max reconnect attempts
+          if (reconnectAttemptsRef.current >= MAX_WS_RECONNECT_ATTEMPTS) {
+            console.warn('[UpdateProgress] Max reconnect attempts exceeded, giving up')
+            return
+          }
+
+          const delay = getBackoffDelay(reconnectAttemptsRef.current)
+          console.debug(`[UpdateProgress] Connection lost, reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+          reconnectTimer = setTimeout(() => {
+            if (!unmounted) {
+              connect(reconnectAttemptsRef.current + 1)
+            }
+          }, delay)
         }
 
         ws.onerror = () => {
           ws.close()
         }
       } catch {
-        // Agent not available, retry later
-        reconnectTimer = setTimeout(connect, WS_RECONNECT_MS)
+        // Agent not available, retry later with exponential backoff
+        if (reconnectAttemptsRef.current >= MAX_WS_RECONNECT_ATTEMPTS) {
+          console.warn('[UpdateProgress] Max reconnect attempts exceeded, giving up')
+          return
+        }
+
+        const delay = getBackoffDelay(reconnectAttemptsRef.current)
+        console.debug(`[UpdateProgress] Agent unavailable, retrying in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+        reconnectTimer = setTimeout(() => {
+          if (!unmounted) {
+            connect(reconnectAttemptsRef.current + 1)
+          }
+        }, delay)
       }
     }
 
@@ -252,6 +300,7 @@ export function useUpdateProgress() {
     connect()
 
     return () => {
+      unmounted = true
       clearTimeout(reconnectTimer)
       if (staleTimerRef.current) {
         clearInterval(staleTimerRef.current)

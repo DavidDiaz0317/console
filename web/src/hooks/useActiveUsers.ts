@@ -20,7 +20,13 @@ export interface ActiveUsersInfo {
 const POLL_INTERVAL = 10_000 // Poll every 10 seconds
 const HEARTBEAT_INTERVAL = 30_000 // Heartbeat every 30 seconds
 const HEARTBEAT_JITTER = 3_000 // Jitter (0-3s) to spread heartbeats without long delays
-const WS_RECONNECT_DELAY = 5_000
+
+// WebSocket reconnection with exponential backoff
+const WS_RECONNECT_BASE_DELAY_MS = 2_000  // Base delay for reconnection attempts
+const WS_RECONNECT_MAX_DELAY_MS = 30_000   // Maximum delay between reconnection attempts
+const MAX_WS_RECONNECT_ATTEMPTS = 5        // Maximum reconnection attempts before giving up
+const BACKOFF_JITTER_MAX_MS = 1_000        // Random jitter to avoid thundering herd
+
 const RECOVERY_DELAY = 30_000 // Retry after circuit breaker trips
 /** Timeout for fetch() call to the active-users endpoint */
 const ACTIVE_USERS_FETCH_TIMEOUT_MS = 5_000
@@ -40,7 +46,8 @@ function isJsonResponse(resp: Response): boolean {
 // Singleton state to share across all hook instances
 let sharedInfo: ActiveUsersInfo = {
   activeUsers: 0,
-  totalConnections: 0 }
+  totalConnections: 0
+}
 let pollStarted = false
 let pollInterval: ReturnType<typeof setInterval> | null = null
 let consecutiveFailures = 0
@@ -55,6 +62,21 @@ let presenceStarted = false
 let presencePingInterval: ReturnType<typeof setInterval> | null = null
 /** Pending reconnect timer for the presence WebSocket — prevents duplicate connections (#7784) */
 let presenceReconnectTimer: ReturnType<typeof setTimeout> | null = null
+/** Track current reconnect attempt number for presence WebSocket */
+let presenceReconnectAttempts = 0
+
+/**
+ * Calculate exponential backoff delay with jitter.
+ * Delay = min(base * 2^attempt, max) + random jitter
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    WS_RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
+    WS_RECONNECT_MAX_DELAY_MS,
+  )
+  const jitter = Math.random() * BACKOFF_JITTER_MAX_MS
+  return delay + jitter
+}
 
 // Netlify heartbeat state (serverless mode)
 let heartbeatStarted = false
@@ -81,6 +103,7 @@ export function __resetForTest(): void {
   if (presenceReconnectTimer) { clearTimeout(presenceReconnectTimer); presenceReconnectTimer = null }
   if (presenceWs) { presenceWs.onclose = null; presenceWs.close(); presenceWs = null }
   presenceStarted = false
+  presenceReconnectAttempts = 0
   if (heartbeatTimeoutId) { clearTimeout(heartbeatTimeoutId); heartbeatTimeoutId = null }
   heartbeatStarted = false
   recentCounts.length = 0
@@ -107,7 +130,8 @@ async function sendHeartbeat() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: getSessionId() }),
-      signal: AbortSignal.timeout(5000) })
+      signal: AbortSignal.timeout(5000)
+    })
   } catch {
     // Best-effort — don't block on failure
   }
@@ -157,6 +181,8 @@ function stopPresenceConnection() {
     presenceWs = null
   }
   presenceStarted = false
+  // Reset reconnect attempts when stopping
+  presenceReconnectAttempts = 0
 }
 
 // Start WebSocket presence connection (backend mode)
@@ -181,6 +207,8 @@ function startPresenceConnection() {
     }
 
     presenceWs.onopen = () => {
+      // Reset reconnect attempts on successful connection
+      presenceReconnectAttempts = 0
       // Read token fresh to avoid stale closure on reconnects
       const currentToken = localStorage.getItem(STORAGE_KEY_TOKEN)
       presenceWs?.send(JSON.stringify({ type: 'auth', token: currentToken }))
@@ -208,11 +236,22 @@ function startPresenceConnection() {
       if (presencePingInterval) clearInterval(presencePingInterval)
       // Clear any pending reconnect before scheduling a new one (#7784)
       if (presenceReconnectTimer) clearTimeout(presenceReconnectTimer)
-      // Reconnect after delay
+
+      // Check if we've exceeded max reconnect attempts
+      if (presenceReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+        console.warn('[ActiveUsers] Max reconnect attempts exceeded, giving up')
+        return
+      }
+
+      const delay = getBackoffDelay(presenceReconnectAttempts)
+      console.debug(`[ActiveUsers] Connection lost, reconnecting in ${Math.round(delay)}ms (attempt ${presenceReconnectAttempts + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+      // Reconnect after exponential backoff delay
       presenceReconnectTimer = setTimeout(() => {
         presenceReconnectTimer = null
+        presenceReconnectAttempts++
         if (presenceStarted && localStorage.getItem(STORAGE_KEY_TOKEN)) connect()
-      }, WS_RECONNECT_DELAY)
+      }, delay)
     }
 
     presenceWs.onerror = () => {
@@ -270,10 +309,11 @@ async function fetchActiveUsers() {
 
     const smoothedData: ActiveUsersInfo = {
       activeUsers: smoothedCount,
-      totalConnections: smoothedCount }
+      totalConnections: smoothedCount
+    }
 
     const dataChanged = smoothedData.activeUsers !== sharedInfo.activeUsers ||
-        smoothedData.totalConnections !== sharedInfo.totalConnections
+      smoothedData.totalConnections !== sharedInfo.totalConnections
     if (dataChanged) {
       sharedInfo = smoothedData
     }
@@ -294,7 +334,7 @@ function startPolling() {
   if (pollStarted) return
   pollStarted = true
   consecutiveFailures = 0 // Reset failures on new start
-  
+
   // Notify loading state
   notifySubscribers({ loading: true, error: false })
 
@@ -397,5 +437,6 @@ export function useActiveUsers() {
     viewerCount,
     isLoading,
     hasError,
-    refetch }
+    refetch
+  }
 }

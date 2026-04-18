@@ -1,8 +1,14 @@
 import { useEffect, useState, useRef } from 'react'
 import { LOCAL_AGENT_WS_URL } from '../lib/constants/network'
 
-/** WebSocket reconnect delay after connection drops */
-const WS_RECONNECT_DELAY_MS = 10_000
+/** Base delay for WebSocket reconnection attempts (doubles each retry) */
+const WS_RECONNECT_BASE_DELAY_MS = 2_000
+/** Maximum delay between WebSocket reconnection attempts */
+const WS_RECONNECT_MAX_DELAY_MS = 30_000
+/** Maximum WebSocket reconnection attempts before giving up */
+const MAX_WS_RECONNECT_ATTEMPTS = 5
+/** Small random jitter added to backoff to avoid thundering herd */
+const BACKOFF_JITTER_MAX_MS = 1_000
 
 /** Auto-dismiss delay after a successful operation */
 export const CLUSTER_PROGRESS_AUTO_DISMISS_MS = 8_000
@@ -24,6 +30,19 @@ export interface ClusterProgress {
 }
 
 /**
+ * Calculate exponential backoff delay with jitter.
+ * Delay = min(base * 2^attempt, max) + random jitter
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    WS_RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
+    WS_RECONNECT_MAX_DELAY_MS,
+  )
+  const jitter = Math.random() * BACKOFF_JITTER_MAX_MS
+  return delay + jitter
+}
+
+/**
  * Hook that listens for local_cluster_progress WebSocket broadcasts from kc-agent.
  * Uses a dedicated WebSocket connection (same pattern as useUpdateProgress).
  */
@@ -32,16 +51,19 @@ export function useClusterProgress() {
   const wsRef = useRef<WebSocket | null>(null)
   /** Track reconnect timer in a ref so cleanup can clear timers scheduled by onclose (#7785) */
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Track current reconnect attempt number */
+  const reconnectAttemptsRef = useRef(0)
 
   useEffect(() => {
     let unmounted = false
 
-    function connect() {
+    function connect(attemptNumber = 0) {
       if (unmounted) return
 
       try {
         const ws = new WebSocket(LOCAL_AGENT_WS_URL)
         wsRef.current = ws
+        reconnectAttemptsRef.current = attemptNumber
 
         ws.onmessage = (event) => {
           try {
@@ -54,19 +76,53 @@ export function useClusterProgress() {
           }
         }
 
+        ws.onopen = () => {
+          // Reset reconnect attempts on successful connection
+          reconnectAttemptsRef.current = 0
+        }
+
         ws.onclose = () => {
           wsRef.current = null
           if (unmounted) return
-          reconnectTimerRef.current = setTimeout(connect, WS_RECONNECT_DELAY_MS)
+
+          // Check if we've exceeded max reconnect attempts
+          if (reconnectAttemptsRef.current >= MAX_WS_RECONNECT_ATTEMPTS) {
+            console.warn('[ClusterProgress] Max reconnect attempts exceeded, giving up')
+            return
+          }
+
+          const delay = getBackoffDelay(reconnectAttemptsRef.current)
+          console.debug(`[ClusterProgress] Connection lost, reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null
+            if (!unmounted) {
+              connect(reconnectAttemptsRef.current + 1)
+            }
+          }, delay)
         }
 
         ws.onerror = () => {
           ws.close()
         }
       } catch {
-        // Agent not available, retry later
+        // Agent not available, retry later with exponential backoff
         if (unmounted) return
-        reconnectTimerRef.current = setTimeout(connect, WS_RECONNECT_DELAY_MS)
+
+        if (reconnectAttemptsRef.current >= MAX_WS_RECONNECT_ATTEMPTS) {
+          console.warn('[ClusterProgress] Max reconnect attempts exceeded, giving up')
+          return
+        }
+
+        const delay = getBackoffDelay(reconnectAttemptsRef.current)
+        console.debug(`[ClusterProgress] Agent unavailable, retrying in ${Math.round(delay)}ms (attempt ${reconnectAttemptsRef.current + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+        reconnectTimerRef.current = setTimeout(() => {
+          reconnectTimerRef.current = null
+          if (!unmounted) {
+            connect(reconnectAttemptsRef.current + 1)
+          }
+        }, delay)
       }
     }
 

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import type {
   AIPrediction,
   AIPredictionsResponse,
-  PredictedRisk } from '../types/predictions'
+  PredictedRisk
+} from '../types/predictions'
 import { getPredictionSettings, getSettingsForBackend } from './usePredictionSettings'
 import { getDemoMode } from './useDemoMode'
 import { isAgentUnavailable, reportAgentDataSuccess, reportAgentDataError } from './useLocalAgent'
@@ -10,7 +11,13 @@ import { setActiveTokenCategory, clearActiveTokenCategory } from './useTokenUsag
 import { fullFetchClusters, clusterCache } from './mcp/shared'
 
 import { LOCAL_AGENT_WS_URL, LOCAL_AGENT_HTTP_URL } from '../lib/constants'
-import { FETCH_DEFAULT_TIMEOUT_MS, AI_PREDICTION_TIMEOUT_MS, WS_RECONNECT_DELAY_MS, UI_FEEDBACK_TIMEOUT_MS, RETRY_DELAY_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, AI_PREDICTION_TIMEOUT_MS, UI_FEEDBACK_TIMEOUT_MS, RETRY_DELAY_MS } from '../lib/constants/network'
+
+// WebSocket reconnection with exponential backoff
+const WS_RECONNECT_BASE_DELAY_MS = 2_000  // Base delay for reconnection attempts
+const WS_RECONNECT_MAX_DELAY_MS = 30_000   // Maximum delay between reconnection attempts
+const MAX_WS_RECONNECT_ATTEMPTS = 5        // Maximum reconnection attempts before giving up
+const BACKOFF_JITTER_MAX_MS = 1_000        // Random jitter to avoid thundering herd
 
 const AGENT_HTTP_URL = LOCAL_AGENT_HTTP_URL
 const POLL_INTERVAL_MS = 30_000 // Poll every 30 seconds as fallback
@@ -28,7 +35,8 @@ const DEMO_AI_PREDICTIONS: AIPrediction[] = [
     confidence: 78,
     generatedAt: new Date().toISOString(),
     provider: 'claude',
-    trend: 'worsening' },
+    trend: 'worsening'
+  },
   {
     id: 'demo-ai-2',
     category: 'anomaly',
@@ -39,7 +47,8 @@ const DEMO_AI_PREDICTIONS: AIPrediction[] = [
     reasonDetailed: 'Pod has restarted 4 times in the past 3 hours, with each restart occurring during traffic peaks. This suggests memory or CPU limits may be too low for peak load. Recommend increasing resource limits or implementing HPA.',
     confidence: 85,
     generatedAt: new Date().toISOString(),
-    provider: 'claude' },
+    provider: 'claude'
+  },
 ]
 
 // Singleton state - shared across all hook instances
@@ -51,7 +60,21 @@ let wsConnected = false
 let ws: WebSocket | null = null
 let singletonPollInterval: ReturnType<typeof setInterval> | null = null
 let wsReconnectTimeout: ReturnType<typeof setTimeout> | null = null
+let wsReconnectAttempts = 0  // Track current reconnect attempt number
 const subscribers = new Set<() => void>()
+
+/**
+ * Calculate exponential backoff delay with jitter.
+ * Delay = min(base * 2^attempt, max) + random jitter
+ */
+function getBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    WS_RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt),
+    WS_RECONNECT_MAX_DELAY_MS,
+  )
+  const jitter = Math.random() * BACKOFF_JITTER_MAX_MS
+  return delay + jitter
+}
 
 // Notify all subscribers
 function notifySubscribers() {
@@ -75,7 +98,8 @@ function aiPredictionToRisk(prediction: AIPrediction): PredictedRisk {
     confidence: prediction.confidence,
     generatedAt: new Date(prediction.generatedAt),
     provider: prediction.provider,
-    trend: prediction.trend }
+    trend: prediction.trend
+  }
 }
 
 /**
@@ -110,7 +134,8 @@ async function fetchAIPredictions(): Promise<void> {
     const response = await fetch(`${AGENT_HTTP_URL}/predictions/ai`, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
-      signal: controller.signal })
+      signal: controller.signal
+    })
     clearTimeout(timeoutId)
 
     if (response.ok) {
@@ -159,11 +184,14 @@ function connectWebSocket(): void {
 
     ws.onopen = () => {
       wsConnected = true
+      // Reset reconnect attempts on successful connection
+      wsReconnectAttempts = 0
       // Send current settings to backend
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'prediction_settings',
-          payload: getSettingsForBackend() }))
+          payload: getSettingsForBackend()
+        }))
       }
     }
 
@@ -193,9 +221,23 @@ function connectWebSocket(): void {
     ws.onclose = () => {
       wsConnected = false
       ws = null
+
       // Only reconnect if there are still active subscribers
       if (subscribers.size > 0) {
-        wsReconnectTimeout = setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS)
+        // Check if we've exceeded max reconnect attempts
+        if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+          console.warn('[AIPredictions] Max reconnect attempts exceeded, giving up')
+          return
+        }
+
+        const delay = getBackoffDelay(wsReconnectAttempts)
+        console.debug(`[AIPredictions] Connection lost, reconnecting in ${Math.round(delay)}ms (attempt ${wsReconnectAttempts + 1}/${MAX_WS_RECONNECT_ATTEMPTS})`)
+
+        wsReconnectTimeout = setTimeout(() => {
+          wsReconnectTimeout = null
+          wsReconnectAttempts++
+          connectWebSocket()
+        }, delay)
       }
     }
 
@@ -219,7 +261,8 @@ async function triggerAnalysis(specificProviders?: string[]): Promise<boolean> {
     aiPredictions = DEMO_AI_PREDICTIONS.map(p => ({
       ...p,
       id: `demo-ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      generatedAt: new Date().toISOString() }))
+      generatedAt: new Date().toISOString()
+    }))
     lastAnalyzed = new Date()
     notifySubscribers()
     return true
@@ -230,7 +273,8 @@ async function triggerAnalysis(specificProviders?: string[]): Promise<boolean> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ providers: specificProviders }),
-      signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+      signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS)
+    })
 
     if (response.ok) {
       // Analysis started, results will come via WebSocket or next poll
@@ -265,6 +309,8 @@ function stopSingleton() {
     ws = null
     wsConnected = false
   }
+  // Reset reconnect attempts when stopping
+  wsReconnectAttempts = 0
 }
 
 /**
@@ -356,7 +402,8 @@ export function useAIPredictions() {
     isEnabled,
     providers: activeProviders,
     analyze,
-    refresh: fetchAIPredictions }
+    refresh: fetchAIPredictions
+  }
 }
 
 /**
@@ -380,6 +427,7 @@ export function syncSettingsToBackend(): void {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({
       type: 'prediction_settings',
-      payload: getSettingsForBackend() }))
+      payload: getSettingsForBackend()
+    }))
   }
 }
