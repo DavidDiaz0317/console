@@ -59,7 +59,7 @@ func (m *MockStore) GetOnboardingResponses(userID uuid.UUID) ([]models.Onboardin
 }
 func (m *MockStore) SetUserOnboarded(userID uuid.UUID) error { return nil }
 
-func (m *MockStore) GetDashboard(id uuid.UUID) (*models.Dashboard, error)            { return nil, nil }
+func (m *MockStore) GetDashboard(id uuid.UUID) (*models.Dashboard, error) { return nil, nil }
 func (m *MockStore) GetUserDashboards(userID uuid.UUID, limit, offset int) ([]models.Dashboard, error) {
 	return nil, nil
 }
@@ -147,7 +147,7 @@ func (m *MockStore) CreateNotification(notification *models.Notification) error 
 func (m *MockStore) GetUserNotifications(userID uuid.UUID, limit int) ([]models.Notification, error) {
 	return nil, nil
 }
-func (m *MockStore) GetUnreadNotificationCount(userID uuid.UUID) (int, error) { return 0, nil }
+func (m *MockStore) GetUnreadNotificationCount(userID uuid.UUID) (int, error)        { return 0, nil }
 func (m *MockStore) MarkNotificationReadByUser(id uuid.UUID, userID uuid.UUID) error { return nil }
 func (m *MockStore) MarkAllNotificationsRead(userID uuid.UUID) error                 { return nil }
 
@@ -173,7 +173,8 @@ func (m *MockStore) GetClusterReservedGPUCount(cluster string, excludeID *uuid.U
 }
 
 func (m *MockStore) InsertUtilizationSnapshot(snapshot *models.GPUUtilizationSnapshot) error {
-	return nil
+	args := m.Called(snapshot)
+	return args.Error(0)
 }
 func (m *MockStore) GetUtilizationSnapshots(reservationID string, limit int) ([]models.GPUUtilizationSnapshot, error) {
 	return nil, nil
@@ -181,8 +182,17 @@ func (m *MockStore) GetUtilizationSnapshots(reservationID string, limit int) ([]
 func (m *MockStore) GetBulkUtilizationSnapshots(reservationIDs []string) (map[string][]models.GPUUtilizationSnapshot, error) {
 	return nil, nil
 }
-func (m *MockStore) DeleteOldUtilizationSnapshots(before time.Time) (int64, error) { return 0, nil }
-func (m *MockStore) ListActiveGPUReservations() ([]models.GPUReservation, error)   { return nil, nil }
+func (m *MockStore) DeleteOldUtilizationSnapshots(before time.Time) (int64, error) {
+	args := m.Called(before)
+	return args.Get(0).(int64), args.Error(1)
+}
+func (m *MockStore) ListActiveGPUReservations() ([]models.GPUReservation, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.GPUReservation), args.Error(1)
+}
 
 func (m *MockStore) RevokeToken(jti string, expiresAt time.Time) error { return nil }
 func (m *MockStore) IsTokenRevoked(jti string) (bool, error)           { return false, nil }
