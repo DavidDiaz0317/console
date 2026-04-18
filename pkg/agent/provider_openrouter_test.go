@@ -1,6 +1,11 @@
 package agent
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -85,5 +90,98 @@ func TestGetEnvKeyForProvider_OpenRouter(t *testing.T) {
 	}
 	if got := getModelEnvKeyForProvider("openrouter"); got != "OPENROUTER_MODEL" {
 		t.Errorf("getModelEnvKeyForProvider(openrouter) = %q, want %q", got, "OPENROUTER_MODEL")
+	}
+}
+
+func TestOpenRouterProvider_Chat(t *testing.T) {
+	// 1. Mock OpenRouter server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify headers
+		if r.Header.Get(openRouterRefererHeader) != openRouterRefererValue {
+			t.Errorf("Missing referer header")
+		}
+		if r.Header.Get(openRouterTitleHeader) != openRouterTitleValue {
+			t.Errorf("Missing title header")
+		}
+
+		// Send mock response
+		resp := openAIResponse{}
+		resp.Choices = []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		}{{}}
+		resp.Choices[0].Message.Content = "Hello from OpenRouter"
+		resp.Usage.PromptTokens = 10
+		resp.Usage.CompletionTokens = 5
+		resp.Usage.TotalTokens = 15
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	// 2. Setup provider
+	t.Setenv("OPENROUTER_BASE_URL", server.URL)
+	t.Setenv("OPENROUTER_API_KEY", "test-key")
+
+	p := NewOpenRouterProvider()
+
+	req := &ChatRequest{Prompt: "Hi"}
+	resp, err := p.Chat(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Chat failed: %v", err)
+	}
+
+	if resp.Content != "Hello from OpenRouter" {
+		t.Errorf("Expected 'Hello from OpenRouter', got %q", resp.Content)
+	}
+	if resp.TokenUsage.TotalTokens != 15 {
+		t.Errorf("Expected 15 tokens, got %d", resp.TokenUsage.TotalTokens)
+	}
+}
+
+func TestOpenRouterProvider_StreamChat(t *testing.T) {
+	// 1. Mock OpenRouter server for streaming
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		// Send mock chunks
+		chunks := []string{"Hello", " from", " OpenRouter", " streaming"}
+		for _, chunk := range chunks {
+			resp := openAIStreamEvent{}
+			resp.Choices = []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			}{{}}
+			resp.Choices[0].Delta.Content = chunk
+			data, _ := json.Marshal(resp)
+			fmt.Fprintf(w, "data: %s\n\n", string(data))
+		}
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	// 2. Setup provider
+	t.Setenv("OPENROUTER_BASE_URL", server.URL)
+	t.Setenv("OPENROUTER_API_KEY", "test-key")
+
+	p := NewOpenRouterProvider()
+
+	var collected string
+	req := &ChatRequest{Prompt: "Hi"}
+	_, err := p.StreamChat(context.Background(), req, func(chunk string) {
+		collected += chunk
+	})
+	if err != nil {
+		t.Fatalf("StreamChat failed: %v", err)
+	}
+
+	expected := "Hello from OpenRouter streaming"
+	if collected != expected {
+		t.Errorf("Expected %q, got %q", expected, collected)
 	}
 }
