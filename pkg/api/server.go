@@ -852,6 +852,7 @@ func (s *Server) setupRoutes() {
 	githubPipelines := handlers.NewGitHubPipelinesHandler(s.config.GitHubToken)
 	api.Get("/github-pipelines", githubPipelines.Serve)
 	api.Post("/github-pipelines", githubPipelines.Serve)
+	api.Get("/github-pipelines/health", githubPipelines.HandleHealth)
 
 	api.Get("/github/*", githubProxy.Proxy)
 

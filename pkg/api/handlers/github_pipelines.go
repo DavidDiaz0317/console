@@ -377,6 +377,29 @@ func NewGitHubPipelinesHandler(githubToken string) *GitHubPipelinesHandler {
 	}
 }
 
+// HandleHealth validates the GitHub token by calling GitHub's /user endpoint.
+// Returns 503 if token is missing or invalid, 200 if token is valid.
+func (h *GitHubPipelinesHandler) HandleHealth(c *fiber.Ctx) error {
+	if h.token == "" {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "GITHUB_TOKEN not configured"})
+	}
+
+	ctx, cancel := context.WithTimeout(c.UserContext(), 10*time.Second)
+	defer cancel()
+
+	res, err := h.ghGet(ctx, "/user")
+	if err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "GitHub token validation failed"})
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "GitHub token validation failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
 // Serve routes a request to the right view.
 func (h *GitHubPipelinesHandler) Serve(c *fiber.Ctx) error {
 	view := c.Query("view", "pulse")
