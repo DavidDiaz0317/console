@@ -12,6 +12,7 @@ Helm chart for deploying the KubeStellar Console to a Kubernetes cluster.
 - [Secrets and configuration](#secrets-and-configuration)
 - [Quickstart: Kind or Minikube](#quickstart-kind-or-minikube)
 - [Installing on a real cluster](#installing-on-a-real-cluster)
+- [Schema validation](#schema-validation)
 - [Configuration reference](#configuration-reference)
 - [Troubleshooting](#troubleshooting)
 
@@ -139,6 +140,53 @@ For production installs:
 4. Point your GitHub OAuth app's callback URL at
    `https://<your-fqdn>/api/auth/github/callback`.
 5. `helm install kc ./deploy/helm/kubestellar-console -n kubestellar-console -f your-values.yaml`
+
+## Schema validation
+
+The chart includes a `values.schema.json` file that validates your values at install/upgrade time using JSON Schema. This catches common configuration errors before they reach Kubernetes, providing clear error messages instead of cryptic runtime failures.
+
+### Validated fields
+
+The following fields are validated:
+
+| Field | Type | Constraints |
+|---|---|---|
+| `replicaCount` | integer | minimum: 0 |
+| `image.pullPolicy` | enum | Always, IfNotPresent, Never |
+| `service.type` | enum | ClusterIP, NodePort, LoadBalancer |
+| `service.port` | integer | minimum: 1, maximum: 65535 |
+| `route.tls.termination` | enum | edge, passthrough, reencrypt |
+| `route.tls.insecureEdgeTerminationPolicy` | enum | Redirect, Allow, None |
+| `backup.retentionCount` | integer | minimum: 1 |
+| `backup.successfulJobsHistoryLimit` | integer | minimum: 0 |
+| `backup.failedJobsHistoryLimit` | integer | minimum: 0 |
+
+### Example validation errors
+
+```bash
+# Invalid replicaCount type
+$ helm install kc ./deploy/helm/kubestellar-console --set replicaCount=abc
+Error: values don't meet the specifications of the schema(s) in the chart: 
+- replicaCount: Invalid type. Expected: integer, given: string
+
+# Invalid pullPolicy enum
+$ helm install kc ./deploy/helm/kubestellar-console --set image.pullPolicy=Invalid
+Error: values don't meet the specifications of the schema(s) in the chart:
+- image.pullPolicy: Must be one of: Always, IfNotPresent, Never
+
+# Negative retentionCount
+$ helm install kc ./deploy/helm/kubestellar-console --set backup.retentionCount=-1
+Error: values don't meet the specifications of the schema(s) in the chart:
+- backup.retentionCount: Must be greater than or equal to 1
+```
+
+### IDE autocomplete
+
+Many IDEs (VS Code, JetBrains) automatically provide autocomplete and inline validation for `values.yaml` when `values.schema.json` is present. This helps you catch errors during editing, before running Helm commands.
+
+### Backward compatibility
+
+Schema validation is additive—it only rejects values that would fail at Kubernetes runtime. Existing valid configurations continue to work without changes.
 
 ## Configuration reference
 
