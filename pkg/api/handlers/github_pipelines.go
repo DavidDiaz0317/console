@@ -524,6 +524,8 @@ func (h *GitHubPipelinesHandler) getStale(key string) *ghpCacheEntry {
 // ---------------------------------------------------------------------------
 
 func (h *GitHubPipelinesHandler) ghGet(ctx context.Context, path string) (*http.Response, error) {
+	ctx, cancel := context.WithTimeout(ctx, ghpHTTPTimeout)
+	defer cancel()
 	url := path
 	if !strings.HasPrefix(url, "http") {
 		url = ghpGitHubAPIBase + path
