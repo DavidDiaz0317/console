@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"regexp"
@@ -32,6 +33,7 @@ import (
 
 const (
 	ghpCacheTTL              = 2 * time.Minute
+	ghpCacheStaleTTL         = 1 * time.Hour // Serve stale data for 1h after expiration when GitHub rate-limits
 	ghpMatrixDefaultDays     = 14
 	ghpMatrixMaxDays         = 90
 	ghpHistoryRetentionDays  = 90
@@ -441,6 +443,15 @@ func (h *GitHubPipelinesHandler) serveCached(c *fiber.Ctx, key string, build fun
 		return build(c)
 	})
 	if err != nil {
+		// Try stale cache for GitHub API failures (rate limits, network errors)
+		if stale := h.getStale(key); stale != nil {
+			slog.Info("[github-pipelines] serving stale cache on error", "key", key, "error", err)
+			c.Set("X-Cache", "STALE")
+			c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+			c.Set(fiber.HeaderCacheControl, fmt.Sprintf("public, max-age=%d", int(ghpCacheTTL.Seconds())))
+			return c.Send(stale.body)
+		}
+		// No stale available - return error
 		// Distinguish client-validation errors (unknown repo, bad params) from
 		// upstream GitHub failures so callers get the correct HTTP status.
 		status := fiber.StatusBadGateway
@@ -486,6 +497,26 @@ func (h *GitHubPipelinesHandler) serveCached(c *fiber.Ctx, key string, build fun
 		}
 	}
 	return c.Send(body)
+}
+
+// getStale returns a cached entry even if expired, as long as it is within ghpCacheStaleTTL.
+// Used to serve stale data when GitHub rate-limits us — better than an error.
+func (h *GitHubPipelinesHandler) getStale(key string) *ghpCacheEntry {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	entry, ok := h.cache[key]
+	if !ok {
+		return nil
+	}
+	// Check if entry is within stale window (exp - TTL + staleTTL)
+	staleCutoff := entry.exp.Add(-ghpCacheTTL).Add(ghpCacheStaleTTL)
+	if time.Now().After(staleCutoff) {
+		return nil
+	}
+	// Return a copy to prevent mutation after lock release
+	// Note: cache stores values (not pointers like missions.go), so we create a new entry
+	cp := entry
+	return &cp
 }
 
 // ---------------------------------------------------------------------------
