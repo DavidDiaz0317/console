@@ -274,9 +274,13 @@ Please proceed step by step.`,
           <div className="flex-1">
             <p className="text-red-400 font-medium">{t('intoto_supply_chain.fetchError')}</p>
             <p className="mt-1 text-red-400/80 leading-relaxed">
-              {Object.values(statuses).find(s => s.error)?.error?.includes('.') 
-                ? t(Object.values(statuses).find(s => s.error)?.error as any) 
-                : t('intoto_supply_chain.fetchErrorHint')}{' '}
+              {(() => {
+                const errorMsg = Object.values(statuses).find(s => s.error)?.error
+                if (typeof errorMsg === 'string' && errorMsg.includes('.')) {
+                  return t(errorMsg as any) // eslint-disable-line @typescript-eslint/no-explicit-any -- dynamic translation key, runtime guard ensures safety
+                }
+                return t('intoto_supply_chain.fetchErrorHint')
+              })()}{' '}
               <button
                 onClick={() => window.location.reload()}
                 className="text-red-400 underline hover:text-red-300 transition-colors"
