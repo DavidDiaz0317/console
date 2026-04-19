@@ -344,7 +344,7 @@ func NewServer(cfg Config) (*Server, error) {
 
 	// Start GPU utilization background worker (collects hourly snapshots)
 	if k8sClient != nil {
-		server.gpuUtilWorker = NewGPUUtilizationWorker(db, k8sClient)
+		server.gpuUtilWorker = NewGPUUtilizationWorker(db, k8sClient, notificationService)
 		server.gpuUtilWorker.Start()
 	} else {
 		slog.Info("[Server] GPU utilization worker skipped — no Kubernetes client available")

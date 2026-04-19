@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/kubestellar/console/pkg/k8s"
 	"github.com/kubestellar/console/pkg/models"
+	"github.com/kubestellar/console/pkg/notifications"
 	"github.com/kubestellar/console/pkg/store"
 )
 
@@ -22,6 +24,10 @@ const (
 	snapshotRetentionDays = 90
 	// fullUtilizationPct is the utilization percentage used when GPUs are active but no metrics API exists
 	fullUtilizationPct = 100.0
+	// defaultOverThreshold is the default threshold for over-utilization alerts
+	defaultOverThreshold = 90.0
+	// defaultUnderThreshold is the default threshold for under-utilization alerts
+	defaultUnderThreshold = 20.0
 )
 
 const (
@@ -33,17 +39,21 @@ const (
 
 // GPUUtilizationWorker periodically collects GPU utilization data for active reservations
 type GPUUtilizationWorker struct {
-	store      store.Store
-	k8sClient  *k8s.MultiClusterClient
-	interval   time.Duration
-	stopCh     chan struct{}
-	stopOnce   sync.Once // protects stopCh from double-close panic
-	baseCtx    context.Context
-	baseCancel context.CancelFunc
+	store              store.Store
+	k8sClient          *k8s.MultiClusterClient
+	interval           time.Duration
+	stopCh             chan struct{}
+	stopOnce           sync.Once // protects stopCh from double-close panic
+	baseCtx            context.Context
+	baseCancel         context.CancelFunc
+	gpuMetricsEnabled  bool
+	notificationService *notifications.Service
+	overThreshold      float64
+	underThreshold     float64
 }
 
 // NewGPUUtilizationWorker creates a new GPU utilization worker
-func NewGPUUtilizationWorker(s store.Store, k8sClient *k8s.MultiClusterClient) *GPUUtilizationWorker {
+func NewGPUUtilizationWorker(s store.Store, k8sClient *k8s.MultiClusterClient, notificationService *notifications.Service) *GPUUtilizationWorker {
 	intervalMs := defaultUtilPollIntervalMs
 	if envVal := os.Getenv("GPU_UTIL_POLL_INTERVAL_MS"); envVal != "" {
 		if parsed, err := strconv.Atoi(envVal); err == nil && parsed > 0 {
@@ -51,14 +61,34 @@ func NewGPUUtilizationWorker(s store.Store, k8sClient *k8s.MultiClusterClient) *
 		}
 	}
 
+	gpuMetricsEnabled := os.Getenv("GPU_METRICS_ENABLED") == "true"
+
+	overThreshold := defaultOverThreshold
+	if envVal := os.Getenv("GPU_UTIL_OVER_THRESHOLD"); envVal != "" {
+		if parsed, err := strconv.ParseFloat(envVal, 64); err == nil && parsed > 0 && parsed <= 100 {
+			overThreshold = parsed
+		}
+	}
+
+	underThreshold := defaultUnderThreshold
+	if envVal := os.Getenv("GPU_UTIL_UNDER_THRESHOLD"); envVal != "" {
+		if parsed, err := strconv.ParseFloat(envVal, 64); err == nil && parsed >= 0 && parsed <= 100 {
+			underThreshold = parsed
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &GPUUtilizationWorker{
-		store:      s,
-		k8sClient:  k8sClient,
-		interval:   time.Duration(intervalMs) * time.Millisecond,
-		stopCh:     make(chan struct{}),
-		baseCtx:    ctx,
-		baseCancel: cancel,
+		store:               s,
+		k8sClient:           k8sClient,
+		interval:            time.Duration(intervalMs) * time.Millisecond,
+		stopCh:              make(chan struct{}),
+		baseCtx:             ctx,
+		baseCancel:          cancel,
+		gpuMetricsEnabled:   gpuMetricsEnabled,
+		notificationService: notificationService,
+		overThreshold:       overThreshold,
+		underThreshold:      underThreshold,
 	}
 }
 
@@ -182,6 +212,49 @@ func (w *GPUUtilizationWorker) collectForReservation(ctx context.Context, reserv
 	var gpuUtilPct float64
 	if totalGPUs > 0 {
 		gpuUtilPct = (float64(activeGPUCount) / float64(totalGPUs)) * fullUtilizationPct
+	}
+
+	// Check if utilization exceeds thresholds and send alert
+	if w.notificationService != nil {
+		if gpuUtilPct > w.overThreshold {
+			alert := notifications.Alert{
+				RuleName: "GPU Utilization Over Threshold",
+				Severity: notifications.SeverityWarning,
+				Message:  fmt.Sprintf("GPU utilization %.1f%% exceeds threshold %.1f%%", gpuUtilPct, w.overThreshold),
+				Cluster:  cluster,
+				Namespace: namespace,
+				Details: map[string]interface{}{
+					"reservation_id": reservation.ID.String(),
+					"utilization_pct": gpuUtilPct,
+					"threshold_pct": w.overThreshold,
+					"active_gpus": activeGPUCount,
+					"total_gpus": totalGPUs,
+				},
+				FiredAt: time.Now(),
+			}
+			if err := w.notificationService.SendAlert(alert); err != nil {
+				slog.Error("GPU utilization worker: failed to send over-threshold alert", "error", err)
+			}
+		} else if gpuUtilPct < w.underThreshold {
+			alert := notifications.Alert{
+				RuleName: "GPU Utilization Under Threshold",
+				Severity: notifications.SeverityInfo,
+				Message:  fmt.Sprintf("GPU utilization %.1f%% below threshold %.1f%%", gpuUtilPct, w.underThreshold),
+				Cluster:  cluster,
+				Namespace: namespace,
+				Details: map[string]interface{}{
+					"reservation_id": reservation.ID.String(),
+					"utilization_pct": gpuUtilPct,
+					"threshold_pct": w.underThreshold,
+					"active_gpus": activeGPUCount,
+					"total_gpus": totalGPUs,
+				},
+				FiredAt: time.Now(),
+			}
+			if err := w.notificationService.SendAlert(alert); err != nil {
+				slog.Error("GPU utilization worker: failed to send under-threshold alert", "error", err)
+			}
+		}
 	}
 
 	snapshot := &models.GPUUtilizationSnapshot{
