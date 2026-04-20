@@ -63,21 +63,12 @@ func (m *MultiClusterClient) GetPods(ctx context.Context, contextName, namespace
 					ci.Message = cs.State.Terminated.Message
 				}
 			}
-			// Check for GPU resource requests (nvidia.com/gpu, amd.com/gpu)
-			if c.Resources.Requests != nil {
-				for resourceName, qty := range c.Resources.Requests {
-					if resourceName == "nvidia.com/gpu" || resourceName == "amd.com/gpu" {
-						ci.GPURequested = int(qty.Value())
-					}
-				}
-			}
-			if ci.GPURequested == 0 && c.Resources.Limits != nil {
-				for resourceName, qty := range c.Resources.Limits {
-					if resourceName == "nvidia.com/gpu" || resourceName == "amd.com/gpu" {
-						ci.GPURequested = int(qty.Value())
-					}
-				}
-			}
+			// Sum GPU/accelerator resource requests across all recognized
+			// vendors (NVIDIA, AMD, Intel GPU, Habana/Intel Gaudi). The helper
+			// keeps this in sync with GetGPUNodes so pod-level GPURequested
+			// matches node-level allocations instead of silently dropping
+			// Intel/Gaudi workloads (#9090).
+			ci.GPURequested = containerGPURequest(c)
 			containers = append(containers, ci)
 		}
 
@@ -410,19 +401,35 @@ func (m *MultiClusterClient) GetNodes(ctx context.Context, contextName string) (
 			info.PodCapacity = pods.String()
 		}
 
-		// Get GPU count from allocatable resources (nvidia, amd, intel)
-		if gpu, ok := node.Status.Allocatable["nvidia.com/gpu"]; ok {
+		// Get GPU count from allocatable resources, matching the vendor list in
+		// GetGPUNodes / containerGPURequest so node-level and pod-level GPU
+		// tracking stay consistent across NVIDIA, AMD, Intel GPU and
+		// Habana/Intel Gaudi silicon (#9090).
+		if gpu, ok := node.Status.Allocatable[ResourceNvidiaGPU]; ok {
 			info.GPUCount = int(gpu.Value())
-			// Get GPU type from labels
 			if gpuType, ok := node.Labels["nvidia.com/gpu.product"]; ok {
 				info.GPUType = gpuType
 			}
-		} else if gpu, ok := node.Status.Allocatable["amd.com/gpu"]; ok {
+		} else if gpu, ok := node.Status.Allocatable[ResourceAMDGPU]; ok {
 			info.GPUCount = int(gpu.Value())
 			info.GPUType = "AMD GPU"
-		} else if gpu, ok := node.Status.Allocatable["gpu.intel.com/i915"]; ok {
+		} else if gpu, ok := node.Status.Allocatable[ResourceIntelGPUi915]; ok {
 			info.GPUCount = int(gpu.Value())
 			info.GPUType = "Intel GPU"
+		} else if gpu, ok := node.Status.Allocatable[ResourceHabanaGaudi2]; ok {
+			info.GPUCount = int(gpu.Value())
+			info.GPUType = "Intel Gaudi2"
+		} else if gpu, ok := node.Status.Allocatable[ResourceHabanaGaudi]; ok {
+			info.GPUCount = int(gpu.Value())
+			info.GPUType = "Intel Gaudi"
+		} else if gpu, ok := node.Status.Allocatable[ResourceIntelGaudi]; ok {
+			info.GPUCount = int(gpu.Value())
+			// Prefer vendor-reported product label when present.
+			if gpuType, ok := node.Labels["intel.com/gaudi.product"]; ok {
+				info.GPUType = gpuType
+			} else {
+				info.GPUType = "Intel Gaudi"
+			}
 		}
 
 		// Get NIC/InfiniBand count from allocatable resources and labels
