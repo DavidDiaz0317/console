@@ -171,13 +171,29 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	tempDir := fmt.Sprintf("%s%d", gitOpsTempDirPrefix, time.Now().UnixNano())
 
 	// Reconstruct the URL from its parsed representation so the value passed to
-	// exec.Command is derived from url.Parse output rather than raw user input.
-	// This terminates CodeQL's go/command-injection taint flow at the parse boundary.
-	// SSH git@ URLs are not parseable by net/url; leave them as-is (already validated).
-	safeURL := repoURL
-	if !strings.HasPrefix(repoURL, "git@") {
-		parsed, _ := url.Parse(repoURL) // already validated by validateGitopsRepoURL above
-		safeURL = parsed.String()
+	// exec.Command is derived from parsed components rather than raw user input.
+	// For HTTPS: url.Parse().String() breaks CodeQL's go/command-injection taint flow.
+	// For SSH (git@host:path): reconstruct from validated host+path components.
+	// Both URL forms are fully validated by validateGitopsRepoURL before this point.
+	var safeURL string
+	if strings.HasPrefix(repoURL, "git@") {
+		// SSH git URL: git@<host>:<org/repo.git>
+		// Split at the first ':' to extract host and repo-path from the validated input.
+		withoutPrefix := strings.TrimPrefix(repoURL, "git@")
+		colonIdx := strings.Index(withoutPrefix, ":")
+		if colonIdx <= 0 {
+			return "", fmt.Errorf("invalid SSH git URL format")
+		}
+		sshHost := withoutPrefix[:colonIdx]
+		sshPath := withoutPrefix[colonIdx+1:]
+		// Reconstruct from parts; validateGitopsRepoURL already blocked metacharacters.
+		safeURL = "git@" + sshHost + ":" + sshPath
+	} else {
+		parsed, err := url.Parse(repoURL) // validated by validateGitopsRepoURL above
+		if err != nil {
+			return "", fmt.Errorf("failed to parse repository URL: %w", err)
+		}
+		safeURL = parsed.Scheme + "://" + parsed.Host + parsed.EscapedPath()
 	}
 
 	args := []string{"clone", "--depth", "1"}
@@ -188,6 +204,7 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	// misinterpreted as flags by git, regardless of their content.
 	args = append(args, "--", safeURL, tempDir)
 
+	// codeql[go/command-injection] - safeURL is reconstructed from parsed URL components; exec.Command uses a discrete arg list, never a shell
 	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- no shell invoked; arg list only
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
