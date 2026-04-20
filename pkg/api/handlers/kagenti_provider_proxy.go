@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/kubestellar/console/pkg/kagenti_provider"
 )
+
+// kagentiSSELineBufferBytes is the per-line read buffer for SSE streaming responses.
+// 256 KB handles large JSON payloads in a single SSE event.
+const kagentiSSELineBufferBytes = 256 * 1024
 
 // KagentiProviderProxyHandler proxies requests to the kagenti A2A endpoint.
 type KagentiProviderProxyHandler struct {
@@ -72,7 +77,7 @@ func (h *KagentiProviderProxyHandler) Chat(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}
-	defer stream.Close()
+	// stream is closed inside the stream writer callback.
 
 	// Set SSE headers
 	c.Set("Content-Type", "text/event-stream")
@@ -80,29 +85,87 @@ func (h *KagentiProviderProxyHandler) Chat(c *fiber.Ctx) error {
 	c.Set("Connection", "keep-alive")
 
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
-		scanner := bufio.NewScanner(stream)
-		// Use a 64KB buffer for potentially large chunks
-		buf := make([]byte, 64*1024)
-		scanner.Buffer(buf, len(buf))
+		defer stream.Close()
 
-		for scanner.Scan() {
-			line := scanner.Text()
-			fmt.Fprintf(w, "data: %s\n\n", line)
-			w.Flush()
+		reader := bufio.NewReaderSize(stream, kagentiSSELineBufferBytes)
+		doneSent := false
+
+		for {
+			line, err := reader.ReadString('\n')
+			line = strings.TrimRight(line, "\r\n")
+
+			if line != "" {
+				payload := line
+				if strings.HasPrefix(line, "data: ") {
+					payload = line[6:]
+				}
+
+				if payload == "[DONE]" {
+					fmt.Fprintf(w, "data: [DONE]\n\n")
+					w.Flush()
+					doneSent = true
+					break
+				}
+
+				text := extractTextFromChunk(payload)
+				fmt.Fprintf(w, "data: %s\n\n", text)
+				w.Flush()
+			}
+
+			if err != nil {
+				if err != io.EOF {
+					fmt.Fprintf(w, "data: {\"error\": \"stream interrupted: %s\"}\n\n", err.Error())
+					w.Flush()
+				}
+				break
+			}
 		}
 
-		if err := scanner.Err(); err != nil {
-			// Stream was interrupted — send error event instead of [DONE]
-			fmt.Fprintf(w, "data: {\"error\": \"stream interrupted\"}\n\n")
+		if !doneSent {
+			fmt.Fprintf(w, "data: [DONE]\n\n")
 			w.Flush()
-			return
 		}
-
-		fmt.Fprintf(w, "data: [DONE]\n\n")
-		w.Flush()
 	})
 
 	return nil
+}
+
+// extractTextFromChunk extracts text fields from known JSON chunk shapes.
+func extractTextFromChunk(s string) string {
+	if len(s) == 0 || s[0] != '{' {
+		return s // not JSON, pass through as-is
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		return s
+	}
+	// {"type": "text", "text": "..."}
+	if raw, ok := m["text"]; ok {
+		var t string
+		if json.Unmarshal(raw, &t) == nil {
+			return t
+		}
+	}
+	// {"content": "..."}
+	if raw, ok := m["content"]; ok {
+		var t string
+		if json.Unmarshal(raw, &t) == nil {
+			return t
+		}
+	}
+	// {"delta": {"text": "..."}}
+	if raw, ok := m["delta"]; ok {
+		var delta map[string]json.RawMessage
+		if json.Unmarshal(raw, &delta) == nil {
+			if tRaw, ok := delta["text"]; ok {
+				var t string
+				if json.Unmarshal(tRaw, &t) == nil {
+					return t
+				}
+			}
+		}
+	}
+	return s // unknown schema, pass through raw
 }
 
 // kagentiCallToolRequest is the request body for the CallTool endpoint.
