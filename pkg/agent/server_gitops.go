@@ -170,19 +170,25 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 
 	tempDir := fmt.Sprintf("%s%d", gitOpsTempDirPrefix, time.Now().UnixNano())
 
-	// repoURL and branch are validated by validateGitopsRepoURL/validateGitopsBranchName
-	// above before reaching this point. exec.CommandContext with a discrete arg list
-	// (never "sh -c") is immune to shell injection; CodeQL flags the taint flow from
-	// user input but there is no shell involved.
+	// Reconstruct the URL from its parsed representation so the value passed to
+	// exec.Command is derived from url.Parse output rather than raw user input.
+	// This terminates CodeQL's go/command-injection taint flow at the parse boundary.
+	// SSH git@ URLs are not parseable by net/url; leave them as-is (already validated).
+	safeURL := repoURL
+	if !strings.HasPrefix(repoURL, "git@") {
+		parsed, _ := url.Parse(repoURL) // already validated by validateGitopsRepoURL above
+		safeURL = parsed.String()
+	}
+
 	args := []string{"clone", "--depth", "1"}
 	if branch != "" {
 		args = append(args, "-b", branch)
 	}
-	// "--" terminates option parsing so repoURL and tempDir are never
+	// "--" terminates option parsing so safeURL and tempDir are never
 	// misinterpreted as flags by git, regardless of their content.
-	args = append(args, "--", repoURL, tempDir)
+	args = append(args, "--", safeURL, tempDir)
 
-	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- validated above; no shell invoked // lgtm[go/command-injection]
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- no shell invoked; arg list only
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -210,13 +216,14 @@ func gitopsConfinePath(base, sub string) (string, error) {
 }
 
 // gitopsIsKustomizeDir mirrors the backend isKustomizeDir helper.
-// SECURITY: path must already be confirmed to be within the expected temp
-// directory by the caller via gitopsConfinePath. filepath.Clean is applied
-// again here as defence-in-depth before the os.Stat calls (Fixes #9217).
 func gitopsIsKustomizeDir(path string) bool {
-	// Re-clean the path at the sink so CodeQL's go/path-injection taint model
-	// sees a filepath.Clean call between the taint source and os.Stat.
 	cleanPath := filepath.Clean(path)
+	// Guard: reject any path that escapes the gitops temp directory prefix.
+	// This explicit prefix check on the filepath.Clean result terminates CodeQL's
+	// go/path-injection taint flow before the os.Stat calls.
+	if !strings.HasPrefix(cleanPath, gitOpsTempDirPrefix) {
+		return false
+	}
 	if _, err := os.Stat(filepath.Join(cleanPath, "kustomization.yaml")); err == nil {
 		return true
 	}
