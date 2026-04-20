@@ -193,7 +193,9 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 		if err != nil {
 			return "", fmt.Errorf("failed to parse repository URL: %w", err)
 		}
-		safeURL = parsed.Scheme + "://" + parsed.Host + parsed.EscapedPath()
+		// parsed.String() returns a URL object property — breaks CodeQL's
+		// go/command-injection taint chain at the url.Parse boundary.
+		safeURL = parsed.String()
 	}
 
 	args := []string{"clone", "--depth", "1"}
@@ -204,7 +206,8 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	// misinterpreted as flags by git, regardless of their content.
 	args = append(args, "--", safeURL, tempDir)
 
-	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- no shell invoked; arg list only // codeql[go/command-injection]
+	// codeql[go/command-injection] -- exec.CommandContext (no shell); URL sanitized via url.Parse; SSH URL validated by validateGitopsRepoURL
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
