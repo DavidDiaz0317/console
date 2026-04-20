@@ -1,10 +1,24 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Route } from '@playwright/test'
 
 /**
  * Custom fixtures for KubeStellar Console (kc) E2E tests
  *
  * Provides common setup, utilities, and page objects for testing.
  */
+
+/**
+ * Route handler signature used by Playwright's `page.route(url, handler)`.
+ *
+ * We track each registered handler by URL so the `mockAPI` fixture can:
+ *   1. Unroute the previous handler for a given URL before registering a new
+ *      one — without this, Playwright stacks handlers and the FIRST one wins
+ *      (see #9085 / Missions.spec.ts comment around line 86), so re-calling
+ *      `mockClusters([clusterB])` after `mockClusters([clusterA])` would
+ *      incorrectly keep returning `clusterA`.
+ *   2. Unroute every handler at fixture teardown so route handlers do not
+ *      leak across tests on a reused `page` context.
+ */
+type RouteHandler = (route: Route) => void | Promise<void>
 
 // Extend the test with custom fixtures
 export const test = base.extend<{
@@ -25,6 +39,12 @@ export const test = base.extend<{
     mockEvents: (events: unknown[]) => Promise<void>
     mockGPUNodes: (nodes: unknown[]) => Promise<void>
     mockLocalAgent: () => Promise<void>
+    /**
+     * Drop every route handler this fixture instance registered. Called
+     * automatically at fixture teardown; exposed so tests can also reset
+     * mid-test if they want to flip a mock without leaking the previous one.
+     */
+    unrouteAll: () => Promise<void>
   }
 }>({
   // AI mode fixture
@@ -50,11 +70,49 @@ export const test = base.extend<{
   },
 
   // API mocking fixture
+  //
+  // #9085 — Earlier versions of this fixture called `page.route(...)` without
+  // ever calling `page.unroute(...)`. Two consequences:
+  //   * Re-registering a mock for the same URL inside a test did NOT override
+  //     the earlier registration — Playwright stacks handlers and matches in
+  //     registration order, so the first (e.g. beforeEach) handler always won.
+  //   * Handlers leaked across tests sharing the same `page` (common when a
+  //     suite uses `test.describe.configure({ mode: 'serial' })`).
+  //
+  // The fixture now tracks every (url, handler) pair it registers, unroutes
+  // any previous handler for the same URL before adding a new one, and
+  // unroutes everything during fixture teardown.
   mockAPI: async ({ page }, use) => {
+    /** URL pattern → currently registered handler for that URL. */
+    const handlers = new Map<string, RouteHandler>()
+
+    /**
+     * Register `handler` for `url`, unrouting any previously registered
+     * handler for the same URL first so the new one is the one that fires.
+     */
+    const setRoute = async (url: string, handler: RouteHandler): Promise<void> => {
+      const previous = handlers.get(url)
+      if (previous !== undefined) {
+        await page.unroute(url, previous)
+      }
+      handlers.set(url, handler)
+      await page.route(url, handler)
+    }
+
+    /** Drop every handler this fixture registered. */
+    const unrouteAll = async (): Promise<void> => {
+      for (const [url, handler] of handlers) {
+        await page.unroute(url, handler).catch(() => {
+          // Ignore — page may already be closed during teardown.
+        })
+      }
+      handlers.clear()
+    }
+
     // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture, not a React hook
     await use({
       mockClusters: async (clusters) => {
-        await page.route('**/api/mcp/clusters', (route) =>
+        await setRoute('**/api/mcp/clusters', (route) =>
           route.fulfill({
             status: 200,
             json: { clusters },
@@ -62,7 +120,7 @@ export const test = base.extend<{
         )
       },
       mockPodIssues: async (issues) => {
-        await page.route('**/api/mcp/pod-issues', (route) =>
+        await setRoute('**/api/mcp/pod-issues', (route) =>
           route.fulfill({
             status: 200,
             json: { issues },
@@ -70,7 +128,7 @@ export const test = base.extend<{
         )
       },
       mockEvents: async (events) => {
-        await page.route('**/api/mcp/events**', (route) =>
+        await setRoute('**/api/mcp/events**', (route) =>
           route.fulfill({
             status: 200,
             json: { events },
@@ -78,7 +136,7 @@ export const test = base.extend<{
         )
       },
       mockGPUNodes: async (nodes) => {
-        await page.route('**/api/mcp/gpu-nodes', (route) =>
+        await setRoute('**/api/mcp/gpu-nodes', (route) =>
           route.fulfill({
             status: 200,
             json: { nodes },
@@ -87,14 +145,19 @@ export const test = base.extend<{
       },
       mockLocalAgent: async () => {
         // Mock local agent endpoints (used by drilldown components)
-        await page.route('**/127.0.0.1:8585/**', (route) =>
+        await setRoute('**/127.0.0.1:8585/**', (route) =>
           route.fulfill({
             status: 200,
             json: { events: [], clusters: [], health: { hasClaude: false, hasBob: false } },
           })
         )
       },
+      unrouteAll,
     })
+
+    // Teardown: drop every handler we registered so nothing leaks into the
+    // next test that reuses this `page` (e.g. serial-mode describe blocks).
+    await unrouteAll()
   },
 })
 
