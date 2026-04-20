@@ -413,6 +413,8 @@ func (h *MissionsHandler) RegisterRoutes(g fiber.Router) {
 func (h *MissionsHandler) RegisterPublicRoutes(g fiber.Router) {
 	g.Get("/browse", h.BrowseConsoleKB)
 	g.Get("/file", h.GetMissionFile)
+	g.Get("/scores", h.GetKBScores)
+	g.Get("/scores/:project/:id", h.GetMissionScore)
 }
 
 // githubGet makes a GET request to the GitHub API, falling back to unauthenticated if token is expired.
@@ -463,6 +465,83 @@ func (h *MissionsHandler) githubGet(url string, clientToken string) (*http.Respo
 	return resp, nil
 }
 
+// cacheStatus indicates whether a fetchWithCache result came from a fresh cache
+// hit, a network fetch (cache miss), or a stale entry served during upstream errors.
+type cacheStatus string
+
+const (
+	cacheStatusHit   cacheStatus = "HIT"
+	cacheStatusMiss  cacheStatus = "MISS"
+	cacheStatusStale cacheStatus = "STALE"
+)
+
+// fetchWithCache encapsulates the common fetch-with-cache pattern used by GitHub wrappers.
+// It checks fresh cache, calls githubGet, drains/limits the body, and falls back to stale cache on upstream/rate-limit errors.
+// It does NOT store the final response in fresh cache (callers must do this to support transforming before caching).
+type githubFetchResult struct {
+	Body        []byte
+	StatusCode  int
+	ContentType string
+	CacheStatus cacheStatus
+}
+
+func (h *MissionsHandler) fetchWithCache(c *fiber.Ctx, cacheKey, url, logContext string, logArgs ...any) (*githubFetchResult, error) {
+	if cached := h.cache.get(cacheKey, missionsCacheTTL); cached != nil {
+		slog.Info("[missions] cache HIT "+logContext, logArgs...)
+		return &githubFetchResult{
+			Body:        cached.body,
+			StatusCode:  cached.statusCode,
+			ContentType: cached.contentType,
+			CacheStatus: cacheStatusHit,
+		}, nil
+	}
+
+	resp, err := h.githubGet(url, c.Get("X-GitHub-Token"))
+	if err != nil {
+		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
+			slog.Error("[missions] upstream error, serving stale cache "+logContext, append(logArgs, "error", err)...)
+			return &githubFetchResult{
+				Body:        stale.body,
+				StatusCode:  stale.statusCode,
+				ContentType: stale.contentType,
+				CacheStatus: cacheStatusStale,
+			}, nil
+		}
+		var statusCode = http.StatusBadGateway
+		if resp != nil && resp.StatusCode > 0 {
+			statusCode = resp.StatusCode
+		}
+		return &githubFetchResult{StatusCode: statusCode}, fmt.Errorf("upstream request failed")
+	}
+	defer resp.Body.Close()
+
+	limitedBody := io.LimitReader(resp.Body, missionsMaxBodyBytes)
+	body, ioErr := io.ReadAll(limitedBody)
+	if ioErr != nil {
+		slog.Error("[missions] failed to read response body "+logContext, append(logArgs, "error", ioErr)...)
+		return &githubFetchResult{StatusCode: http.StatusInternalServerError}, fmt.Errorf("failed to read response body")
+	}
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
+			slog.Info("[missions] rate-limited, serving stale cache "+logContext, append(logArgs, "status", resp.StatusCode)...)
+			return &githubFetchResult{
+				Body:        stale.body,
+				StatusCode:  stale.statusCode,
+				ContentType: stale.contentType,
+				CacheStatus: cacheStatusStale,
+			}, nil
+		}
+		return &githubFetchResult{StatusCode: resp.StatusCode}, fmt.Errorf("GitHub API rate limit exceeded — no cached data available")
+	}
+
+	return &githubFetchResult{
+		Body:        body,
+		StatusCode:  resp.StatusCode,
+		CacheStatus: cacheStatusMiss,
+	}, nil
+}
+
 // ---------- Browse knowledge base ----------
 
 // BrowseConsoleKB lists directory contents from the kubestellar/console-kb repo.
@@ -478,58 +557,35 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 	}
 
 	cacheKey := "browse:" + path
-
-	// Check fresh cache first
-	if cached := h.cache.get(cacheKey, missionsCacheTTL); cached != nil {
-		slog.Info("[missions] cache HIT (browse)", "path", path)
-		c.Set("Content-Type", cached.contentType)
-		c.Set("X-Cache", "HIT")
-		return c.Status(cached.statusCode).Send(cached.body)
-	}
-
 	url := fmt.Sprintf("%s/repos/kubestellar/console-kb/contents/%s?ref=master", h.githubAPIURL, path)
 
-	resp, err := h.githubGet(url, c.Get("X-GitHub-Token"))
+	res, err := h.fetchWithCache(c, cacheKey, url, "(browse)", "path", path)
 	if err != nil {
-		// Upstream failed — try stale cache
-		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
-			slog.Error("[missions] upstream error, serving stale cache (browse)", "path", path, "error", err)
-			c.Set("Content-Type", stale.contentType)
-			c.Set("X-Cache", "STALE")
-			return c.Status(stale.statusCode).Send(stale.body)
+		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
+			return c.Status(res.StatusCode).JSON(fiber.Map{
+				"error":  err.Error(),
+				"status": res.StatusCode,
+				"code":   "rate_limited",
+			})
 		}
-		return c.Status(502).JSON(fiber.Map{"error": "upstream request failed"})
-	}
-	defer resp.Body.Close()
-
-	limitedBody := io.LimitReader(resp.Body, missionsMaxBodyBytes)
-	body, err := io.ReadAll(limitedBody)
-	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to read response body"})
+		return c.Status(res.StatusCode).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Rate-limited — serve stale cache if available
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
-			slog.Info("[missions] rate-limited, serving stale cache (browse)", "status", resp.StatusCode, "path", path)
-			c.Set("Content-Type", stale.contentType)
-			c.Set("X-Cache", "STALE")
-			return c.Status(stale.statusCode).Send(stale.body)
-		}
-		return c.Status(resp.StatusCode).JSON(fiber.Map{
-			"error":  "GitHub API rate limit exceeded — no cached data available",
-			"status": resp.StatusCode,
-			"code":   "rate_limited",
-		})
+	if res.CacheStatus != cacheStatusMiss {
+		c.Set("Content-Type", res.ContentType)
+		c.Set("X-Cache", string(res.CacheStatus))
+		return c.Status(res.StatusCode).Send(res.Body)
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusOK {
 		code := "github_error"
-		if resp.StatusCode == http.StatusUnauthorized {
+		if res.StatusCode == http.StatusUnauthorized {
 			code = "token_invalid"
 		}
-		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": "GitHub API error", "status": resp.StatusCode, "code": code})
+		return c.Status(res.StatusCode).JSON(fiber.Map{"error": "GitHub API error", "status": res.StatusCode, "code": code})
 	}
+
+	body := res.Body
 
 	// GitHub returns type:"dir", frontend expects type:"directory" — transform.
 	// #6818 — If the path points to a file (not a directory), GitHub returns a
@@ -635,70 +691,45 @@ func (h *MissionsHandler) GetMissionFile(c *fiber.Ctx) error {
 	}
 
 	cacheKey := "file:" + ref + ":" + path
-
-	// Check fresh cache first
-	if cached := h.cache.get(cacheKey, missionsCacheTTL); cached != nil {
-		slog.Info("[missions] cache HIT (file)", "ref", ref, "path", path)
-		c.Set("Content-Type", cached.contentType)
-		c.Set("X-Cache", "HIT")
-		return c.Status(cached.statusCode).Send(cached.body)
-	}
-
 	url := fmt.Sprintf("%s/kubestellar/console-kb/%s/%s", h.githubRawURL, ref, path)
 
-	resp, err := h.githubGet(url, c.Get("X-GitHub-Token"))
+	res, err := h.fetchWithCache(c, cacheKey, url, "(file)", "ref", ref, "path", path)
 	if err != nil {
-		// Upstream failed — try stale cache
-		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
-			slog.Error("[missions] upstream error, serving stale cache (file)", "ref", ref, "path", path, "error", err)
-			c.Set("Content-Type", stale.contentType)
-			c.Set("X-Cache", "STALE")
-			return c.Status(stale.statusCode).Send(stale.body)
+		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
+			return c.Status(res.StatusCode).JSON(fiber.Map{
+				"error":  err.Error(),
+				"status": res.StatusCode,
+				"code":   "rate_limited",
+			})
 		}
-		return c.Status(502).JSON(fiber.Map{"error": "upstream request failed"})
-	}
-	defer resp.Body.Close()
-
-	limitedBody := io.LimitReader(resp.Body, missionsMaxBodyBytes)
-	body, err := io.ReadAll(limitedBody)
-	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "failed to read response body"})
+		return c.Status(res.StatusCode).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// Rate-limited — serve stale cache if available
-	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
-		if stale := h.cache.getStale(cacheKey, missionsCacheStaleTTL); stale != nil {
-			slog.Info("[missions] rate-limited, serving stale cache (file)", "status", resp.StatusCode, "ref", ref, "path", path)
-			c.Set("Content-Type", stale.contentType)
-			c.Set("X-Cache", "STALE")
-			return c.Status(stale.statusCode).Send(stale.body)
-		}
-		return c.Status(resp.StatusCode).JSON(fiber.Map{
-			"error":  "GitHub API rate limit exceeded — no cached data available",
-			"status": resp.StatusCode,
-			"code":   "rate_limited",
-		})
+	if res.CacheStatus != cacheStatusMiss {
+		c.Set("Content-Type", res.ContentType)
+		c.Set("X-Cache", string(res.CacheStatus))
+		return c.Status(res.StatusCode).Send(res.Body)
 	}
 
-	if resp.StatusCode == http.StatusNotFound {
+	if res.StatusCode == http.StatusNotFound {
 		return c.Status(404).JSON(fiber.Map{"error": "file not found"})
 	}
-	if resp.StatusCode != http.StatusOK {
-		return c.Status(resp.StatusCode).JSON(fiber.Map{"error": "GitHub raw content error"})
+	if res.StatusCode != http.StatusOK {
+		return c.Status(res.StatusCode).JSON(fiber.Map{"error": "GitHub raw content error"})
 	}
 
 	// Cache the successful response
 	h.cache.set(cacheKey, &missionsCacheEntry{
-		body:        body,
+		body:        res.Body,
 		contentType: "text/plain",
 		statusCode:  http.StatusOK,
 		fetchedAt:   time.Now(),
 	})
-	slog.Info("[missions] cache MISS, stored (file)", "ref", ref, "path", path, "bytes", len(body))
+	slog.Info("[missions] cache MISS, stored (file)", "ref", ref, "path", path, "bytes", len(res.Body))
 
 	c.Set("Content-Type", "text/plain")
 	c.Set("X-Cache", "MISS")
-	return c.Send(body)
+	return c.Status(res.StatusCode).Send(res.Body)
 }
 
 // ---------- Validate a mission ----------
@@ -748,6 +779,146 @@ func (h *MissionsHandler) ValidateMission(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"valid": false, "errors": errs})
 	}
 	return c.JSON(fiber.Map{"valid": true})
+}
+
+// ---------- Score Exposure ----------
+
+type indexJsonFormat struct {
+	Version  int `json:"version"`
+	Count    int `json:"count"`
+	Missions []struct {
+		Path               string      `json:"path"`
+		Title              string      `json:"title"`
+		Description        string      `json:"description"`
+		QualityScore       *int        `json:"qualityScore"`
+		QualityPass        *bool       `json:"qualityPass"`
+		QualityIssues      []string    `json:"qualityIssues"`
+		QualitySuggestions []string    `json:"qualitySuggestions"`
+		QualityBreakdown   interface{} `json:"qualityBreakdown"`
+		CncfProjects       []string    `json:"cncfProjects"`
+	} `json:"missions"`
+}
+
+func (h *MissionsHandler) fetchMissionIndex(c *fiber.Ctx) (*indexJsonFormat, error) {
+	cacheKey := "index:master:fixes/index.json"
+	url := fmt.Sprintf("%s/kubestellar/console-kb/master/fixes/index.json", h.githubRawURL)
+
+	res, err := h.fetchWithCache(c, cacheKey, url, "(index json)")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch index: %v", err)
+	}
+
+	var body = res.Body
+	if res.CacheStatus == cacheStatusMiss {
+		if res.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GitHub raw content error")
+		}
+
+		h.cache.set(cacheKey, &missionsCacheEntry{
+			body:        res.Body,
+			contentType: "application/json",
+			statusCode:  http.StatusOK,
+			fetchedAt:   time.Now(),
+		})
+		slog.Info("[missions] cache MISS, stored (index json)", "bytes", len(res.Body))
+	}
+
+	var index indexJsonFormat
+	if err := json.Unmarshal(body, &index); err != nil {
+		slog.Error("[missions] failed to parse index json", "error", err)
+		return nil, fmt.Errorf("failed to parse index")
+	}
+	return &index, nil
+}
+
+// GetKBScores fetches scores across projects
+// GET /api/missions/scores
+func (h *MissionsHandler) GetKBScores(c *fiber.Ctx) error {
+	if isDemoMode(c) {
+		return c.JSON(fiber.Map{"count": 1, "scores": []fiber.Map{
+			{
+				"path":         "fixes/demo/demo-123.json",
+				"title":        "Demo Mission",
+				"project":      "demo",
+				"qualityScore": 85,
+				"qualityPass":  true,
+			},
+		}})
+	}
+	index, err := h.fetchMissionIndex(c)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Filter just the scoring related fields
+	results := make([]fiber.Map, 0)
+	for _, m := range index.Missions {
+		if m.QualityScore != nil {
+			project := "unknown"
+			if len(m.CncfProjects) > 0 {
+				project = m.CncfProjects[0]
+			}
+			results = append(results, fiber.Map{
+				"path":         m.Path,
+				"title":        m.Title,
+				"project":      project,
+				"qualityScore": m.QualityScore,
+				"qualityPass":  m.QualityPass,
+			})
+		}
+	}
+
+	return c.JSON(fiber.Map{"count": len(results), "scores": results})
+}
+
+// GetMissionScore fetches score breakdown for a specific entry
+// GET /api/missions/scores/:project/:id
+func (h *MissionsHandler) GetMissionScore(c *fiber.Ctx) error {
+	if isDemoMode(c) {
+		return c.JSON(fiber.Map{
+			"path":               "fixes/demo/demo-123.json",
+			"project":            "demo",
+			"title":              "Demo Mission",
+			"qualityScore":       85,
+			"qualityBreakdown":   map[string]interface{}{"structure": 90, "completeness": 80},
+			"qualityIssues":      []string{},
+			"qualitySuggestions": []string{"Improve context"},
+		})
+	}
+
+	project := c.Params("project")
+	id := c.Params("id")
+
+	index, err := h.fetchMissionIndex(c)
+	if err != nil {
+		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	for _, m := range index.Missions {
+		mProject := "unknown"
+		if len(m.CncfProjects) > 0 {
+			mProject = m.CncfProjects[0]
+		}
+		// Match by project and filename. Accept both "foo" and "foo.json" from
+		// callers so URL construction on the frontend is flexible.
+		mBase := path.Base(m.Path)
+		if mProject == project && (strings.TrimSuffix(mBase, ".json") == strings.TrimSuffix(id, ".json")) {
+			if m.QualityScore == nil {
+				return c.Status(404).JSON(fiber.Map{"error": "Mission found but has no score associated"})
+			}
+			return c.JSON(fiber.Map{
+				"path":               m.Path,
+				"project":            mProject,
+				"title":              m.Title,
+				"qualityScore":       m.QualityScore,
+				"qualityBreakdown":   m.QualityBreakdown,
+				"qualityIssues":      m.QualityIssues,
+				"qualitySuggestions": m.QualitySuggestions,
+			})
+		}
+	}
+
+	return c.Status(404).JSON(fiber.Map{"error": "KB mission not found"})
 }
 
 // ---------- Share to Slack ----------

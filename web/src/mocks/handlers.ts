@@ -877,6 +877,8 @@ export const handlers = [
   http.get('/api/medium/blog', () => passthrough()),
   http.get('/api/missions/file', () => passthrough()),
   http.get('/api/missions/browse', () => passthrough()),
+  http.all('/api/missions/scores', () => passthrough()),
+  http.all('/api/missions/scores/*', () => passthrough()),
   http.get('/api/rewards/github', () => passthrough()),
   // Public contributor badge (RFC #8862 Phase 3) — backed by a Netlify
   // Function that returns SVG. Must be http.all so that the CORS OPTIONS
