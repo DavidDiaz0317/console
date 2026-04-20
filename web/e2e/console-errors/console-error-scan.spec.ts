@@ -136,6 +136,21 @@ function getOutputDir(): string {
   return dir
 }
 
+/**
+ * Escape a string for safe inclusion in a Markdown table cell.
+ * Prevents markdown injection via pipe characters, backticks, or HTML tags.
+ * Backslashes are escaped first so that subsequent replacements cannot be
+ * reinterpreted as escape sequences by the Markdown renderer.
+ */
+function escapeMdCell(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/`/g, '\\`')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 /** Deduplicate entries by message text within a route */
 function dedup(entries: ConsoleEntry[]): ConsoleEntry[] {
   const seen = new Set<string>()
@@ -232,8 +247,8 @@ function generateMarkdown(report: ScanReport): string {
         : e.type === 'error' ? '❌'
         : e.type === 'warning' ? '⚠️'
         : 'ℹ️'
-      // Truncate long messages and escape pipes
-      const msg = e.text.slice(0, 200).replace(/\|/g, '\\|').replace(/\n/g, ' ')
+      // Truncate long messages and escape markdown-injection characters
+      const msg = escapeMdCell(e.text.slice(0, 200).replace(/\n/g, ' '))
       lines.push(`| ${typeIcon} ${e.type} | ${msg} |`)
     }
     lines.push('')

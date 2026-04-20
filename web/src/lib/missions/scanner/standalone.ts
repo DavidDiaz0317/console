@@ -56,6 +56,22 @@ export function scanMissionFile(jsonContent: string): FileScanResult {
 }
 
 /**
+ * Escape a string for safe inclusion in a Markdown table cell.
+ * Prevents markdown injection via pipe characters, backticks, or HTML tags.
+ * Backslashes are escaped first so that subsequent replacements cannot be
+ * reinterpreted as escape sequences by the Markdown renderer.
+ * Used for all user/API-derived text inserted into table rows.
+ */
+function escapeMdCell(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/`/g, '\\`')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/**
  * Format scan results as a markdown table suitable for PR comments.
  *
  * Output example:
@@ -105,8 +121,8 @@ export function formatScanResultAsMarkdown(
 
   for (const f of result.findings) {
     const sev = `${severityIcon[f.severity] ?? ''} ${f.severity}`
-    const msg = f.message.replace(/\|/g, '\\|')
-    const path = (f.path || '—').replace(/\|/g, '\\|')
+    const msg = escapeMdCell(f.message)
+    const path = escapeMdCell(f.path || '—')
     lines.push(`| ${sev} | \`${f.code}\` | ${msg} | \`${path}\` |`)
   }
 
