@@ -173,7 +173,7 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	// repoURL and branch are validated by validateGitopsRepoURL/validateGitopsBranchName
 	// above before reaching this point. exec.CommandContext with a discrete arg list
 	// (never "sh -c") is immune to shell injection; CodeQL flags the taint flow from
-	// user input but there is no shell involved. // lgtm[go/command-injection]
+	// user input but there is no shell involved.
 	args := []string{"clone", "--depth", "1"}
 	if branch != "" {
 		args = append(args, "-b", branch)
@@ -182,7 +182,7 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	// misinterpreted as flags by git, regardless of their content.
 	args = append(args, "--", repoURL, tempDir)
 
-	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- validated above; no shell invoked
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- validated above; no shell invoked // lgtm[go/command-injection]
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -192,21 +192,35 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	return tempDir, nil
 }
 
-// gitopsIsKustomizeDir mirrors the backend isKustomizeDir helper.
-// SECURITY: Uses filepath.Join (not string concatenation) so CodeQL's
-// path-injection taint model (alerts #561 and #562) can see that the
-// path component is passed through a recognised path-construction API
-// before reaching os.Stat. validateGitopsPath is also called at the
-// sink as a defence-in-depth measure; callers already validate req.Path
-// at handler entry.
-func gitopsIsKustomizeDir(path string) bool {
-	if err := validateGitopsPath(path); err != nil {
-		return false
+// gitopsConfinePath returns the cleaned absolute path of sub relative to base,
+// and an error if the result escapes base. This provides base-directory
+// confinement as a structural defence against path-traversal attacks (Fixes #9217).
+// CodeQL's go/path-injection taint model recognises the explicit prefix check on
+// the filepath.Clean result as a sanitiser, terminating the taint flow.
+func gitopsConfinePath(base, sub string) (string, error) {
+	// filepath.Clean resolves "..", "//", etc. before the prefix check.
+	joined := filepath.Clean(filepath.Join(base, sub))
+	// Ensure the result is anchored within base (add separator to avoid
+	// /tmp/base-foo falsely matching /tmp/base as a prefix of /tmp/base-foo).
+	if !strings.HasPrefix(joined, filepath.Clean(base)+string(filepath.Separator)) &&
+		joined != filepath.Clean(base) {
+		return "", fmt.Errorf("path escapes base directory")
 	}
-	if _, err := os.Stat(filepath.Join(path, "kustomization.yaml")); err == nil {
+	return joined, nil
+}
+
+// gitopsIsKustomizeDir mirrors the backend isKustomizeDir helper.
+// SECURITY: path must already be confirmed to be within the expected temp
+// directory by the caller via gitopsConfinePath. filepath.Clean is applied
+// again here as defence-in-depth before the os.Stat calls (Fixes #9217).
+func gitopsIsKustomizeDir(path string) bool {
+	// Re-clean the path at the sink so CodeQL's go/path-injection taint model
+	// sees a filepath.Clean call between the taint source and os.Stat.
+	cleanPath := filepath.Clean(path)
+	if _, err := os.Stat(filepath.Join(cleanPath, "kustomization.yaml")); err == nil {
 		return true
 	}
-	if _, err := os.Stat(filepath.Join(path, "kustomization.yml")); err == nil {
+	if _, err := os.Stat(filepath.Join(cleanPath, "kustomization.yml")); err == nil {
 		return true
 	}
 	return false
@@ -393,9 +407,16 @@ func (s *Server) handleDetectDrift(w http.ResponseWriter, r *http.Request) {
 
 	manifestPath := tempDir
 	if req.Path != "" {
-		// filepath.Join cleans the result and is recognised by CodeQL's
-		// path-injection taint model as a safe path-construction API.
-		manifestPath = filepath.Join(tempDir, strings.TrimPrefix(req.Path, "/"))
+		// gitopsConfinePath cleans and confines the result to tempDir,
+		// preventing path traversal and breaking the CodeQL taint flow (Fixes #9217).
+		confined, confineErr := gitopsConfinePath(tempDir, strings.TrimPrefix(req.Path, "/"))
+		if confineErr != nil {
+			slog.Warn("[agent] detect-drift: path escapes temp dir", "path", req.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			writeJSON(w, map[string]string{"error": "invalid path: escapes repository root"})
+			return
+		}
+		manifestPath = confined
 	}
 
 	fileFlag := "-f"
@@ -514,9 +535,16 @@ func (s *Server) handleGitopsSync(w http.ResponseWriter, r *http.Request) {
 
 	manifestPath := tempDir
 	if req.Path != "" {
-		// filepath.Join cleans the result and is recognised by CodeQL's
-		// path-injection taint model as a safe path-construction API.
-		manifestPath = filepath.Join(tempDir, strings.TrimPrefix(req.Path, "/"))
+		// gitopsConfinePath cleans and confines the result to tempDir,
+		// preventing path traversal and breaking the CodeQL taint flow (Fixes #9217).
+		confined, confineErr := gitopsConfinePath(tempDir, strings.TrimPrefix(req.Path, "/"))
+		if confineErr != nil {
+			slog.Warn("[agent] sync: path escapes temp dir", "path", req.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			writeJSON(w, map[string]string{"error": "invalid path: escapes repository root"})
+			return
+		}
+		manifestPath = confined
 	}
 
 	fileFlag := "-f"
