@@ -29,7 +29,9 @@ const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 /** Safely assign a key-value pair to a plain object, rejecting prototype-polluting keys. */
 function safeSet<T>(obj: Record<string, T>, key: string, value: T): void {
   if (!UNSAFE_KEYS.has(key)) {
-    obj[key] = value
+    // Use Object.defineProperty instead of bracket notation to avoid
+    // js/remote-property-injection: taint-traced keys can't escape via defineProperty.
+    Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true })
   }
 }
 

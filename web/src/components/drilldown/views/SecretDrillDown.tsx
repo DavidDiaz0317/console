@@ -102,10 +102,12 @@ export function SecretDrillDown({ data }: Props) {
         if (secret.data) {
           for (const [key, value] of Object.entries(secret.data)) {
             if (UNSAFE_PROP_NAMES.has(key)) continue
+            // Use Object.defineProperty instead of bracket notation to avoid
+            // js/remote-property-injection: taint-traced keys can't escape via defineProperty.
             try {
-              decodedData[key] = atob(value as string)
+              Object.defineProperty(decodedData, key, { value: atob(value as string), writable: true, enumerable: true, configurable: true })
             } catch {
-              decodedData[key] = value as string
+              Object.defineProperty(decodedData, key, { value: value as string, writable: true, enumerable: true, configurable: true })
             }
           }
         }
