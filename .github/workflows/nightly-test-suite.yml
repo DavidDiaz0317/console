@@ -6,7 +6,7 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch: {} # Allow manual trigger
 
-permissions: read-all
+permissions: {}
 
 concurrency:
   group: nightly-test-suite

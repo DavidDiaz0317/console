@@ -7,13 +7,17 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-permissions:
-  security-events: write
-  contents: read
-  actions: read
-  id-token: write
+permissions: {}
 
 jobs:
   analysis:
+    permissions:
+      # Required to upload SARIF results to the GitHub Security tab
+      security-events: write
+      # Required to check out the repo and read workflow files
+      contents: read
+      actions: read
+      # Required for OIDC token for trusted publishing
+      id-token: write
     uses: kubestellar/infra/.github/workflows/reusable-scorecard.yml@main
     secrets: inherit
