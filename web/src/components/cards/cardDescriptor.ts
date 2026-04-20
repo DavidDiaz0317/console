@@ -67,6 +67,7 @@ export type CardCatalogCategory =
   | 'Orchestration'
   | 'Streaming & Messaging'
   | 'Multi-Tenancy'
+  | 'Observability'
 
 /**
  * Single source of truth for everything needed to register a card.

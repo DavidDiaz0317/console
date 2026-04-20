@@ -64,6 +64,17 @@ const DESCRIPTORS: CardDescriptor[] = [
     visualization: 'status',
     component: () => import('./ActiveAlerts').then(m => ({ default: m.ActiveAlerts as ComponentType<CardComponentProps> })),
   },
+  // ── Thanos Distributed Metrics card ────────────────────────────────
+  {
+    id: 'thanos_status',
+    title: 'Thanos',
+    description: 'Thanos global view metrics, store gateway status, and query health.',
+    category: 'Observability',
+    defaultWidth: 6,
+    visualization: 'status',
+    isLiveData: true,
+    component: () => import('./thanos_status').then(m => ({ default: m.ThanosStatus as ComponentType<CardComponentProps> })),
+  },
 ]
 
 /**

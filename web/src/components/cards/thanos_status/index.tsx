@@ -1,18 +1,21 @@
 import { CheckCircle, AlertTriangle, RefreshCw, Database, Radio, Activity } from 'lucide-react'
 import { Skeleton } from '../../ui/Skeleton'
-import { useThanosStatus } from './useThanosStatus'
+import { useCachedThanosStatus } from '../../../hooks/useCachedThanosStatus'
+import { useTranslation } from 'react-i18next'
+import { useCardLoadingState } from '../CardDataContext'
 
 function useFormatRelativeTime() {
+    const { t } = useTranslation('cards')
     return (isoString: string): string => {
         const diff = Date.now() - new Date(isoString).getTime()
-        if (isNaN(diff) || diff < 0) return 'just now'
+        if (isNaN(diff) || diff < 0) return t('thanosStatus.justNow')
         const minute = 60_000
         const hour = 60 * minute
         const day = 24 * hour
-        if (diff < minute) return 'just now'
-        if (diff < hour) return `${Math.floor(diff / minute)}m ago`
-        if (diff < day) return `${Math.floor(diff / hour)}h ago`
-        return `${Math.floor(diff / day)}d ago`
+        if (diff < minute) return t('thanosStatus.justNow')
+        if (diff < hour) return t('thanosStatus.minutesAgo', { count: Math.floor(diff / minute) })
+        if (diff < day) return t('thanosStatus.hoursAgo', { count: Math.floor(diff / hour) })
+        return t('thanosStatus.daysAgo', { count: Math.floor(diff / day) })
     }
 }
 
@@ -36,8 +39,27 @@ function MetricTile({ label, value, colorClass, icon }: MetricTileProps) {
 }
 
 export function ThanosStatus() {
+    const { t } = useTranslation('cards')
     const formatRelativeTime = useFormatRelativeTime()
-    const { data, error, showSkeleton, showEmptyState } = useThanosStatus()
+    const {
+        data,
+        isLoading,
+        isRefreshing,
+        isDemoFallback: isDemoData,
+        isFailed,
+        consecutiveFailures,
+        lastRefresh
+    } = useCachedThanosStatus()
+
+    const { showSkeleton, showEmptyState } = useCardLoadingState({
+        isLoading,
+        isRefreshing,
+        isDemoData,
+        hasAnyData: (data?.targets?.length || 0) > 0,
+        isFailed,
+        consecutiveFailures,
+        lastRefresh
+    })
 
     if (showSkeleton) {
         return (
@@ -54,23 +76,23 @@ export function ThanosStatus() {
         )
     }
 
-    if (error || showEmptyState) {
+    if (showEmptyState || (isFailed && !data)) {
         return (
             <div className="h-full flex flex-col items-center justify-center min-h-card text-muted-foreground gap-2">
                 <AlertTriangle className="w-6 h-6 text-red-400" />
                 <p className="text-sm text-red-400">
-                    {error ? 'Failed to fetch Thanos status' : 'No Thanos targets found'}
+                    {isFailed ? t('thanosStatus.fetchError') : t('thanosStatus.noTargets')}
                 </p>
-                <p className="text-xs">Ensure Thanos Query is running and accessible.</p>
+                <p className="text-xs">{t('thanosStatus.checkRunning')}</p>
             </div>
         )
     }
 
     const isHealthy = data.queryHealth === 'healthy'
-    const targetsUp = data.targets.filter((t) => t.health === 'up').length
-    const targetsTotal = data.targets.length
-    const storesHealthy = data.storeGateways.filter((s) => s.health === 'healthy').length
-    const storesTotal = data.storeGateways.length
+    const targetsUp = (data.targets || []).filter((t) => t.health === 'up').length
+    const targetsTotal = (data.targets || []).length
+    const storesHealthy = (data.storeGateways || []).filter((s) => s.health === 'healthy').length
+    const storesTotal = (data.storeGateways || []).length
 
     return (
         <div className="h-full flex flex-col min-h-card content-loaded gap-4">
@@ -78,8 +100,8 @@ export function ThanosStatus() {
             <div className="flex flex-wrap items-center justify-between gap-y-2">
                 <div
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${isHealthy
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-yellow-500/20 text-yellow-400'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-yellow-500/20 text-yellow-400'
                         }`}
                 >
                     {isHealthy ? (
@@ -87,7 +109,7 @@ export function ThanosStatus() {
                     ) : (
                         <AlertTriangle className="w-4 h-4" />
                     )}
-                    {isHealthy ? 'Healthy' : 'Degraded'}
+                    {isHealthy ? t('thanosStatus.healthy') : t('thanosStatus.degraded')}
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -99,20 +121,20 @@ export function ThanosStatus() {
             {/* Metric tiles */}
             <div className="flex gap-3">
                 <MetricTile
-                    label="Targets Up"
+                    label={t('thanosStatus.targetsUp')}
                     value={`${targetsUp}/${targetsTotal}`}
                     colorClass={targetsUp === targetsTotal ? 'text-green-400' : 'text-yellow-400'}
                     icon={<Radio className="w-4 h-4 text-blue-400" />}
                 />
                 <MetricTile
-                    label="Store Gateways"
+                    label={t('thanosStatus.storeGateways')}
                     value={storesTotal > 0 ? `${storesHealthy}/${storesTotal}` : '—'}
                     colorClass={storesTotal === 0 || storesHealthy === storesTotal ? 'text-green-400' : 'text-yellow-400'}
                     icon={<Database className="w-4 h-4 text-purple-400" />}
                 />
                 <MetricTile
-                    label="Query"
-                    value={isHealthy ? 'OK' : '!'}
+                    label={t('thanosStatus.query')}
+                    value={isHealthy ? t('thanosStatus.ok') : '!'}
                     colorClass={isHealthy ? 'text-green-400' : 'text-yellow-400'}
                     icon={<Activity className="w-4 h-4 text-cyan-400" />}
                 />
@@ -120,9 +142,9 @@ export function ThanosStatus() {
 
             {/* Target list */}
             <div className="flex-1 flex flex-col gap-2">
-                <p className="text-xs font-medium text-muted-foreground">Targets</p>
+                <p className="text-xs font-medium text-muted-foreground">{t('thanosStatus.targets')}</p>
                 <div className="space-y-1.5">
-                    {data.targets.map((target) => (
+                    {(data.targets || []).slice(0, 5).map((target) => (
                         <div key={target.name} className="flex items-center gap-2 text-xs">
                             <span
                                 className={`w-2 h-2 rounded-full shrink-0 ${target.health === 'up' ? 'bg-green-400' : 'bg-red-400'
@@ -134,13 +156,18 @@ export function ThanosStatus() {
                             </span>
                         </div>
                     ))}
+                    {data.targets.length > 5 && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                            + {data.targets.length - 5} more targets
+                        </p>
+                    )}
                 </div>
             </div>
 
             {/* Store gateway list (only if any exist) */}
             {data.storeGateways.length > 0 && (
                 <div className="flex flex-col gap-2">
-                    <p className="text-xs font-medium text-muted-foreground">Store Gateways</p>
+                    <p className="text-xs font-medium text-muted-foreground">{t('thanosStatus.storeGateways')}</p>
                     <div className="space-y-1.5">
                         {data.storeGateways.map((store) => (
                             <div key={store.name} className="flex items-center gap-2 text-xs">
@@ -150,7 +177,7 @@ export function ThanosStatus() {
                                 />
                                 <span className="truncate flex-1 text-muted-foreground">{store.name}</span>
                                 <span className={`shrink-0 ${store.health === 'healthy' ? 'text-green-400/60' : 'text-red-400/60'}`}>
-                                    {store.health}
+                                    {store.health === 'healthy' ? t('thanosStatus.healthy') : t('thanosStatus.unhealthy')}
                                 </span>
                             </div>
                         ))}
@@ -166,7 +193,7 @@ export function ThanosStatus() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 hover:text-blue-400 transition-colors"
                 >
-                    Open Thanos Docs
+                    {t('thanosStatus.openDocs')}
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>

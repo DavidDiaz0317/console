@@ -398,6 +398,7 @@ export const CATEGORY_LOCALE_KEYS: Record<string, string> = {
   'Serverless': 'serverless',
   'Streaming & Messaging': 'streamingMessaging',
   'Maturity': 'maturity',
+  'Observability': 'observability',
 }
 
 // ---------------------------------------------------------------------------

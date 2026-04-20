@@ -39,6 +39,24 @@
     "summary_one": "{{pods}} pods in {{clusters}} cluster",
     "summary_other": "{{pods}} pods across {{clusters}} clusters"
   },
+  "thanosStatus": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "fetchError": "Failed to fetch Thanos status",
+    "noTargets": "No Thanos targets found",
+    "checkRunning": "Ensure Thanos Query is running and accessible.",
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unhealthy": "Unhealthy",
+    "targetsUp": "Targets Up",
+    "storeGateways": "Store Gateways",
+    "query": "Query",
+    "ok": "OK",
+    "targets": "Targets",
+    "openDocs": "Open Thanos Docs"
+  },
   "securityIssues": {
     "highSeverityTitle": "{{count}} high severity security issues requiring immediate attention",
     "highSeverityTitle_one": "{{count}} high severity security issue requiring immediate attention",
@@ -287,7 +305,8 @@
     "nightly_release_pulse": "Nightly Release Pulse",
     "workflow_matrix": "Workflow Matrix",
     "pipeline_flow": "Live Runs",
-    "recent_failures": "Recent Failures"
+    "recent_failures": "Recent Failures",
+    "thanos_status": "Thanos"
   },
   "descriptions": {
     "cluster_health": "Overall health status of all connected Kubernetes clusters.",
@@ -467,7 +486,8 @@
     "nightly_release_pulse": "Last release tag, success/failure streak, next scheduled nightly, and a 14-day history strip.",
     "workflow_matrix": "Heatmap of every workflow run over the last 14, 30, or 90 days - surfaces chronic flakiness.",
     "pipeline_flow": "Drasi-style flow visualization of in-flight GitHub Actions runs: trigger, workflow, jobs, steps.",
-    "recent_failures": "The last failed GitHub Actions runs with log drill-down and optional re-run."
+    "recent_failures": "The last failed GitHub Actions runs with log drill-down and optional re-run.",
+    "thanos_status": "Thanos global view metrics, store gateway status, and query health."
   },
   "categories": {
     "core": "Core",
@@ -497,6 +517,7 @@
     "arcade": "Arcade",
     "utilities": "Utilities",
     "misc": "Misc",
+    "observability": "Observability",
     "mcs": "Multi-Cluster Services",
     "gpu": "GPU",
     "mlai": "ML/AI",

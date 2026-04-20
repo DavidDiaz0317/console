@@ -273,8 +273,6 @@ export const CARD_TITLES: Record<string, string> = {
   fluentd_status: 'Fluentd',
   // Lima VM
   lima_status: 'Lima',
-  // Thanos distributed metrics
-  thanos_status: 'Thanos',
   // OpenFeature feature-flag management
   openfeature_status: 'OpenFeature',
   // OpenKruise advanced workloads
@@ -516,8 +514,6 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   fluentd_status: 'Fluentd log collector pod health, buffer status, and throughput.',
   // Lima VM
   lima_status: 'Lima VM instance status, resource usage, and configuration.',
-  // Thanos distributed metrics
-  thanos_status: 'Thanos distributed metrics store, compactor, and query health.',
   // OpenFeature feature-flag management
   openfeature_status: 'OpenFeature feature flag provider status and flag evaluation metrics.',
   // OpenKruise advanced workloads
