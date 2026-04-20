@@ -206,8 +206,8 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 	// misinterpreted as flags by git, regardless of their content.
 	args = append(args, "--", safeURL, tempDir)
 
-	// codeql[go/command-injection] -- exec.CommandContext (no shell); URL sanitized via url.Parse; SSH URL validated by validateGitopsRepoURL
-	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204
+	// codeql[go/command-injection]
+	cmd := exec.CommandContext(ctx, "git", args...) // #nosec G204 -- exec.Command with discrete arg list; no shell invoked
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
