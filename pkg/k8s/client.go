@@ -95,29 +95,29 @@ const (
 	// perClusterHealthTimeout bounds each individual cluster probe inside
 	// GetAllClusterHealth. Must be less than totalHealthTimeout so a single
 	// cluster cannot consume the entire global budget.
-	perClusterHealthTimeout = 10 * time.Second
-	clusterCacheTTL           = 60 * time.Second
-	authFailureCacheTTL       = 10 * time.Minute // longer TTL for auth errors to avoid exec-plugin spam (#3158)
-	podIssueAgeThreshold      = 5 * time.Minute
-	podPendingAgeThreshold    = 2 * time.Minute
-	clusterEventDebounce      = 500 * time.Millisecond
-	clusterEventPollInterval  = 5 * time.Second
-	slowClusterTTL            = 2 * time.Minute
+	perClusterHealthTimeout  = 10 * time.Second
+	clusterCacheTTL          = 60 * time.Second
+	authFailureCacheTTL      = 10 * time.Minute // longer TTL for auth errors to avoid exec-plugin spam (#3158)
+	podIssueAgeThreshold     = 5 * time.Minute
+	podPendingAgeThreshold   = 2 * time.Minute
+	clusterEventDebounce     = 500 * time.Millisecond
+	clusterEventPollInterval = 5 * time.Second
+	slowClusterTTL           = 2 * time.Minute
 )
 
 // MultiClusterClient manages connections to multiple Kubernetes clusters
 type MultiClusterClient struct {
-	mu              sync.RWMutex
-	kubeconfig      string
-	clients         map[string]kubernetes.Interface
-	dynamicClients  map[string]dynamic.Interface
-	configs         map[string]*rest.Config
-	rawConfig       *api.Config
-	healthCache     map[string]*ClusterHealth
-	cacheTTL        time.Duration
-	cacheTime       map[string]time.Time
-	watcher         *fsnotify.Watcher
-	stopWatch       chan struct{}
+	mu             sync.RWMutex
+	kubeconfig     string
+	clients        map[string]kubernetes.Interface
+	dynamicClients map[string]dynamic.Interface
+	configs        map[string]*rest.Config
+	rawConfig      *api.Config
+	healthCache    map[string]*ClusterHealth
+	cacheTTL       time.Duration
+	cacheTime      map[string]time.Time
+	watcher        *fsnotify.Watcher
+	stopWatch      chan struct{}
 	// #6469/#6470 — lifecycle flags guarding StartWatching/StopWatching.
 	// `watching` tracks whether a watchLoop goroutine is active; it is flipped
 	// under `mu` so concurrent Start/Stop calls are serialized. `stopWatchOnce`
@@ -136,6 +136,16 @@ type MultiClusterClient struct {
 // (i.e., has a valid in-cluster ServiceAccount config).
 func (m *MultiClusterClient) IsInCluster() bool {
 	return m.inClusterConfig != nil
+}
+
+// SetInClusterConfig sets the in-cluster config (for testing)
+func (m *MultiClusterClient) SetInClusterConfig(config *rest.Config) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.inClusterConfig = config
 }
 
 // SetDynamicClient injects a dynamic client for a cluster (for testing)
@@ -489,10 +499,10 @@ const (
 	//        https://registry-1.docker.io/v2/bitnami/kubectl/manifests/latest
 	// TODO(#6693): when Bitnami restores semver tags, switch to
 	// bitnami/kubectl:<version>@sha256:<digest> for clearer intent.
-	gpuHealthCheckerImage = "bitnami/kubectl@sha256:59ad45e8bd79e7af7592ff2852b32adcb0da50792bc52ce44679d5c5f1b4d415"
-	gpuHealthConfigMapName      = "gpu-health-results"
-	gpuHealthScriptVersion      = 2 // bump when script changes
-	gpuHealthDefaultTier        = 2 // standard tier by default
+	gpuHealthCheckerImage  = "bitnami/kubectl@sha256:59ad45e8bd79e7af7592ff2852b32adcb0da50792bc52ce44679d5c5f1b4d415"
+	gpuHealthConfigMapName = "gpu-health-results"
+	gpuHealthScriptVersion = 2 // bump when script changes
+	gpuHealthDefaultTier   = 2 // standard tier by default
 )
 
 // Deployment represents a Kubernetes deployment with rollout status
@@ -519,28 +529,28 @@ type ServicePortDetail struct {
 	// Name of the port as defined on the k8s ServicePort (may be empty).
 	// When present it is a well-known name like "http" or "metrics" that
 	// operators configure to identify a port across the cluster.
-	Name     string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 	// Port is the service-level port (spec.ports[].port).
-	Port     int32  `json:"port"`
+	Port int32 `json:"port"`
 	// Protocol is TCP / UDP / SCTP.
 	Protocol string `json:"protocol,omitempty"`
 	// NodePort is the externally-exposed port for NodePort / LoadBalancer
 	// services. Zero for ClusterIP services.
-	NodePort int32  `json:"nodePort,omitempty"`
+	NodePort int32 `json:"nodePort,omitempty"`
 }
 
 // Service represents a Kubernetes service
 type Service struct {
-	Name        string            `json:"name"`
-	Namespace   string            `json:"namespace"`
-	Cluster     string            `json:"cluster,omitempty"`
-	Type        string            `json:"type"` // ClusterIP, NodePort, LoadBalancer, ExternalName
-	ClusterIP   string            `json:"clusterIP,omitempty"`
-	ExternalIP  string            `json:"externalIP,omitempty"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	Cluster    string `json:"cluster,omitempty"`
+	Type       string `json:"type"` // ClusterIP, NodePort, LoadBalancer, ExternalName
+	ClusterIP  string `json:"clusterIP,omitempty"`
+	ExternalIP string `json:"externalIP,omitempty"`
 	// Ports is the legacy flat string representation of the ports, kept
 	// for existing consumers. Format: "80/TCP" or "80:30080/TCP" when a
 	// NodePort is allocated. Prefer PortDetails for new code.
-	Ports       []string          `json:"ports,omitempty"`
+	Ports []string `json:"ports,omitempty"`
 	// PortDetails is the structured representation of the ServicePorts
 	// including the optional name field (issue #6163). Same length and
 	// ordering as Ports.
@@ -556,7 +566,7 @@ type Service struct {
 	// LoadBalancer service this is either LBStatusReady (ingress IP/hostname
 	// has been assigned) or LBStatusProvisioning (cloud provider has not yet
 	// provisioned an address). Issue #6153.
-	LBStatus    string            `json:"lbStatus,omitempty"`
+	LBStatus string `json:"lbStatus,omitempty"`
 	// Selector is the label selector used by the service to match backing
 	// pods (corev1.ServiceSpec.Selector). Surfaced so the frontend can
 	// detect orphaned services (selector present but no matching pods,

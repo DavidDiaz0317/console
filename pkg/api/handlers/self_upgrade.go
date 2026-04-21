@@ -18,8 +18,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	k8sclient "github.com/kubestellar/console/pkg/k8s"
 	"github.com/kubestellar/console/pkg/api/middleware"
+	k8sclient "github.com/kubestellar/console/pkg/k8s"
 	"github.com/kubestellar/console/pkg/models"
 	"github.com/kubestellar/console/pkg/store"
 )
@@ -40,6 +40,10 @@ type SelfUpgradeHandler struct {
 	k8sClient *k8sclient.MultiClusterClient
 	hub       *Hub
 	store     store.Store
+
+	// inClusterClient is used for testing to provide a mock kubernetes client.
+	// When nil, getInClusterClient falls back to rest.InClusterConfig().
+	inClusterClient kubernetes.Interface
 }
 
 // NewSelfUpgradeHandler creates a new SelfUpgradeHandler.
@@ -95,6 +99,9 @@ func getReleaseName() string {
 
 // getInClusterClient creates a typed Kubernetes client using the in-cluster config.
 func (h *SelfUpgradeHandler) getInClusterClient() (kubernetes.Interface, error) {
+	if h.inClusterClient != nil {
+		return h.inClusterClient, nil
+	}
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("not running in-cluster: %w", err)
