@@ -124,7 +124,7 @@ export function DeploymentDrillDown({ data }: Props) {
   const { isConnected: agentConnected } = useLocalAgent()
   const { drillToNamespace, drillToCluster, drillToPod, drillToReplicaSet } = useDrillDownActions()
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [activeTab, setActiveTab] = useState<TabType>((data.tab as TabType) || 'overview')
   // data.replicas can be a number OR an object {ready, desired} from DeploymentProgress drill-down.
   // Extract the numeric value safely to avoid rendering an object as a React child (error #300).
   const [replicas, setReplicas] = useState<number>(() => {
@@ -571,9 +571,9 @@ export function DeploymentDrillDown({ data }: Props) {
                     )}
                     title={
                       canScale === false ? 'No permission to scale deployments in this namespace' :
-                      replicas <= 0 ? 'Already at minimum (0 replicas)' :
-                      isScaling ? 'Scaling in progress...' :
-                      `Scale down to ${replicas - 1} replica${replicas - 1 !== 1 ? 's' : ''}`
+                        replicas <= 0 ? 'Already at minimum (0 replicas)' :
+                          isScaling ? 'Scaling in progress...' :
+                            `Scale down to ${replicas - 1} replica${replicas - 1 !== 1 ? 's' : ''}`
                     }
                   >
                     <Minus className="w-4 h-4" />
@@ -602,9 +602,9 @@ export function DeploymentDrillDown({ data }: Props) {
                     )}
                     title={
                       canScale === false ? 'No permission to scale deployments in this namespace' :
-                      replicas >= MAX_SCALE_REPLICAS ? `Maximum is ${MAX_SCALE_REPLICAS} replicas` :
-                      isScaling ? 'Scaling in progress...' :
-                      `Scale up to ${replicas + 1} replica${replicas + 1 !== 1 ? 's' : ''}`
+                        replicas >= MAX_SCALE_REPLICAS ? `Maximum is ${MAX_SCALE_REPLICAS} replicas` :
+                          isScaling ? 'Scaling in progress...' :
+                            `Scale up to ${replicas + 1} replica${replicas + 1 !== 1 ? 's' : ''}`
                     }
                   >
                     <Plus className="w-4 h-4" />
@@ -697,8 +697,8 @@ export function DeploymentDrillDown({ data }: Props) {
                     <span className={cn(
                       'text-xs px-2 py-1 rounded',
                       pod.status === 'Running' ? 'bg-green-500/20 text-green-400' :
-                      pod.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-red-500/20 text-red-400'
+                        pod.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-red-500/20 text-red-400'
                     )}>
                       {pod.status}
                     </span>

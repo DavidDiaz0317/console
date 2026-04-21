@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Plus, Rocket } from 'lucide-react'
+import { ChevronRight, Plus, Rocket, RefreshCw, Trash2, Terminal } from 'lucide-react'
 import { useDeploymentIssues, usePodIssues, useClusters, useDeployments } from '../../hooks/useMCP'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
@@ -17,6 +17,9 @@ import { getDefaultCards } from '../../config/dashboards'
 import { RotatingTip } from '../ui/RotatingTip'
 import { ROUTES } from '../../config/routes'
 import { useTranslation } from 'react-i18next'
+import { kubectlProxy } from '../../lib/kubectlProxy'
+import { useToast } from '../ui/Toast'
+import { PortalTooltip } from '../cards/llmd/shared/PortalTooltip'
 
 const WORKLOADS_CARDS_KEY = 'kubestellar-workloads-cards'
 
@@ -30,7 +33,21 @@ interface AppSummary {
   podIssues: number
   deploymentIssues: number
   status: 'healthy' | 'warning' | 'error'
+  type: 'namespace'
 }
+
+interface DeploymentSummary {
+  name: string
+  namespace: string
+  cluster: string
+  status: 'running' | 'deploying' | 'failed'
+  replicas: number
+  readyReplicas: number
+  type: 'deployment'
+  image?: string
+}
+
+type WorkloadItem = AppSummary | DeploymentSummary
 
 export function Workloads() {
   const { t } = useTranslation()
@@ -44,7 +61,8 @@ export function Workloads() {
   const { isDemoMode } = useDemoMode()
   const isModeSwitching = useIsModeSwitching()
 
-  const { drillToNamespace, drillToAllNamespaces, drillToAllDeployments, drillToAllPods } = useDrillDownActions()
+  const { drillToNamespace, drillToAllNamespaces, drillToAllDeployments, drillToAllPods, drillToDeployment } = useDrillDownActions()
+  const { showToast } = useToast()
 
   // Combined states
   const isLoading = podIssuesLoading || deploymentIssuesLoading || deploymentsLoading || clustersLoading
@@ -60,6 +78,36 @@ export function Workloads() {
     refetchDeploymentIssues()
     refetchDeployments()
     refetchClusters()
+  }
+
+  const handleRestartDeployment = async (e: React.MouseEvent, cluster: string, namespace: string, name: string) => {
+    e.stopPropagation()
+    try {
+      showToast(t('workloads.restarting', 'Restarting deployment...'), 'info')
+      await kubectlProxy.exec(['rollout', 'restart', 'deployment', name, '-n', namespace], { context: cluster })
+      showToast(t('workloads.restartSuccess', 'Restart triggered'), 'success')
+      refetchDeployments()
+    } catch (err) {
+      showToast(t('workloads.restartError', 'Failed to restart deployment'), 'error')
+    }
+  }
+
+  const handleDeleteDeployment = async (e: React.MouseEvent, cluster: string, namespace: string, name: string) => {
+    e.stopPropagation()
+    if (!window.confirm(t('workloads.confirmDelete', 'Are you sure you want to delete deployment {{name}}?', { name }))) return
+    try {
+      showToast(t('workloads.deleting', 'Deleting deployment...'), 'info')
+      await kubectlProxy.exec(['delete', 'deployment', name, '-n', namespace], { context: cluster })
+      showToast(t('workloads.deleteSuccess', 'Deployment deleted'), 'success')
+      refetchDeployments()
+    } catch (err) {
+      showToast(t('workloads.deleteError', 'Failed to delete deployment'), 'error')
+    }
+  }
+
+  const handleShowLogs = (e: React.MouseEvent, cluster: string, namespace: string, name: string) => {
+    e.stopPropagation()
+    drillToDeployment(cluster, namespace, name, { tab: 'pods' })
   }
 
   const {
@@ -104,8 +152,20 @@ export function Workloads() {
       )
     }
 
-    const appMap = new Map<string, AppSummary>()
+    // If we have a filter, show individual deployments that match
+    if (customFilter.trim() || !isAllClustersSelected) {
+      return (filteredDeployments.map(d => ({
+        ...d,
+        type: 'deployment' as const
+      })) as WorkloadItem[]).sort((a, b) => {
+        const aName = a.type === 'deployment' ? a.name : a.namespace
+        const bName = b.type === 'deployment' ? b.name : b.namespace
+        return aName.localeCompare(bName)
+      })
+    }
 
+    const appMap = new Map<string, AppSummary>()
+    // ... (rest of namespace grouping logic)
     filteredDeployments.forEach(deployment => {
       const key = `${deployment.cluster}/${deployment.namespace}`
       if (!appMap.has(key)) {
@@ -115,7 +175,9 @@ export function Workloads() {
           deploymentCount: 0,
           podIssues: 0,
           deploymentIssues: 0,
-          status: 'healthy' })
+          status: 'healthy',
+          type: 'namespace'
+        })
       }
       const app = appMap.get(key)!
       app.deploymentCount++
@@ -130,7 +192,9 @@ export function Workloads() {
           deploymentCount: 0,
           podIssues: 0,
           deploymentIssues: 0,
-          status: 'healthy' })
+          status: 'healthy',
+          type: 'namespace'
+        })
       }
       const app = appMap.get(key)!
       app.podIssues++
@@ -146,7 +210,9 @@ export function Workloads() {
           deploymentCount: 0,
           podIssues: 0,
           deploymentIssues: 0,
-          status: 'healthy' })
+          status: 'healthy',
+          type: 'namespace'
+        })
       }
       const app = appMap.get(key)!
       app.deploymentIssues++
@@ -155,23 +221,29 @@ export function Workloads() {
       }
     })
 
-    return Array.from(appMap.values()).sort((a, b) => {
+    return (Array.from(appMap.values()) as WorkloadItem[]).sort((a, b) => {
+      const aStats = a as AppSummary
+      const bStats = b as AppSummary
       const statusOrder: Record<string, number> = { error: 0, critical: 0, warning: 1, healthy: 2 }
-      if (statusOrder[a.status] !== statusOrder[b.status]) {
-        return statusOrder[a.status] - statusOrder[b.status]
+      if (statusOrder[aStats.status] !== statusOrder[bStats.status]) {
+        return statusOrder[aStats.status] - statusOrder[bStats.status]
       }
-      return b.deploymentCount - a.deploymentCount
+      return bStats.deploymentCount - aStats.deploymentCount
     })
   }, [allDeployments, podIssues, deploymentIssues, globalSelectedClusters, isAllClustersSelected, customFilter])
 
-  const stats = useMemo(() => ({
-    total: apps.length,
-    healthy: apps.filter(a => a.status === 'healthy').length,
-    warning: apps.filter(a => a.status === 'warning').length,
-    critical: apps.filter(a => a.status === 'error').length,
-    totalDeployments: apps.reduce((sum, a) => sum + a.deploymentCount, 0),
-    totalPodIssues: podIssues.length,
-    totalDeploymentIssues: deploymentIssues.length }), [apps, podIssues, deploymentIssues])
+  const stats = useMemo(() => {
+    const namespaceApps = apps.filter(a => a.type === 'namespace') as AppSummary[]
+    return {
+      total: namespaceApps.length || apps.length,
+      healthy: namespaceApps.filter(a => a.status === 'healthy').length,
+      warning: namespaceApps.filter(a => a.status === 'warning').length,
+      critical: namespaceApps.filter(a => a.status === 'error').length,
+      totalDeployments: allDeployments.length,
+      totalPodIssues: podIssues.length,
+      totalDeploymentIssues: deploymentIssues.length
+    }
+  }, [apps, allDeployments, podIssues, deploymentIssues])
 
   // Dashboard-specific stats value getter
   const getDashboardStatValue = (blockId: string): StatBlockValue => {
@@ -224,7 +296,8 @@ export function Workloads() {
       hasData={apps.length > 0 || !showSkeletons}
       emptyState={{
         title: 'Workloads Dashboard',
-        description: 'Add cards to monitor deployments, pods, and application health across your clusters.' }}
+        description: 'Add cards to monitor deployments, pods, and application health across your clusters.'
+      }}
     >
       {/* Workloads List */}
       {showSkeletons ? (
@@ -259,47 +332,104 @@ export function Workloads() {
         </div>
       ) : (
         <div className="space-y-3">
-          {apps.map((app, i) => (
-            <div
-              key={i}
-              onClick={() => drillToNamespace(app.cluster, app.namespace)}
-              className={`glass p-4 rounded-lg cursor-pointer transition-all hover:scale-[1.01] border-l-4 ${
-                app.status === 'error' ? 'border-l-red-500' :
-                app.status === 'warning' ? 'border-l-yellow-500' :
-                'border-l-green-500'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <StatusIndicator status={app.status} size="lg" />
-                  <div>
-                    <h3 className="font-semibold text-foreground">{app.namespace}</h3>
-                    <ClusterBadge cluster={app.cluster.split('/').pop() || app.cluster} size="sm" />
-                  </div>
-                </div>
+          {apps.map((item, i) => {
+            const isDeployment = item.type === 'deployment'
+            const app = item as AppSummary
+            const deploy = item as DeploymentSummary
 
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-foreground">{app.deploymentCount}</div>
-                    <div className="text-xs text-muted-foreground">{t('common.deployments')}</div>
+            const status = isDeployment
+              ? (deploy.status === 'failed' ? 'error' : deploy.status === 'deploying' ? 'warning' : 'healthy')
+              : app.status
+
+            return (
+              <div
+                key={i}
+                onClick={() => isDeployment
+                  ? drillToDeployment(deploy.cluster, deploy.namespace, deploy.name)
+                  : drillToNamespace(app.cluster, app.namespace)
+                }
+                className={`glass p-4 rounded-lg cursor-pointer transition-all hover:scale-[1.01] border-l-4 ${status === 'error' ? 'border-l-red-500' :
+                  status === 'warning' ? 'border-l-yellow-500' :
+                    'border-l-green-500'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <StatusIndicator status={status as any} size="lg" />
+                    <div>
+                      <h3 className="font-semibold text-foreground">{isDeployment ? deploy.name : app.namespace}</h3>
+                      <div className="flex items-center gap-2">
+                        <ClusterBadge cluster={item.cluster.split('/').pop() || item.cluster} size="sm" />
+                        {isDeployment && <span className="text-xs text-muted-foreground">{deploy.namespace}</span>}
+                      </div>
+                    </div>
                   </div>
-                  {app.deploymentIssues > 0 && (
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-orange-400">{app.deploymentIssues}</div>
-                      <div className="text-xs text-muted-foreground">Issues</div>
-                    </div>
-                  )}
-                  {app.podIssues > 0 && (
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-red-400">{app.podIssues}</div>
-                      <div className="text-xs text-muted-foreground">Pod Issues</div>
-                    </div>
-                  )}
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+
+                  <div className="flex items-center gap-6">
+                    {isDeployment ? (
+                      <>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-foreground">{deploy.readyReplicas}/{deploy.replicas}</div>
+                          <div className="text-xs text-muted-foreground">{t('common.ready')}</div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <PortalTooltip content={t('common.restart', 'Restart')}>
+                            <button
+                              onClick={(e) => handleRestartDeployment(e, deploy.cluster, deploy.namespace, deploy.name)}
+                              className="p-1.5 hover:bg-white/10 rounded-md text-muted-foreground hover:text-blue-400 transition-colors"
+                              aria-label="Restart deployment"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                          </PortalTooltip>
+
+                          <PortalTooltip content={t('common.logs', 'Logs')}>
+                            <button
+                              onClick={(e) => handleShowLogs(e, deploy.cluster, deploy.namespace, deploy.name)}
+                              className="p-1.5 hover:bg-white/10 rounded-md text-muted-foreground hover:text-purple-400 transition-colors"
+                              aria-label="View logs"
+                            >
+                              <Terminal className="w-4 h-4" />
+                            </button>
+                          </PortalTooltip>
+
+                          <PortalTooltip content={t('common.delete', 'Delete')}>
+                            <button
+                              onClick={(e) => handleDeleteDeployment(e, deploy.cluster, deploy.namespace, deploy.name)}
+                              className="p-1.5 hover:bg-white/10 rounded-md text-muted-foreground hover:text-red-400 transition-colors"
+                              aria-label="Delete deployment"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </PortalTooltip>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-foreground">{app.deploymentCount}</div>
+                          <div className="text-xs text-muted-foreground">{t('common.deployments')}</div>
+                        </div>
+                        {app.deploymentIssues > 0 && (
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-orange-400">{app.deploymentIssues}</div>
+                            <div className="text-xs text-muted-foreground">Issues</div>
+                          </div>
+                        )}
+                        {app.podIssues > 0 && (
+                          <div className="text-center">
+                            <div className="text-lg font-bold text-red-400">{app.podIssues}</div>
+                            <div className="text-xs text-muted-foreground">Pod Issues</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -322,21 +452,21 @@ export function Workloads() {
             clusters
               .filter(cluster => isAllClustersSelected || globalSelectedClusters.includes(cluster.name))
               .map((cluster) => (
-              <div key={cluster.name} className="glass p-3 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <StatusIndicator
-                    status={cluster.reachable === false ? 'unreachable' : cluster.healthy ? 'healthy' : 'error'}
-                    size="sm"
-                  />
-                  <span className="font-medium text-foreground text-sm truncate">
-                    {cluster.context || cluster.name.split('/').pop()}
-                  </span>
+                <div key={cluster.name} className="glass p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <StatusIndicator
+                      status={cluster.reachable === false ? 'unreachable' : cluster.healthy ? 'healthy' : 'error'}
+                      size="sm"
+                    />
+                    <span className="font-medium text-foreground text-sm truncate">
+                      {cluster.context || cluster.name.split('/').pop()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {cluster.reachable !== false ? (cluster.podCount ?? '-') : '-'} pods • {cluster.reachable !== false ? (cluster.nodeCount ?? '-') : '-'} nodes
+                  </div>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  {cluster.reachable !== false ? (cluster.podCount ?? '-') : '-'} pods • {cluster.reachable !== false ? (cluster.nodeCount ?? '-') : '-'} nodes
-                </div>
-              </div>
-            ))
+              ))
           )}
         </div>
       </div>

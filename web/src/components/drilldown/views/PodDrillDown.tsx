@@ -18,7 +18,8 @@ import {
   PodRelatedTab,
   PodOutputTab,
   PodAiAnalysis,
-  PodDeleteSection } from './pod-drilldown'
+  PodDeleteSection
+} from './pod-drilldown'
 import type { TabType, RelatedResource, CachedData } from './pod-drilldown'
 import { copyToClipboard } from '../../../lib/clipboard'
 import { useToast } from '../../ui/Toast'
@@ -61,12 +62,13 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   // Update cache metadata
   setPodCache(cluster, namespace, podName, {
     lastOpened: now,
-    openCount: (persistentCache?.openCount || 0) + 1 })
+    openCount: (persistentCache?.openCount || 0) + 1
+  })
 
   // Clean up old cache entries periodically
   cleanupPodCache()
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [activeTab, setActiveTab] = useState<TabType>((data.tab as TabType) || 'overview')
   const [describeOutput, setDescribeOutput] = useState<string | null>(cache.describeOutput || null)
   const [describeLoading, setDescribeLoading] = useState(false)
   const [logsOutput, setLogsOutput] = useState<string | null>(cache.logsOutput || null)
@@ -671,7 +673,8 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
       pvcs: pvcs.length > 0 ? pvcs : undefined,
       serviceAccount: serviceAccount || undefined,
       ownerChain: ownerChain.length > 0 ? ownerChain : undefined,
-      fetchedAt: Date.now() })
+      fetchedAt: Date.now()
+    })
   }, [cluster, namespace, podName, describeOutput, logsOutput, eventsOutput, yamlOutput, podStatusOutput, aiAnalysis, labels, annotations, configMaps, secrets, pvcs, serviceAccount, ownerChain])
 
   const handleRepairPod = () => {
@@ -701,7 +704,9 @@ Please:
         cluster,
         status,
         restarts,
-        issues } })
+        issues
+      }
+    })
   }
 
   // Check if user can delete pods in this namespace
@@ -711,7 +716,8 @@ Please:
         cluster,
         verb: 'delete',
         resource: 'pods',
-        namespace })
+        namespace
+      })
       setCanDeletePod(result.allowed)
     } catch {
       setCanDeletePod(false)
@@ -1310,239 +1316,239 @@ Please:
 
       {/* Scrollable Tab Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Pod Status from kubectl */}
-          {agentConnected && (
-            <div>
-              {podStatusLoading ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-card/50 border border-border">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">{t('drilldown.status.fetchingPodStatus')}</span>
-                </div>
-              ) : podStatusOutput ? (
-                <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono">
-                  <code className="text-muted-foreground"># kubectl get pod {podName} -n {namespace} -o wide</code>
-                  {'\n'}
-                  {podStatusOutput}
-                </pre>
-              ) : null}
-            </div>
-          )}
-
-          {/* Issues Section */}
-          <div>
-            {issues.length > 0 ? (
-              <div className="space-y-3">
-                {/* Issue list - filter out status since it's shown in breadcrumb */}
-                {issues.filter(issue => issue.toLowerCase() !== status?.toLowerCase()).length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {issues
-                      .filter(issue => issue.toLowerCase() !== status?.toLowerCase())
-                      .map((issue, i) => {
-                        const severity = getIssueSeverity(issue)
-                        const bgColor = severity === 'critical' ? 'bg-red-500/20 text-red-400' :
-                          severity === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-blue-500/20 text-blue-400'
-
-                        return (
-                          <span key={i} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5', bgColor)}>
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            {issue}
-                          </span>
-                        )
-                      })}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Pod Status from kubectl */}
+            {agentConnected && (
+              <div>
+                {podStatusLoading ? (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-card/50 border border-border">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">{t('drilldown.status.fetchingPodStatus')}</span>
                   </div>
-                )}
-
-              </div>
-            ) : (podStatusLoading || describeLoading) ? (
-              <div className="p-4 rounded-lg bg-secondary/30 border border-border text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                  <p className="text-muted-foreground">{t('drilldown.status.analyzingPodHealth')}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-                <p className="text-green-400 font-medium">{t('drilldown.status.podHealthy')}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t('drilldown.empty.noIssuesDetected')}</p>
+                ) : podStatusOutput ? (
+                  <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono">
+                    <code className="text-muted-foreground"># kubectl get pod {podName} -n {namespace} -o wide</code>
+                    {'\n'}
+                    {podStatusOutput}
+                  </pre>
+                ) : null}
               </div>
             )}
 
-          </div>
-
-          {/* Recent Events */}
-          {eventsOutput && (
+            {/* Issues Section */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-400" />
-                  {t('drilldown.tabs.recentEvents')}
-                </h3>
-                <button
-                  onClick={() => setActiveTab('events')}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-                >
-                  View all
-                </button>
-              </div>
-              <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono max-h-32 overflow-y-auto">
-                {eventsOutput.includes('No resources found')
-                  ? `No events found for pod ${podName}`
-                  : eventsOutput.split('\n').slice(0, 6).join('\n')}
-              </pre>
+              {issues.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Issue list - filter out status since it's shown in breadcrumb */}
+                  {issues.filter(issue => issue.toLowerCase() !== status?.toLowerCase()).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {issues
+                        .filter(issue => issue.toLowerCase() !== status?.toLowerCase())
+                        .map((issue, i) => {
+                          const severity = getIssueSeverity(issue)
+                          const bgColor = severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                            severity === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-blue-500/20 text-blue-400'
+
+                          return (
+                            <span key={i} className={cn('px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5', bgColor)}>
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              {issue}
+                            </span>
+                          )
+                        })}
+                    </div>
+                  )}
+
+                </div>
+              ) : (podStatusLoading || describeLoading) ? (
+                <div className="p-4 rounded-lg bg-secondary/30 border border-border text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <p className="text-muted-foreground">{t('drilldown.status.analyzingPodHealth')}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                  <p className="text-green-400 font-medium">{t('drilldown.status.podHealthy')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('drilldown.empty.noIssuesDetected')}</p>
+                </div>
+              )}
+
             </div>
-          )}
-        </div>
-      )}
 
-      {activeTab === 'labels' && (
-        <PodLabelsTab
-          labels={labels}
-          annotations={annotations}
-          describeLoading={describeLoading}
-          agentConnected={agentConnected}
-          copiedField={copiedField}
-          showAllLabels={showAllLabels}
-          setShowAllLabels={setShowAllLabels}
-          editingLabels={editingLabels}
-          setEditingLabels={setEditingLabels}
-          pendingLabelChanges={pendingLabelChanges}
-          newLabelKey={newLabelKey}
-          setNewLabelKey={setNewLabelKey}
-          newLabelValue={newLabelValue}
-          setNewLabelValue={setNewLabelValue}
-          labelSaving={labelSaving}
-          labelError={labelError}
-          handleLabelChange={handleLabelChange}
-          handleLabelRemove={handleLabelRemove}
-          undoLabelChange={undoLabelChange}
-          saveLabels={saveLabels}
-          cancelLabelEdit={cancelLabelEdit}
-          showAllAnnotations={showAllAnnotations}
-          setShowAllAnnotations={setShowAllAnnotations}
-          editingAnnotations={editingAnnotations}
-          setEditingAnnotations={setEditingAnnotations}
-          pendingAnnotationChanges={pendingAnnotationChanges}
-          newAnnotationKey={newAnnotationKey}
-          setNewAnnotationKey={setNewAnnotationKey}
-          newAnnotationValue={newAnnotationValue}
-          setNewAnnotationValue={setNewAnnotationValue}
-          annotationSaving={annotationSaving}
-          annotationError={annotationError}
-          handleAnnotationChange={handleAnnotationChange}
-          handleAnnotationRemove={handleAnnotationRemove}
-          undoAnnotationChange={undoAnnotationChange}
-          saveAnnotations={saveAnnotations}
-          cancelAnnotationEdit={cancelAnnotationEdit}
-          handleCopy={handleCopy}
-        />
-      )}
+            {/* Recent Events */}
+            {eventsOutput && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    {t('drilldown.tabs.recentEvents')}
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab('events')}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+                  >
+                    View all
+                  </button>
+                </div>
+                <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono max-h-32 overflow-y-auto">
+                  {eventsOutput.includes('No resources found')
+                    ? `No events found for pod ${podName}`
+                    : eventsOutput.split('\n').slice(0, 6).join('\n')}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
 
-      {activeTab === 'related' && (
-        <PodRelatedTab
-          podName={podName}
-          namespace={namespace}
-          cluster={cluster}
-          agentConnected={agentConnected}
-          relatedLoading={relatedLoading}
-          ownerChain={ownerChain}
-          configMaps={configMaps}
-          secrets={secrets}
-          pvcs={pvcs}
-          serviceAccount={serviceAccount}
-          fetchRelatedResources={fetchRelatedResources}
-          drillToDeployment={drillToDeployment}
-          drillToReplicaSet={drillToReplicaSet}
-          drillToConfigMap={drillToConfigMap}
-          drillToSecret={drillToSecret}
-          drillToServiceAccount={drillToServiceAccount}
-          drillToPVC={drillToPVC}
-        />
-      )}
-
-      {activeTab === 'describe' && (
-        <PodOutputTab
-          output={describeOutput}
-          loading={describeLoading}
-          agentConnected={agentConnected}
-          copyField="describe"
-          copiedField={copiedField}
-          kubectlComment={`# kubectl describe pod ${podName} -n ${namespace}`}
-          loadingMessage={t('drilldown.status.runningDescribe')}
-          notConnectedMessage={t('drilldown.empty.connectAgentDescribe')}
-          emptyMessage={t('drilldown.empty.failedFetchDescribe')}
-          handleCopy={handleCopy}
-          onRefresh={() => fetchDescribe(true)}
-        />
-      )}
-
-      {activeTab === 'logs' && (
-        <PodOutputTab
-          output={logsOutput}
-          loading={logsLoading}
-          agentConnected={agentConnected}
-          copyField="logs"
-          copiedField={copiedField}
-          kubectlComment={`# kubectl logs ${podName} -n ${namespace} --tail=500`}
-          loadingMessage={t('drilldown.status.fetchingLogs')}
-          notConnectedMessage={t('drilldown.empty.connectAgentLogs')}
-          emptyMessage={t('drilldown.empty.noLogsAvailable')}
-          handleCopy={handleCopy}
-          onRefresh={() => fetchLogs(true)}
-          refreshIcon={Terminal}
-          refreshLabel="Refresh"
-        />
-      )}
-
-      {activeTab === 'exec' && (
-        <div className="h-[500px] rounded-lg overflow-hidden border border-border">
-          <PodExecTerminal
-            cluster={cluster}
-            namespace={namespace}
-            pod={podName}
-            containers={containerNames}
-            defaultContainer={containerNames[0]}
+        {activeTab === 'labels' && (
+          <PodLabelsTab
+            labels={labels}
+            annotations={annotations}
+            describeLoading={describeLoading}
+            agentConnected={agentConnected}
+            copiedField={copiedField}
+            showAllLabels={showAllLabels}
+            setShowAllLabels={setShowAllLabels}
+            editingLabels={editingLabels}
+            setEditingLabels={setEditingLabels}
+            pendingLabelChanges={pendingLabelChanges}
+            newLabelKey={newLabelKey}
+            setNewLabelKey={setNewLabelKey}
+            newLabelValue={newLabelValue}
+            setNewLabelValue={setNewLabelValue}
+            labelSaving={labelSaving}
+            labelError={labelError}
+            handleLabelChange={handleLabelChange}
+            handleLabelRemove={handleLabelRemove}
+            undoLabelChange={undoLabelChange}
+            saveLabels={saveLabels}
+            cancelLabelEdit={cancelLabelEdit}
+            showAllAnnotations={showAllAnnotations}
+            setShowAllAnnotations={setShowAllAnnotations}
+            editingAnnotations={editingAnnotations}
+            setEditingAnnotations={setEditingAnnotations}
+            pendingAnnotationChanges={pendingAnnotationChanges}
+            newAnnotationKey={newAnnotationKey}
+            setNewAnnotationKey={setNewAnnotationKey}
+            newAnnotationValue={newAnnotationValue}
+            setNewAnnotationValue={setNewAnnotationValue}
+            annotationSaving={annotationSaving}
+            annotationError={annotationError}
+            handleAnnotationChange={handleAnnotationChange}
+            handleAnnotationRemove={handleAnnotationRemove}
+            undoAnnotationChange={undoAnnotationChange}
+            saveAnnotations={saveAnnotations}
+            cancelAnnotationEdit={cancelAnnotationEdit}
+            handleCopy={handleCopy}
           />
-        </div>
-      )}
+        )}
 
-      {activeTab === 'events' && (
-        <PodOutputTab
-          output={eventsOutput}
-          loading={eventsLoading}
-          agentConnected={agentConnected}
-          copyField="events"
-          copiedField={copiedField}
-          kubectlComment={`# kubectl get events -n ${namespace} --field-selector involvedObject.name=${podName}`}
-          loadingMessage={t('drilldown.status.fetchingEvents')}
-          notConnectedMessage={t('drilldown.empty.connectAgentEvents')}
-          emptyMessage={t('drilldown.empty.noEventsFound', { resource: 'pod' })}
-          handleCopy={handleCopy}
-          onRefresh={() => fetchEvents(true)}
-          refreshIcon={Zap}
-          refreshLabel="Refresh"
-        />
-      )}
+        {activeTab === 'related' && (
+          <PodRelatedTab
+            podName={podName}
+            namespace={namespace}
+            cluster={cluster}
+            agentConnected={agentConnected}
+            relatedLoading={relatedLoading}
+            ownerChain={ownerChain}
+            configMaps={configMaps}
+            secrets={secrets}
+            pvcs={pvcs}
+            serviceAccount={serviceAccount}
+            fetchRelatedResources={fetchRelatedResources}
+            drillToDeployment={drillToDeployment}
+            drillToReplicaSet={drillToReplicaSet}
+            drillToConfigMap={drillToConfigMap}
+            drillToSecret={drillToSecret}
+            drillToServiceAccount={drillToServiceAccount}
+            drillToPVC={drillToPVC}
+          />
+        )}
 
-      {activeTab === 'yaml' && (
-        <PodOutputTab
-          output={yamlOutput}
-          loading={yamlLoading}
-          agentConnected={agentConnected}
-          copyField="yaml"
-          copiedField={copiedField}
-          kubectlComment={`# kubectl get pod ${podName} -n ${namespace} -o yaml`}
-          loadingMessage={t('drilldown.status.fetchingYaml')}
-          notConnectedMessage={t('drilldown.empty.connectAgentYaml')}
-          emptyMessage={t('drilldown.empty.failedFetchYaml')}
-          handleCopy={handleCopy}
-          onRefresh={() => fetchYaml(true)}
-          refreshIcon={Code}
-          refreshLabel="Refresh"
-        />
-      )}
+        {activeTab === 'describe' && (
+          <PodOutputTab
+            output={describeOutput}
+            loading={describeLoading}
+            agentConnected={agentConnected}
+            copyField="describe"
+            copiedField={copiedField}
+            kubectlComment={`# kubectl describe pod ${podName} -n ${namespace}`}
+            loadingMessage={t('drilldown.status.runningDescribe')}
+            notConnectedMessage={t('drilldown.empty.connectAgentDescribe')}
+            emptyMessage={t('drilldown.empty.failedFetchDescribe')}
+            handleCopy={handleCopy}
+            onRefresh={() => fetchDescribe(true)}
+          />
+        )}
+
+        {activeTab === 'logs' && (
+          <PodOutputTab
+            output={logsOutput}
+            loading={logsLoading}
+            agentConnected={agentConnected}
+            copyField="logs"
+            copiedField={copiedField}
+            kubectlComment={`# kubectl logs ${podName} -n ${namespace} --tail=500`}
+            loadingMessage={t('drilldown.status.fetchingLogs')}
+            notConnectedMessage={t('drilldown.empty.connectAgentLogs')}
+            emptyMessage={t('drilldown.empty.noLogsAvailable')}
+            handleCopy={handleCopy}
+            onRefresh={() => fetchLogs(true)}
+            refreshIcon={Terminal}
+            refreshLabel="Refresh"
+          />
+        )}
+
+        {activeTab === 'exec' && (
+          <div className="h-[500px] rounded-lg overflow-hidden border border-border">
+            <PodExecTerminal
+              cluster={cluster}
+              namespace={namespace}
+              pod={podName}
+              containers={containerNames}
+              defaultContainer={containerNames[0]}
+            />
+          </div>
+        )}
+
+        {activeTab === 'events' && (
+          <PodOutputTab
+            output={eventsOutput}
+            loading={eventsLoading}
+            agentConnected={agentConnected}
+            copyField="events"
+            copiedField={copiedField}
+            kubectlComment={`# kubectl get events -n ${namespace} --field-selector involvedObject.name=${podName}`}
+            loadingMessage={t('drilldown.status.fetchingEvents')}
+            notConnectedMessage={t('drilldown.empty.connectAgentEvents')}
+            emptyMessage={t('drilldown.empty.noEventsFound', { resource: 'pod' })}
+            handleCopy={handleCopy}
+            onRefresh={() => fetchEvents(true)}
+            refreshIcon={Zap}
+            refreshLabel="Refresh"
+          />
+        )}
+
+        {activeTab === 'yaml' && (
+          <PodOutputTab
+            output={yamlOutput}
+            loading={yamlLoading}
+            agentConnected={agentConnected}
+            copyField="yaml"
+            copiedField={copiedField}
+            kubectlComment={`# kubectl get pod ${podName} -n ${namespace} -o yaml`}
+            loadingMessage={t('drilldown.status.fetchingYaml')}
+            notConnectedMessage={t('drilldown.empty.connectAgentYaml')}
+            emptyMessage={t('drilldown.empty.failedFetchYaml')}
+            handleCopy={handleCopy}
+            onRefresh={() => fetchYaml(true)}
+            refreshIcon={Code}
+            refreshLabel="Refresh"
+          />
+        )}
       </div>
 
       {/* AI Actions Footer - Always visible */}
