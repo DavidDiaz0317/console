@@ -274,6 +274,8 @@ const OpenKruiseStatus = safeLazy(() => import('./openkruise_status'), 'OpenKrui
 const KeycloakStatus = safeLazy(() => import('./keycloak_status'), 'KeycloakStatus')
 // OpenYurt edge computing card
 const OpenYurtStatus = safeLazy(() => import('./openyurt_status'), 'OpenYurtStatus')
+// Knative serverless monitoring card
+const KnativeStatus = safeLazy(() => import('./knative_status'), 'KnativeStatus')
 // Inspektor Gadget cards
 const NetworkTraceCard = safeLazy(() => import('./gadget/NetworkTraceCard'), 'NetworkTraceCard')
 const DNSTraceCard = safeLazy(() => import('./gadget/DNSTraceCard'), 'DNSTraceCard')
@@ -595,6 +597,8 @@ const RAW_CARD_COMPONENTS: Record<string, CardComponent> = {
   karmada_status: KarmadaStatus,
   // OpenYurt edge computing
   openyurt_status: OpenYurtStatus,
+  // Knative serverless
+  knative_status: KnativeStatus,
   // KubeRay fleet monitoring
   kuberay_fleet: KubeRayFleet,
   // SLO compliance tracking
@@ -799,6 +803,8 @@ export const DEMO_DATA_CARDS = new Set([
   // KubeVela - demo until KubeVela is installed
   'kubevela_status',
   'vcluster_status',
+  // Knative serverless - demo until Knative is installed
+  'knative_status',
 ])
 
 /**
@@ -1017,6 +1023,8 @@ const CARD_CHUNK_PRELOADERS: Record<string, () => Promise<unknown>> = {
   karmada_status: () => import('./karmada_status'),
   // OpenYurt edge computing
   openyurt_status: () => import('./openyurt_status'),
+  // Knative serverless
+  knative_status: () => import('./knative_status'),
   kuberay_fleet: () => import('./kuberay_fleet'),
   slo_compliance: () => import('./slo_compliance'),
   failover_timeline: () => import('./failover_timeline'),

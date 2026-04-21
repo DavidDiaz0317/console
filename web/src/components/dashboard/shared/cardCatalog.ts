@@ -335,6 +335,7 @@ export const CARD_CATALOG = {
     { type: 'slo_compliance', title: 'SLO Compliance', description: 'Service Level Objective tracking with error budget burn rate, compliance gauges, and per-cluster SLO status', visualization: 'metrics' },
   ],
   'Serverless': [
+    { type: 'knative_status', title: 'Knative', description: 'Knative serving revisions, traffic routing, and eventing broker status', visualization: 'status' },
     { type: 'cloudevents_status', title: 'CloudEvents', description: 'CloudEvents message flow, event source tracking, and delivery status', visualization: 'status' },
   ],
   'Streaming & Messaging': [
@@ -536,6 +537,13 @@ export function generateCardSuggestions(query: string): CardSuggestion[] {
   if (lowerQuery.includes('keycloak') || lowerQuery.includes('sso') || lowerQuery.includes('realm') || lowerQuery.includes('identity') || lowerQuery.includes('iam') || lowerQuery.includes('oauth') || lowerQuery.includes('oidc') || lowerQuery.includes('authentication')) {
     return [
       { type: 'keycloak_status', title: 'Keycloak', description: 'Keycloak realm health, active user sessions, and registered clients', visualization: 'status', config: {} },
+    ]
+  }
+
+  if (lowerQuery.includes('knative') || lowerQuery.includes('serverless') || lowerQuery.includes('serving') || lowerQuery.includes('eventing') || lowerQuery.includes('broker')) {
+    return [
+      { type: 'knative_status', title: 'Knative', description: 'Knative serving revisions, traffic routing, and eventing broker status', visualization: 'status', config: {} },
+      { type: 'cloudevents_status', title: 'CloudEvents', description: 'CloudEvents message flow and delivery status', visualization: 'status', config: {} },
     ]
   }
 

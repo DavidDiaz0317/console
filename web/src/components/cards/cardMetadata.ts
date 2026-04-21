@@ -298,6 +298,8 @@ export const CARD_TITLES: Record<string, string> = {
   keda_status: 'KEDA',
   // OpenYurt edge computing
   openyurt_status: 'OpenYurt',
+  // Knative serverless
+  knative_status: 'Knative',
   // Karmada multi-cluster orchestration
   karmada_status: 'Karmada',
   kuberay_fleet: 'KubeRay Fleet',
@@ -581,6 +583,8 @@ export const CARD_DESCRIPTIONS: Record<string, string> = {
   keycloak_status: 'Keycloak is a CNCF-incubating open-source Identity and Access Management solution. This card monitors the Keycloak Operator health, realm status, active user sessions, and registered clients across your clusters.',
   // OpenYurt edge computing
   openyurt_status: 'OpenYurt extends Kubernetes to edge computing scenarios. This card monitors edge node pools, node autonomy status, and Raven gateway connectivity between edge and cloud clusters.',
+  // Knative serverless
+  knative_status: 'Knative is a CNCF graduated platform for serverless workloads on Kubernetes. This card monitors Knative Serving services, revision status, traffic routing, and Eventing broker health across your clusters.',
   // Karmada multi-cluster orchestration
   karmada_status: 'Karmada is a multi-cluster orchestration tool that propagates resources (Deployments, Services, etc.) across multiple clusters using placement policies. This card shows propagation status, member cluster health, and policy compliance.',
   kuberay_fleet: 'Discovers RayCluster, RayService, and RayJob CRDs across all connected clusters. Shows fleet-level Ray workload status including GPU allocations, serving endpoints, and job progress.',
