@@ -119,7 +119,6 @@ const KNOWN_VIOLATIONS: Record<string, Set<string>> = {
   'Kubectl.tsx': new Set(['bare-isLoading', 'missing-isRefreshing']),
   'kubevela_status/useKubeVelaStatus.ts': new Set(['bare-isLoading']),
   'KustomizationStatus.tsx': new Set(['bare-isLoading', 'missing-isRefreshing']),
-  'lima_status/useLimaStatus.ts': new Set(['bare-isLoading']),
   'llmd/NightlyE2EStatus.tsx': new Set(['bare-isLoading']),
   'NamespaceMonitor.tsx': new Set(['bare-isLoading']),
   'NamespaceRBAC.tsx': new Set(['missing-isRefreshing']),

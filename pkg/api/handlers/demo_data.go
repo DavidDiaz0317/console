@@ -374,6 +374,56 @@ func getDemoFlatcarNodes() []k8s.FlatcarNodeInfo {
 	}
 }
 
+// getDemoLimaInstances returns demo Lima instances for GET /api/lima.
+func getDemoLimaInstances() []LimaInstanceSummary {
+	return []LimaInstanceSummary{
+		{
+			Name:        "lima-k3s",
+			Status:      "running",
+			CPUCores:    4,
+			MemoryGB:    8,
+			DiskGB:      60,
+			Arch:        "x86_64",
+			OS:          "Ubuntu 22.04 LTS",
+			LimaVersion: "0.18.0",
+			LastSeen:    time.Now().Add(-30 * time.Second).UTC().Format(time.RFC3339),
+		},
+		{
+			Name:        "lima-default",
+			Status:      "running",
+			CPUCores:    2,
+			MemoryGB:    4,
+			DiskGB:      30,
+			Arch:        "x86_64",
+			OS:          "Ubuntu 22.04 LTS",
+			LimaVersion: "0.18.0",
+			LastSeen:    time.Now().Add(-45 * time.Second).UTC().Format(time.RFC3339),
+		},
+		{
+			Name:        "lima-dev",
+			Status:      "running",
+			CPUCores:    4,
+			MemoryGB:    8,
+			DiskGB:      80,
+			Arch:        "aarch64",
+			OS:          "Ubuntu 23.10",
+			LimaVersion: "0.17.2",
+			LastSeen:    time.Now().Add(-2 * time.Minute).UTC().Format(time.RFC3339),
+		},
+		{
+			Name:        "lima-test",
+			Status:      "stopped",
+			CPUCores:    2,
+			MemoryGB:    4,
+			DiskGB:      20,
+			Arch:        "x86_64",
+			OS:          "Fedora 39",
+			LimaVersion: "0.17.2",
+			LastSeen:    time.Now().Add(-30 * time.Minute).UTC().Format(time.RFC3339),
+		},
+	}
+}
+
 // Demo NVIDIA Operator Status
 func getDemoNVIDIAOperatorStatus() []*k8s.NVIDIAOperatorStatus {
 	return []*k8s.NVIDIAOperatorStatus{
@@ -549,14 +599,14 @@ func getDemoWorkloads() []v1alpha1.Workload {
 // Demo pod network stats — realistic throughput for multi-tenancy topology
 func getDemoPodNetworkStats() []PodNetworkStats {
 	/** Realistic throughput values (bytes/sec) for demo visualization */
-	const kvEth0RxRate int64 = 10240  // 10 KB/s — KubeVirt data-plane rx
-	const kvEth0TxRate int64 = 5120   // 5 KB/s — KubeVirt data-plane tx
-	const kvEth1RxRate int64 = 2560   // 2.5 KB/s — KubeVirt control-plane rx
-	const kvEth1TxRate int64 = 1280   // 1.3 KB/s — KubeVirt control-plane tx
-	const k3sEth0RxRate int64 = 5120  // 5 KB/s — K3s management rx
-	const k3sEth0TxRate int64 = 2560  // 2.5 KB/s — K3s management tx
-	const k3sEth1RxRate int64 = 1280  // 1.3 KB/s — K3s control-plane rx
-	const k3sEth1TxRate int64 = 640   // 0.6 KB/s — K3s control-plane tx
+	const kvEth0RxRate int64 = 10240 // 10 KB/s — KubeVirt data-plane rx
+	const kvEth0TxRate int64 = 5120  // 5 KB/s — KubeVirt data-plane tx
+	const kvEth1RxRate int64 = 2560  // 2.5 KB/s — KubeVirt control-plane rx
+	const kvEth1TxRate int64 = 1280  // 1.3 KB/s — KubeVirt control-plane tx
+	const k3sEth0RxRate int64 = 5120 // 5 KB/s — K3s management rx
+	const k3sEth0TxRate int64 = 2560 // 2.5 KB/s — K3s management tx
+	const k3sEth1RxRate int64 = 1280 // 1.3 KB/s — K3s control-plane rx
+	const k3sEth1TxRate int64 = 640  // 0.6 KB/s — K3s control-plane tx
 
 	return []PodNetworkStats{
 		{

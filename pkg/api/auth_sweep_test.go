@@ -50,6 +50,7 @@ func TestProtectedRoutes_UnauthenticatedReturn401(t *testing.T) {
 		{"GET", "/api/mcp/configmaps"},
 		{"GET", "/api/mcp/resource-yaml"},
 		{"GET", "/api/mcp/pods/logs"},
+		{"GET", "/api/lima"},
 		// Exec / mutating MCP tool calls
 		{"POST", "/api/mcp/tools/ops/call"},
 		{"POST", "/api/mcp/tools/deploy/call"},

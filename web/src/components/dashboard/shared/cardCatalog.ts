@@ -309,6 +309,7 @@ export const CARD_CATALOG = {
   'Misc': [
     { type: 'buildpacks_status', title: 'Buildpacks Status', description: 'Cloud Native Buildpacks detection, builders, and image build status', visualization: 'status' },
     { type: 'flatcar_status', title: 'Flatcar Container Linux', description: 'Flatcar node OS versions, update status, and version distribution', visualization: 'status' },
+    { type: 'lima_status', title: 'Lima', description: 'Lima virtual machine instances, runtime health, and resource usage', visualization: 'status' },
     { type: 'artifact_hub_status', title: 'Artifact Hub', description: 'Artifact Hub package discovery and repository sync status', visualization: 'status' },
     { type: 'crio_status', title: 'CRI-O', description: 'CRI-O container runtime metrics, image pulls, and pod sandbox status', visualization: 'status' },
     { type: 'github_activity', title: 'GitHub Activity', description: 'Monitor GitHub repository activity - PRs, issues, releases, and contributors', visualization: 'table' },

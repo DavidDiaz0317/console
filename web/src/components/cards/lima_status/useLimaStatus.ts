@@ -1,9 +1,9 @@
-import { useCache } from '../../../lib/cache'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useClusters } from '../../../hooks/useMCP'
+import { STORAGE_KEY_TOKEN } from '../../../lib/constants'
+import { FETCH_DEFAULT_TIMEOUT_MS } from '../../../lib/constants/network'
 import { useCardLoadingState } from '../CardDataContext'
 import { LIMA_DEMO_DATA, type LimaDemoData, type LimaInstance } from './demoData'
-import { FETCH_DEFAULT_TIMEOUT_MS } from '../../../lib/constants/network'
-import { authFetch } from '../../../lib/api'
-import { LOCAL_AGENT_HTTP_URL } from '../../../lib/constants/network'
 
 export interface LimaStatus {
   instances: LimaInstance[]
@@ -29,144 +29,85 @@ const INITIAL_DATA: LimaStatus = {
   lastCheckTime: new Date().toISOString(),
 }
 
-const CACHE_KEY = 'lima-status'
+const CACHE_EXPIRY_MS = 300_000
+const REFRESH_INTERVAL_MS = 120_000
+const FAILURE_THRESHOLD = 3
+const LIMA_CACHE_KEY = 'kc-lima-cache'
+const STATUS_SERVICE_UNAVAILABLE = 503
 
-/**
- * NodeInfo shape returned by the console backend at GET /api/mcp/nodes.
- * Only the fields we need for Lima detection are typed here.
- * Backend returns flat cpuCapacity/memoryCapacity fields, not nested capacity object.
- */
-interface BackendNodeInfo {
-  name?: string
-  osImage?: string
-  labels?: Record<string, string>
-  conditions?: Array<{ type?: string; status?: string }>
-  cpuCapacity?: string
-  memoryCapacity?: string
+interface LimaListResponse {
+  limaInstances: LimaInstance[]
+  isDemoData: boolean
 }
 
-/**
- * Fetch Lima VM status via the console backend proxy.
- *
- * Lima nodes are identified by:
- * - A `lima.sh/instance` label on the node
- * - Node name starting with "lima-"
- * - The osImage or annotation containing "lima"
- *
- * Uses GET /api/mcp/nodes which proxies through the backend to all connected
- * clusters. The backend returns { nodes: NodeInfo[], source: string }.
- */
-async function fetchLimaStatus(): Promise<LimaStatus> {
-  const resp = await authFetch(`${LOCAL_AGENT_HTTP_URL}/nodes`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
-  })
+interface CachedData {
+  data: LimaStatus
+  timestamp: number
+  isDemoData: boolean
+}
 
-  if (!resp.ok) {
-    throw new Error(`HTTP ${resp.status}`)
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem(STORAGE_KEY_TOKEN)
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
+  return headers
+}
 
-  const body: { nodes?: BackendNodeInfo[] } = await resp.json()
-  const allNodes = Array.isArray(body?.nodes) ? body.nodes : []
-
-  // Detect Lima nodes by name prefix, label, or OS image
-  // Note: Backend only exposes labels, not annotations
-  const limaNodes = allNodes.filter(
-    (n) =>
-      n.name?.startsWith('lima-') ||
-      n.labels?.['lima.sh/instance'] !== undefined ||
-      n.osImage?.toLowerCase().includes('lima'),
-  )
-
-  if (limaNodes.length === 0) {
-    return {
-      ...INITIAL_DATA,
-      health: 'not-detected',
-      lastCheckTime: new Date().toISOString(),
+function loadFromCache(): CachedData | null {
+  try {
+    const stored = localStorage.getItem(LIMA_CACHE_KEY)
+    if (!stored) {
+      return null
     }
-  }
 
-  /**
-   * Parse CPU quantity strings like "4", "4000m" to integer Core count.
-   */
-  function parseCpuCores(cpu?: string): number {
-    if (!cpu) return 0
-    if (cpu.endsWith('m')) return Math.ceil(parseInt(cpu) / 1000)
-    return parseInt(cpu) || 0
-  }
-
-  /**
-   * Parse memory quantity strings like "8Gi", "4096Mi" to integer GB.
-   */
-  function parseMemoryGB(mem?: string): number {
-    if (!mem) return 0
-    const gib = mem.match(/^(\d+)Gi$/)
-    if (gib) return parseInt(gib[1])
-    const mib = mem.match(/^(\d+)Mi$/)
-    if (mib) return Math.round(parseInt(mib[1]) / 1024)
-    const ki = mem.match(/^(\d+)Ki$/)
-    if (ki) return Math.round(parseInt(ki[1]) / (1024 * 1024))
-    return 0
-  }
-
-  const instances: LimaInstance[] = limaNodes.map((n) => {
-    const isReady =
-      n.conditions?.some((c) => c.type === 'Ready' && c.status === 'True') ??
-      false
-    const hasPressure =
-      n.conditions?.some(
-        (c) =>
-          (c.type === 'DiskPressure' ||
-            c.type === 'MemoryPressure' ||
-            c.type === 'PIDPressure') &&
-          c.status === 'True',
-      ) ?? false
-
-    const nodeStatus: 'running' | 'stopped' | 'broken' = hasPressure
-      ? 'broken'
-      : isReady
-        ? 'running'
-        : 'stopped'
-
-    // Try to extract Lima version from label (best effort)
-    const limaVersion = n.labels?.['lima.sh/version'] ?? 'unknown'
-
-    return {
-      name: n.name ?? 'unknown',
-      status: nodeStatus,
-      cpuCores: parseCpuCores(n.cpuCapacity),
-      memoryGB: parseMemoryGB(n.memoryCapacity),
-      diskGB: 0, // disk info not in standard node capacity
-      arch:
-        n.labels?.['kubernetes.io/arch'] ??
-        n.labels?.['beta.kubernetes.io/arch'] ??
-        'unknown',
-      os: n.osImage ?? 'Linux',
-      limaVersion,
-      lastSeen: new Date().toISOString(),
+    const parsed = JSON.parse(stored) as CachedData
+    if (Date.now() - parsed.timestamp < CACHE_EXPIRY_MS) {
+      return parsed
     }
-  })
+  } catch {
+    // Ignore storage/parse errors
+  }
 
-  const runningNodes = instances.filter((i) => i.status === 'running').length
-  const stoppedNodes = instances.filter((i) => i.status === 'stopped').length
-  const brokenNodes = instances.filter((i) => i.status === 'broken').length
+  return null
+}
 
-  const totalCpuCores = instances.reduce((s, i) => s + i.cpuCores, 0)
-  const totalMemoryGB = instances.reduce((s, i) => s + i.memoryGB, 0)
+function saveToCache(data: LimaStatus, isDemoData: boolean): void {
+  try {
+    localStorage.setItem(LIMA_CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now(),
+      isDemoData,
+    }))
+  } catch {
+    // Ignore quota errors
+  }
+}
 
-  const health: 'healthy' | 'degraded' =
-    brokenNodes > 0 || stoppedNodes > 0 ? 'degraded' : 'healthy'
+function buildLimaStatus(instances: LimaInstance[], lastCheckTime?: string): LimaStatus {
+  const runningNodes = instances.filter(i => i.status === 'running').length
+  const stoppedNodes = instances.filter(i => i.status === 'stopped').length
+  const brokenNodes = instances.filter(i => i.status === 'broken').length
+
+  const totalCpuCores = instances.reduce((sum, i) => sum + i.cpuCores, 0)
+  const totalMemoryGB = instances.reduce((sum, i) => sum + i.memoryGB, 0)
+
+  const health: 'healthy' | 'degraded' | 'not-detected' =
+    instances.length === 0
+      ? 'not-detected'
+      : (brokenNodes > 0 || stoppedNodes > 0 ? 'degraded' : 'healthy')
 
   return {
     instances,
-    totalNodes: limaNodes.length,
+    totalNodes: instances.length,
     runningNodes,
     stoppedNodes,
     brokenNodes,
     health,
     totalCpuCores,
     totalMemoryGB,
-    lastCheckTime: new Date().toISOString(),
+    lastCheckTime: lastCheckTime || new Date().toISOString(),
   }
 }
 
@@ -184,6 +125,17 @@ function toDemoStatus(demo: LimaDemoData): LimaStatus {
   }
 }
 
+function getDemoLimaStatus(noReachableClusters: boolean): LimaStatus {
+  const demoStatus = toDemoStatus(LIMA_DEMO_DATA)
+
+  if (noReachableClusters) {
+    // Keep demo fallback shape stable while ensuring recency indicators remain current.
+    return { ...demoStatus, lastCheckTime: new Date().toISOString() }
+  }
+
+  return demoStatus
+}
+
 export interface UseLimaStatusResult {
   data: LimaStatus
   loading: boolean
@@ -191,42 +143,123 @@ export interface UseLimaStatusResult {
   consecutiveFailures: number
   showSkeleton: boolean
   showEmptyState: boolean
-  /** True when displaying demo/fallback data (no real cluster connected) */
   isDemoData: boolean
 }
 
 export function useLimaStatus(): UseLimaStatusResult {
-  const { data, isLoading, isFailed, consecutiveFailures, isDemoFallback } =
-    useCache<LimaStatus>({
-      key: CACHE_KEY,
-      category: 'default',
-      initialData: INITIAL_DATA,
-      demoData: toDemoStatus(LIMA_DEMO_DATA),
-      persist: true,
-      fetcher: fetchLimaStatus,
-    })
+  const { deduplicatedClusters: clusters, isLoading: clustersLoading } = useClusters()
 
-  const effectiveIsDemoData = isDemoFallback && !isLoading
+  // Initialize from cache using a snapshot to avoid reading refs during render.
+  const cachedData = useRef(loadFromCache())
+  const cachedSnapshot = cachedData.current
 
-  // hasAnyData is true only when Lima nodes exist.
-  // 'not-detected' is NOT counted as "has data" so the empty state shows properly.
+  const [data, setData] = useState<LimaStatus>(cachedSnapshot?.data || INITIAL_DATA)
+  const [isDemoData, setIsDemoData] = useState(cachedSnapshot?.isDemoData ?? true)
+  const [isLoading, setIsLoading] = useState(!cachedSnapshot)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0)
+  const [lastRefresh, setLastRefresh] = useState<number | null>(cachedSnapshot?.timestamp || null)
+
+  const initialLoadDone = useRef(!!cachedSnapshot)
+
+  // Keep refetch stable while still reading current cluster reachability.
+  // This avoids interval thrash from array identity changes in useClusters.
+  const clustersRef = useRef(clusters)
+  clustersRef.current = clusters
+
+  const refetch = useCallback(async (silent = false) => {
+    if (!silent && !initialLoadDone.current) {
+      setIsLoading(true)
+    }
+
+    if (silent && initialLoadDone.current) {
+      setIsRefreshing(true)
+    }
+
+    try {
+      const res = await fetch('/api/lima', {
+        headers: authHeaders(),
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
+      })
+
+      if (res.status === STATUS_SERVICE_UNAVAILABLE) {
+        throw new Error('Service unavailable')
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+
+      const response = (await res.json()) as LimaListResponse
+      if (response.isDemoData) {
+        throw new Error('Backend returned demo data indicator')
+      }
+
+      const liveInstances = response.limaInstances || []
+      const liveStatus = buildLimaStatus(liveInstances)
+
+      setData(liveStatus)
+      setIsDemoData(false)
+      setConsecutiveFailures(0)
+      setLastRefresh(Date.now())
+      initialLoadDone.current = true
+      saveToCache(liveStatus, false)
+    } catch {
+      const currentClusters = clustersRef.current
+      const reachableClusterCount = (currentClusters || []).filter(c => c.reachable !== false).length
+      const demoStatus = getDemoLimaStatus(reachableClusterCount === 0)
+
+      setData(demoStatus)
+      setIsDemoData(true)
+      setConsecutiveFailures(prev => prev + 1)
+      setLastRefresh(Date.now())
+      initialLoadDone.current = true
+      saveToCache(demoStatus, true)
+     } finally {
+       setIsLoading(false)
+       setIsRefreshing(false)
+     }
+  }, [])
+
+  // Initial load after cluster metadata finishes loading.
+  useEffect(() => {
+    if (!clustersLoading) {
+      refetch()
+    }
+  }, [clustersLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-refresh in background once the initial load has completed.
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      refetch(true)
+    }, REFRESH_INTERVAL_MS)
+
+    return () => clearInterval(interval)
+  }, [refetch])
+
   const hasAnyData = data.totalNodes > 0
 
   const { showSkeleton, showEmptyState } = useCardLoadingState({
-    isLoading,
+    isLoading: (isLoading || clustersLoading) && !hasAnyData,
+    isRefreshing,
     hasAnyData,
-    isFailed,
+    isFailed: consecutiveFailures >= FAILURE_THRESHOLD,
     consecutiveFailures,
-    isDemoData: effectiveIsDemoData,
+    isDemoData,
+    lastRefresh,
   })
 
   return {
     data,
-    loading: isLoading,
-    error: isFailed && !hasAnyData,
+    loading: isLoading || clustersLoading,
+    error: consecutiveFailures >= FAILURE_THRESHOLD && !hasAnyData,
     consecutiveFailures,
     showSkeleton,
     showEmptyState,
-    isDemoData: effectiveIsDemoData,
+    isDemoData,
   }
 }
