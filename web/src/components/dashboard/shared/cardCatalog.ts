@@ -134,6 +134,7 @@ export const CARD_CATALOG = {
     { type: 'storage_overview', title: 'Storage Overview', description: 'Total storage capacity and PVC summary', visualization: 'status' },
     { type: 'pvc_status', title: 'PVC Status', description: 'Persistent Volume Claims with status breakdown', visualization: 'table' },
     { type: 'pv_status', title: 'Persistent Volumes', description: 'Persistent Volumes with capacity, access modes, and reclaim policy', visualization: 'table' },
+    { type: 'fluid_status', title: 'Fluid', description: 'Fluid dataset caching status, runtime health, and data load progress', visualization: 'status' },
   ],
   'Network': [
     { type: 'network_overview', title: 'Network Overview', description: 'Services breakdown by type and namespace', visualization: 'status' },
@@ -545,6 +546,12 @@ export function generateCardSuggestions(query: string): CardSuggestion[] {
     return [
       { type: 'knative_status', title: 'Knative', description: 'Knative serving revisions, traffic routing, and eventing broker status', visualization: 'status', config: {} },
       { type: 'cloudevents_status', title: 'CloudEvents', description: 'CloudEvents message flow and delivery status', visualization: 'status', config: {} },
+    ]
+  }
+
+  if (lowerQuery.includes('fluid') || lowerQuery.includes('dataset') || lowerQuery.includes('caching') || lowerQuery.includes('alluxio') || lowerQuery.includes('juicefs')) {
+    return [
+      { type: 'fluid_status', title: 'Fluid', description: 'Fluid dataset caching status, runtime health, and data load progress', visualization: 'status', config: {} },
     ]
   }
 
