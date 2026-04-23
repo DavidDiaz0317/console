@@ -11,11 +11,13 @@ import { serviceExportsConfig } from '../service-exports'
 import { serviceImportsConfig } from '../service-imports'
 import { ingressStatusConfig } from '../ingress-status'
 import { gatewayStatusConfig } from '../gateway-status'
+import { ciliumStatusConfig } from '../cilium-status'
 import { storageOverviewConfig } from '../storage-overview'
 import { pvStatusConfig } from '../pv-status'
 import { pvcStatusConfig } from '../pvc-status'
 
 const infraCards = [
+  { name: 'ciliumStatus', config: ciliumStatusConfig },
   { name: 'networkOverview', config: networkOverviewConfig },
   { name: 'networkPolicyStatus', config: networkPolicyStatusConfig },
   { name: 'networkUtils', config: networkUtilsConfig },

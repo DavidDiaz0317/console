@@ -114,6 +114,7 @@ export const CARD_ICONS: Record<string, { icon: ComponentType<{ className?: stri
   gateway_status: { icon: Network, color: 'text-purple-400' },
   ingress_status: { icon: Network, color: 'text-blue-400' },
   network_policy_status: { icon: Shield, color: 'text-cyan-400' },
+  cilium_status: { icon: Network, color: 'text-emerald-400' },
 
   // Compute
   compute_overview: { icon: Cpu, color: 'text-purple-400' },

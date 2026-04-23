@@ -57,6 +57,26 @@
     "targets": "Targets",
     "openDocs": "Open Thanos Docs"
   },
+  "ciliumStatus": {
+    "title": "Cilium",
+    "subtitle": "eBPF Data Plane",
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unhealthy": "Unhealthy",
+    "nodes": "Nodes",
+    "networkPolicies": "Network Policies",
+    "endpoints": "Endpoints",
+    "hubbleFlows": "Hubble Flows",
+    "forwarded": "Forwarded",
+    "dropped": "Dropped",
+    "perSecond": "/s",
+    "hubbleEnabled": "Hubble Enabled",
+    "ebpf": "eBPF",
+    "name": "Name",
+    "status": "Status",
+    "version": "Version",
+    "openDocs": "Open Cilium Docs"
+  },
   "securityIssues": {
     "highSeverityTitle": "{{count}} high severity security issues requiring immediate attention",
     "highSeverityTitle_one": "{{count}} high severity security issue requiring immediate attention",
@@ -140,12 +160,30 @@
       "pendingJoins_other": "{{count}} pending join requests",
       "providerAccessDenied": "Access denied for {{provider}} on {{context}}",
       "providers": {
-        "ocm": { "label": "OCM", "fullName": "Open Cluster Management" },
-        "karmada": { "label": "Karmada", "fullName": "Karmada" },
-        "clusternet": { "label": "Clusternet", "fullName": "Clusternet" },
-        "liqo": { "label": "Liqo", "fullName": "Liqo" },
-        "kubeadmiral": { "label": "KubeAdmiral", "fullName": "KubeAdmiral" },
-        "capi": { "label": "CAPI", "fullName": "Cluster API" }
+        "ocm": {
+          "label": "OCM",
+          "fullName": "Open Cluster Management"
+        },
+        "karmada": {
+          "label": "Karmada",
+          "fullName": "Karmada"
+        },
+        "clusternet": {
+          "label": "Clusternet",
+          "fullName": "Clusternet"
+        },
+        "liqo": {
+          "label": "Liqo",
+          "fullName": "Liqo"
+        },
+        "kubeadmiral": {
+          "label": "KubeAdmiral",
+          "fullName": "KubeAdmiral"
+        },
+        "capi": {
+          "label": "CAPI",
+          "fullName": "Cluster API"
+        }
       }
     }
   },

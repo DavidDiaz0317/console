@@ -23,6 +23,7 @@ import { argocdSyncStatusConfig } from './argocd-sync-status'
 import { certManagerConfig } from './cert-manager'
 import { chartVersionsConfig } from './chart-versions'
 import { checkersConfig } from './checkers'
+import { ciliumStatusConfig } from './cilium-status'
 import { clusterComparisonConfig } from './cluster-comparison'
 import { clusterCostsConfig } from './cluster-costs'
 import { clusterFocusConfig } from './cluster-focus'
@@ -201,6 +202,7 @@ export const CARD_CONFIGS: CardConfigRegistry = {
   cert_manager: certManagerConfig,
   chart_versions: chartVersionsConfig,
   checkers: checkersConfig,
+  cilium_status: ciliumStatusConfig,
   cluster_comparison: clusterComparisonConfig,
   cluster_costs: clusterCostsConfig,
   cluster_focus: clusterFocusConfig,
@@ -468,6 +470,7 @@ export {
   certManagerConfig,
   chartVersionsConfig,
   checkersConfig,
+  ciliumStatusConfig,
   clusterComparisonConfig,
   clusterCostsConfig,
   clusterFocusConfig,

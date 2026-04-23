@@ -85,6 +85,17 @@ const DESCRIPTORS: CardDescriptor[] = [
     isLiveData: true,
     component: () => import('./thanos_status').then(m => ({ default: m.ThanosStatus as ComponentType<CardComponentProps> })),
   },
+  // ── Cilium Monitoring card ──────────────────────────────────────────
+  {
+    id: 'cilium_status',
+    title: 'Cilium',
+    description: 'Cilium eBPF networking, network policy enforcement, and Hubble flow visibility.',
+    category: 'Network',
+    defaultWidth: 6,
+    visualization: 'status',
+    isLiveData: true,
+    component: () => import('./cilium_status').then(m => ({ default: m.CiliumStatus as ComponentType<CardComponentProps> })),
+  },
 ]
 
 /**

@@ -132,6 +132,12 @@ export * from './useCachedLLMd'
 export * from './useCachedISO27001'
 
 // ============================================================================
+// Cilium Monitoring — useCachedCiliumStatus.ts
+// ============================================================================
+
+export * from './useCachedCiliumStatus'
+
+// ============================================================================
 // Standalone fetchers for prefetch (no React hooks, plain async)
 // ============================================================================
 
@@ -201,7 +207,8 @@ export const coreFetchers = {
           cluster: d.cluster,
           replicas: d.replicas ?? 1,
           readyReplicas: d.readyReplicas ?? 0,
-          reason: d.status === 'failed' ? 'DeploymentFailed' : 'ReplicaFailure' }))
+          reason: d.status === 'failed' ? 'DeploymentFailed' : 'ReplicaFailure'
+        }))
     }
     const token = getToken()
     if (token && token !== 'demo-token' && !isBackendUnavailable()) {
@@ -237,8 +244,10 @@ export const coreFetchers = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+          Authorization: `Bearer ${token}`
+        },
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS)
+      })
       if (response.ok) {
         const rawSecurity = await response.json().catch(() => null)
         const data = validateResponse(SecurityIssuesResponseSchema, rawSecurity, '/security-issues (fallback)')
@@ -261,8 +270,10 @@ export const coreFetchers = {
       const res = await fetch('/api/workloads', {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+          Authorization: `Bearer ${token}`
+        },
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS)
+      })
       if (res.ok) {
         const data = await res.json().catch(() => null)
         if (!data) return []
@@ -278,14 +289,17 @@ export const coreFetchers = {
           status: (String(d.status || 'Running')) as Workload['status'],
           image: String(d.image || ''),
           labels: (d.labels as Record<string, string>) || {},
-          createdAt: String(d.createdAt || new Date().toISOString()) }))
+          createdAt: String(d.createdAt || new Date().toISOString())
+        }))
       }
     }
     return []
-  } }
+  }
+}
 
 /** Specialty data fetchers — lower priority, prefetched after core data */
 export const specialtyFetchers = {
   prowJobs: () => fetchProwJobs('prow', 'prow'),
   llmdServers: () => fetchLLMdServers(['vllm-d', 'platform-eval']),
-  llmdModels: () => fetchLLMdModels(['vllm-d', 'platform-eval']) }
+  llmdModels: () => fetchLLMdModels(['vllm-d', 'platform-eval'])
+}

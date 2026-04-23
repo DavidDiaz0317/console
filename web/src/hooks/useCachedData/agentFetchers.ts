@@ -16,6 +16,7 @@ import { settledWithConcurrency } from '../../lib/utils/concurrency'
 import { AGENT_HTTP_TIMEOUT_MS } from '../../lib/cache/fetcherUtils'
 import type { PodIssue, Deployment } from '../useMCP'
 import type { Workload } from '../useWorkloads'
+import type { CiliumStatus } from '../../types/cilium'
 
 // ============================================================================
 // Cluster helpers
@@ -82,7 +83,8 @@ export async function fetchDeploymentsViaAgent(namespace?: string, onProgress?: 
     const timeoutId = setTimeout(() => controller.abort(), AGENT_HTTP_TIMEOUT_MS)
     const response = await fetch(`${LOCAL_AGENT_HTTP_URL}/deployments?${params}`, {
       signal: controller.signal,
-      headers: { Accept: 'application/json' } })
+      headers: { Accept: 'application/json' }
+    })
     clearTimeout(timeoutId)
 
     if (!response.ok) throw new Error(`Agent returned ${response.status}`)
@@ -93,7 +95,8 @@ export async function fetchDeploymentsViaAgent(namespace?: string, onProgress?: 
     // Always use the short name — agent echoes back context path as cluster
     return ((data.deployments || []) as Deployment[]).map(d => ({
       ...d,
-      cluster: name }))
+      cluster: name
+    }))
   })
 
   const accumulated: Deployment[] = []
@@ -127,7 +130,8 @@ export async function fetchWorkloadsFromAgent(onProgress?: (partial: Workload[])
     const tid = setTimeout(() => ctrl.abort(), AGENT_HTTP_TIMEOUT_MS)
     const res = await fetch(`${LOCAL_AGENT_HTTP_URL}/deployments?${params}`, {
       signal: ctrl.signal,
-      headers: { Accept: 'application/json' } })
+      headers: { Accept: 'application/json' }
+    })
     clearTimeout(tid)
 
     if (!res.ok) throw new Error(`Agent ${res.status}`)
@@ -149,7 +153,8 @@ export async function fetchWorkloadsFromAgent(onProgress?: (partial: Workload[])
         readyReplicas: Number(d.readyReplicas || 0),
         status: ws,
         image: String(d.image || ''),
-        createdAt: new Date().toISOString() }
+        createdAt: new Date().toISOString()
+      }
     })
   })
 
@@ -168,25 +173,12 @@ export async function fetchWorkloadsFromAgent(onProgress?: (partial: Workload[])
 // Cilium status fetcher
 // ============================================================================
 
-/** Shape returned by the /cilium-status agent endpoint */
-export interface CiliumStatusResponse {
-  status: 'Healthy' | 'Degraded' | 'Unhealthy'
-  nodes: Array<{ name: string; status: string; version: string }>
-  networkPolicies: number
-  endpoints: number
-  hubble: {
-    enabled: boolean
-    flowsPerSecond: number
-    metrics: { forwarded: number; dropped: number }
-  }
-}
-
 /**
  * Fetch aggregated Cilium status from the local agent.
  * Returns null when the agent is unavailable or the user is in demo mode,
  * which causes the useCache layer to fall back to demo data.
  */
-export async function fetchCiliumStatus(): Promise<CiliumStatusResponse | null> {
+export async function fetchCiliumStatus(): Promise<CiliumStatus | null> {
   if (isAgentUnavailable()) return null
 
   const token = localStorage.getItem(STORAGE_KEY_TOKEN)

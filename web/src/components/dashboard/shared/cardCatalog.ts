@@ -146,6 +146,7 @@ export const CARD_CATALOG = {
     { type: 'service_topology', title: 'Service Topology', description: 'Animated service mesh visualization with cross-cluster traffic', visualization: 'status' },
     { type: 'ingress_status', title: 'Ingress Status', description: 'Ingress resources with hosts, paths, and backend services', visualization: 'table' },
     { type: 'network_policy_status', title: 'Network Policy Status', description: 'NetworkPolicy resources with pod selectors and rules', visualization: 'table' },
+    { type: 'cilium_status', title: 'Cilium', description: 'Cilium eBPF networking, network policy enforcement, and Hubble flow visibility.', visualization: 'status' },
     { type: 'network_trace', title: 'Network Traces', description: 'Live network connection tracing via Inspektor Gadget eBPF', visualization: 'table' },
     { type: 'dns_trace', title: 'DNS Traces', description: 'Live DNS query tracing via Inspektor Gadget eBPF', visualization: 'table' },
   ],
@@ -506,6 +507,7 @@ export function generateCardSuggestions(query: string): CardSuggestion[] {
       { type: 'cluster_focus', title: 'Cluster Focus', description: 'Single cluster detailed view', visualization: 'status', config: {} },
       { type: 'cluster_comparison', title: 'Cluster Comparison', description: 'Side-by-side cluster metrics', visualization: 'bar', config: {} },
       { type: 'cluster_network', title: 'Cluster Network', description: 'API server and network info', visualization: 'status', config: {} },
+      { type: 'cilium_status', title: 'Cilium', description: 'Cilium eBPF networking, network policy enforcement, and Hubble flow visibility.', visualization: 'status', config: {} },
     ]
   }
 
