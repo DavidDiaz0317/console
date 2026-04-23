@@ -9,10 +9,11 @@ describe('useMCP barrel', () => {
         expect(useMCP).toHaveProperty('useClusterHealth')
 
         // Sub-hooks
-        expect(useMCP).toHaveProperty('useWorkloads')
+        expect(useMCP).toHaveProperty('useDeployments')
         expect(useMCP).toHaveProperty('usePods')
         expect(useMCP).toHaveProperty('useEvents')
-        expect(useMCP).toHaveProperty('useNetworking')
+        expect(useMCP).toHaveProperty('useServices')
+        expect(useMCP).toHaveProperty('useIngresses')
         expect(useMCP).toHaveProperty('useNamespaces')
 
         // Shared / utils
