@@ -58,6 +58,7 @@ import { useCachedLinkerd } from '../../hooks/useCachedLinkerd'
 import { useCachedOtel } from '../../hooks/useCachedOtel'
 import { useCachedRook } from '../../hooks/useCachedRook'
 import { useCachedTikv } from '../../hooks/useCachedTikv'
+import { useCachedTuf } from '../../hooks/useCachedTuf'
 import { useCachedVitess } from '../../hooks/useCachedVitess'
 
 // ============================================================================
@@ -1120,6 +1121,16 @@ function useUnifiedLinkerdStatus() {
   }
 }
 
+function useUnifiedOtelStatus() {
+  const result = useCachedOtel()
+  return {
+    data: result.data.collectors,
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  }
+}
+
 function useUnifiedTikvStatus() {
   const result = useCachedTikv()
   return {
@@ -1130,10 +1141,11 @@ function useUnifiedTikvStatus() {
   }
 }
 
-function useUnifiedOtelStatus() {
-  const result = useCachedOtel()
+function useUnifiedTufStatus() {
+  const result = useCachedTuf()
+  // Surface the TUF role list as the primary row set for generic list renderers.
   return {
-    data: result.data.collectors,
+    data: result.data.roles,
     isLoading: result.isLoading,
     error: result.error ? new Error(result.error) : null,
     refetch: result.refetch,
@@ -1357,6 +1369,7 @@ export function registerUnifiedHooks(): void {
   registerDataHook('useCachedOtel', useUnifiedOtelStatus)
   registerDataHook('useCachedRook', useUnifiedRookStatus)
   registerDataHook('useCachedTikv', useUnifiedTikvStatus)
+  registerDataHook('useCachedTuf', useUnifiedTufStatus)
   registerDataHook('useCachedVitess', useUnifiedVitessStatus)
   registerDataHook('useProviderHealth', useProviderHealth)
   registerDataHook('useUpgradeStatus', useUpgradeStatus)
