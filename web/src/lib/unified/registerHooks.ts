@@ -65,6 +65,7 @@ import { useCachedOtel } from '../../hooks/useCachedOtel'
 import { useCachedRook } from '../../hooks/useCachedRook'
 import { useCachedSpiffe } from '../../hooks/useCachedSpiffe'
 import { useCachedCni } from '../../hooks/useCachedCni'
+import { useCachedSpire } from '../../hooks/useCachedSpire'
 import { useCachedTikv } from '../../hooks/useCachedTikv'
 import { useCachedTuf } from '../../hooks/useCachedTuf'
 import { useCachedCloudCustodian } from '../../hooks/useCachedCloudCustodian'
@@ -1270,6 +1271,18 @@ function useUnifiedOpenfeatureStatus() {
   }
 }
 
+function useUnifiedSpireStatus() {
+  const result = useCachedSpire()
+  // Surface the SPIRE server pod list as the primary row set for generic
+  // list renderers.
+  return {
+    data: result.data.serverPods,
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  }
+}
+
 function useUnifiedVitessStatus() {
   const result = useCachedVitess()
   // Surface the keyspace list as the primary row set for generic list renderers.
@@ -1483,6 +1496,7 @@ export function registerUnifiedHooks(): void {
   registerDataHook('useCachedSpiffe', useUnifiedSpiffeStatus)
   registerDataHook('useCachedCni', useUnifiedCniStatus)
   registerDataHook('useCachedOpenfeature', useUnifiedOpenfeatureStatus)
+  registerDataHook('useCachedSpire', useUnifiedSpireStatus)
   registerDataHook('useCachedTikv', useUnifiedTikvStatus)
   registerDataHook('useCachedTuf', useUnifiedTufStatus)
   registerDataHook('useCachedCloudCustodian', useUnifiedCloudCustodianStatus)
