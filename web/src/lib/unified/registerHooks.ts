@@ -61,6 +61,7 @@ import { useCachedKeda } from '../../hooks/useCachedKeda'
 import { useCachedKserve } from '../../hooks/useCachedKserve'
 import { useCachedLinkerd } from '../../hooks/useCachedLinkerd'
 import { useCachedOpenfeature } from '../../hooks/useCachedOpenfeature'
+import { useCachedLonghorn } from '../../hooks/useCachedLonghorn'
 import { useCachedOtel } from '../../hooks/useCachedOtel'
 import { useCachedRook } from '../../hooks/useCachedRook'
 import { useCachedSpiffe } from '../../hooks/useCachedSpiffe'
@@ -1187,6 +1188,17 @@ function useUnifiedKserveStatus() {
   }
 }
 
+function useUnifiedLonghornStatus() {
+  const result = useCachedLonghorn()
+  // Surface the volume list as the primary row set for generic list renderers.
+  return {
+    data: result.data.volumes,
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  }
+}
+
 function useUnifiedOtelStatus() {
   const result = useCachedOtel()
   return {
@@ -1505,6 +1517,7 @@ export function registerUnifiedHooks(): void {
   registerDataHook('useCachedKeda', useUnifiedKedaStatus)
   registerDataHook('useCachedKserve', useUnifiedKserveStatus)
   registerDataHook('useCachedLinkerd', useUnifiedLinkerdStatus)
+  registerDataHook('useCachedLonghorn', useUnifiedLonghornStatus)
   registerDataHook('useCachedOtel', useUnifiedOtelStatus)
   registerDataHook('useCachedRook', useUnifiedRookStatus)
   registerDataHook('useCachedSpiffe', useUnifiedSpiffeStatus)
