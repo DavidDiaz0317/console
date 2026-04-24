@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { UnifiedDashboard } from '../../lib/unified/dashboard/UnifiedDashboard'
 import { changeControlDashboardConfig } from '../../config/dashboards/change-control'
 import {
@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
 import { Select } from '../ui/Select'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface ChangeRecord {
   id: string; timestamp: string; cluster: string; namespace: string
@@ -60,7 +62,8 @@ function riskBg(score: number): string {
   return 'bg-emerald-500/20'
 }
 
-export const ChangeControlAuditContent = memo(function ChangeControlAuditContent() {
+export function ChangeControlAuditContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [summary, setSummary] = useState<AuditSummary | null>(null)
   const [changes, setChanges] = useState<ChangeRecord[]>([])
   const [violations, setViolations] = useState<PolicyViolation[]>([])
@@ -114,16 +117,17 @@ export const ChangeControlAuditContent = memo(function ChangeControlAuditContent
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-violet-500/10"><ClipboardCheck className="w-6 h-6 text-violet-400" /></div>
-          <div>
-            <h1 className="text-xl font-semibold text-zinc-100">Change Control Audit Trail</h1>
-            <p className="text-sm text-zinc-400">SOX/PCI-compliant change tracking with approval workflows</p>
-          </div>
-        </div>
-        <button onClick={fetchData} type="button" aria-label="Refresh change control data" className="text-zinc-400 hover:text-zinc-200 p-2 rounded-lg hover:bg-zinc-700/50 transition-colors"><RefreshCw className="w-4 h-4" /></button>
-      </div>
+      <DashboardHeader
+        title="Change Control Audit Trail"
+        subtitle="SOX/PCI-compliant change tracking with approval workflows"
+        icon={<ClipboardCheck className="w-5 h-5 text-violet-400" />}
+        isFetching={false}
+        onRefresh={fetchData}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="change-control-auto-refresh"
+        rightExtra={<RotatingTip page="change-control" />}
+      />
 
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -235,7 +239,7 @@ export const ChangeControlAuditContent = memo(function ChangeControlAuditContent
       )}
     </div>
   )
-})
+}
 
 function SummaryCard({ label, value, icon, accent }: { label: string; value: number; icon: React.ReactNode; accent?: string }) {
   return (

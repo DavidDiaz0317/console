@@ -6,6 +6,8 @@ import {
   Shield, ArrowRight, Clock
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface Control {
   id: string
@@ -78,6 +80,7 @@ const milestoneStatusBadge = (status: string) => {
 }
 
 export const FedRAMPDashboardContent = memo(function FedRAMPDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [controls, setControls] = useState<Control[]>([])
   const [poams, setPOAMs] = useState<POAM[]>([])
   const [score, setScore] = useState<FedRAMPScore | null>(null)
@@ -127,13 +130,17 @@ export const FedRAMPDashboardContent = memo(function FedRAMPDashboardContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">FedRAMP Readiness</h1>
-          <p className="text-gray-400">Federal Risk and Authorization Management Program compliance assessment</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="FedRAMP Readiness"
+        subtitle="Federal Risk and Authorization Management Program compliance assessment"
+        icon={<Shield className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="fedramp-auto-refresh"
+        rightExtra={<RotatingTip page="fedramp" />}
+      />
 
       {/* Summary cards */}
       {score && (

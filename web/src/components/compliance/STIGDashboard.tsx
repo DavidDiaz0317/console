@@ -6,6 +6,8 @@ import {
   Shield, ArrowRight, Clock, Search
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface Finding {
   id: string
@@ -69,6 +71,7 @@ const statusLabel = (status: string) => {
 }
 
 export const STIGDashboardContent = memo(function STIGDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [findings, setFindings] = useState<Finding[]>([])
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>([])
   const [summary, setSummary] = useState<STIGSummary | null>(null)
@@ -118,13 +121,17 @@ export const STIGDashboardContent = memo(function STIGDashboardContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">DISA STIG Compliance</h1>
-          <p className="text-gray-400">Security Technical Implementation Guides for hardened Kubernetes clusters</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="DISA STIG Compliance"
+        subtitle="Security Technical Implementation Guides for hardened Kubernetes clusters"
+        icon={<Shield className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="stig-auto-refresh"
+        rightExtra={<RotatingTip page="stig" />}
+      />
 
       {/* Summary cards */}
       {summary && (

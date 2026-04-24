@@ -10,6 +10,8 @@ import { dataResidencyDashboardConfig } from '../../config/dashboards/data-resid
 import { Globe, ShieldAlert, MapPin, CheckCircle2, XCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import { authFetch } from '../../lib/api'
 import { Select } from '../ui/Select'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 /* ─── Types ─── */
 
@@ -81,6 +83,7 @@ const REGION_LABELS: Record<string, string> = {
 /* ─── Main Component ─── */
 
 export const DataResidencyContent = memo(function DataResidencyContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [summary, setSummary] = useState<ResidencySummary | null>(null)
   const [rules, setRules] = useState<ResidencyRule[]>([])
   const [clusters, setClusters] = useState<ClusterRegion[]>([])
@@ -152,21 +155,17 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-500/10">
-            <Globe className="w-6 h-6 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-zinc-100">Data Residency Enforcement</h1>
-            <p className="text-sm text-zinc-400">Ensure workloads with sensitive data only run in approved geographic regions</p>
-          </div>
-        </div>
-        <button onClick={fetchData} className="text-zinc-400 hover:text-zinc-200 p-2 rounded-lg hover:bg-zinc-700/50 transition-colors">
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
+      <DashboardHeader
+        title="Data Residency Enforcement"
+        subtitle="Ensure workloads with sensitive data only run in approved geographic regions"
+        icon={<Globe className="w-5 h-5 text-emerald-400" />}
+        isFetching={false}
+        onRefresh={fetchData}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="data-residency-auto-refresh"
+        rightExtra={<RotatingTip page="data-residency" />}
+      />
 
       {/* Summary Cards */}
       {summary && (

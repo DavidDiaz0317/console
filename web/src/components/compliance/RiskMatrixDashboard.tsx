@@ -6,6 +6,8 @@ import {
   ArrowRight, ChevronDown,
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -65,6 +67,7 @@ function severityBadge(score: number) {
 // ── Component ─────────────────────────────────────────────────────────
 
 export const RiskMatrixDashboardContent = memo(function RiskMatrixDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [risks, setRisks] = useState<Risk[]>([])
   const [heatmap, setHeatmap] = useState<HeatmapCell[]>([])
   const [summary, setSummary] = useState<RiskSummary | null>(null)
@@ -128,14 +131,17 @@ export const RiskMatrixDashboardContent = memo(function RiskMatrixDashboardConte
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <BarChart3 className="w-8 h-8 text-orange-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Risk Matrix</h1>
-          <p className="text-gray-400">Interactive 5×5 risk heat map with likelihood vs impact assessment</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Risk Matrix"
+        subtitle="Interactive 5x5 risk heat map with likelihood vs impact assessment"
+        icon={<BarChart3 className="w-7 h-7 text-orange-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="risk-matrix-auto-refresh"
+        rightExtra={<RotatingTip page="risk-matrix" />}
+      />
 
       {/* Summary cards */}
       {summary && (

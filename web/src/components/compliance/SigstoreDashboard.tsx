@@ -12,6 +12,8 @@ import {
 import { authFetch } from '../../lib/api'
 import { UnifiedDashboard } from '../../lib/unified/dashboard/UnifiedDashboard'
 import { sigstoreDashboardConfig } from '../../config/dashboards/sigstore'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -82,6 +84,7 @@ const RESULT_ICON: Record<string, React.ReactNode> = {
 // ── Content Component ───────────────────────────────────────────────────
 
 export const SigstoreDashboardContent = memo(function SigstoreDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [signatures, setSignatures] = useState<SigstoreSignature[]>([])
   const [verifications, setVerifications] = useState<SigstoreVerification[]>([])
   const [summary, setSummary] = useState<SigstoreSummary | null>(null)
@@ -127,14 +130,17 @@ export const SigstoreDashboardContent = memo(function SigstoreDashboardContent()
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <BadgeCheck className="w-8 h-8 text-green-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Sigstore Verification</h1>
-          <p className="text-gray-400">Image signature verification, cosign results, and transparency log</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Sigstore Verification"
+        subtitle="Image signature verification, cosign results, and transparency log"
+        icon={<BadgeCheck className="w-7 h-7 text-green-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="sigstore-auto-refresh"
+        rightExtra={<RotatingTip page="sigstore" />}
+      />
 
       {/* Summary stats */}
       {summary && (

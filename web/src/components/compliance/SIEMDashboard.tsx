@@ -1,10 +1,12 @@
-import React, { memo } from 'react'
+import React from 'react'
 import { useState, useEffect } from 'react'
 import {
   Monitor, CheckCircle2, Loader2,
   ArrowRight, Clock, XCircle
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -65,7 +67,8 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
   resolved: <CheckCircle2 className="w-4 h-4 text-green-400" />,
 }
 
-const SIEMDashboard = memo(function SIEMDashboard() {
+function SIEMDashboard() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [events, setEvents] = useState<SIEMEvent[]>([])
   const [alerts, setAlerts] = useState<SIEMAlert[]>([])
   const [summary, setSummary] = useState<SIEMSummary | null>(null)
@@ -109,13 +112,17 @@ const SIEMDashboard = memo(function SIEMDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Monitor className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">SIEM Integration</h1>
-          <p className="text-gray-400">Security event monitoring, log aggregation, and alert correlation</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="SIEM Integration"
+        subtitle="Security event monitoring, log aggregation, and alert correlation"
+        icon={<Monitor className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="siem-auto-refresh"
+        rightExtra={<RotatingTip page="siem" />}
+      />
 
       {/* Summary cards */}
       {summary && (
@@ -279,6 +286,6 @@ const SIEMDashboard = memo(function SIEMDashboard() {
       )}
     </div>
   )
-})
+}
 
 export default SIEMDashboard

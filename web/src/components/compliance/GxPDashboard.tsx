@@ -6,6 +6,8 @@ import {
   RefreshCw, Lock, FileCheck, Link2, PenTool, Clock, Hash,
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface AuditRecord {
   id: string; timestamp: string; user_id: string; action: string
@@ -42,6 +44,7 @@ const ACTION_STYLES: Record<string, string> = {
 }
 
 export const GxPDashboardContent = memo(function GxPDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [summary, setSummary] = useState<GxPSummary | null>(null)
   const [records, setRecords] = useState<AuditRecord[]>([])
   const [signatures, setSignatures] = useState<Signature[]>([])
@@ -101,21 +104,17 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <FileCheck className="w-7 h-7 text-green-400" />
-            GxP Validation Mode
-          </h1>
-          <p className="text-gray-400 mt-1">
-            21 CFR Part 11 — Electronic records and signatures
-          </p>
-        </div>
-        <button onClick={fetchData} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Refresh">
-          <RefreshCw className="w-5 h-5 text-gray-400" />
-        </button>
-      </div>
+      <DashboardHeader
+        title="GxP Validation Mode"
+        subtitle="21 CFR Part 11 — Electronic records and signatures"
+        icon={<FileCheck className="w-7 h-7 text-green-400" />}
+        isFetching={false}
+        onRefresh={fetchData}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="gxp-auto-refresh"
+        rightExtra={<RotatingTip page="gxp" />}
+      />
 
       {/* Summary Cards */}
       {summary && (

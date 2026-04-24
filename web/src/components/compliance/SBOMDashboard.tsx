@@ -12,6 +12,8 @@ import {
 import { authFetch } from '../../lib/api'
 import { UnifiedDashboard } from '../../lib/unified/dashboard/UnifiedDashboard'
 import { sbomDashboardConfig } from '../../config/dashboards/sbom'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -75,6 +77,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 // ── Content Component ───────────────────────────────────────────────────
 
 export const SBOMDashboardContent = memo(function SBOMDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [packages, setPackages] = useState<SBOMPackage[]>([])
   const [vulnerabilities, setVulnerabilities] = useState<SBOMVulnerability[]>([])
   const [summary, setSummary] = useState<SBOMSummary | null>(null)
@@ -125,14 +128,17 @@ export const SBOMDashboardContent = memo(function SBOMDashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Package className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">SBOM Manager</h1>
-          <p className="text-gray-400">Software bill of materials, vulnerability tracking, and license compliance</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="SBOM Manager"
+        subtitle="Software bill of materials, vulnerability tracking, and license compliance"
+        icon={<Package className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="sbom-auto-refresh"
+        rightExtra={<RotatingTip page="sbom" />}
+      />
 
       {/* Summary stats */}
       {summary && (

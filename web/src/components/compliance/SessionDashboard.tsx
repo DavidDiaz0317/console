@@ -6,6 +6,8 @@ import {
   Users, ShieldCheck, AlertTriangle, Monitor,
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface ActiveSession {
   id: string; user: string; login_time: string; last_activity: string
@@ -33,6 +35,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export const SessionDashboardContent = memo(function SessionDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [sessions, setSessions] = useState<ActiveSession[]>([])
   const [policies, setPolicies] = useState<SessionPolicy[]>([])
   const [summary, setSummary] = useState<SessionSummary | null>(null)
@@ -79,21 +82,17 @@ export const SessionDashboardContent = memo(function SessionDashboardContent() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <Clock className="w-7 h-7 text-blue-400" />
-            Session Management
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Active session monitoring and policy enforcement
-          </p>
-        </div>
-        <button onClick={fetchData} className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Refresh">
-          <RefreshCw className="w-5 h-5 text-gray-400" />
-        </button>
-      </div>
+      <DashboardHeader
+        title="Session Management"
+        subtitle="Active session monitoring and policy enforcement"
+        icon={<Clock className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={fetchData}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="session-auto-refresh"
+        rightExtra={<RotatingTip page="session" />}
+      />
 
       {/* Summary Cards */}
       {summary && (

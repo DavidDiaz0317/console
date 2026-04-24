@@ -1,10 +1,12 @@
-import React, { memo } from 'react'
+import React from 'react'
 import { useState, useEffect } from 'react'
 import {
   AlertTriangle, CheckCircle2, Loader2, Clock,
   XCircle, ArrowRight, Play, Shield
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -73,7 +75,8 @@ const TREND_COLORS: Record<string, string> = {
   degrading: 'text-red-400',
 }
 
-const IncidentResponseDashboard = memo(function IncidentResponseDashboard() {
+function IncidentResponseDashboard() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [metrics, setMetrics] = useState<IncidentMetrics | null>(null)
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
@@ -117,13 +120,17 @@ const IncidentResponseDashboard = memo(function IncidentResponseDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="w-8 h-8 text-orange-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Incident Response</h1>
-          <p className="text-gray-400">Active incident tracking, playbook management, and MTTR metrics</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Incident Response"
+        subtitle="Active incident tracking, playbook management, and MTTR metrics"
+        icon={<AlertTriangle className="w-7 h-7 text-orange-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="incident-response-auto-refresh"
+        rightExtra={<RotatingTip page="incident-response" />}
+      />
 
       {/* Summary cards */}
       {metrics && (
@@ -311,6 +318,6 @@ const IncidentResponseDashboard = memo(function IncidentResponseDashboard() {
       )}
     </div>
   )
-})
+}
 
 export default IncidentResponseDashboard

@@ -4,7 +4,7 @@
  * Build provenance level indicators (L1–L4), attestation verification,
  * source integrity checks, and build reproducibility.
  */
-import { useState, useEffect, memo } from 'react'
+import { useState, useEffect } from 'react'
 import {
   GitCommitHorizontal, CheckCircle2, Loader2, AlertTriangle,
   XCircle, Shield, Lock
@@ -12,6 +12,8 @@ import {
 import { authFetch } from '../../lib/api'
 import { UnifiedDashboard } from '../../lib/unified/dashboard/UnifiedDashboard'
 import { slsaDashboardConfig } from '../../config/dashboards/slsa'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -92,7 +94,8 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 
 // ── Content Component ───────────────────────────────────────────────────
 
-export const SLSADashboardContent = memo(function SLSADashboardContent() {
+export function SLSADashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [attestations, setAttestations] = useState<SLSAAttestation[]>([])
   const [provenance, setProvenance] = useState<SLSAProvenance[]>([])
   const [summary, setSummary] = useState<SLSASummary | null>(null)
@@ -141,14 +144,17 @@ export const SLSADashboardContent = memo(function SLSADashboardContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <GitCommitHorizontal className="w-8 h-8 text-emerald-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">SLSA Provenance</h1>
-          <p className="text-gray-400">Build provenance levels, attestation verification, and source integrity</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="SLSA Provenance"
+        subtitle="Build provenance levels, attestation verification, and source integrity"
+        icon={<GitCommitHorizontal className="w-7 h-7 text-emerald-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="slsa-auto-refresh"
+        rightExtra={<RotatingTip page="slsa" />}
+      />
 
       {/* Summary stats */}
       {summary && (
@@ -318,7 +324,7 @@ export const SLSADashboardContent = memo(function SLSADashboardContent() {
       )}
     </div>
   )
-})
+}
 
 // ── Page Component (rendered by App.tsx route) ──────────────────────────
 

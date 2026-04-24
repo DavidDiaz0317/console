@@ -6,6 +6,8 @@ import {
   ChevronRight, X, Filter,
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -76,6 +78,7 @@ function statusColor(status: string): string {
 // ── Component ─────────────────────────────────────────────────────────
 
 export const RiskRegisterDashboardContent = memo(function RiskRegisterDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [risks, setRisks] = useState<Risk[]>([])
   const [categories, setCategories] = useState<CategorySummary[]>([])
   const [summary, setSummary] = useState<RegisterSummary | null>(null)
@@ -131,14 +134,17 @@ export const RiskRegisterDashboardContent = memo(function RiskRegisterDashboardC
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <ClipboardList className="w-8 h-8 text-orange-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Risk Register</h1>
-          <p className="text-gray-400">Comprehensive risk tracking with mitigation plans and controls</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Risk Register"
+        subtitle="Comprehensive risk tracking with mitigation plans and controls"
+        icon={<ClipboardList className="w-7 h-7 text-orange-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="risk-register-auto-refresh"
+        rightExtra={<RotatingTip page="risk-register" />}
+      />
 
       {/* Summary cards */}
       {summary && (

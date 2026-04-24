@@ -6,6 +6,8 @@ import {
   TrendingUp, ArrowRight,
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -63,6 +65,7 @@ const BAR_COLOR = {
 // ── Component ─────────────────────────────────────────────────────────
 
 export const RiskAppetiteDashboardContent = memo(function RiskAppetiteDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [thresholds, setThresholds] = useState<AppetiteThreshold[]>([])
   const [kris, setKRIs] = useState<KRI[]>([])
   const [summary, setSummary] = useState<AppetiteSummary | null>(null)
@@ -108,14 +111,17 @@ export const RiskAppetiteDashboardContent = memo(function RiskAppetiteDashboardC
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Gauge className="w-8 h-8 text-orange-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Risk Appetite</h1>
-          <p className="text-gray-400">Risk tolerance monitoring, KRI tracking, and appetite vs exposure analysis</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Risk Appetite"
+        subtitle="Risk tolerance monitoring, KRI tracking, and appetite vs exposure analysis"
+        icon={<Gauge className="w-7 h-7 text-orange-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="risk-appetite-auto-refresh"
+        rightExtra={<RotatingTip page="risk-appetite" />}
+      />
 
       {/* Summary cards */}
       {summary && (

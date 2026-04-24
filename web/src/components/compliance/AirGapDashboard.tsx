@@ -6,6 +6,8 @@ import {
   ArrowRight, WifiOff
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface Requirement {
   id: string
@@ -65,6 +67,7 @@ const statusColor = (status: string) => {
 }
 
 export const AirGapDashboardContent = memo(function AirGapDashboardContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [clusters, setClusters] = useState<ClusterReadiness[]>([])
   const [summary, setSummary] = useState<AirGapSummary | null>(null)
@@ -114,13 +117,17 @@ export const AirGapDashboardContent = memo(function AirGapDashboardContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <WifiOff className="w-8 h-8 text-blue-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Air-Gap Readiness</h1>
-          <p className="text-gray-400">Disconnected environment readiness assessment for Kubernetes clusters</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Air-Gap Readiness"
+        subtitle="Disconnected environment readiness assessment for Kubernetes clusters"
+        icon={<WifiOff className="w-7 h-7 text-blue-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="air-gap-auto-refresh"
+        rightExtra={<RotatingTip page="air-gap" />}
+      />
 
       {/* Summary cards */}
       {summary && (

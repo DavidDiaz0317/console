@@ -7,6 +7,8 @@ import {
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
 import { Select } from '../ui/Select'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 interface SoDRule {
   id: string; name: string; description: string; role_a: string; role_b: string
@@ -47,6 +49,7 @@ function scoreColor(score: number): string {
 }
 
 export const SegregationOfDutiesContent = memo(function SegregationOfDutiesContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [summary, setSummary] = useState<SoDSummary | null>(null)
   const [rules, setRules] = useState<SoDRule[]>([])
   const [principals, setPrincipals] = useState<Principal[]>([])
@@ -96,16 +99,17 @@ export const SegregationOfDutiesContent = memo(function SegregationOfDutiesConte
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-500/10"><Users className="w-6 h-6 text-amber-400" /></div>
-          <div>
-            <h1 className="text-xl font-semibold text-zinc-100">Segregation of Duties</h1>
-            <p className="text-sm text-zinc-400">Detect conflicting privilege assignments across RBAC roles</p>
-          </div>
-        </div>
-        <button onClick={fetchData} type="button" aria-label="Refresh segregation of duties data" className="text-zinc-400 hover:text-zinc-200 p-2 rounded-lg hover:bg-zinc-700/50 transition-colors"><RefreshCw className="w-4 h-4" /></button>
-      </div>
+      <DashboardHeader
+        title="Segregation of Duties"
+        subtitle="Detect conflicting privilege assignments across RBAC roles"
+        icon={<Users className="w-5 h-5 text-amber-400" />}
+        isFetching={false}
+        onRefresh={fetchData}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="segregation-of-duties-auto-refresh"
+        rightExtra={<RotatingTip page="segregation-of-duties" />}
+      />
 
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

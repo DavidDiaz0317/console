@@ -1,10 +1,12 @@
-import React, { memo } from 'react'
+import React from 'react'
 import { useState, useEffect } from 'react'
 import {
   Shield, CheckCircle2, Loader2,
   Clock, XCircle, Eye
 } from 'lucide-react'
 import { authFetch } from '../../lib/api'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -96,7 +98,8 @@ function RiskScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   )
 }
 
-const ThreatIntelDashboard = memo(function ThreatIntelDashboard() {
+function ThreatIntelDashboard() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const [feeds, setFeeds] = useState<ThreatFeed[]>([])
   const [iocs, setIOCs] = useState<IOCMatch[]>([])
   const [summary, setSummary] = useState<ThreatIntelSummary | null>(null)
@@ -140,13 +143,17 @@ const ThreatIntelDashboard = memo(function ThreatIntelDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="w-8 h-8 text-purple-400" />
-        <div>
-          <h1 className="text-2xl font-bold text-white">Threat Intelligence</h1>
-          <p className="text-gray-400">Threat feed monitoring, IOC matching, and vulnerability correlation</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Threat Intelligence"
+        subtitle="Threat feed monitoring, IOC matching, and vulnerability correlation"
+        icon={<Shield className="w-7 h-7 text-purple-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="threat-intel-auto-refresh"
+        rightExtra={<RotatingTip page="threat-intel" />}
+      />
 
       {/* Summary cards */}
       {summary && (
@@ -329,6 +336,6 @@ const ThreatIntelDashboard = memo(function ThreatIntelDashboard() {
       )}
     </div>
   )
-})
+}
 
 export default ThreatIntelDashboard

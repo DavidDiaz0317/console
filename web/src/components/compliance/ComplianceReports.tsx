@@ -12,10 +12,13 @@ import { useComplianceFrameworks, type Framework } from '../../hooks/useComplian
 import { useClusters } from '../../hooks/useMCP'
 import { authFetch } from '../../lib/api'
 import { Select } from '../ui/Select'
+import { DashboardHeader } from '../shared/DashboardHeader'
+import { RotatingTip } from '../ui/RotatingTip'
 
 type ReportFormat = 'pdf' | 'json'
 
 export const ComplianceReportsContent = memo(function ComplianceReportsContent() {
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const { frameworks, isLoading: fwLoading } = useComplianceFrameworks()
   const { clusters } = useClusters()
   const clusterNames = useMemo(() => clusters?.map((c: { name: string }) => c.name) ?? [], [clusters])
@@ -86,16 +89,17 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-indigo-500/10">
-          <FileText className="w-6 h-6 text-indigo-400" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-100">Compliance Reports</h1>
-          <p className="text-sm text-zinc-400">Generate audit-ready compliance reports in PDF or JSON format</p>
-        </div>
-      </div>
+      <DashboardHeader
+        title="Compliance Reports"
+        subtitle="Generate audit-ready compliance reports in PDF or JSON format"
+        icon={<FileText className="w-5 h-5 text-indigo-400" />}
+        isFetching={false}
+        onRefresh={() => window.location.reload()}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshId="compliance-reports-auto-refresh"
+        rightExtra={<RotatingTip page="compliance-reports" />}
+      />
 
       {/* Generator Card */}
       <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6 space-y-5">
