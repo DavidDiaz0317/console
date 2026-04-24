@@ -68,6 +68,7 @@ import { envoyStatusConfig } from './envoy-status'
 import { grpcStatusConfig } from './grpc-status'
 import { kedaStatusConfig } from './keda-status'
 import { linkerdStatusConfig } from './linkerd-status'
+import { otelStatusConfig } from './otel-status'
 import { tikvStatusConfig } from './tikv-status'
 import { vitessStatusConfig } from './vitess-status'
 import { nightlyReleasePulseConfig } from './nightly-release-pulse'
@@ -259,6 +260,7 @@ export const CARD_CONFIGS: CardConfigRegistry = {
   grpc_status: grpcStatusConfig,
   keda_status: kedaStatusConfig,
   linkerd_status: linkerdStatusConfig,
+  otel_status: otelStatusConfig,
   tikv_status: tikvStatusConfig,
   vitess_status: vitessStatusConfig,
   nightly_release_pulse: nightlyReleasePulseConfig,

@@ -54,6 +54,7 @@ import { useCachedEnvoy } from '../../components/cards/envoy_status/useCachedEnv
 import { useCachedGrpc } from '../../hooks/useCachedGrpc'
 import { useCachedKeda } from '../../hooks/useCachedKeda'
 import { useCachedLinkerd } from '../../hooks/useCachedLinkerd'
+import { useCachedOtel } from '../../hooks/useCachedOtel'
 import { useCachedTikv } from '../../hooks/useCachedTikv'
 import { useCachedVitess } from '../../hooks/useCachedVitess'
 
@@ -1116,6 +1117,16 @@ function useUnifiedTikvStatus() {
   }
 }
 
+function useUnifiedOtelStatus() {
+  const result = useCachedOtel()
+  return {
+    data: result.data.collectors,
+    isLoading: result.isLoading,
+    error: result.error ? new Error(result.error) : null,
+    refetch: result.refetch,
+  }
+}
+
 function useUnifiedVitessStatus() {
   const result = useCachedVitess()
   // Surface the keyspace list as the primary row set for generic list renderers.
@@ -1319,6 +1330,7 @@ export function registerUnifiedHooks(): void {
   registerDataHook('useCachedGrpc', useUnifiedGrpcStatus)
   registerDataHook('useCachedKeda', useUnifiedKedaStatus)
   registerDataHook('useCachedLinkerd', useUnifiedLinkerdStatus)
+  registerDataHook('useCachedOtel', useUnifiedOtelStatus)
   registerDataHook('useCachedTikv', useUnifiedTikvStatus)
   registerDataHook('useCachedVitess', useUnifiedVitessStatus)
   registerDataHook('useProviderHealth', useProviderHealth)
