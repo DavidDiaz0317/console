@@ -58,6 +58,7 @@ import { useCachedKeda } from '../../hooks/useCachedKeda'
 import { useCachedLinkerd } from '../../hooks/useCachedLinkerd'
 import { useCachedOtel } from '../../hooks/useCachedOtel'
 import { useCachedRook } from '../../hooks/useCachedRook'
+import { useCachedSpiffe } from '../../hooks/useCachedSpiffe'
 import { useCachedTikv } from '../../hooks/useCachedTikv'
 import { useCachedTuf } from '../../hooks/useCachedTuf'
 import { useCachedVitess } from '../../hooks/useCachedVitess'
@@ -1174,6 +1175,17 @@ function useUnifiedRookStatus() {
   }
 }
 
+function useUnifiedSpiffeStatus() {
+  const result = useCachedSpiffe()
+  // Surface the registration entry list as the primary row set for generic list renderers.
+  return {
+    data: result.data.entries,
+    isLoading: result.showSkeleton,
+    error: result.error ? new Error('Failed to fetch SPIFFE status') : null,
+    refetch: () => { result.refetch() },
+  }
+}
+
 function useUnifiedVitessStatus() {
   const result = useCachedVitess()
   // Surface the keyspace list as the primary row set for generic list renderers.
@@ -1381,6 +1393,7 @@ export function registerUnifiedHooks(): void {
   registerDataHook('useCachedLinkerd', useUnifiedLinkerdStatus)
   registerDataHook('useCachedOtel', useUnifiedOtelStatus)
   registerDataHook('useCachedRook', useUnifiedRookStatus)
+  registerDataHook('useCachedSpiffe', useUnifiedSpiffeStatus)
   registerDataHook('useCachedTikv', useUnifiedTikvStatus)
   registerDataHook('useCachedTuf', useUnifiedTufStatus)
   registerDataHook('useCachedVitess', useUnifiedVitessStatus)

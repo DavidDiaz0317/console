@@ -174,6 +174,7 @@ import { serviceImportsConfig } from './service-imports'
 import { serviceStatusConfig } from './service-status'
 import { serviceTopologyConfig } from './service-topology'
 import { solitaireConfig } from './solitaire'
+import { spiffeStatusConfig } from './spiffe-status'
 import { statefulSetStatusConfig } from './statefulset-status'
 import { stockMarketTickerConfig } from './stock-market-ticker'
 import { storageOverviewConfig } from './storage-overview'
@@ -372,6 +373,7 @@ export const CARD_CONFIGS: CardConfigRegistry = {
   service_status: serviceStatusConfig,
   service_topology: serviceTopologyConfig,
   solitaire: solitaireConfig,
+  spiffe_status: spiffeStatusConfig,
   statefulset_status: statefulSetStatusConfig,
   stock_market_ticker: stockMarketTickerConfig,
   storage_overview: storageOverviewConfig,
@@ -638,6 +640,7 @@ export {
   serviceStatusConfig,
   serviceTopologyConfig,
   solitaireConfig,
+  spiffeStatusConfig,
   statefulSetStatusConfig,
   stockMarketTickerConfig,
   storageOverviewConfig,
