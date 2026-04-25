@@ -542,7 +542,7 @@ export function StockMarketTicker({ config }: StockMarketTickerProps) {
 
   // Save stocks to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('stock-ticker-saved-stocks', JSON.stringify(savedStocks))
+    try { localStorage.setItem('stock-ticker-saved-stocks', JSON.stringify(savedStocks)) } catch { /* quota exceeded */ }
   }, [savedStocks])
 
   // Stock data via useCache (persists across navigation)

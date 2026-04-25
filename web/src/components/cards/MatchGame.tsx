@@ -69,7 +69,8 @@ export function MatchGame(_props: CardComponentProps) {
 
   // Load high scores from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('matchGameHighScores')
+    let stored: string | null = null
+    try { stored = localStorage.getItem('matchGameHighScores') } catch { /* private browsing / quota */ }
     if (stored) {
       try {
         setHighScores(JSON.parse(stored))
@@ -134,7 +135,7 @@ export function MatchGame(_props: CardComponentProps) {
           [difficulty]: { difficulty, moves, time, date: new Date().toISOString() }
         }
         setHighScores(newHighScores)
-        localStorage.setItem('matchGameHighScores', JSON.stringify(newHighScores))
+        try { localStorage.setItem('matchGameHighScores', JSON.stringify(newHighScores)) } catch { /* quota exceeded */ }
       }
       
       emitGameEnded('match', 'win', moves)
