@@ -319,6 +319,7 @@ export function useGPUHealthCronJob(cluster?: string) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
           Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           cluster,
@@ -351,6 +352,7 @@ export function useGPUHealthCronJob(cluster?: string) {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
           Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           cluster,
