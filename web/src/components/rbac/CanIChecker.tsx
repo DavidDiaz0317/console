@@ -99,6 +99,33 @@ interface CheckedSnapshot {
   namespace: string | undefined
 }
 
+/** All form fields batched into a single state object to prevent intermediate re-renders. */
+interface FormState {
+  verb: string
+  resource: string
+  namespace: string
+  customVerb: string
+  customResource: string
+  apiGroup: string
+  customApiGroup: string
+  selectedUserGroups: string[]
+  customUserGroup: string
+  checkedSnapshot: CheckedSnapshot | null
+}
+
+const INITIAL_FORM_STATE: FormState = {
+  verb: 'get',
+  resource: 'pods',
+  namespace: '',
+  customVerb: '',
+  customResource: '',
+  apiGroup: '',
+  customApiGroup: '',
+  selectedUserGroups: [],
+  customUserGroup: '',
+  checkedSnapshot: null,
+}
+
 export function CanIChecker() {
   const { t } = useTranslation('common')
   const { clusters: rawClusters } = useClusters()
@@ -106,20 +133,12 @@ export function CanIChecker() {
   const { checkPermission, checking, result, error, reset } = useCanI()
 
   const [cluster, setCluster] = useState('')
-  const [verb, setVerb] = useState('get')
-  const [resource, setResource] = useState('pods')
-  const [namespace, setNamespace] = useState('')
-  const [customVerb, setCustomVerb] = useState('')
-  const [customResource, setCustomResource] = useState('')
-  const [apiGroup, setApiGroup] = useState('')
-  const [customApiGroup, setCustomApiGroup] = useState('')
-  const [selectedUserGroups, setSelectedUserGroups] = useState<string[]>([])
-  const [customUserGroup, setCustomUserGroup] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  // Frozen snapshot of the values used for the most recent Check — prevents
-  // the result banner from updating when the user changes the dropdowns
-  // between Check presses (Issue 9268).
-  const [checkedSnapshot, setCheckedSnapshot] = useState<CheckedSnapshot | null>(null)
+  const [formState, setFormState] = useState<FormState>(INITIAL_FORM_STATE)
+  const {
+    verb, resource, namespace, customVerb, customResource,
+    apiGroup, customApiGroup, selectedUserGroups, customUserGroup, checkedSnapshot,
+  } = formState
 
   // Get selected cluster for namespace fetching
   const selectedCluster = cluster || clusters[0] || ''
@@ -130,18 +149,22 @@ export function CanIChecker() {
 
   // Toggle user group selection
   const toggleUserGroup = (group: string) => {
-    setSelectedUserGroups(prev =>
-      prev.includes(group)
-        ? prev.filter(g => g !== group)
-        : [...prev, group]
-    )
+    setFormState(prev => ({
+      ...prev,
+      selectedUserGroups: prev.selectedUserGroups.includes(group)
+        ? prev.selectedUserGroups.filter(g => g !== group)
+        : [...prev.selectedUserGroups, group],
+    }))
   }
 
-  // Add custom user group
+  // Add custom user group — batches selectedUserGroups + customUserGroup into one setState
   const addCustomUserGroup = () => {
     if (customUserGroup.trim() && !selectedUserGroups.includes(customUserGroup.trim())) {
-      setSelectedUserGroups(prev => [...prev, customUserGroup.trim()])
-      setCustomUserGroup('')
+      setFormState(prev => ({
+        ...prev,
+        selectedUserGroups: [...prev.selectedUserGroups, prev.customUserGroup.trim()],
+        customUserGroup: '',
+      }))
     }
   }
 
@@ -166,10 +189,14 @@ export function CanIChecker() {
     // text stays stable if the user edits the dropdowns after the result
     // arrives. Snapshot is set *before* the async call so a late-arriving
     // result doesn't render with pre-snapshot dropdown state.
-    setCheckedSnapshot({
-      verb: selectedVerb,
-      resource: selectedResource,
-      namespace: namespace || undefined })
+    setFormState(prev => ({
+      ...prev,
+      checkedSnapshot: {
+        verb: selectedVerb,
+        resource: selectedResource,
+        namespace: namespace || undefined,
+      },
+    }))
 
     await checkPermission({
       cluster: targetCluster,
@@ -180,18 +207,10 @@ export function CanIChecker() {
       groups })
   }
 
+  // Resets all form fields in a single atomic setState to prevent intermediate re-renders.
   const handleReset = () => {
     reset()
-    setVerb('get')
-    setResource('pods')
-    setNamespace('')
-    setCustomVerb('')
-    setCustomResource('')
-    setApiGroup('')
-    setCustomApiGroup('')
-    setSelectedUserGroups([])
-    setCustomUserGroup('')
-    setCheckedSnapshot(null)
+    setFormState(INITIAL_FORM_STATE)
   }
 
   return (
@@ -237,7 +256,7 @@ export function CanIChecker() {
             <select
               id="verb-select"
               value={verb}
-              onChange={(e) => setVerb(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, verb: e.target.value }))}
               className="w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               data-testid="can-i-verb"
             >
@@ -252,7 +271,7 @@ export function CanIChecker() {
             <input
               type="text"
               value={customVerb}
-              onChange={(e) => setCustomVerb(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, customVerb: e.target.value }))}
               placeholder={t('rbac.enterCustomVerb')}
               className="mt-2 w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               data-testid="can-i-custom-verb"
@@ -269,7 +288,7 @@ export function CanIChecker() {
             <select
               id="resource-select"
               value={resource}
-              onChange={(e) => setResource(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, resource: e.target.value }))}
               className="w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               data-testid="can-i-resource"
             >
@@ -284,7 +303,7 @@ export function CanIChecker() {
             <input
               type="text"
               value={customResource}
-              onChange={(e) => setCustomResource(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, customResource: e.target.value }))}
               placeholder={t('rbac.enterCustomResource')}
               className="mt-2 w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               data-testid="can-i-custom-resource"
@@ -301,7 +320,7 @@ export function CanIChecker() {
             <select
               id="namespace-select"
               value={namespace}
-              onChange={(e) => setNamespace(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, namespace: e.target.value }))}
               className="w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               data-testid="can-i-namespace"
             >
@@ -326,7 +345,7 @@ export function CanIChecker() {
             <select
               id="api-group-select"
               value={apiGroup}
-              onChange={(e) => setApiGroup(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, apiGroup: e.target.value }))}
               className="w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500 appearance-none pr-8"
               data-testid="can-i-api-group"
             >
@@ -347,7 +366,7 @@ export function CanIChecker() {
             <input
               type="text"
               value={customApiGroup}
-              onChange={(e) => setCustomApiGroup(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, customApiGroup: e.target.value }))}
               placeholder={t('rbac.enterCustomApiGroup')}
               className="mt-2 w-full p-2 rounded-lg bg-secondary border border-border text-foreground focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               data-testid="can-i-custom-api-group"
@@ -407,7 +426,7 @@ export function CanIChecker() {
             <input
               type="text"
               value={customUserGroup}
-              onChange={(e) => setCustomUserGroup(e.target.value)}
+              onChange={(e) => setFormState(prev => ({ ...prev, customUserGroup: e.target.value }))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()

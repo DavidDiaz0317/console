@@ -16,6 +16,22 @@ interface CellState {
   adjacentMines: number
 }
 
+interface GameStatus {
+  gameStarted: boolean
+  gameOver: boolean
+  won: boolean
+  startTime: number | null
+  elapsed: number
+}
+
+const INITIAL_GAME_STATUS: GameStatus = {
+  gameStarted: false,
+  gameOver: false,
+  won: false,
+  startTime: null,
+  elapsed: 0,
+}
+
 interface GameConfig {
   rows: number
   cols: number
@@ -155,11 +171,8 @@ function PodSweeperInternal(_props: CardComponentProps) {
   const [grid, setGrid] = useState<CellState[][]>(() =>
     createEmptyGrid(CONFIGS.easy.rows, CONFIGS.easy.cols)
   )
-  const [gameStarted, setGameStarted] = useState(false)
-  const [gameOver, setGameOver] = useState(false)
-  const [won, setWon] = useState(false)
-  const [startTime, setStartTime] = useState<number | null>(null)
-  const [elapsed, setElapsed] = useState(0)
+  const [gameStatus, setGameStatus] = useState<GameStatus>(INITIAL_GAME_STATUS)
+  const { gameStarted, gameOver, won, startTime, elapsed } = gameStatus
 
   const config = CONFIGS[difficulty]
 
@@ -168,24 +181,20 @@ function PodSweeperInternal(_props: CardComponentProps) {
     if (!gameStarted || gameOver) return
 
     const timer = setInterval(() => {
-      if (startTime) {
-        setElapsed(Math.floor((Date.now() - startTime) / 1000))
-      }
+      setGameStatus(prev =>
+        prev.startTime ? { ...prev, elapsed: Math.floor((Date.now() - prev.startTime) / 1000) } : prev
+      )
     }, 1000)
 
     return () => clearInterval(timer)
   }, [gameStarted, gameOver, startTime])
 
-  // Start a new game
+  // Start a new game — batches all status resets into one setState
   const newGame = (diff: Difficulty = difficulty) => {
     const cfg = CONFIGS[diff]
     setDifficulty(diff)
     setGrid(createEmptyGrid(cfg.rows, cfg.cols))
-    setGameStarted(false)
-    setGameOver(false)
-    setWon(false)
-    setStartTime(null)
-    setElapsed(0)
+    setGameStatus(INITIAL_GAME_STATUS)
   }
 
   // Handle cell click
@@ -199,8 +208,7 @@ function PodSweeperInternal(_props: CardComponentProps) {
     if (!gameStarted) {
       // First click - initialize grid
       newGrid = initializeGrid(config.rows, config.cols, config.mines, row, col)
-      setGameStarted(true)
-      setStartTime(Date.now())
+      setGameStatus(prev => ({ ...prev, gameStarted: true, startTime: Date.now() }))
       emitGameStarted('pod_sweeper')
     } else {
       newGrid = cloneGrid(grid)
@@ -208,7 +216,7 @@ function PodSweeperInternal(_props: CardComponentProps) {
 
     // Reveal the cell
     if (newGrid[row][col].isMine) {
-      // Hit a mine - game over
+      // Hit a mine - game over; batch gameOver + won into one setState
       newGrid[row][col].isRevealed = true
       // Reveal all mines
       for (const r of newGrid) {
@@ -217,8 +225,7 @@ function PodSweeperInternal(_props: CardComponentProps) {
         }
       }
       setGrid(newGrid)
-      setGameOver(true)
-      setWon(false)
+      setGameStatus(prev => ({ ...prev, gameOver: true, won: false }))
       emitGameEnded('pod_sweeper', 'loss', elapsed)
       return
     }
@@ -226,10 +233,9 @@ function PodSweeperInternal(_props: CardComponentProps) {
     newGrid = revealCell(newGrid, row, col)
     setGrid(newGrid)
 
-    // Check for win
+    // Check for win — batch gameOver + won into one setState
     if (checkWin(newGrid)) {
-      setGameOver(true)
-      setWon(true)
+      setGameStatus(prev => ({ ...prev, gameOver: true, won: true }))
       emitGameEnded('pod_sweeper', 'win', elapsed)
     }
   }
