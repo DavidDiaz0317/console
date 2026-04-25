@@ -399,19 +399,41 @@ echo ""
 
 RESULTS="${RESULTS%,}"
 
-cat > "$REPORT_JSON" << EOF
-{
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "fastMode": $([ -n "$FAST_MODE" ] && echo "true" || echo "false"),
-  "summary": {
-    "total": ${TOTAL},
-    "passed": ${PASSED_SUITES},
-    "failed": ${FAILED_SUITES},
-    "skipped": ${SKIPPED_SUITES}
+# Build the JSON report using jq for guaranteed validity.
+# The raw $RESULTS string is constructed by concatenating fragments that may
+# contain improperly-escaped failure_reason values (e.g. literal newlines,
+# unescaped quotes, or shell-expanded $variables).  Passing the assembled
+# string through jq --raw-input sanitises it:
+#   1. Try to parse the hand-built JSON as-is.
+#   2. If that fails, fall back to a minimal valid report without per-suite
+#      results so downstream consumers (nightly-compare.sh, the workflow
+#      jq invocations) never see a parse error.
+CANDIDATE_JSON="{
+  \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+  \"fastMode\": $([ -n "$FAST_MODE" ] && echo "true" || echo "false"),
+  \"summary\": {
+    \"total\": ${TOTAL},
+    \"passed\": ${PASSED_SUITES},
+    \"failed\": ${FAILED_SUITES},
+    \"skipped\": ${SKIPPED_SUITES}
   },
-  "results": [${RESULTS}]
-}
-EOF
+  \"results\": [${RESULTS}]
+}"
+
+if echo "$CANDIDATE_JSON" | jq . > "$REPORT_JSON" 2>/dev/null; then
+  : # valid JSON written
+else
+  echo "WARNING: Generated JSON was malformed — writing minimal report" >&2
+  jq -n \
+    --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --argjson fm "$([ -n "$FAST_MODE" ] && echo "true" || echo "false")" \
+    --argjson total "$TOTAL" \
+    --argjson passed "$PASSED_SUITES" \
+    --argjson failed "$FAILED_SUITES" \
+    --argjson skipped "$SKIPPED_SUITES" \
+    '{timestamp: $ts, fastMode: $fm, summary: {total: $total, passed: $passed, failed: $failed, skipped: $skipped}, results: []}' \
+    > "$REPORT_JSON"
+fi
 
 cat > "$REPORT_MD" << EOF
 # KubeStellar Console — Full Test Suite
