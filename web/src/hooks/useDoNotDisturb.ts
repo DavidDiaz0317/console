@@ -97,16 +97,6 @@ export function isDNDActive(): boolean {
   return false
 }
 
-/** Milliseconds remaining on timed DND (0 if not active) */
-export function getDNDRemaining(): number {
-  const state = loadState()
-  if (state.timedDNDUntil > 0) {
-    const remaining = state.timedDNDUntil - Date.now()
-    return remaining > 0 ? remaining : 0
-  }
-  return 0
-}
-
 /**
  * React hook for DND state + controls.
  */

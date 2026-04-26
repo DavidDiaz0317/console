@@ -48,7 +48,7 @@ export function recordDashboardVisit(path: string): void {
 /**
  * Get the top N most-visited dashboard paths, sorted by visit count descending.
  */
-export function getTopVisitedDashboards(n: number = DEFAULT_TOP_N): string[] {
+function getTopVisitedDashboards(n: number = DEFAULT_TOP_N): string[] {
   const counts = getVisitCounts()
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])

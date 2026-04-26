@@ -91,8 +91,8 @@ const recentCounts: number[] = []
 const SMOOTHING_WINDOW = 5 // Keep last 5 counts
 
 /**
- * Reset all singleton state. Exported for tests only — avoids state leaking
- * between test cases when the module is shared across a test file.
+ * Reset all singleton state — avoids state leaking between test cases
+ * when the module is shared across a test file.
  * @internal
  */
 export function __resetForTest(): void {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { isDNDActive, getDNDRemaining, useDoNotDisturb } from '../useDoNotDisturb'
+import { isDNDActive, useDoNotDisturb } from '../useDoNotDisturb'
 
 const STORAGE_KEY = 'kc_dnd'
 
@@ -58,26 +58,6 @@ describe('isDNDActive', () => {
   it('returns false for corrupt localStorage JSON', () => {
     localStorage.setItem(STORAGE_KEY, 'not-valid-json{{{')
     expect(isDNDActive()).toBe(false)
-  })
-})
-
-describe('getDNDRemaining', () => {
-  it('returns 0 when no timed DND', () => {
-    expect(getDNDRemaining()).toBe(0)
-  })
-
-  it('returns positive remaining ms when timed DND is active', () => {
-    const until = Date.now() + 60_000
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ timedDNDUntil: until }))
-    const remaining = getDNDRemaining()
-    expect(remaining).toBeGreaterThan(0)
-    expect(remaining).toBeLessThanOrEqual(60_000)
-  })
-
-  it('returns 0 when timed DND has expired', () => {
-    const until = Date.now() - 1_000
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ timedDNDUntil: until }))
-    expect(getDNDRemaining()).toBe(0)
   })
 })
 

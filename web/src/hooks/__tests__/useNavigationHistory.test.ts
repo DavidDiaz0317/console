@@ -1,13 +1,12 @@
 /**
- * Tests for useNavigationHistory hook and getNavigationBehavior utility.
+ * Tests for useNavigationHistory hook.
  *
  * The hook itself requires react-router-dom context, so we test
- * getNavigationBehavior (pure utility) and the hook with a mocked router.
+ * the hook with a mocked router.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { getNavigationBehavior } from '../useNavigationHistory'
 
 const STORAGE_KEY = 'kubestellar-nav-history'
 
@@ -82,54 +81,6 @@ describe('useNavigationHistory', () => {
       expect(history[0]).toBe('/new-page')
       // Last entry from original should be dropped
       expect(history).not.toContain('/page-99')
-    })
-  })
-
-  describe('getNavigationBehavior', () => {
-    it('should return empty stats when no history exists', () => {
-      const behavior = getNavigationBehavior()
-      expect(behavior.totalVisits).toBe(0)
-      expect(behavior.uniquePages).toBe(0)
-      expect(behavior.topPages).toEqual([])
-    })
-
-    it('should count total visits', () => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(['/a', '/b', '/a', '/c']))
-      const behavior = getNavigationBehavior()
-      expect(behavior.totalVisits).toBe(4)
-    })
-
-    it('should count unique pages', () => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(['/a', '/b', '/a', '/c']))
-      const behavior = getNavigationBehavior()
-      expect(behavior.uniquePages).toBe(3)
-    })
-
-    it('should sort top pages by visit count descending', () => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([
-        '/a', '/b', '/a', '/a', '/b', '/c',
-      ]))
-      const behavior = getNavigationBehavior()
-      expect(behavior.topPages[0]).toEqual({ path: '/a', count: 3 })
-      expect(behavior.topPages[1]).toEqual({ path: '/b', count: 2 })
-      expect(behavior.topPages[2]).toEqual({ path: '/c', count: 1 })
-    })
-
-    it('should limit top pages to 10', () => {
-      // Create 15 unique paths
-      const history = Array.from({ length: 15 }, (_, i) => `/page-${i}`)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
-
-      const behavior = getNavigationBehavior()
-      expect(behavior.topPages.length).toBe(10)
-    })
-
-    it('should handle corrupted localStorage data', () => {
-      localStorage.setItem(STORAGE_KEY, 'not-valid-json')
-      const behavior = getNavigationBehavior()
-      expect(behavior.totalVisits).toBe(0)
-      expect(behavior.uniquePages).toBe(0)
-      expect(behavior.topPages).toEqual([])
     })
   })
 })

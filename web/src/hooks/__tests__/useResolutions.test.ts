@@ -4,7 +4,6 @@ import {
   detectIssueSignature,
   findSimilarResolutionsStandalone,
   generateResolutionPromptContext,
-  calculateSignatureSimilarity,
   useResolutions,
   type IssueSignature,
   type Resolution,
@@ -237,84 +236,6 @@ describe('detectIssueSignature', () => {
   it('returns no namespace when none is mentioned', () => {
     const sig = detectIssueSignature('CrashLoopBackOff on pod my-app-xyz')
     expect(sig.namespace).toBeUndefined()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// calculateSignatureSimilarity
-// ---------------------------------------------------------------------------
-
-describe('calculateSignatureSimilarity', () => {
-  it('returns 1 for identical signatures', () => {
-    const sig: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Pod' }
-    expect(calculateSignatureSimilarity(sig, sig)).toBe(1)
-  })
-
-  it('returns 0 for completely different signatures', () => {
-    const a: IssueSignature = { type: 'OOMKilled', resourceKind: 'Pod' }
-    const b: IssueSignature = { type: 'NodeNotReady', resourceKind: 'Node' }
-    expect(calculateSignatureSimilarity(a, b)).toBe(0)
-  })
-
-  it('gives partial score when type matches but resourceKind differs', () => {
-    const a: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Pod' }
-    const b: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Deployment' }
-    const score = calculateSignatureSimilarity(a, b)
-    expect(score).toBeGreaterThan(0)
-    expect(score).toBeLessThan(1)
-  })
-
-  it('includes namespace weight when both have it', () => {
-    const base: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Pod', namespace: 'default' }
-    const same: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Pod', namespace: 'default' }
-    const diff: IssueSignature = { type: 'CrashLoopBackOff', resourceKind: 'Pod', namespace: 'kube-system' }
-
-    expect(calculateSignatureSimilarity(base, same)).toBeGreaterThan(
-      calculateSignatureSimilarity(base, diff),
-    )
-  })
-
-  it('returns 0 when both signatures have only empty type strings', () => {
-    const a: IssueSignature = { type: '' }
-    const b: IssueSignature = { type: '' }
-    // Both types are empty strings — they match but test the edge case
-    expect(calculateSignatureSimilarity(a, b)).toBe(0)
-  })
-
-  it('scores higher when errorPattern words overlap', () => {
-    const base: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      errorPattern: 'container exited with code 137',
-    }
-    const similar: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      errorPattern: 'container exited with signal SIGKILL code 137',
-    }
-    const different: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      errorPattern: 'missing configuration file for startup',
-    }
-
-    const scoreSimilar = calculateSignatureSimilarity(base, similar)
-    const scoreDifferent = calculateSignatureSimilarity(base, different)
-    expect(scoreSimilar).toBeGreaterThan(scoreDifferent)
-  })
-
-  it('handles type-only signatures without resourceKind', () => {
-    const a: IssueSignature = { type: 'QuotaExceeded' }
-    const b: IssueSignature = { type: 'QuotaExceeded' }
-    // With only type matching, score should be 1.0 (3/3 factors)
-    expect(calculateSignatureSimilarity(a, b)).toBe(1)
-  })
-
-  it('ignores namespace when only one side has it', () => {
-    const withNs: IssueSignature = { type: 'OOMKilled', namespace: 'prod' }
-    const withoutNs: IssueSignature = { type: 'OOMKilled' }
-    // Namespace factor should be skipped entirely (not penalized)
-    expect(calculateSignatureSimilarity(withNs, withoutNs)).toBe(1)
   })
 })
 
@@ -1136,110 +1057,6 @@ describe('extractErrorPattern (via detectIssueSignature)', () => {
     expect(sig.errorPattern).toBeDefined()
     // The extracted pattern should be trimmed
     expect(sig.errorPattern!.startsWith(' ')).toBe(false)
-  })
-})
-
-describe('calculateStringSimilarity (via calculateSignatureSimilarity)', () => {
-  it('produces high similarity for identical error patterns', () => {
-    const a: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      errorPattern: 'container exited with code 137 after memory limit exceeded',
-    }
-    const b: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      errorPattern: 'container exited with code 137 after memory limit exceeded',
-    }
-    const score = calculateSignatureSimilarity(a, b)
-    expect(score).toBe(1)
-  })
-
-  it('produces low similarity for completely different error patterns', () => {
-    const a: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      errorPattern: 'container exited with code 137 after memory limit exceeded',
-    }
-    const b: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      errorPattern: 'TLS certificate expired validation failed authentication',
-    }
-    const score = calculateSignatureSimilarity(a, b)
-    // Type matches (3/3) but errorPattern has low overlap → score < 1
-    expect(score).toBeLessThan(1)
-    expect(score).toBeGreaterThan(0.5) // type still matches
-  })
-
-  it('filters out short words (length <= 2) from similarity calculation', () => {
-    const a: IssueSignature = {
-      type: 'Unknown',
-      errorPattern: 'it is a problem on the pod',
-    }
-    const b: IssueSignature = {
-      type: 'Unknown',
-      errorPattern: 'it is a failure on the node',
-    }
-    // Short words like "it", "is", "a", "on" are filtered out, leaving "problem"/"pod" vs "failure"/"the"/"node"
-    const score = calculateSignatureSimilarity(a, b)
-    expect(score).toBeDefined()
-    expect(score).toBeGreaterThanOrEqual(0)
-    expect(score).toBeLessThanOrEqual(1)
-  })
-
-  it('returns 0 similarity when both errorPatterns have only short words', () => {
-    const a: IssueSignature = {
-      type: 'OOMKilled',
-      errorPattern: 'it is so',
-    }
-    const b: IssueSignature = {
-      type: 'OOMKilled',
-      errorPattern: 'up to me',
-    }
-    // All words are <= 2 chars, so Jaccard union is empty → similarity 0
-    // But type still matches (3/3), errorPattern contributes 0/1
-    const score = calculateSignatureSimilarity(a, b)
-    expect(score).toBe(3 / 4) // 3 from type, 0 from error, factors = 4
-  })
-})
-
-describe('calculateSignatureSimilarity edge cases', () => {
-  it('handles namespace match adding to score', () => {
-    const a: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      namespace: 'production',
-      errorPattern: 'container failed startup',
-    }
-    const b: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      namespace: 'production',
-      errorPattern: 'container failed startup',
-    }
-    // All factors match: type(3) + resourceKind(1) + namespace(0.5) + errorPattern(1) = 5.5/5.5 = 1
-    expect(calculateSignatureSimilarity(a, b)).toBe(1)
-  })
-
-  it('penalizes namespace mismatch when both provided', () => {
-    const a: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      namespace: 'production',
-    }
-    const b: IssueSignature = {
-      type: 'CrashLoopBackOff',
-      resourceKind: 'Pod',
-      namespace: 'staging',
-    }
-    const score = calculateSignatureSimilarity(a, b)
-    // type(3) + resourceKind(1) = 4 score out of 4.5 factors
-    expect(score).toBeCloseTo(4 / 4.5, 5)
-  })
-
-  it('returns 0 when factors is 0 (both types are empty strings with no other fields)', () => {
-    const a: IssueSignature = { type: '' }
-    const b: IssueSignature = { type: '' }
-    // Empty type strings don't count: type check is `if (a.type && b.type)`
-    // So factors = 0, and the function returns 0
-    expect(calculateSignatureSimilarity(a, b)).toBe(0)
   })
 })
 

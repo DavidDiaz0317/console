@@ -3,11 +3,8 @@ import {
   registerCacheReset,
   unregisterCacheReset,
   clearAllRegisteredCaches,
-  getRegisteredCacheCount,
   registerRefetch,
-  getModeTransitionVersion,
   triggerAllRefetches,
-  incrementModeTransitionVersion,
 } from '../modeTransition'
 
 describe('cache reset registry', () => {
@@ -17,17 +14,19 @@ describe('cache reset registry', () => {
     unregisterCacheReset('test-cache-2')
   })
 
-  it('registers and counts caches', () => {
-    const initialCount = getRegisteredCacheCount()
-    registerCacheReset('test-cache-1', vi.fn())
-    expect(getRegisteredCacheCount()).toBe(initialCount + 1)
+  it('registers caches that are called on clear', () => {
+    const fn = vi.fn()
+    registerCacheReset('test-cache-1', fn)
+    clearAllRegisteredCaches()
+    expect(fn).toHaveBeenCalledOnce()
   })
 
-  it('unregisters caches', () => {
-    registerCacheReset('test-cache-1', vi.fn())
-    const countAfterAdd = getRegisteredCacheCount()
+  it('unregisters caches so they are not called on clear', () => {
+    const fn = vi.fn()
+    registerCacheReset('test-cache-1', fn)
     unregisterCacheReset('test-cache-1')
-    expect(getRegisteredCacheCount()).toBe(countAfterAdd - 1)
+    clearAllRegisteredCaches()
+    expect(fn).not.toHaveBeenCalled()
   })
 
   it('clearAllRegisteredCaches calls all reset functions', () => {
@@ -91,17 +90,5 @@ describe('refetch registry', () => {
     expect(() => triggerAllRefetches()).not.toThrow()
 
     unsub()
-  })
-})
-
-describe('mode transition version', () => {
-  it('starts at a number', () => {
-    expect(typeof getModeTransitionVersion()).toBe('number')
-  })
-
-  it('increments on each call', () => {
-    const before = getModeTransitionVersion()
-    incrementModeTransitionVersion()
-    expect(getModeTransitionVersion()).toBe(before + 1)
   })
 })

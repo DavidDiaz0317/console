@@ -63,13 +63,6 @@ export function clearAllRegisteredCaches(): void {
   })
 }
 
-/**
- * Get the number of registered caches (for debugging).
- */
-export function getRegisteredCacheCount(): number {
-  return cacheResetRegistry.size
-}
-
 // ---------------------------------------------------------------------------
 // UNIFIED REFETCH MECHANISM
 // Hooks register refetch functions that are called after mode transitions
@@ -89,14 +82,6 @@ export function registerRefetch(
 ): () => void {
   refetchRegistry.set(key, refetchFn)
   return () => refetchRegistry.delete(key)
-}
-
-/**
- * Get current mode transition version.
- * Used by hooks to detect stale operations.
- */
-export function getModeTransitionVersion(): number {
-  return modeTransitionVersion
 }
 
 /**

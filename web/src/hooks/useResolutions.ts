@@ -137,7 +137,7 @@ function extractErrorPattern(content: string): string | undefined {
 /**
  * Calculate similarity score between two issue signatures (0-1)
  */
-export function calculateSignatureSimilarity(a: IssueSignature, b: IssueSignature): number {
+function calculateSignatureSimilarity(a: IssueSignature, b: IssueSignature): number {
   let score = 0
   let factors = 0
 

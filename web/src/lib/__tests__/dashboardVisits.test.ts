@@ -1,5 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { recordDashboardVisit, getTopVisitedDashboards, prefetchTopDashboards } from '../dashboardVisits'
+import { recordDashboardVisit, prefetchTopDashboards } from '../dashboardVisits'
+
+const VISIT_COUNTS_KEY = 'kubestellar-dashboard-visits'
+
+/** Test helper: read top visited paths from localStorage (mirrors unexported readTopVisited) */
+function readTopVisited(n = 5): string[] {
+  try {
+    const counts: Record<string, number> = JSON.parse(localStorage.getItem(VISIT_COUNTS_KEY) || '{}')
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n)
+      .map(([path]) => path)
+  } catch {
+    return []
+  }
+}
 
 describe('recordDashboardVisit', () => {
   beforeEach(() => {
@@ -11,23 +26,23 @@ describe('recordDashboardVisit', () => {
     recordDashboardVisit('/')
     recordDashboardVisit('/')
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     expect(top[0]).toBe('/')
   })
 
   it('skips auth paths', () => {
     recordDashboardVisit('/auth/callback')
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   it('skips login path', () => {
     recordDashboardVisit('/login')
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   it('skips settings path', () => {
     recordDashboardVisit('/settings')
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   // --- New edge case tests ---
@@ -36,7 +51,7 @@ describe('recordDashboardVisit', () => {
     recordDashboardVisit('/auth/login')
     recordDashboardVisit('/auth/logout')
     recordDashboardVisit('/auth/refresh')
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   it('records paths that start with /auth-like strings but are not /auth', () => {
@@ -44,7 +59,7 @@ describe('recordDashboardVisit', () => {
     // But the implementation checks path.startsWith('/auth') — so /authentication IS skipped
     recordDashboardVisit('/authentication')
     // startsWith('/auth') matches '/authentication'
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   it('tracks multiple distinct dashboard paths independently', () => {
@@ -52,7 +67,7 @@ describe('recordDashboardVisit', () => {
     recordDashboardVisit('/pods')
     recordDashboardVisit('/nodes')
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     expect(top).toHaveLength(3)
     expect(top).toContain('/clusters')
     expect(top).toContain('/pods')
@@ -66,7 +81,7 @@ describe('recordDashboardVisit', () => {
     }
     recordDashboardVisit('/pods')
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     // /clusters (5 visits) should rank above /pods (1 visit)
     expect(top[0]).toBe('/clusters')
     expect(top[1]).toBe('/pods')
@@ -92,23 +107,23 @@ describe('recordDashboardVisit', () => {
 
     // After the record attempt, the new visit should be tracked
     // (corrupted data is replaced with a fresh object)
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     expect(top).toContain('/clusters')
   })
 
   it('records root path (/)', () => {
     recordDashboardVisit('/')
-    expect(getTopVisitedDashboards()).toContain('/')
+    expect(readTopVisited()).toContain('/')
   })
 })
 
-describe('getTopVisitedDashboards', () => {
+describe('readTopVisited', () => {
   beforeEach(() => {
     localStorage.clear()
   })
 
   it('returns empty array when no visits', () => {
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   it('returns dashboards sorted by visit count', () => {
@@ -119,7 +134,7 @@ describe('getTopVisitedDashboards', () => {
     recordDashboardVisit('/')
     recordDashboardVisit('/')
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     expect(top[0]).toBe('/clusters')
     expect(top[1]).toBe('/')
     expect(top[2]).toBe('/pods')
@@ -129,13 +144,13 @@ describe('getTopVisitedDashboards', () => {
     for (let i = 0; i < 10; i++) {
       recordDashboardVisit(`/dash-${i}`)
     }
-    const top = getTopVisitedDashboards(3)
+    const top = readTopVisited(3)
     expect(top.length).toBe(3)
   })
 
   it('handles corrupted localStorage gracefully', () => {
     localStorage.setItem('kubestellar-dashboard-visits', 'not-json')
-    expect(getTopVisitedDashboards()).toEqual([])
+    expect(readTopVisited()).toEqual([])
   })
 
   // --- New edge case tests ---
@@ -146,7 +161,7 @@ describe('getTopVisitedDashboards', () => {
       recordDashboardVisit(`/dash-${i}`)
     }
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     const DEFAULT_TOP_N = 5
     expect(top).toHaveLength(DEFAULT_TOP_N)
   })
@@ -155,13 +170,13 @@ describe('getTopVisitedDashboards', () => {
     recordDashboardVisit('/clusters')
     recordDashboardVisit('/pods')
 
-    const top = getTopVisitedDashboards(10)
+    const top = readTopVisited(10)
     expect(top).toHaveLength(2)
   })
 
   it('returns empty array for n=0', () => {
     recordDashboardVisit('/clusters')
-    expect(getTopVisitedDashboards(0)).toEqual([])
+    expect(readTopVisited(0)).toEqual([])
   })
 
   it('correctly orders dashboards with equal visit counts', () => {
@@ -170,7 +185,7 @@ describe('getTopVisitedDashboards', () => {
     recordDashboardVisit('/b')
     recordDashboardVisit('/c')
 
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     // All have 1 visit — all three should be present
     expect(top).toHaveLength(3)
     expect(top).toContain('/a')
@@ -183,13 +198,13 @@ describe('getTopVisitedDashboards', () => {
     recordDashboardVisit('/clusters')
     recordDashboardVisit('/clusters')
 
-    const top = getTopVisitedDashboards(1)
+    const top = readTopVisited(1)
     expect(top).toEqual(['/clusters'])
   })
 
   it('returns paths as strings, not numbers', () => {
     recordDashboardVisit('/123')
-    const top = getTopVisitedDashboards()
+    const top = readTopVisited()
     expect(typeof top[0]).toBe('string')
     expect(top[0]).toBe('/123')
   })
