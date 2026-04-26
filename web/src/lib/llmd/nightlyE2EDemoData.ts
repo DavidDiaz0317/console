@@ -119,17 +119,19 @@ function computePassRate(runs: NightlyRun[]): number {
   return Math.round((completed.filter(r => r.conclusion === 'success').length / completed.length) * 100)
 }
 
+import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE } from '../constants/time'
+
 export function generateDemoNightlyData(): NightlyGuideStatus[] {
   const now = Date.now()
-  const DAY_MS = 24 * 60 * 60 * 1000
 
   return NIGHTLY_WORKFLOWS.map((wf, wfIdx) => {
     const key = `${wf.guide}-${wf.platform}`
     const pattern = DEMO_PATTERNS[key] ?? ['success', 'success', 'success', 'success', 'success', 'success', 'success']
 
     const runs: NightlyRun[] = pattern.map((result, i) => {
-      const createdAt = new Date(now - (i * DAY_MS) - (2 * 60 * 60 * 1000)) // 2am each night
-      const duration = result === 'in_progress' ? 0 : (30 + Math.random() * 30) * 60 * 1000 // 30-60 min
+      const RUN_START_OFFSET_MS = 2 * MS_PER_HOUR // 2am each night
+      const createdAt = new Date(now - (i * MS_PER_DAY) - RUN_START_OFFSET_MS)
+      const duration = result === 'in_progress' ? 0 : (30 + Math.random() * 30) * MS_PER_MINUTE // 30-60 min
       const updatedAt = result === 'in_progress' ? new Date() : new Date(createdAt.getTime() + duration)
 
       return {

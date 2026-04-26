@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
+import { MS_PER_MINUTE } from '../constants/time'
 
 // ============================================================================
 // localStorage Hook for Preferences
@@ -152,7 +153,7 @@ interface UseIndexedDataResult<T> {
 export function useIndexedData<T>({
   key,
   defaultValue,
-  maxAge = 5 * 60 * 1000 }: UseIndexedDataOptions<T>): UseIndexedDataResult<T> {
+  maxAge = 5 * MS_PER_MINUTE }: UseIndexedDataOptions<T>): UseIndexedDataResult<T> {
   const [data, setData] = useState<T>(defaultValue)
   const [isLoading, setIsLoading] = useState(true)
   const [lastSaved, setLastSaved] = useState<number | null>(null)
@@ -408,7 +409,7 @@ interface UseTrendHistoryOptions {
 export function useTrendHistory<T extends TrendPoint>({
   key,
   maxPoints = 50,
-  maxAge = 30 * 60 * 1000 }: UseTrendHistoryOptions) {
+  maxAge = 30 * MS_PER_MINUTE }: UseTrendHistoryOptions) {
   const {
     data: history,
     isLoading,
