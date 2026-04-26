@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { StatTile } from '../shared/StatTile'
 import {
   CheckCircle,
   AlertTriangle,
@@ -68,30 +69,6 @@ const STATUS_SORT_ORDER: Record<KeycloakRealmStatus, number> = {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function StatTile({
-  icon,
-  label,
-  value,
-  colorClass,
-  borderClass,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  colorClass: string
-  borderClass: string
-}) {
-  return (
-    <div className={`p-3 rounded-lg bg-secondary/30 border ${borderClass}`}>
-      <div className="flex items-center gap-2 mb-1">
-        {icon}
-        <span className={`text-xs ${colorClass}`}>{label}</span>
-      </div>
-      <span className="text-2xl font-bold text-foreground">{value.toLocaleString()}</span>
-    </div>
-  )
-}
 
 function RealmRow({ realm }: { realm: KeycloakRealm }) {
   const { t } = useTranslation('cards')
@@ -292,6 +269,7 @@ export function KeycloakStatus() {
             value={realms.length}
             colorClass="text-blue-400"
             borderClass="border-blue-500/20"
+            formatValue
           />
           <StatTile
             icon={<CheckCircle className="w-4 h-4 text-green-400" />}
@@ -299,6 +277,7 @@ export function KeycloakStatus() {
             value={stats.ready}
             colorClass="text-green-400"
             borderClass="border-green-500/20"
+            formatValue
           />
           <StatTile
             icon={<Users className="w-4 h-4 text-cyan-400" />}
@@ -306,6 +285,7 @@ export function KeycloakStatus() {
             value={data.totalActiveSessions}
             colorClass="text-cyan-400"
             borderClass="border-cyan-500/20"
+            formatValue
           />
           <StatTile
             icon={<AlertTriangle className="w-4 h-4 text-red-400" />}
@@ -313,6 +293,7 @@ export function KeycloakStatus() {
             value={stats.issues}
             colorClass="text-red-400"
             borderClass="border-red-500/20"
+            formatValue
           />
         </div>
       )}
