@@ -247,9 +247,10 @@ describe('useGitHubRewards', () => {
     vi.useRealTimers()
   })
 
-  // 7. Missing token -- no fetch
+  // 7. Missing token -- no fetch (hook now checks useAuth().isAuthenticated)
   it('does not fetch when STORAGE_KEY_TOKEN is absent', async () => {
     localStorage.removeItem(STORAGE_KEY_TOKEN)
+    mockUseAuth.mockReturnValue({ user: null, isAuthenticated: false })
 
     const { useGitHubRewards } = await import('../useGitHubRewards')
     const { result } = renderHook(() => useGitHubRewards())
@@ -283,7 +284,7 @@ describe('useGitHubRewards', () => {
     expect(fetchUrl).toContain('login=octocat')
   })
 
-  // 9. Cookie-only session: no token but STORAGE_KEY_HAS_SESSION is set
+  // 9. Authenticated user without token still fetches (useAuth-based auth)
   it('fetches when token is absent but cookie session hint is set', async () => {
     localStorage.removeItem(STORAGE_KEY_TOKEN)
     localStorage.setItem(STORAGE_KEY_HAS_SESSION, 'true')
@@ -303,13 +304,11 @@ describe('useGitHubRewards', () => {
       expect(result.current.githubRewards!.total_points).toBe(2000)
     })
 
-    // Verify no Authorization header was sent (cookie-only path)
+    // The unified hook fetches without Authorization headers (login query param only)
     const fetchInit = vi.mocked(global.fetch).mock.calls[0][1] as RequestInit
-    expect(fetchInit.headers).toBeDefined()
-    const headers = fetchInit.headers as Record<string, string>
+    // No Authorization header — rewards API uses login query param, not tokens
+    const headers = (fetchInit.headers ?? {}) as Record<string, string>
     expect(headers['Authorization']).toBeUndefined()
-    // credentials: 'include' must be set for cookie transport
-    expect(fetchInit.credentials).toBe('include')
   })
 
   // 10. localStorage.getItem throwing does not crash the hook
@@ -323,15 +322,21 @@ describe('useGitHubRewards', () => {
       throw new DOMException('Access denied')
     })
 
+    // The hook still fetches if useAuth says isAuthenticated (localStorage is only for cache).
+    // Provide a fetch response so the hook doesn't hang.
+    const apiResponse = makeSampleResponse()
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(apiResponse),
+    } as Response)
+
     const { useGitHubRewards } = await import('../useGitHubRewards')
     const { result } = renderHook(() => useGitHubRewards())
 
     await act(async () => { /* flush effects */ })
 
-    // Should not crash — just skip fetching since both token and session are unavailable
-    expect(result.current.githubRewards).toBeNull()
-    expect(result.current.isLoading).toBe(false)
-    expect(global.fetch).not.toHaveBeenCalled()
+    // Should not crash — the hook still functions even if localStorage throws
+    expect(result.current.githubRewards).not.toBeNull()
 
     getItemSpy.mockRestore()
   })
