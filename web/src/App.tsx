@@ -49,16 +49,14 @@ import { Login } from './components/auth/Login'
 import { AuthCallback } from './components/auth/AuthCallback'
 const CustomDashboard = safeLazy(() => import('./components/dashboard/CustomDashboard'), 'CustomDashboard')
 const Settings = safeLazy(() => import('./components/settings/Settings'), 'Settings')
-// Eagerly import key sidebar dashboards to prevent React Router's
-// startTransition from keeping the old route visible during lazy loading.
-import { Clusters } from './components/clusters/Clusters'
+const Clusters = safeLazy(() => import('./components/clusters/Clusters'), 'Clusters')
 const Events = safeLazy(() => import('./components/events/Events'), 'Events')
 const Workloads = safeLazy(() => import('./components/workloads/Workloads'), 'Workloads')
 const Storage = safeLazy(() => import('./components/storage/Storage'), 'Storage')
 const Compute = safeLazy(() => import('./components/compute/Compute'), 'Compute')
 const ClusterComparisonPage = safeLazy(() => import('./components/compute/ClusterComparisonPage'), 'ClusterComparisonPage')
 const Network = safeLazy(() => import('./components/network/Network'), 'Network')
-import { Security } from './components/security/Security'
+const Security = safeLazy(() => import('./components/security/Security'), 'Security')
 const GitOps = safeLazy(() => import('./components/gitops/GitOps'), 'GitOps')
 const Alerts = safeLazy(() => import('./components/alerts/Alerts'), 'Alerts')
 const Cost = safeLazy(() => import('./components/cost/Cost'), 'Cost')
@@ -109,7 +107,7 @@ const Deploy = safeLazy(() => import('./components/deploy/Deploy'), 'Deploy')
 const AIML = safeLazy(() => import('./components/aiml/AIML'), 'AIML')
 const AIAgents = safeLazy(() => import('./components/aiagents/AIAgents'), 'AIAgents')
 const LLMdBenchmarks = safeLazy(() => import('./components/llmd-benchmarks/LLMdBenchmarks'), 'LLMdBenchmarks')
-import { ClusterAdmin } from './components/cluster-admin/ClusterAdmin'
+const ClusterAdmin = safeLazy(() => import('./components/cluster-admin/ClusterAdmin'), 'ClusterAdmin')
 const CICD = safeLazy(() => import('./components/cicd/CICD'), 'CICD')
 const Insights = safeLazy(() => import('./components/insights/Insights'), 'Insights')
 const MultiTenancy = safeLazy(() => import('./components/multi-tenancy/MultiTenancy'), 'MultiTenancy')
