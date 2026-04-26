@@ -6,6 +6,7 @@ import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { MIN_REFRESH_INDICATOR_MS, getEffectiveInterval } from './shared'
 import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants/network'
+import { MS_PER_HOUR } from '../../lib/constants/time'
 
 export interface BuildpackImage {
   name: string
@@ -25,7 +26,7 @@ function getDemoBuildpackImages(): BuildpackImage[] {
       builder: 'paketo-builder',
       image: 'registry.io/frontend:v1.2.0',
       status: 'succeeded',
-      updated: new Date(Date.now() - 3600000).toISOString(),
+      updated: new Date(Date.now() - MS_PER_HOUR).toISOString(),
       cluster: 'eks-prod-us-east-1' },
     {
       name: 'payments-api',

@@ -353,7 +353,7 @@ export function detectCascadeImpact(events: ClusterEvent[]): MultiClusterInsight
         source: 'heuristic',
         severity: chain.length >= CRITICAL_CLUSTER_THRESHOLD ? 'critical' : 'warning',
         title: `Possible cascade across ${chain.length} clusters`,
-        description: `Issues started in ${chain[0].cluster} (${chain[0].event}) and spread to ${affectedClusters.slice(1).join(', ')} within ${Math.round(CASCADE_DETECTION_WINDOW_MS / 60000)} minutes.`,
+        description: `Issues started in ${chain[0].cluster} (${chain[0].event}) and spread to ${affectedClusters.slice(1).join(', ')} within ${Math.round(CASCADE_DETECTION_WINDOW_MS / MS_PER_MINUTE)} minutes.`,
         affectedClusters,
         detectedAt: chain[0].timestamp,
         chain })

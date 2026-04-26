@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../lib/api'
 import { useDemoMode, hasRealToken } from './useDemoMode'
 import { isInClusterMode } from './useBackendHealth'
+import { MS_PER_HOUR } from '../lib/constants/time'
 
 const REFRESH_INTERVAL_MS = 30000
 
@@ -147,7 +148,7 @@ const DEMO_RESERVATIONS: GPUReservation[] = [
     status: 'pending',
     quota_name: '',
     quota_enforced: false,
-    created_at: new Date(Date.now() - 3600000).toISOString() },
+    created_at: new Date(Date.now() - MS_PER_HOUR).toISOString() },
   {
     id: 'demo-res-3',
     user_id: 'demo-user',

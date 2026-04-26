@@ -17,13 +17,14 @@ import { useToast } from '../components/ui/Toast'
 import { ORBIT_CADENCE_HOURS, ORBIT_AUTORUN_CHECK_INTERVAL_MS } from '../lib/constants/orbit'
 import { emitOrbitMissionRun } from '../lib/analytics'
 import type { OrbitConfig } from '../lib/missions/types'
+import { MS_PER_HOUR } from '../lib/constants/time'
 
 /** Tracks which missions were auto-run this session to prevent re-triggering */
 const autoRunTriggered = new Set<string>()
 
 function isDue(config: OrbitConfig): boolean {
   if (!config.lastRunAt) return true
-  const cadenceMs = ORBIT_CADENCE_HOURS[config.cadence] * 3_600_000
+  const cadenceMs = ORBIT_CADENCE_HOURS[config.cadence] * MS_PER_HOUR
   const elapsed = Date.now() - new Date(config.lastRunAt).getTime()
   return elapsed >= cadenceMs
 }

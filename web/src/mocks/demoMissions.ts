@@ -7,8 +7,9 @@
  */
 
 import type { OrbitConfig } from '../lib/missions/types'
+import { MS_PER_HOUR } from '../lib/constants/time'
 
-function hoursAgo(h: number): Date { return new Date(Date.now() - h * 3_600_000) }
+function hoursAgo(h: number): Date { return new Date(Date.now() - h * MS_PER_HOUR) }
 function daysAgo(d: number): Date { return new Date(Date.now() - d * 86_400_000) }
 
 /** Message shape matching MissionMessage */

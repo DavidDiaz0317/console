@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Slack } from '@/lib/icons'
 import { useAlerts, useSlackNotification, useSlackWebhooks } from '../../hooks/useAlerts'
+import { MS_PER_MINUTE } from '../../lib/constants/time'
 import { useMissions } from '../../hooks/useMissions'
 import { useAuth } from '../../lib/auth'
 import { getSeverityIcon, getSeverityColor } from '../../types/alerts'
@@ -40,7 +41,7 @@ function formatRelativeTime(dateString: string, t: TFunction): string {
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
+  const diffMins = Math.floor(diffMs / MS_PER_MINUTE)
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 

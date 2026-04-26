@@ -7,7 +7,7 @@
 
 import { registerDemoDataBatch } from '../demoDataRegistry'
 import type { DemoDataEntry } from '../types'
-import { MS_PER_HOUR, MS_PER_DAY } from '../../../constants/time'
+import { MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY } from '../../../constants/time'
 
 const TWO_DAYS_MS = 2 * MS_PER_DAY
 const ONE_WEEK_MS = 7 * MS_PER_DAY
@@ -65,11 +65,11 @@ function getDemoDeploymentIssues() {
 function getDemoEvents() {
   const now = Date.now()
   return [
-    { type: 'Warning', reason: 'BackOff', message: 'Back-off restarting failed container', involvedObject: { kind: 'Pod', name: 'api-gateway-7d9f5b8c4-xk2vm', namespace: 'production' }, cluster: 'eks-prod-us-east-1', timestamp: now - 60000 },
+    { type: 'Warning', reason: 'BackOff', message: 'Back-off restarting failed container', involvedObject: { kind: 'Pod', name: 'api-gateway-7d9f5b8c4-xk2vm', namespace: 'production' }, cluster: 'eks-prod-us-east-1', timestamp: now - MS_PER_MINUTE },
     { type: 'Warning', reason: 'FailedScheduling', message: 'Insufficient memory', involvedObject: { kind: 'Pod', name: 'cache-redis-0', namespace: 'cache' }, cluster: 'aks-dev-westeu', timestamp: now - 120000 },
     { type: 'Normal', reason: 'Pulled', message: 'Successfully pulled image', involvedObject: { kind: 'Pod', name: 'web-frontend-5c4d3b2a1-mn9op', namespace: 'frontend' }, cluster: 'gke-staging', timestamp: now - 180000 },
     { type: 'Normal', reason: 'ScalingReplicaSet', message: 'Scaled up replica set to 3', involvedObject: { kind: 'Deployment', name: 'notification-service', namespace: 'notifications' }, cluster: 'aks-dev-westeu', timestamp: now - 300000 },
-    { type: 'Warning', reason: 'Unhealthy', message: 'Liveness probe failed', involvedObject: { kind: 'Pod', name: 'worker-processor-5c8d7b6f9-ln3mp', namespace: 'batch' }, cluster: 'gke-staging', timestamp: now - 600000 },
+    { type: 'Warning', reason: 'Unhealthy', message: 'Liveness probe failed', involvedObject: { kind: 'Pod', name: 'worker-processor-5c8d7b6f9-ln3mp', namespace: 'batch' }, cluster: 'gke-staging', timestamp: now - 10 * MS_PER_MINUTE },
   ]
 }
 

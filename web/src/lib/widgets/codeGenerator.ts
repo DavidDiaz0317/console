@@ -6,6 +6,7 @@
 
 import { WIDGET_CARDS, WIDGET_STATS, WIDGET_TEMPLATES } from './widgetRegistry'
 import { generateWidgetStyles, generateWidgetShell } from './styleConverter'
+import { MS_PER_MINUTE } from '../constants/time'
 
 export interface WidgetConfig {
   type: 'card' | 'stat' | 'template'
@@ -447,7 +448,7 @@ ${wrapOpen}
 export function generateStatWidget(
   statIds: string[],
   apiEndpoint: string,
-  refreshInterval: number = 60000,
+  refreshInterval: number = MS_PER_MINUTE,
   layout: 'row' | 'grid' = 'row'
 ): string {
   const stats = statIds.map((id) => WIDGET_STATS[id]).filter(Boolean)

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Satellite, X, Play } from 'lucide-react'
 import type { Mission } from '../../hooks/useMissions'
 import { ORBIT_CADENCE_HOURS, ORBIT_OVERDUE_GRACE_HOURS } from '../../lib/constants/orbit'
-import { HOURS_PER_DAY } from '../../lib/constants/time'
+import { HOURS_PER_DAY, MS_PER_HOUR } from '../../lib/constants/time'
 import type { OrbitConfig } from '../../lib/missions/types'
 import { cn } from '../../lib/cn'
 
@@ -40,7 +40,7 @@ function computeReminders(missions: Mission[]): OrbitReminder[] {
 
     const cadenceHours = ORBIT_CADENCE_HOURS[orbitConfig.cadence] || ORBIT_CADENCE_HOURS.weekly
     const lastRun = orbitConfig.lastRunAt ? new Date(orbitConfig.lastRunAt).getTime() : 0
-    const hoursSinceRun = lastRun ? (Date.now() - lastRun) / (3_600_000) : Infinity
+    const hoursSinceRun = lastRun ? (Date.now() - lastRun) / (MS_PER_HOUR) : Infinity
     const overdueHours = hoursSinceRun - cadenceHours
 
     if (overdueHours > -ORBIT_OVERDUE_GRACE_HOURS) {

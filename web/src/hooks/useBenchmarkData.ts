@@ -19,6 +19,7 @@ import {
 } from '../lib/llmd/benchmarkMockData'
 import { STORAGE_KEY_TOKEN } from '../lib/constants'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { MS_PER_HOUR } from '../lib/constants/time'
 
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_KEY_TOKEN)
@@ -197,7 +198,7 @@ export function useCachedBenchmarkReports() {
   const cacheResult = useCache<BenchmarkReport[]>({
     key: 'benchmark-reports',
     category: 'costs',
-    refreshInterval: 3_600_000,
+    refreshInterval: MS_PER_HOUR,
     initialData: [],
     demoData: DEMO_REPORTS,
     fetcher: async () => {

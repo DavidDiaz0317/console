@@ -42,6 +42,7 @@ import type {
 } from '../useMCP'
 import type { Workload } from '../useWorkloads'
 import type { CiliumStatus } from '../../types/cilium'
+import { MS_PER_MINUTE, MS_PER_HOUR } from '../../lib/constants/time'
 
 // ---------------------------------------------------------------------------
 // Local type stubs used only by demo data — avoid circular import with
@@ -120,7 +121,7 @@ export const getDemoPods = (): PodInfo[] => [
 
 export const getDemoEvents = (): ClusterEvent[] => {
   const now = Date.now()
-  const minutesAgo = (m: number) => new Date(now - m * 60000).toISOString()
+  const minutesAgo = (m: number) => new Date(now - m * MS_PER_MINUTE).toISOString()
   return [
     { type: 'Warning', reason: 'FailedScheduling', message: 'No nodes available to schedule pod', object: 'Pod/worker-5c6d7e8f9-n3p2q', namespace: 'default', cluster: 'eks-prod-us-east-1', count: 3, firstSeen: minutesAgo(25), lastSeen: minutesAgo(5) },
     { type: 'Normal', reason: 'Started', message: 'Container started successfully', object: 'Pod/web-frontend-8e9f0a1b2-def34', namespace: 'production', cluster: 'gke-staging', count: 1, firstSeen: minutesAgo(12), lastSeen: minutesAgo(12) },
@@ -172,7 +173,7 @@ export const getDemoWorkloads = (): Workload[] => [
   { name: 'api-gateway', namespace: 'production', type: 'Deployment', status: 'Degraded', replicas: 5, readyReplicas: 3, image: 'company/api-gateway:v2.5.1', labels: { app: 'api-gateway', tier: 'api' }, targetClusters: ['us-east-1', 'us-west-2'], createdAt: new Date(Date.now() - 14 * 86400000).toISOString() },
   { name: 'postgres-primary', namespace: 'databases', type: 'StatefulSet', status: 'Running', replicas: 1, readyReplicas: 1, image: 'postgres:15.4', labels: { app: 'postgres', role: 'primary' }, targetClusters: ['us-east-1'], createdAt: new Date(Date.now() - 60 * 86400000).toISOString() },
   { name: 'fluentd', namespace: 'logging', type: 'DaemonSet', status: 'Running', replicas: 12, readyReplicas: 12, image: 'fluent/fluentd:v1.16', labels: { app: 'fluentd', tier: 'logging' }, targetClusters: ['us-east-1', 'us-west-2', 'eu-central-1'], createdAt: new Date(Date.now() - 45 * 86400000).toISOString() },
-  { name: 'ml-training', namespace: 'ml-workloads', type: 'Deployment', status: 'Pending', replicas: 1, readyReplicas: 0, image: 'company/ml-trainer:latest', labels: { app: 'ml-training', team: 'data-science' }, targetClusters: ['gpu-cluster-1'], createdAt: new Date(Date.now() - 3600000).toISOString() },
+  { name: 'ml-training', namespace: 'ml-workloads', type: 'Deployment', status: 'Pending', replicas: 1, readyReplicas: 0, image: 'company/ml-trainer:latest', labels: { app: 'ml-training', team: 'data-science' }, targetClusters: ['gpu-cluster-1'], createdAt: new Date(Date.now() - MS_PER_HOUR).toISOString() },
   { name: 'payment-service', namespace: 'payments', type: 'Deployment', status: 'Failed', replicas: 2, readyReplicas: 0, image: 'company/payment-service:v1.8.0', labels: { app: 'payment-service', tier: 'backend' }, targetClusters: ['us-east-1'], createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
 ]
 
@@ -274,7 +275,7 @@ export const getDemoCachedGPUNodeHealth = (): GPUNodeHealthStatus[] => [
 
 export const getDemoCachedWarningEvents = (): ClusterEvent[] => [
   { type: 'Warning', reason: 'FailedScheduling', message: 'Insufficient cpu', namespace: 'production', object: 'Pod/api-gateway-7d9c8b7f5-abcde', count: 3, firstSeen: new Date(Date.now() - 300000).toISOString(), lastSeen: new Date().toISOString(), cluster: 'prod-east' },
-  { type: 'Warning', reason: 'BackOff', message: 'Back-off restarting failed container', namespace: 'monitoring', object: 'Pod/prometheus-agent-0', count: 5, firstSeen: new Date(Date.now() - 600000).toISOString(), lastSeen: new Date().toISOString(), cluster: 'prod-east' },
+  { type: 'Warning', reason: 'BackOff', message: 'Back-off restarting failed container', namespace: 'monitoring', object: 'Pod/prometheus-agent-0', count: 5, firstSeen: new Date(Date.now() - 10 * MS_PER_MINUTE).toISOString(), lastSeen: new Date().toISOString(), cluster: 'prod-east' },
   { type: 'Warning', reason: 'FailedCreate', message: 'Error creating: pods "worker-xyz" is forbidden', namespace: 'ml-workloads', object: 'Job/training-job-123', count: 1, firstSeen: new Date(Date.now() - 120000).toISOString(), lastSeen: new Date().toISOString(), cluster: 'vllm-d' },
 ]
 
@@ -399,8 +400,8 @@ export const getDemoDaemonSets = (): DaemonSet[] => [
 ]
 
 export const getDemoCronJobs = (): CronJob[] => [
-  { name: 'db-backup', namespace: 'production', cluster: 'eks-prod-us-east-1', schedule: '0 2 * * *', suspend: false, active: 0, lastSchedule: new Date(Date.now() - 8 * 3600000).toISOString(), age: '60d' },
-  { name: 'log-cleanup', namespace: 'monitoring', cluster: 'gke-staging', schedule: '0 0 * * 0', suspend: false, active: 0, lastSchedule: new Date(Date.now() - 48 * 3600000).toISOString(), age: '30d' },
+  { name: 'db-backup', namespace: 'production', cluster: 'eks-prod-us-east-1', schedule: '0 2 * * *', suspend: false, active: 0, lastSchedule: new Date(Date.now() - 8 * MS_PER_HOUR).toISOString(), age: '60d' },
+  { name: 'log-cleanup', namespace: 'monitoring', cluster: 'gke-staging', schedule: '0 0 * * 0', suspend: false, active: 0, lastSchedule: new Date(Date.now() - 48 * MS_PER_HOUR).toISOString(), age: '30d' },
 ]
 
 export const getDemoIngresses = (): Ingress[] => [
@@ -418,16 +419,16 @@ export const getDemoNetworkPolicies = (): NetworkPolicy[] => [
 // ============================================================================
 
 export const getDemoHelmReleases = (): HelmRelease[] => [
-  { name: 'prometheus', namespace: 'monitoring', revision: '5', updated: new Date(Date.now() - 2 * 3600000).toISOString(), status: 'deployed', chart: 'prometheus-25.8.0', app_version: '2.48.1', cluster: 'eks-prod-us-east-1' },
-  { name: 'grafana', namespace: 'monitoring', revision: '3', updated: new Date(Date.now() - 5 * 3600000).toISOString(), status: 'deployed', chart: 'grafana-7.0.11', app_version: '10.2.3', cluster: 'eks-prod-us-east-1' },
-  { name: 'nginx-ingress', namespace: 'ingress', revision: '8', updated: new Date(Date.now() - 24 * 3600000).toISOString(), status: 'deployed', chart: 'ingress-nginx-4.8.3', app_version: '1.9.4', cluster: 'gke-staging' },
-  { name: 'api-gateway', namespace: 'production', revision: '6', updated: new Date(Date.now() - 1 * 3600000).toISOString(), status: 'failed', chart: 'api-gateway-2.1.0', app_version: '3.5.0', cluster: 'eks-prod-us-east-1' },
+  { name: 'prometheus', namespace: 'monitoring', revision: '5', updated: new Date(Date.now() - 2 * MS_PER_HOUR).toISOString(), status: 'deployed', chart: 'prometheus-25.8.0', app_version: '2.48.1', cluster: 'eks-prod-us-east-1' },
+  { name: 'grafana', namespace: 'monitoring', revision: '3', updated: new Date(Date.now() - 5 * MS_PER_HOUR).toISOString(), status: 'deployed', chart: 'grafana-7.0.11', app_version: '10.2.3', cluster: 'eks-prod-us-east-1' },
+  { name: 'nginx-ingress', namespace: 'ingress', revision: '8', updated: new Date(Date.now() - 24 * MS_PER_HOUR).toISOString(), status: 'deployed', chart: 'ingress-nginx-4.8.3', app_version: '1.9.4', cluster: 'gke-staging' },
+  { name: 'api-gateway', namespace: 'production', revision: '6', updated: new Date(Date.now() - 1 * MS_PER_HOUR).toISOString(), status: 'failed', chart: 'api-gateway-2.1.0', app_version: '3.5.0', cluster: 'eks-prod-us-east-1' },
 ]
 
 export const getDemoHelmHistory = (): HelmHistoryEntry[] => [
-  { revision: 6, updated: new Date(Date.now() - 1 * 3600000).toISOString(), status: 'failed', chart: 'api-gateway-2.1.0', app_version: '3.5.0', description: 'Upgrade failed: container crashed' },
-  { revision: 5, updated: new Date(Date.now() - 2 * 3600000).toISOString(), status: 'deployed', chart: 'prometheus-25.8.0', app_version: '2.48.1', description: 'Upgrade complete' },
-  { revision: 4, updated: new Date(Date.now() - 24 * 3600000).toISOString(), status: 'superseded', chart: 'prometheus-25.7.0', app_version: '2.48.0', description: 'Upgrade complete' },
+  { revision: 6, updated: new Date(Date.now() - 1 * MS_PER_HOUR).toISOString(), status: 'failed', chart: 'api-gateway-2.1.0', app_version: '3.5.0', description: 'Upgrade failed: container crashed' },
+  { revision: 5, updated: new Date(Date.now() - 2 * MS_PER_HOUR).toISOString(), status: 'deployed', chart: 'prometheus-25.8.0', app_version: '2.48.1', description: 'Upgrade complete' },
+  { revision: 4, updated: new Date(Date.now() - 24 * MS_PER_HOUR).toISOString(), status: 'superseded', chart: 'prometheus-25.7.0', app_version: '2.48.0', description: 'Upgrade complete' },
 ]
 
 export const getDemoHelmValues = (): Record<string, unknown> => ({
@@ -454,7 +455,7 @@ export const getDemoGitOpsDrifts = (): GitOpsDrift[] => [
 ]
 
 export const getDemoBuildpackImages = (): BuildpackImage[] => [
-  { name: 'api-service', namespace: 'production', builder: 'paketo-buildpacks/builder-jammy-base', image: 'registry.example.com/api-service:latest', status: 'succeeded', updated: new Date(Date.now() - 2 * 3600000).toISOString(), cluster: 'eks-prod-us-east-1' },
+  { name: 'api-service', namespace: 'production', builder: 'paketo-buildpacks/builder-jammy-base', image: 'registry.example.com/api-service:latest', status: 'succeeded', updated: new Date(Date.now() - 2 * MS_PER_HOUR).toISOString(), cluster: 'eks-prod-us-east-1' },
   { name: 'web-app', namespace: 'staging', builder: 'paketo-buildpacks/builder-jammy-full', image: 'registry.example.com/web-app:v2.1', status: 'building', updated: new Date(Date.now() - 300000).toISOString(), cluster: 'gke-staging' },
 ]
 

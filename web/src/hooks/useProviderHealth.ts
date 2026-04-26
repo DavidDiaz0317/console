@@ -6,6 +6,7 @@ import type { CloudProvider } from '../components/ui/CloudProviderIcon'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { getDemoMode } from './useDemoMode'
+import { MS_PER_MINUTE } from '../lib/constants/time'
 
 const STATUS_CHECK_TIMEOUT = 5_000
 
@@ -262,7 +263,7 @@ export function useProviderHealth() {
     demoData: DEMO_PROVIDERS,
     demoWhenEmpty: true,
     fetcher: () => fetchProviders(clustersRef.current),
-    refreshInterval: 60_000 })
+    refreshInterval: MS_PER_MINUTE })
 
   // Re-fetch when the cluster count changes (cloud provider list depends on clusters)
   const prevClusterCountRef = useRef<number | null>(null)

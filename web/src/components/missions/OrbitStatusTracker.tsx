@@ -9,6 +9,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Clock, Play, ChevronDown, Chevron
 import type { OrbitRunHistoryEntry, OrbitCadence } from '../../lib/missions/types'
 import { ORBIT_CADENCE_HOURS } from '../../lib/constants/orbit'
 import { cn } from '../../lib/cn'
+import { MS_PER_HOUR } from '../../lib/constants/time'
 
 /** Maximum history entries shown before "Show more" */
 const VISIBLE_HISTORY_COUNT = 5
@@ -44,11 +45,11 @@ export function OrbitStatusTracker({
   const hasMore = (history || []).length > VISIBLE_HISTORY_COUNT
 
   // Compute next run
-  const cadenceMs = ORBIT_CADENCE_HOURS[cadence] * 3_600_000
+  const cadenceMs = ORBIT_CADENCE_HOURS[cadence] * MS_PER_HOUR
   const lastRunTime = lastRunAt ? new Date(lastRunAt).getTime() : 0
   const nextRunTime = lastRunTime ? lastRunTime + cadenceMs : 0
   const msUntilNext = nextRunTime ? nextRunTime - Date.now() : 0
-  const hoursUntilNext = msUntilNext / 3_600_000
+  const hoursUntilNext = msUntilNext / MS_PER_HOUR
 
   return (
     <div className="mx-4 mb-4 rounded-xl border border-border bg-secondary/20 overflow-hidden">

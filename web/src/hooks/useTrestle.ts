@@ -22,6 +22,7 @@ import { useDemoMode } from './useDemoMode'
 import { registerRefetch, registerCacheReset, unregisterCacheReset } from '../lib/modeTransition'
 import { STORAGE_KEY_TRESTLE_CACHE, STORAGE_KEY_TRESTLE_CACHE_TIME } from '../lib/constants/storage'
 import { DEFAULT_REFRESH_INTERVAL_MS as REFRESH_INTERVAL_MS } from '../lib/constants'
+import { MS_PER_MINUTE } from '../lib/constants/time'
 
 /** Refresh interval for automatic polling (2 minutes) */
 
@@ -216,7 +217,7 @@ function getDemoStatus(cluster: string): TrestleClusterStatus {
     failedControls: failed,
     otherControls: other,
     controlResults: generateDemoControlResults(cluster, total, passed, failed, other),
-    lastAssessment: new Date(Date.now() - (seed % 60) * 60_000).toISOString() }
+    lastAssessment: new Date(Date.now() - (seed % 60) * MS_PER_MINUTE).toISOString() }
 }
 
 // ── CRD names for detection ──────────────────────────────────────────────

@@ -8,12 +8,13 @@
  */
 import { useCallback } from 'react'
 import { useCache } from '../lib/cache'
+import { MS_PER_MINUTE, MS_PER_HOUR } from '../lib/constants/time'
 
 /** Client-side poll interval for the live flow card (backend caches for 2 min) */
-const FLOW_POLL_MS = 60_000
+const FLOW_POLL_MS = MS_PER_MINUTE
 /** Poll interval for GitHub pipeline data. Hourly to stay within
  *  GitHub's rate limits. Manual refresh button still works instantly. */
-const DEFAULT_POLL_MS = 3_600_000
+const DEFAULT_POLL_MS = MS_PER_HOUR
 /** Timeout for any /api/github-pipelines fetch */
 const FETCH_TIMEOUT_MS = 10_000
 

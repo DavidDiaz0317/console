@@ -9,6 +9,7 @@ import { REFRESH_INTERVAL_MS, MIN_REFRESH_INDICATOR_MS, getEffectiveInterval, LO
 import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS, LOCAL_AGENT_HTTP_URL } from '../../lib/constants/network'
 import type { ClusterEvent } from './types'
+import { MS_PER_MINUTE } from '../../lib/constants/time'
 
 // ---------------------------------------------------------------------------
 // Shared Events State - enables cache reset notifications to all consumers
@@ -430,7 +431,7 @@ export function useWarningEvents(cluster?: string, namespace?: string, limit = 2
 
 function getDemoEvents(): ClusterEvent[] {
   const now = new Date()
-  const minutesAgo = (m: number) => new Date(now.getTime() - m * 60000).toISOString()
+  const minutesAgo = (m: number) => new Date(now.getTime() - m * MS_PER_MINUTE).toISOString()
 
   return [
     {

@@ -3,7 +3,7 @@ import { kubectlProxy } from '../lib/kubectlProxy'
 import { formatTimeAgo, formatProwDuration } from '../lib/formatters'
 import { useDemoMode } from './useDemoMode'
 import { KUBECTL_EXTENDED_TIMEOUT_MS } from '../lib/constants/network'
-import { MS_PER_HOUR } from '../lib/constants/time'
+import { MS_PER_MINUTE, MS_PER_HOUR } from '../lib/constants/time'
 import { DEFAULT_REFRESH_INTERVAL_MS as REFRESH_INTERVAL_MS } from '../lib/constants'
 
 /** Maximum number of ProwJobs to display */
@@ -195,11 +195,11 @@ export function useProwJobs(prowCluster = 'prow', namespace = 'prow') {
 // Demo data for when prow cluster is not available
 export function getDemoProwJobs(): ProwJob[] {
   return [
-    { id: '1', name: 'pull-kubernetes-e2e', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 10 * 60000).toISOString(), duration: '45m', pr: 12345 },
-    { id: '2', name: 'pull-kubernetes-unit', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 15 * 60000).toISOString(), duration: '12m', pr: 12346 },
-    { id: '3', name: 'pull-kubernetes-verify', type: 'presubmit', state: 'pending', cluster: 'prow', startTime: new Date(Date.now() - 2 * 60000).toISOString(), duration: '-', pr: 12347 },
-    { id: '4', name: 'ci-kubernetes-e2e-gce', type: 'periodic', state: 'failure', cluster: 'prow', startTime: new Date(Date.now() - 30 * 60000).toISOString(), duration: '1h 23m' },
-    { id: '5', name: 'post-kubernetes-push-image', type: 'postsubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 60 * 60000).toISOString(), duration: '8m' },
-    { id: '6', name: 'pull-kubernetes-integration', type: 'presubmit', state: 'aborted', cluster: 'prow', startTime: new Date(Date.now() - 20 * 60000).toISOString(), duration: '5m', pr: 12344 },
+    { id: '1', name: 'pull-kubernetes-e2e', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 10 * MS_PER_MINUTE).toISOString(), duration: '45m', pr: 12345 },
+    { id: '2', name: 'pull-kubernetes-unit', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 15 * MS_PER_MINUTE).toISOString(), duration: '12m', pr: 12346 },
+    { id: '3', name: 'pull-kubernetes-verify', type: 'presubmit', state: 'pending', cluster: 'prow', startTime: new Date(Date.now() - 2 * MS_PER_MINUTE).toISOString(), duration: '-', pr: 12347 },
+    { id: '4', name: 'ci-kubernetes-e2e-gce', type: 'periodic', state: 'failure', cluster: 'prow', startTime: new Date(Date.now() - 30 * MS_PER_MINUTE).toISOString(), duration: '1h 23m' },
+    { id: '5', name: 'post-kubernetes-push-image', type: 'postsubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 60 * MS_PER_MINUTE).toISOString(), duration: '8m' },
+    { id: '6', name: 'pull-kubernetes-integration', type: 'presubmit', state: 'aborted', cluster: 'prow', startTime: new Date(Date.now() - 20 * MS_PER_MINUTE).toISOString(), duration: '5m', pr: 12344 },
   ]
 }

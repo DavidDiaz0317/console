@@ -627,8 +627,8 @@ export function MissionProvider({ children }: { children: ReactNode }) {
           )
 
           const errorContent = isInactive
-            ? `**Agent Not Responding**\n\nThe AI agent started responding but stopped for over ${Math.round(MISSION_INACTIVITY_TIMEOUT_MS / 60_000)} minutes. This usually means the agent is stuck waiting for a tool call to return (e.g., a Kubernetes API call or APISIX gateway request that is not responding).\n\nYou can:\n- **Retry** the mission — the issue may be transient\n- **Check cluster connectivity** — ensure the target cluster API server is reachable\n- **Cancel** and try a simpler or more specific request`
-            : `**Mission Timed Out**\n\nThis mission has been running for over ${Math.round(MISSION_TIMEOUT_MS / 60_000)} minutes without completing. It has been automatically stopped.\n\nYou can:\n- **Retry** the mission with the same or a different prompt\n- **Try a simpler request** that requires less processing\n- **Check your AI provider** configuration in [Settings](/settings)`
+            ? `**Agent Not Responding**\n\nThe AI agent started responding but stopped for over ${Math.round(MISSION_INACTIVITY_TIMEOUT_MS / MS_PER_MINUTE)} minutes. This usually means the agent is stuck waiting for a tool call to return (e.g., a Kubernetes API call or APISIX gateway request that is not responding).\n\nYou can:\n- **Retry** the mission — the issue may be transient\n- **Check cluster connectivity** — ensure the target cluster API server is reachable\n- **Cancel** and try a simpler or more specific request`
+            : `**Mission Timed Out**\n\nThis mission has been running for over ${Math.round(MISSION_TIMEOUT_MS / MS_PER_MINUTE)} minutes without completing. It has been automatically stopped.\n\nYou can:\n- **Retry** the mission with the same or a different prompt\n- **Try a simpler request** that requires less processing\n- **Check your AI provider** configuration in [Settings](/settings)`
 
           return {
             ...m,
@@ -822,7 +822,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
                       {
                         id: `msg-reconnect-stale-${m.id}-${Date.now()}`,
                         role: 'system' as const,
-                        content: `**Mission session expired**\n\nThe connection to the agent was lost more than ${Math.round(MISSION_RECONNECT_MAX_AGE_MS / 60_000)} minutes ago. The agent has likely purged this session, so auto-resume is unsafe — it could crash the agent or land your prompt in a disjointed thread.\n\n**Click Retry Mission** to start a fresh session with the same prompt.`,
+                        content: `**Mission session expired**\n\nThe connection to the agent was lost more than ${Math.round(MISSION_RECONNECT_MAX_AGE_MS / MS_PER_MINUTE)} minutes ago. The agent has likely purged this session, so auto-resume is unsafe — it could crash the agent or land your prompt in a disjointed thread.\n\n**Click Retry Mission** to start a fresh session with the same prompt.`,
                         timestamp: new Date() }
                     ]
                   }
@@ -1262,7 +1262,7 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
             {
               id: `msg-waiting-timeout-${Date.now()}-${m.id}`,
               role: 'system' as const,
-              content: `**No response from agent — mission timed out waiting for input.**\n\nThe agent finished streaming but never delivered a final result within ${Math.round(WAITING_INPUT_TIMEOUT_MS / 60_000)} minutes. This usually means the final result message was lost or the agent disconnected silently.\n\nYou can:\n- **Retry** the mission — the issue may be transient\n- **Check your agent** — make sure it is still running and reachable\n- **Send a new message** to continue the conversation`,
+              content: `**No response from agent — mission timed out waiting for input.**\n\nThe agent finished streaming but never delivered a final result within ${Math.round(WAITING_INPUT_TIMEOUT_MS / MS_PER_MINUTE)} minutes. This usually means the final result message was lost or the agent disconnected silently.\n\nYou can:\n- **Retry** the mission — the issue may be transient\n- **Check your agent** — make sure it is still running and reachable\n- **Send a new message** to continue the conversation`,
               timestamp: new Date() }
           ]
         }

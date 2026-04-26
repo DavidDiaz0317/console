@@ -9,7 +9,7 @@ import { useCache, type RefreshCategory, type CachedHookResult } from '../lib/ca
 import { kubectlProxy } from '../lib/kubectlProxy'
 import { formatTimeAgo, formatProwDuration } from '../lib/formatters'
 import { KUBECTL_EXTENDED_TIMEOUT_MS } from '../lib/constants/network'
-import { MS_PER_HOUR } from '../lib/constants/time'
+import { MS_PER_MINUTE, MS_PER_HOUR } from '../lib/constants/time'
 import type { ProwJob, ProwStatus } from './useProw'
 
 // ============================================================================
@@ -24,9 +24,9 @@ const MAX_PROW_JOBS = 100
 // ============================================================================
 
 const getDemoProwJobs = (): ProwJob[] => [
-  { id: '1', name: 'pull-kubernetes-e2e', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 10 * 60000).toISOString(), duration: '45m', pr: 12345 },
-  { id: '2', name: 'pull-kubernetes-unit', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 15 * 60000).toISOString(), duration: '12m', pr: 12346 },
-  { id: '3', name: 'ci-kubernetes-e2e-gce', type: 'periodic', state: 'failure', cluster: 'prow', startTime: new Date(Date.now() - 30 * 60000).toISOString(), duration: '1h 23m' },
+  { id: '1', name: 'pull-kubernetes-e2e', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 10 * MS_PER_MINUTE).toISOString(), duration: '45m', pr: 12345 },
+  { id: '2', name: 'pull-kubernetes-unit', type: 'presubmit', state: 'success', cluster: 'prow', startTime: new Date(Date.now() - 15 * MS_PER_MINUTE).toISOString(), duration: '12m', pr: 12346 },
+  { id: '3', name: 'ci-kubernetes-e2e-gce', type: 'periodic', state: 'failure', cluster: 'prow', startTime: new Date(Date.now() - 30 * MS_PER_MINUTE).toISOString(), duration: '1h 23m' },
 ]
 
 // ============================================================================

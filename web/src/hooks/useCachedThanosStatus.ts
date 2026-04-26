@@ -6,6 +6,7 @@
 
 import { useCache, type RefreshCategory, type CachedHookResult } from '@/lib/cache'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { MS_PER_MINUTE, MS_PER_HOUR } from '../lib/constants/time'
 
 // ============================================================================
 // Shared Types
@@ -45,10 +46,10 @@ export const getDemoThanosStatus = (): ThanosStatus => ({
     storeGateways: [
         { name: 'store-gw-0', health: 'healthy', minTime: '2025-01-01T00:00:00Z', maxTime: new Date().toISOString() },
         { name: 'store-gw-1', health: 'healthy', minTime: '2025-01-01T00:00:00Z', maxTime: new Date().toISOString() },
-        { name: 'store-gw-2', health: 'unhealthy', minTime: '2025-06-01T00:00:00Z', maxTime: new Date(Date.now() - 3_600_000).toISOString() },
+        { name: 'store-gw-2', health: 'unhealthy', minTime: '2025-06-01T00:00:00Z', maxTime: new Date(Date.now() - MS_PER_HOUR).toISOString() },
     ],
     queryHealth: 'degraded',
-    lastCheckTime: new Date(Date.now() - 2 * 60_000).toISOString(),
+    lastCheckTime: new Date(Date.now() - 2 * MS_PER_MINUTE).toISOString(),
 })
 
 // ============================================================================
