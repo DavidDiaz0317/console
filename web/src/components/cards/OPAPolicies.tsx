@@ -14,7 +14,6 @@ import { isDemoMode as checkIsDemoMode } from '../../lib/demoMode'
 import { DynamicCardErrorBoundary } from './DynamicCardErrorBoundary'
 import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_OPA_CACHE, STORAGE_KEY_OPA_CACHE_TIME } from '../../lib/constants'
 import { KUBECTL_DEFAULT_TIMEOUT_MS } from '../../lib/constants/network'
-
 const OPA_LIST_TIMEOUT_MS = 25_000
 import { safeGetItem, safeGetJSON, safeSetItem, safeSetJSON } from '../../lib/utils/localStorage'
 import { PolicyDetailModal, ClusterOPAModal, CreatePolicyModal } from './opa'
