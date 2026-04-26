@@ -32,9 +32,10 @@ done
 echo "Running Vitest unit tests..."
 
 # CI runners (ubuntu-latest, 7 GB RAM) can OOM when running 900+ test files.
-# Raise the V8 heap limit so fork workers don't get killed mid-test.
+# 7168 MB leaves ~1 GB for the runner and OS. The previous 6144 limit caused
+# worker crashes with 917+ test files (nightly regression 2026-04-26).
 if [ -n "${CI:-}" ]; then
-  export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=6144"
+  export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=7168"
 fi
 
 # Vitest may exit non-zero due to pool worker termination timeout on CI

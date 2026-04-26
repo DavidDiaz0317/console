@@ -8,7 +8,7 @@ import (
 // DemoEvaluation returns a synthetic evaluation result for demo mode
 // when no live cluster prober is available.
 func DemoEvaluation(fw Framework, cluster string) *EvaluationResult {
-	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) // #nosec G404 -- demo data, not security-critical
 	result := &EvaluationResult{
 		FrameworkID:   fw.ID,
 		FrameworkName: fw.Name,

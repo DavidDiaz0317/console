@@ -97,7 +97,11 @@ async function isBackendAvailable(
 ): Promise<boolean> {
   try {
     const res = await request.get('http://127.0.0.1:8080/api/health', { timeout: 3_000 })
-    return res.ok()
+    if (!res.ok()) return false
+    // Verify we're talking to the KC Go backend, not some other service on 8080.
+    // The real health endpoint returns JSON with a "status" field (#10140).
+    const body = await res.text()
+    return body.includes('"status"')
   } catch {
     return false
   }
