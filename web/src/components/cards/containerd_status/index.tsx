@@ -47,7 +47,7 @@ const STATE_BADGE: Record<ContainerdContainerState, string> = {
 function ContainerRow({ item }: { item: ContainerdContainer }) {
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2.5 space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           {STATE_ICON[item.state]}
           <span className="text-xs font-mono truncate">{item.id}</span>
@@ -59,12 +59,12 @@ function ContainerRow({ item }: { item: ContainerdContainer }) {
         </span>
       </div>
 
-      <div className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+      <div className="text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
         <span className="truncate">{item.image || '-'}</span>
         <span className="truncate shrink-0 ml-2">{item.uptime}</span>
       </div>
 
-      <div className="text-[11px] text-muted-foreground/80 flex items-center justify-between gap-2">
+      <div className="text-[11px] text-muted-foreground/80 flex flex-wrap items-center justify-between gap-2">
         <span className="truncate">{item.namespace}</span>
         <span className="truncate shrink-0 ml-2">{item.node}</span>
       </div>
@@ -99,7 +99,7 @@ export function ContainerdStatus() {
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <Skeleton variant="rounded" width={SKELETON_TITLE_WIDTH} height={SKELETON_TITLE_HEIGHT} />
           <Skeleton variant="rounded" width={SKELETON_BADGE_WIDTH} height={SKELETON_BADGE_HEIGHT} />
         </div>
@@ -134,7 +134,7 @@ export function ContainerdStatus() {
 
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-4 overflow-hidden">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${getHealthBadgeClasses(isHealthy)}`}
         >

@@ -88,7 +88,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
         return (
             <div className="p-4 space-y-4 animate-pulse">
                 <div className="h-10 bg-muted/20 rounded-lg w-1/3" />
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 @sm:grid-cols-3 gap-3">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="h-20 bg-muted/10 rounded-xl" />
                     ))}
@@ -108,7 +108,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
         <div className="flex flex-col h-full overflow-hidden">
             <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                 {/* Header Status */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-y-2">
                     <div className="flex items-center gap-3">
                         <div className={cn("p-2 rounded-lg", status.bg)}>
                             <Network className={cn("w-5 h-5", status.color)} />
@@ -129,7 +129,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
                 </div>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 @sm:grid-cols-3 gap-3">
                     <MetricTile
                         icon={<Shield className="w-4 h-4 text-cyan-400" />}
                         label={t('ciliumStatus.networkPolicies')}
@@ -150,7 +150,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
 
                 {/* Node Status List */}
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
+                    <div className="flex flex-wrap items-center justify-between gap-y-2 px-1">
                         <div className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-widest">
                             {t('ciliumStatus.nodes')}
                         </div>
@@ -180,7 +180,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
                                 <div
                                     key={node.name}
                                     onClick={() => drillToNode('all', node.name)}
-                                    className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 border border-border/40 hover:border-border/80 transition-colors cursor-pointer group/row"
+                                    className="flex flex-wrap items-center justify-between gap-y-2 p-2 rounded-lg bg-secondary/30 border border-border/40 hover:border-border/80 transition-colors cursor-pointer group/row"
                                     title={`${node.name} - ${node.version}`}
                                 >
                                     <div className="flex items-center gap-2 overflow-hidden">
@@ -219,7 +219,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
             </div>
 
             {/* Footer link */}
-            <div className="p-3 bg-muted/10 border-t border-border/40 flex items-center justify-between">
+            <div className="p-3 bg-muted/10 border-t border-border/40 flex flex-wrap items-center justify-between gap-y-2">
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
                     <div className="flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />

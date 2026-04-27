@@ -80,7 +80,7 @@ function ServerPodRow({
   const isHealthy = pod.ready && pod.phase === 'Running'
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           {isHealthy ? (
             <CheckCircle className="w-3.5 h-3.5 text-green-400 shrink-0" />
@@ -146,7 +146,7 @@ export function SpireStatus() {
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <Skeleton variant="rounded" width={SKELETON_TITLE_WIDTH} height={SKELETON_TITLE_HEIGHT} />
           <Skeleton variant="rounded" width={SKELETON_BADGE_WIDTH} height={SKELETON_BADGE_HEIGHT} />
         </div>
@@ -190,7 +190,7 @@ export function SpireStatus() {
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-4 overflow-hidden">
       {/* Header — health pill + trust domain */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className={cn(
             'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium',
@@ -289,7 +289,7 @@ export function SpireStatus() {
               </h4>
             </div>
             <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-medium font-mono truncate">
                   {agent.namespace}/{agent.name}
                 </span>

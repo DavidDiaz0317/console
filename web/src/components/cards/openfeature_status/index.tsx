@@ -98,7 +98,7 @@ function ProviderRow({
 }) {
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           <span
             className={`w-2 h-2 rounded-full shrink-0 ${PROVIDER_DOT_CLASS[provider.status]}`}
@@ -142,7 +142,7 @@ function FlagRow({
 
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           <ToggleIcon className={`w-3.5 h-3.5 shrink-0 ${toggleClass}`} />
           <span className="text-xs font-medium text-foreground truncate font-mono">
@@ -185,7 +185,7 @@ export function OpenFeatureStatus() {
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <Skeleton
             variant="rounded"
             width={SKELETON_TITLE_WIDTH}
@@ -197,7 +197,7 @@ export function OpenFeatureStatus() {
             height={SKELETON_BADGE_HEIGHT}
           />
         </div>
-        <SkeletonStats className="grid-cols-3" />
+        <SkeletonStats className="grid-cols-2 @sm:grid-cols-3" />
         <SkeletonList items={SKELETON_LIST_ITEMS} className="flex-1" />
       </div>
     )
@@ -234,7 +234,7 @@ export function OpenFeatureStatus() {
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-4 overflow-hidden">
       {/* Header — health pill + freshness */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
             isHealthy

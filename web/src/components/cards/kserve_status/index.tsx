@@ -113,7 +113,7 @@ function ServiceRow({
   const showTrafficSplit = service.trafficPercent < FULL_TRAFFIC_PERCENT
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           <StatusIcon status={service.status} />
           <span className="text-xs font-medium font-mono truncate text-foreground">
@@ -176,7 +176,7 @@ export function KServeStatus() {
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <Skeleton
             variant="rounded"
             width={SKELETON_TITLE_WIDTH}
@@ -229,7 +229,7 @@ export function KServeStatus() {
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-4 overflow-hidden">
       {/* Header — health pill + controller pod status */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className={cn(
             'flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium',

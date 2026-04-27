@@ -1142,7 +1142,7 @@ export function LLMdFlow() {
             <div className={`grid gap-2 ${
               selectedMetricTypes.length === 1 ? 'grid-cols-1' :
               selectedMetricTypes.length === 2 ? 'grid-cols-2' :
-              'grid-cols-3'
+              'grid-cols-2 @sm:grid-cols-3'
             }`}>
               {selectedMetricTypes.map(metric => (
                 <div key={metric} className="bg-secondary/50 rounded-lg p-2">

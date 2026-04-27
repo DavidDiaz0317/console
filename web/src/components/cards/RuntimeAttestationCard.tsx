@@ -126,7 +126,7 @@ export function RuntimeAttestationCard() {
       <div className="space-y-4 p-4">
         <Skeleton width={SKELETON_TITLE_WIDTH} height={SKELETON_TITLE_HEIGHT} />
         {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
-          <div key={i} className="flex items-center justify-between">
+          <div key={i} className="flex flex-wrap items-center justify-between gap-y-2">
             <Skeleton width={SKELETON_TITLE_WIDTH} height={SKELETON_BADGE_HEIGHT} />
             <Skeleton width={SKELETON_BADGE_WIDTH} height={SKELETON_BADGE_HEIGHT} />
           </div>

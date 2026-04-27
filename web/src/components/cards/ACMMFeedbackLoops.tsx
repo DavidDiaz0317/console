@@ -533,7 +533,7 @@ export function ACMMFeedbackLoops() {
                 // an explicit Close control, so the click-to-open interaction
                 // is unambiguous and dismissable.
                 <div className="mx-2 mb-2 rounded-md border border-border/60 bg-background/60 shadow-xs">
-                  <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border/40 bg-muted/20 rounded-t-md">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-b border-border/40 bg-muted/20 rounded-t-md">
                     <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       Details — {c.name}
                     </div>

@@ -114,7 +114,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
             {/* Header: Fixed Height */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-y-2">
                     <div className="flex items-center gap-3">
                         <div className={cn("p-2 rounded-xl border shadow-sm transition-all", brandStatus.bg, brandStatus.border)}>
                             <Activity className={cn("w-5 h-5", brandStatus.color)} />
@@ -152,7 +152,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                 </div>
 
                 {/* Resource Metrics Grid */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 @sm:grid-cols-3 gap-2">
                     <MetricTile
                         icon={<Database className="w-3.5 h-3.5 text-orange-400" />}
                         label={t('jaeger.services')}
@@ -177,7 +177,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                         <Clock className="w-3 h-3" />
                         <span>{t('jaeger.latencyAnalysis')}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-secondary/10 border border-border/30">
+                    <div className="grid grid-cols-2 @sm:grid-cols-3 gap-2 p-2 rounded-xl bg-secondary/10 border border-border/30">
                         <LatencyInfo label={t('jaeger.avg')} value={data.metrics.avgLatencyMs} />
                         <LatencyInfo label={t('jaeger.p95')} value={data.metrics.p95LatencyMs} isMiddle />
                         <LatencyInfo label={t('jaeger.p99')} value={data.metrics.p99LatencyMs} />
@@ -186,7 +186,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
 
                 {/* Collectors List */}
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
+                    <div className="flex flex-wrap items-center justify-between gap-y-2 px-1">
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground/50 uppercase tracking-widest font-bold">
                             <ShieldCheck className="w-3 h-3" />
                             <span>{t('jaeger.collectors')}</span>
@@ -213,7 +213,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                                 <div
                                     key={collector.name}
                                     onClick={() => drillToNode(collector.cluster || 'all', collector.name)}
-                                    className="flex items-center justify-between p-2 rounded-lg bg-secondary/20 border border-border/40 hover:border-border/80 transition-all cursor-pointer group/row"
+                                    className="flex flex-wrap items-center justify-between gap-y-2 p-2 rounded-lg bg-secondary/20 border border-border/40 hover:border-border/80 transition-all cursor-pointer group/row"
                                 >
                                     <div className="flex items-center gap-2 overflow-hidden">
                                         <Server className="w-3.5 h-3.5 text-muted-foreground/60 group-hover/row:text-primary transition-colors shrink-0" />
@@ -246,7 +246,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                 </div>
             </div>
 
-            <div className="p-3 bg-muted/10 border-t border-border/40 flex items-center justify-between shrink-0">
+            <div className="p-3 bg-muted/10 border-t border-border/40 flex flex-wrap items-center justify-between gap-y-2 shrink-0">
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium">
                     <span className="bg-secondary/50 px-1.5 py-0.5 rounded border border-border/20 font-mono opacity-60">
                         v{data.version}
@@ -275,7 +275,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
 function KPIField({ icon, label, value, alert }: { icon: React.ReactNode, label: string, value: number, alert?: boolean }) {
     return (
         <div className={cn(
-            "flex items-center justify-between px-3 py-2 rounded-xl border transition-all",
+            "flex flex-wrap items-center justify-between gap-y-2 px-3 py-2 rounded-xl border transition-all",
             alert ? "bg-red-500/5 border-red-500/20 shadow-[var(--shadow-error-glow)]" : "bg-secondary/10 border-border/30"
         )}>
             <div className="flex items-center gap-2">

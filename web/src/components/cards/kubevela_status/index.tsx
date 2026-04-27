@@ -193,7 +193,7 @@ function ApplicationRow({
 
   return (
     <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0 flex items-center gap-1.5">
           {appStatusIcon(app.status)}
           <span className="text-xs font-medium text-foreground truncate">
@@ -210,7 +210,7 @@ function ApplicationRow({
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground min-w-0">
           <span className="shrink-0">
             <Cpu className="inline w-3 h-3 mr-0.5 text-blue-400" />
@@ -273,7 +273,7 @@ export function KubeVelaStatus() {
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           <Skeleton
             variant="rounded"
             width={SKELETON_TITLE_WIDTH}
@@ -322,7 +322,7 @@ export function KubeVelaStatus() {
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-4 overflow-hidden">
       {/* Header — health pill + freshness */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
             isHealthy

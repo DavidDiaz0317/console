@@ -40,7 +40,7 @@ function formatRemaining(ms: number): string {
 function AlertStatsRow({ critical, warning, acknowledged }: { critical: number; warning: number; acknowledged: number }) {
   const { t } = useTranslation('cards')
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+    <div className="grid grid-cols-2 @sm:grid-cols-3 gap-2 mb-3">
       <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
         <div className="flex items-center gap-1.5 mb-1">
           <AlertTriangle className="w-3 h-3 text-red-400" />

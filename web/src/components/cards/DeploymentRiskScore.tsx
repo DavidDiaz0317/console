@@ -242,7 +242,7 @@ export function DeploymentRiskScore() {
 
   return (
     <div className="h-full flex flex-col min-h-card content-loaded gap-3">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 text-xs text-muted-foreground">
         <span>{t('deploymentRiskScore.legend')}</span>
         <span className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1">
