@@ -12,14 +12,28 @@
 /** Overall component health across the cluster */
 export type ComponentHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
+/** Possible isolation readiness states */
+export type IsolationStatus = 'ready' | 'missing' | 'degraded'
+
 /** Describes one axis of tenant isolation provided by a technology */
 export interface IsolationLevel {
-  /** The isolation plane this entry covers */
-  type: 'control-plane' | 'data-plane' | 'network'
+  /** The isolation plane this entry covers (e.g. "Control-plane", "Data-plane", "Network") */
+  type: string
   /** Current readiness of this isolation capability */
-  status: 'ready' | 'missing' | 'degraded'
+  status: IsolationStatus
   /** Technology that provides this isolation (e.g. "OVN-Kubernetes", "KubeVirt") */
   provider: string
+}
+
+// ============================================================================
+// Isolation Status Colors
+// ============================================================================
+
+/** Text color classes for isolation status — shared across multi-tenancy cards */
+export const ISOLATION_STATUS_COLORS: Record<IsolationStatus, string> = {
+  ready: 'text-green-400',
+  degraded: 'text-orange-400',
+  missing: 'text-zinc-500',
 }
 
 // ============================================================================

@@ -12,7 +12,9 @@ import { Shield, ExternalLink, CheckCircle, XCircle, AlertTriangle, Network, Lay
 import { useTranslation } from 'react-i18next'
 import { BaseModal } from '../../../../lib/modals'
 import { StatusBadge } from '../../../ui/StatusBadge'
-import type { MultiTenancyOverviewData, ComponentStatus, IsolationLevel, IsolationStatus } from './useMultiTenancyOverview'
+import type { MultiTenancyOverviewData, ComponentStatus } from './useMultiTenancyOverview'
+import type { IsolationLevel, IsolationStatus } from '../shared'
+import { ISOLATION_STATUS_COLORS } from '../shared'
 
 // ============================================================================
 // Constants
@@ -62,12 +64,6 @@ const HEALTH_BG: Record<string, string> = {
   unknown: 'bg-zinc-500/10 border-zinc-500/20',
 }
 
-/** Isolation status colors */
-const ISOLATION_STATUS_COLORS: Record<IsolationStatus, string> = {
-  ready: 'text-green-400',
-  degraded: 'text-orange-400',
-  missing: 'text-zinc-500',
-}
 
 /** Isolation status backgrounds */
 const ISOLATION_STATUS_BG: Record<IsolationStatus, string> = {

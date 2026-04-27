@@ -14,7 +14,9 @@ import { useCardLoadingState } from '../../CardDataContext'
 import { MultiTenancyDetailModal } from './MultiTenancyDetailModal'
 import { useModalState } from '../../../../lib/modals'
 
-import type { ComponentStatus, IsolationLevel, IsolationStatus } from './useMultiTenancyOverview'
+import type { ComponentStatus } from './useMultiTenancyOverview'
+import type { IsolationLevel, IsolationStatus } from '../shared'
+import { ISOLATION_STATUS_COLORS } from '../shared'
 
 /** Grid columns for the component status grid */
 const COMPONENT_GRID_COLS = 2
@@ -51,12 +53,6 @@ function IsolationStatusIcon({ status }: { status: IsolationStatus }) {
       return <XCircle className="w-4 h-4 text-zinc-500" />
   }
 }
-
-/** Status color text for isolation levels */
-const ISOLATION_STATUS_COLORS: Record<IsolationStatus, string> = {
-  ready: 'text-green-400',
-  degraded: 'text-orange-400',
-  missing: 'text-zinc-500' }
 
 /** Single component badge in the 2x2 grid */
 function ComponentBadge({ component, onClick }: { component: ComponentStatus; onClick?: () => void }) {

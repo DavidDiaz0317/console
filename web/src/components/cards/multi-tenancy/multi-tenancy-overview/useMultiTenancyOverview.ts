@@ -23,13 +23,8 @@ export interface ComponentStatus {
   icon: string
 }
 
-export type IsolationStatus = 'ready' | 'missing' | 'degraded'
-
-export interface IsolationLevel {
-  type: string
-  status: IsolationStatus
-  provider: string
-}
+export type { IsolationStatus, IsolationLevel } from '../shared'
+import type { IsolationStatus, IsolationLevel } from '../shared'
 
 export interface MultiTenancyOverviewData {
   components: ComponentStatus[]
