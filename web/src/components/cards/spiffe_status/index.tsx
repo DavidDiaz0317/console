@@ -80,7 +80,7 @@ function EntryRow({ entry }: { entry: SpiffeRegistrationEntry }) {
           {entry.svidType.toUpperCase()}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="truncate">{entry.selector}</span>
         <span className="ml-auto shrink-0 font-mono">
           ttl {formatDuration(entry.ttlSeconds)}

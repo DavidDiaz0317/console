@@ -88,7 +88,7 @@ function StoreRow({ store }: { store: OpenfgaStore }) {
           {store.status}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="truncate">
           {formatNumber(store.tupleCount)} tuples · {store.modelCount} models
         </span>
@@ -114,7 +114,7 @@ function ModelRow({ model }: { model: OpenfgaAuthorizationModel }) {
           v{model.schemaVersion}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="truncate">
           {model.storeName} · {model.typeCount} types
         </span>

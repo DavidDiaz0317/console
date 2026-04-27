@@ -77,7 +77,7 @@ function NodeRow({ node }: { node: CniNodeStatus }) {
           {node.state}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="truncate font-mono">{node.podCidr}</span>
         <span className="ml-auto shrink-0">
           {node.plugin} {node.pluginVersion}

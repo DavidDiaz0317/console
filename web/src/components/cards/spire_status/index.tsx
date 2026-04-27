@@ -98,7 +98,7 @@ function ServerPodRow({
           {phaseLabel}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
         <span className="truncate">{pod.node}</span>
         {pod.restarts > 0 ? (
           <span className="text-yellow-400 shrink-0">

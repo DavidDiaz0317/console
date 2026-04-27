@@ -88,7 +88,7 @@ function DeploymentRow({ deployment }: { deployment: LinkerdMeshedDeployment }) 
           {deployment.meshedPods}/{deployment.totalPods}
         </span>
       </div>
-      <div className="flex items-center gap-3 text-[11px] font-mono">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
         <span className={successRateColorClass(deployment.successRatePct)}>
           {deployment.successRatePct.toFixed(SUCCESS_RATE_DECIMALS)}%
         </span>
