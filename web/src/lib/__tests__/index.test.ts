@@ -33,10 +33,8 @@ describe('lib/index exports', () => {
     expect(requiredExports.length).toBeGreaterThan(0)
   })
 
-  it('can be imported by components', () => {
-    expect(() => {
-      const mod = require('../index')
-      expect(mod).toBeDefined()
-    }).not.toThrow()
+  it('can be imported by components', async () => {
+    const mod = await import('../index')
+    expect(mod).toBeDefined()
   })
 })

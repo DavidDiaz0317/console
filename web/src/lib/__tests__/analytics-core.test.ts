@@ -21,11 +21,9 @@ describe('analytics-core module', () => {
     expect(exports.length).toBeGreaterThan(0)
   })
 
-  it('can be instantiated without errors', () => {
-    expect(() => {
-      const module = require('../analytics-core')
-      expect(module).toBeDefined()
-    }).not.toThrow()
+  it('can be instantiated without errors', async () => {
+    const module = await import('../analytics-core')
+    expect(module).toBeDefined()
   })
 
   it('module structure is consistent', () => {

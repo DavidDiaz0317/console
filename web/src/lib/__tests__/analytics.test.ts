@@ -10,12 +10,12 @@ describe('analytics module exports', () => {
     vi.restoreAllMocks()
   })
 
-  it('exports useAnalytics hook', () => {
-    expect(typeof analyticsModule.useAnalytics).toBe('function')
+  it('exports initAnalytics function', () => {
+    expect(typeof analyticsModule.initAnalytics).toBe('function')
   })
 
-  it('exports AnalyticsProvider component', () => {
-    expect(analyticsModule.AnalyticsProvider).toBeDefined()
+  it('exports emitPageView function', () => {
+    expect(typeof analyticsModule.emitPageView).toBe('function')
   })
 
   it('exports analytics event types', () => {

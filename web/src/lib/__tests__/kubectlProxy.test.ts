@@ -25,11 +25,9 @@ describe('kubectlProxy module', () => {
     expect(kubectlProxyModule).toBeTypeOf('object')
   })
 
-  it('can be imported without errors', () => {
-    expect(() => {
-      const module = require('../kubectlProxy')
-      expect(module).toBeDefined()
-    }).not.toThrow()
+  it('can be imported without errors', async () => {
+    const module = await import('../kubectlProxy')
+    expect(module).toBeDefined()
   })
 
   it('exports are not empty', () => {

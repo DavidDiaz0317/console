@@ -20,10 +20,8 @@ describe('analytics-session module', () => {
     expect(Object.keys(analyticsSessionModule).length).toBeGreaterThanOrEqual(0)
   })
 
-  it('can be imported without errors', () => {
-    expect(() => {
-      const module = require('../analytics-session')
-      expect(module).toBeDefined()
-    }).not.toThrow()
+  it('can be imported without errors', async () => {
+    const module = await import('../analytics-session')
+    expect(module).toBeDefined()
   })
 })
