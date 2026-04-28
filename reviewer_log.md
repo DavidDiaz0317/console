@@ -1,3 +1,34 @@
+## Pass 47 — 2026-04-28 UTC (nightlyPlaywright: Firefox/mobile auth race + breakpoint mismatch)
+
+### nightlyPlaywright=RED — Systemic Firefox/Mobile E2E Fix
+
+**Trigger**: URGENT KICK — nightly=RED, nightlyPlaywright=RED, coverage=87%<91%
+
+**Root Causes Fixed** (5 categories):
+
+| Category | Tests Affected | Root Cause | Fix |
+|----------|---------------|-----------|-----|
+| Auth race on Firefox | Sidebar, Tour, navbar-responsive | `test-token` triggers async `/api/me` fetch; Firefox CI too slow → elements not in DOM | Changed to `demo-token` → `setDemoMode()` synchronous, no network request |
+| Navbar breakpoint mismatch | navbar-responsive xl tests | Navbar uses `hidden xl:flex` (1280px) since #10001, tests used `lg:flex` at 1025px | Updated viewport 1025→1281, selectors `lg`→`xl` |
+| Mobile sidebar hidden | Login mobile test | `sidebar-primary-nav` has `display:none` on mobile viewport | Changed to `dashboard-page` which is always rendered |
+| Setup readiness guard | Clusters setup | Waited for `#root` (always in DOM before React renders) → tests started before app ready | Changed to `clusters-page` testid wait (20s) |
+| Dashboard timeouts | Dashboard kc-demo-mode=false tests | 15s too short for Firefox async auth + render | Increased to 30s |
+
+**Visual regression fix** (PR #10760):
+- `app-visual-regression.spec.ts` also waited for `#root` in `setupAndNavigate` → same timeout failure
+- Fixed: replaced `#root` wait with `sidebar` testid wait
+
+**Actions**:
+- Merged PR #10767 (6 E2E files fixed) → `b3d76af25`
+- Fixed PR #10760 (`app-visual-regression.spec.ts #root` → `sidebar` wait)
+- Closed stale PR #10631 (content already in main)
+- Merged PRs #10763, #10764 (test splits — already green)
+- Triggered new nightly Playwright run #25075062066 on main (SHA `b3d76af25`)
+
+**Coverage**: Beads reviewer-1po, reviewer-oxr, reviewer-m3s remain BLOCKED (TTY/OOM infrastructure)
+
+---
+
 ## Pass 46 — 2026-04-28 UTC (nightlyPlaywright cascading failures: Sidebar + Clusters)
 
 ### nightlyPlaywright=RED — Cascading Test Failures Diagnosed
