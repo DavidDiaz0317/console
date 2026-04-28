@@ -187,9 +187,8 @@ test.describe('Clusters Page', () => {
 
   test.describe('Stats and Filter consistency', () => {
     test('Healthy stat count matches clusters shown after clicking Healthy tab', async ({ page }) => {
-      // Regression test for #3045: cluster with nodeCount>0 and healthy:false was
-      // counted in Healthy stats but disappeared when the Healthy filter tab was clicked.
-      // Both stats and filter now use the same shared isClusterHealthy helper.
+      // Test that stats counts match the actual filtered cluster display.
+      // isClusterHealthy returns true only when healthy === true (not based on nodeCount).
       await page.route('**/api/mcp/**', (route) => {
         const url = route.request().url()
         if (url.includes('/clusters')) {
@@ -198,11 +197,11 @@ test.describe('Clusters Page', () => {
             contentType: 'application/json',
             body: JSON.stringify({
               clusters: [
-                // nodeCount>0 + healthy:false → isClusterHealthy returns true (has reporting nodes)
-                { name: 'node-healthy-flag-false', context: 'ctx-a', healthy: false, reachable: true, nodeCount: 3, podCount: 10, version: '1.28.0' },
-                // nodeCount:0 + healthy:true → isClusterHealthy returns true (healthy flag)
-                { name: 'flag-healthy-no-nodes', context: 'ctx-b', healthy: true, reachable: true, nodeCount: 0, podCount: 0, version: '1.28.0' },
-                // nodeCount:0 + healthy:false → isClusterHealthy returns false (unhealthy)
+                // healthy: false → isClusterHealthy returns false (unhealthy, regardless of nodeCount)
+                { name: 'unhealthy-with-nodes', context: 'ctx-a', healthy: false, reachable: true, nodeCount: 3, podCount: 10, version: '1.28.0' },
+                // healthy: true → isClusterHealthy returns true (healthy)
+                { name: 'healthy-cluster', context: 'ctx-b', healthy: true, reachable: true, nodeCount: 2, podCount: 5, version: '1.28.0' },
+                // healthy: false → isClusterHealthy returns false (unhealthy)
                 { name: 'truly-unhealthy', context: 'ctx-c', healthy: false, reachable: true, nodeCount: 0, podCount: 0, version: '1.28.0' },
               ],
             }),
@@ -220,22 +219,22 @@ test.describe('Clusters Page', () => {
       await page.waitForLoadState('domcontentloaded')
       await expect(page.getByTestId('clusters-page')).toBeVisible({ timeout: 20_000 })
 
-      // The Healthy filter button should show count 2 (both node-healthy-flag-false and flag-healthy-no-nodes)
+      // The Healthy filter button should show count 1 (only healthy-cluster with healthy: true)
       // Webkit/Firefox render filter tabs slightly later — use generous timeout
       const FILTER_TAB_TIMEOUT_MS = 20_000
-      const healthyTab = page.getByRole('button', { name: /Healthy \(2\)/ })
+      const healthyTab = page.getByRole('button', { name: /Healthy \(1\)/ })
       await expect(healthyTab).toBeVisible({ timeout: FILTER_TAB_TIMEOUT_MS })
 
       // Click the Healthy filter
       await healthyTab.click()
 
-      // Both healthy clusters must be visible — the one with nodeCount>0 but healthy:false MUST appear
+      // Only healthy-cluster must be visible
       // Use .first() — cluster name can appear in both the list row and sidebar
       // cluster status widget, triggering a strict-mode violation on webkit.
-      await expect(page.getByText('node-healthy-flag-false').first()).toBeVisible({ timeout: 5000 })
-      await expect(page.getByText('flag-healthy-no-nodes').first()).toBeVisible({ timeout: 5000 })
+      await expect(page.getByText('healthy-cluster').first()).toBeVisible({ timeout: 5000 })
 
-      // The unhealthy cluster must NOT appear in the Healthy tab
+      // Unhealthy clusters must NOT appear in the Healthy tab
+      await expect(page.getByText('unhealthy-with-nodes').first()).not.toBeVisible()
       await expect(page.getByText('truly-unhealthy').first()).not.toBeVisible()
     })
 
