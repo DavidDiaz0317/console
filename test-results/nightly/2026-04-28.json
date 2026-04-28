@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-04-28T08:47:34Z",
+  "timestamp": "2026-04-28T19:57:20Z",
   "fastMode": false,
   "summary": {
     "total": 32,
-    "passed": 32,
-    "failed": 0,
+    "passed": 31,
+    "failed": 1,
     "skipped": 0
   },
   "results": [
@@ -35,23 +35,24 @@
     },
     {
       "suite": "unit-test",
-      "status": "pass",
-      "duration": 1540
+      "status": "fail",
+      "duration": 1551,
+      "failure_reason": " Test Files  3 failed | 1036 passed (1043)\n      Tests  47 failed | 18840 passed | 6 skipped (18955)\n     Errors  18 errors\n   Start at  18:45:56\n   Duration  1548.84s (transform 46.91s, setup 144.39s, import 138.73s, tests 252.00s, environment 835.51s)\n"
     },
     {
       "suite": "auth-lifecycle-test",
       "status": "pass",
-      "duration": 64
+      "duration": 66
     },
     {
       "suite": "settings-migration-test",
       "status": "pass",
-      "duration": 3
+      "duration": 2
     },
     {
       "suite": "update-lifecycle-test",
       "status": "pass",
-      "duration": 62
+      "duration": 61
     },
     {
       "suite": "websocket-resilience-test",
@@ -61,7 +62,7 @@
     {
       "suite": "gosec-test",
       "status": "pass",
-      "duration": 46
+      "duration": 45
     },
     {
       "suite": "dependency-audit-test",
@@ -96,7 +97,7 @@
     {
       "suite": "api-fuzz-test",
       "status": "pass",
-      "duration": 150
+      "duration": 151
     },
     {
       "suite": "error-boundary-test",
@@ -106,32 +107,32 @@
     {
       "suite": "console-error-scan",
       "status": "pass",
-      "duration": 120
+      "duration": 116
     },
     {
       "suite": "nav-test",
       "status": "pass",
-      "duration": 563
+      "duration": 560
     },
     {
       "suite": "perf-test",
       "status": "pass",
-      "duration": 1011
+      "duration": 1002
     },
     {
       "suite": "ui-compliance-test",
       "status": "pass",
-      "duration": 106
+      "duration": 104
     },
     {
       "suite": "deploy-test",
       "status": "pass",
-      "duration": 76
+      "duration": 74
     },
     {
       "suite": "cache-test",
       "status": "pass",
-      "duration": 115
+      "duration": 124
     },
     {
       "suite": "benchmark-test",
@@ -141,22 +142,22 @@
     {
       "suite": "ai-ml-test",
       "status": "pass",
-      "duration": 4
+      "duration": 3
     },
     {
       "suite": "a11y-test",
       "status": "pass",
-      "duration": 78
+      "duration": 75
     },
     {
       "suite": "error-resilience-test",
       "status": "pass",
-      "duration": 32
+      "duration": 29
     },
     {
       "suite": "i18n-test",
       "status": "pass",
-      "duration": 60
+      "duration": 61
     },
     {
       "suite": "interaction-test",
@@ -166,7 +167,7 @@
     {
       "suite": "security-e2e-test",
       "status": "pass",
-      "duration": 40
+      "duration": 39
     }
   ]
 }
