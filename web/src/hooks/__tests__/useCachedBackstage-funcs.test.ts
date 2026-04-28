@@ -41,6 +41,7 @@ mockUseCache.mockReturnValue({
 })
 vi.mock('../../lib/cache', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
+  createCachedHook: (_config: unknown) => () => mockUseCache(_config),
 }))
 
 vi.mock('../../components/cards/CardDataContext', () => ({

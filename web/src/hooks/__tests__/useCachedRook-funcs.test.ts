@@ -24,7 +24,10 @@ const { mockAuthFetch, mockUseCache } = vi.hoisted(() => ({
   })),
 }))
 vi.mock('../../lib/api', () => ({ authFetch: mockAuthFetch }))
-vi.mock('../../lib/cache', () => ({ useCache: (...args: unknown[]) => mockUseCache(...args) }))
+vi.mock('../../lib/cache', () => ({
+  useCache: (...args: unknown[]) => mockUseCache(...args),
+  createCachedHook: (_config: unknown) => () => mockUseCache(_config),
+}))
 
 vi.mock('../../lib/constants/network', () => ({
   FETCH_DEFAULT_TIMEOUT_MS: 5000,
