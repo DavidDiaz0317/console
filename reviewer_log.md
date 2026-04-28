@@ -1,3 +1,30 @@
+## Pass 45 — 2026-04-28 UTC (nightlyPlaywright Login test failures)
+
+### nightlyPlaywright=RED — NEW FAILURE: Login.spec.ts on mobile-chrome
+
+**Trigger**: Nightly run #25070521226 after navbar + dashboard fixes (commit b262e9671).
+
+**NEW Failure Discovered**:
+- **Tests failing**: `Login.spec.ts:118` and `:152` on mobile-chrome emulation
+- **Error**: `expect(locator).toBeVisible()` timeout — `login-page` element(s) not found (10s timeout)
+- **Impact**: 2 tests failing, 55 passing, 21 skipped → **55 PASS / 2 FAIL on mobile-chrome**
+
+**Root Cause Identified**:
+- Missing catch-all `**/api/**` mock in failing tests
+- Working test (line 66-115) includes catch-all mock; failing tests (line 118, 152) do NOT
+- Mobile emulation slower than desktop → unmocked requests hang longer
+- Page initialization blocked waiting for unmocked `/api/` calls → component never renders
+
+**Fix Applied** (commit f12b31eb9):
+- Added `**/api/**` catch-all mock to `handles login errors gracefully` test (line 119-125)
+- Added `**/api/**` catch-all mock to `detects demo mode vs OAuth mode behavior` test (line 162-169)
+- Matches pattern from successful test at line 68-74
+- Tests will now use same mock strategy, preventing unmocked request hangs
+
+**Next**: New nightly validation run queued on fixed SHA.
+
+---
+
 ## Pass 41 — 2026-04-28 UTC (nightlyPlaywright fix validation)
 
 ### nightlyPlaywright=RED — Root Cause Analysis & Fix
