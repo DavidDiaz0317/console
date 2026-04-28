@@ -1,3 +1,48 @@
+## Pass 50 — 2026-04-28T20:55 UTC (Startup / Proactive Regression Pass)
+
+**Mode:** EXECUTOR — startup read-beads + proactive regression  
+**Focus:** CI health check, CodeQL drain, nightly Playwright status
+
+### Beads Status
+- All 3 beads (`reviewer-m3s`, `reviewer-oxr`, `reviewer-1po`): **BLOCKED** — coverage infrastructure (V8CoverageProvider/TTY EIO)
+- `bd ready` → empty (no actionable work)
+
+### CI Health Summary (as of 2026-04-28T21:00 UTC)
+
+| Workflow | Status | SHA | Notes |
+|----------|--------|-----|-------|
+| CodeQL Security Analysis | ✅ SUCCESS | `a3f7b6ae` | Drained — no alerts |
+| Post-Merge Build Verification | ⏳ in_progress | `7ef587be` | — |
+| Code Quality: Push on main | ⏳ in_progress | `a3f7b6ae`, `dda7f0a1` | — |
+| Playwright E2E Tests (chromium) | ⏳ PENDING | `dda7f0a1`, `a3f7b6ae` | Validating sidebar fix + kubectlProxy mock fix |
+| Playwright Cross-Browser (Nightly) | ❌ FAILED | `b3d76af25` | OLD SHA (15 commits behind HEAD); webkit sidebar failures pre-date Pass 48 fix |
+| Coverage Suite | ⏳ PENDING | `dda7f0a1` | Infrastructure issues persist (beads blocked) |
+
+### Recent Main Commits (since last pass)
+- `a3f7b6ae` (#10775) — Fix kubectlProxy test regression (partial mock for wsAuth)
+- `dda7f0a1` (#10773) — Improve error logging (console.warn → console.error)
+- `46b0b46e` (#10772) — Split useSearchIndex.test.ts into categories + results
+- `4096bdd63` (Pass 49) — Sidebar collapse state sync + Mobile OAuth skip logged
+- `9096d17` — Skip OAuth error test on mobile-chrome emulation
+
+### Nightly Cross-Browser Playwright Status
+- Run #25075062066 failed on `b3d76af25` (commit from Pass 47, 15 commits behind HEAD)
+- Webkit failures: `Sidebar.spec.ts:187,347` — sidebar-add-card visible after collapse
+- These failures are on a SHA that predates Pass 48's aria-expanded sync fix (`fada1c1cc`)
+- **Action needed**: Trigger new nightly run on current `a3f7b6ae` to validate
+
+### Open Issues
+- `#10776` — Playwright Cross-Browser failure (old SHA, likely stale once nightly re-runs on HEAD)
+- `#10766` — Nightly Test Suite failure (monitoring)
+- `#10769` — Auto-QA: Components missing test coverage
+- Coverage beads remain blocked pending infrastructure fix
+
+### Next Action
+- Awaiting supervisor directive
+- If no directive within 45 min: trigger nightly Playwright revalidation and log
+
+---
+
 ## Pass 49 — 2026-04-28 21:05 UTC (nightlyPlaywright: Sidebar + Mobile OAuth test failures)
 
 ### nightlyPlaywright Progress — Fix Rate 3/5
