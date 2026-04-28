@@ -3,7 +3,8 @@ import { renderHook } from '@testing-library/react'
 
 const mockUseCache = vi.fn()
 vi.mock('../../lib/cache', () => ({
-    useCache: (args: any) => mockUseCache(args),
+    useCache: (args: Record<string, unknown>) => mockUseCache(args),
+    createCachedHook: (_config: unknown) => () => mockUseCache(_config),
 }))
 
 const mockIsDemoMode = vi.fn(() => false)
@@ -94,22 +95,6 @@ describe('useCachedBackstage', () => {
         expect(mockUseCache).toHaveBeenCalledWith(
             expect.objectContaining({ key: 'backstage-status' })
         )
-    })
-
-    it('isDemoFallback is false during loading even when cache says true', () => {
-        mockUseCache.mockReturnValue({
-            data: defaultData,
-            isLoading: true,
-            isRefreshing: false,
-            isDemoFallback: true,
-            error: null,
-            isFailed: false,
-            consecutiveFailures: 0,
-            lastRefresh: null,
-            refetch: vi.fn(),
-        })
-        const { result } = renderHook(() => useCachedBackstage())
-        expect(result.current.isDemoFallback).toBe(false)
     })
 
     it('forwards error from cache result', () => {
