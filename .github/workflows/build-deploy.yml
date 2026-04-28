@@ -250,8 +250,8 @@ jobs:
       - name: Recover stuck Helm release
         run: |
           RELEASE_STATUS=$(helm status ${{ env.HELM_RELEASE_NAME }} -n kc -o json 2>/dev/null | jq -r '.info.status // empty' || true)
-          if [[ "$RELEASE_STATUS" == "pending-"* ]]; then
-            echo "::warning::Helm release stuck in '$RELEASE_STATUS' — rolling back to recover"
+          if [[ "$RELEASE_STATUS" == "pending-"* || "$RELEASE_STATUS" == "failed" ]]; then
+            echo "::warning::Helm release in '$RELEASE_STATUS' — rolling back to recover"
             helm rollback ${{ env.HELM_RELEASE_NAME }} -n kc --wait --timeout 2m || true
           fi
 
@@ -344,8 +344,8 @@ jobs:
       - name: Recover stuck Helm release
         run: |
           RELEASE_STATUS=$(helm status ${{ env.HELM_RELEASE_NAME }} -n kubestellar-console -o json 2>/dev/null | jq -r '.info.status // empty' || true)
-          if [[ "$RELEASE_STATUS" == "pending-"* ]]; then
-            echo "::warning::Helm release stuck in '$RELEASE_STATUS' — rolling back to recover"
+          if [[ "$RELEASE_STATUS" == "pending-"* || "$RELEASE_STATUS" == "failed" ]]; then
+            echo "::warning::Helm release in '$RELEASE_STATUS' — rolling back to recover"
             helm rollback ${{ env.HELM_RELEASE_NAME }} -n kubestellar-console --wait --timeout 2m || true
           fi
 
@@ -374,7 +374,7 @@ jobs:
             --set securityContext.runAsGroup=null \
             --atomic \
             --wait \
-            --timeout 5m
+            --timeout 8m
 
       - name: Verify deployment
         run: |
