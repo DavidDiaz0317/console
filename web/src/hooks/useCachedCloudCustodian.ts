@@ -12,7 +12,7 @@
  * automatically with no component changes.
  */
 
-import { createCachedHook } from '../lib/cache/createCachedHook'
+import { createCachedHook, type CachedHookResult } from '../lib/cache'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { authFetch } from '../lib/api'
 import {
@@ -165,28 +165,12 @@ async function fetchCloudCustodianStatus(): Promise<CloudCustodianStatusData> {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useCachedCloudCustodian(): CachedHookResult<CloudCustodianStatusData> {
-  const result = useCache<CloudCustodianStatusData>({
-    key: CACHE_KEY_CLOUD_CUSTODIAN,
-    category: 'default' as RefreshCategory,
-    initialData: INITIAL_DATA,
-    demoData: CLOUD_CUSTODIAN_DEMO_DATA,
-    persist: true,
-    fetcher: fetchCloudCustodianStatus,
-  })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoFallback: result.isDemoFallback,
-    error: result.error,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-    lastRefresh: result.lastRefresh,
-    refetch: result.refetch,
-  }
-}
+export const useCachedCloudCustodian = createCachedHook<CloudCustodianStatusData>({
+  key: CACHE_KEY_CLOUD_CUSTODIAN,
+  initialData: INITIAL_DATA,
+  demoData: CLOUD_CUSTODIAN_DEMO_DATA,
+  fetcher: fetchCloudCustodianStatus,
+})
 
 // ---------------------------------------------------------------------------
 // Exported testables — pure functions for unit testing
