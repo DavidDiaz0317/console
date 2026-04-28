@@ -1668,3 +1668,7 @@ export {
   useIndexedData,
   getStorageStats,
   clearAllStorage } from './hooks'
+
+// Re-export hook factory
+export { createCachedHook } from './createCachedHook'
+export type { CreateCachedHookConfig } from './createCachedHook'

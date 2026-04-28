@@ -12,7 +12,7 @@
  * automatically with no component changes.
  */
 
-import { createCachedHook, type CachedHookResult } from '../lib/cache'
+import { createCachedHook } from '../lib/cache'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { authFetch } from '../lib/api'
 import {
