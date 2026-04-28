@@ -952,9 +952,17 @@ export function CardWrapper({
               title={title}
               icon={Maximize2}
               onClose={() => setIsExpanded(false)}
-              showBack={false}
+              onBack={() => setIsExpanded(false)}
+              showBack={true}
+              backTestId="drilldown-back"
               closeTestId="drilldown-close"
-            />
+            >
+              <nav data-testid="drilldown-tabs" className="flex items-center gap-1 min-w-0 overflow-x-auto">
+                <button className="px-2 py-1 rounded text-sm text-foreground font-medium">
+                  {title}
+                </button>
+              </nav>
+            </BaseModal.Header>
             <BaseModal.Content className={cn(
               'overflow-auto scroll-enhanced flex flex-col',
               FULLSCREEN_EXPANDED_CARDS.has(cardType)

@@ -216,6 +216,7 @@ function ModalHeader({
   extra,
   children,
   closeTestId,
+  backTestId,
 }: ModalHeaderProps) {
   const titleId = useContext(ModalTitleIdContext)
   const { escapeEnabled } = useContext(ModalEscapeContext)
@@ -231,6 +232,7 @@ function ModalHeader({
           {showBack && onBack && (
             <button
               onClick={onBack}
+              data-testid={backTestId}
               className="p-2 rounded-lg hover:bg-card/50 text-muted-foreground hover:text-foreground transition-colors shrink-0"
               title="Go back (Backspace)"
               aria-label="Go back"
