@@ -21,11 +21,12 @@ import { mockApiFallback } from './helpers/setup'
 
 const CLUSTER_ADMIN_STORAGE_KEY = 'kubestellar-cluster-admin-cards'
 
-/** Cards under test — injected into localStorage so they appear on /cluster-admin */
+/** Cards under test — injected into localStorage so they appear on /cluster-admin.
+ *  Must use `card_type` (snake_case) to match the DashboardCard interface. */
 const CARDS_UNDER_TEST = [
-  { id: 'test-etcd-1', cardType: 'etcd_status', position: { w: 4, h: 3, x: 0, y: 0 } },
-  { id: 'test-dns-1', cardType: 'dns_health', position: { w: 4, h: 3, x: 4, y: 0 } },
-  { id: 'test-webhooks-1', cardType: 'admission_webhooks', position: { w: 4, h: 3, x: 8, y: 0 } },
+  { id: 'test-etcd-1', card_type: 'etcd_status', position: { w: 4, h: 3, x: 0, y: 0 } },
+  { id: 'test-dns-1', card_type: 'dns_health', position: { w: 4, h: 3, x: 4, y: 0 } },
+  { id: 'test-webhooks-1', card_type: 'admission_webhooks', position: { w: 4, h: 3, x: 8, y: 0 } },
 ]
 
 /** Mock pods returned from /api/mcp endpoints — includes etcd and coredns pods */

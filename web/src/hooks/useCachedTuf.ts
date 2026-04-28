@@ -12,7 +12,7 @@
  * data automatically with no component changes.
  */
 
-import { useCache, type RefreshCategory, type CachedHookResult } from '../lib/cache'
+import { createCachedHook } from '../lib/cache/createCachedHook'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { MS_PER_DAY } from '../lib/constants/time'
 import { authFetch } from '../lib/api'
@@ -167,28 +167,12 @@ async function fetchTufStatus(): Promise<TufStatusData> {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useCachedTuf(): CachedHookResult<TufStatusData> {
-  const result = useCache<TufStatusData>({
-    key: CACHE_KEY_TUF,
-    category: 'default' as RefreshCategory,
-    initialData: INITIAL_DATA,
-    demoData: TUF_DEMO_DATA,
-    persist: true,
-    fetcher: fetchTufStatus,
-  })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoFallback: result.isDemoFallback,
-    error: result.error,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-    lastRefresh: result.lastRefresh,
-    refetch: result.refetch,
-  }
-}
+export const useCachedTuf = createCachedHook<TufStatusData>({
+  key: CACHE_KEY_TUF,
+  initialData: INITIAL_DATA,
+  demoData: TUF_DEMO_DATA,
+  fetcher: fetchTufStatus,
+})
 
 // ---------------------------------------------------------------------------
 // Exported testables — pure functions for unit testing

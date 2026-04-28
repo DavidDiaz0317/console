@@ -13,7 +13,7 @@
  * data automatically with no component changes.
  */
 
-import { useCache, type RefreshCategory, type CachedHookResult } from '../lib/cache'
+import { createCachedHook } from '../lib/cache/createCachedHook'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { authFetch } from '../lib/api'
 import {
@@ -173,28 +173,12 @@ async function fetchSpireStatus(): Promise<SpireStatusData> {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useCachedSpire(): CachedHookResult<SpireStatusData> {
-  const result = useCache<SpireStatusData>({
-    key: CACHE_KEY_SPIRE,
-    category: 'default' as RefreshCategory,
-    initialData: INITIAL_DATA,
-    demoData: SPIRE_DEMO_DATA,
-    persist: true,
-    fetcher: fetchSpireStatus,
-  })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoFallback: result.isDemoFallback,
-    error: result.error,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-    lastRefresh: result.lastRefresh,
-    refetch: result.refetch,
-  }
-}
+export const useCachedSpire = createCachedHook<SpireStatusData>({
+  key: CACHE_KEY_SPIRE,
+  initialData: INITIAL_DATA,
+  demoData: SPIRE_DEMO_DATA,
+  fetcher: fetchSpireStatus,
+})
 
 // ---------------------------------------------------------------------------
 // Exported testables — pure functions for unit testing
