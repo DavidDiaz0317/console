@@ -103,7 +103,12 @@ func (sm *SettingsManager) Load() error {
 
 	var sf SettingsFile
 	if err := json.Unmarshal(data, &sf); err != nil {
+
+		backupPath := sm.settingsPath + ".corrupt." + time.Now().UTC().Format("20060102T150405Z")
+		os.Rename(sm.settingsPath, backupPath)
+		slog.Error("[settings] corrupt settings file, resetting to defaults", "error", err, "path", sm.settingsPath, "backup", backupPath)
 		slog.Error("[settings] corrupted settings file, falling back to defaults", "path", sm.settingsPath, "error", err)
+
 		sm.settings = DefaultSettings()
 		return nil
 	}
@@ -208,6 +213,8 @@ func (sm *SettingsManager) saveLocked() error {
 		return fmt.Errorf("failed to create settings directory: %w", err)
 	}
 
+	// Atomic write: temp file → fsync → rename to prevent corruption if the
+	// process is killed mid-write (same pattern as ensureKeyFile in crypto.go).
 	tmpFile, err := os.CreateTemp(dir, ".settings-*.tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temp settings file: %w", err)
@@ -228,6 +235,10 @@ func (sm *SettingsManager) saveLocked() error {
 		tmpFile.Close()
 		os.Remove(tmpPath)
 		return fmt.Errorf("failed to fsync temp settings file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("failed to close temp settings file: %w", err)
 	}
 	tmpFile.Close()
 
