@@ -1,5 +1,3 @@
-import { http, HttpResponse, delay, passthrough } from 'msw'
-
 /**
  * MSW (Mock Service Worker) handlers for KubeStellar Console
  * 
