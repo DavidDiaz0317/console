@@ -79,6 +79,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
         {/* Logo - clickable to navigate home */}
         <button
           type="button"
+          data-testid="navbar-home-btn"
           onClick={() => navigate(ROUTES.HOME)}
           className="flex items-center gap-2 md:gap-3 p-2 -m-2 min-w-[44px] min-h-[44px] hover:opacity-80 transition-opacity cursor-pointer"
           aria-label={t('navbar.goHome')}
@@ -198,6 +199,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
         {/* Overflow menu — visible below xl for items hidden at narrow widths */}
         <div className="relative xl:hidden shrink-0">
           <button
+            data-testid="navbar-overflow-btn"
             onClick={() => setShowMobileMore(!showMobileMore)}
             className="p-2 min-w-[44px] min-h-[44px] hover:bg-secondary rounded-lg transition-colors cursor-pointer"
             aria-label={t('navbar.moreOptions')}
