@@ -207,11 +207,16 @@ export async function mockApiFallback(page: Page) {
   // cache probes http://127.0.0.1:8585/clusters before falling back to demo
   // data. Without this mock the probe hangs in CI (nobody on port 8585),
   // keeping isLoading=true and blocking page render.
+  //
+  // Return 503 (not 200 with empty data) so fetchClusterListFromAgent()
+  // returns null and fullFetchClusters() falls through to the demo-data
+  // fallback path. A 200 with { clusters: [] } is truthy and short-circuits
+  // the demo fallback, leaving stats/sublabels empty (#compute-deep failures).
   await page.route('http://127.0.0.1:8585/**', (route) =>
     route.fulfill({
-      status: 200,
+      status: 503,
       contentType: 'application/json',
-      body: JSON.stringify({ clusters: [], issues: [], events: [], nodes: [], pods: [] }),
+      body: JSON.stringify({ error: 'Service unavailable (test mock)' }),
     })
   )
 }
