@@ -85,6 +85,7 @@ export const EXPECTED_ERROR_PATTERNS = [
   // indicate a real page failure — they're test harness cleanup noise.
   /NS_BINDING_ABORTED/i,
   /NS_ERROR_FAILURE/i,
+  /Fetch failed: Invalid JSON response/i,
 ]
 
 function isExpectedError(message: string): boolean {
@@ -191,6 +192,28 @@ export async function mockApiFallback(page: Page) {
       body: JSON.stringify({ activeUsers: 1, totalConnections: 1 }),
     })
   )
+
+  // /api/dashboards expects an array — the catch-all returns {} which is
+  // truthy but not an array, causing (data || []).filter crashes (#10818).
+  await page.route('**/api/dashboards*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    })
+  )
+
+  // Mock the local kc-agent HTTP endpoint. Even in demo mode, the cluster
+  // cache probes http://127.0.0.1:8585/clusters before falling back to demo
+  // data. Without this mock the probe hangs in CI (nobody on port 8585),
+  // keeping isLoading=true and blocking page render.
+  await page.route('http://127.0.0.1:8585/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ clusters: [], issues: [], events: [], nodes: [], pods: [] }),
+    })
+  )
 }
 
 export async function setupDemoMode(page: Page) {
@@ -200,7 +223,13 @@ export async function setupDemoMode(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'demo-token')
     localStorage.setItem('kc-demo-mode', 'true')
+    localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('demo-user-onboarded', 'true')
+    localStorage.setItem('kc-backend-status', JSON.stringify({
+      available: true,
+      timestamp: Date.now(),
+    }))
+    localStorage.setItem('kc-agent-setup-dismissed', 'true')
   })
   // Mock /api/me so AuthProvider has a deterministic user without a backend.
   await mockApiMe(page)
@@ -361,6 +390,11 @@ export async function setupAuthLocalStorage(
   }
   await page.addInitScript((o: typeof opts) => {
     localStorage.setItem('token', o.token)
+    localStorage.setItem('kc-has-session', 'true')
+    localStorage.setItem('kc-backend-status', JSON.stringify({
+      available: true,
+      timestamp: Date.now(),
+    }))
     if (o.demoMode !== undefined) {
       localStorage.setItem('kc-demo-mode', String(o.demoMode))
     }
@@ -446,9 +480,14 @@ export async function setupDashboardTest(page: Page): Promise<void> {
   // after the page has already parsed and executed scripts, which is too
   // late for webkit/Safari where the auth redirect fires synchronously.
   await page.addInitScript(() => {
-    localStorage.setItem('token', 'test-token')
+    localStorage.setItem('token', 'demo-token')
     localStorage.setItem('kc-demo-mode', 'true')
+    localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('demo-user-onboarded', 'true')
+    localStorage.setItem('kc-backend-status', JSON.stringify({
+      available: true,
+      timestamp: Date.now(),
+    }))
   })
   await page.goto('/')
   await page.waitForLoadState('domcontentloaded')
