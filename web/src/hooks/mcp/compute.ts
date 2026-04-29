@@ -84,7 +84,7 @@ export let gpuNodeCache: GPUNodeCache = loadGPUCacheFromStorage()
 export const gpuNodeSubscribers = new Set<(cache: GPUNodeCache) => void>()
 
 export function notifyGPUNodeSubscribers() {
-  gpuNodeSubscribers.forEach(subscriber => subscriber(gpuNodeCache))
+  Array.from(gpuNodeSubscribers).forEach(subscriber => subscriber(gpuNodeCache))
 }
 
 // Register with mode transition coordinator for unified cache clearing

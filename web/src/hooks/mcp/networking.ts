@@ -30,7 +30,7 @@ type NetworkingSubscriber = (state: NetworkingSharedState) => void
 const networkingSubscribers = new Set<NetworkingSubscriber>()
 
 function notifyNetworkingSubscribers() {
-  networkingSubscribers.forEach(subscriber => subscriber(networkingSharedState))
+  Array.from(networkingSubscribers).forEach(subscriber => subscriber(networkingSharedState))
 }
 
 export function subscribeNetworkingCache(callback: NetworkingSubscriber): () => void {

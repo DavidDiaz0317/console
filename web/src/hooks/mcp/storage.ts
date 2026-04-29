@@ -28,7 +28,7 @@ type StorageSubscriber = (state: StorageSharedState) => void
 const storageSubscribers = new Set<StorageSubscriber>()
 
 function notifyStorageSubscribers() {
-  storageSubscribers.forEach(subscriber => subscriber(storageSharedState))
+  Array.from(storageSubscribers).forEach(subscriber => subscriber(storageSharedState))
 }
 
 export function subscribeStorageCache(callback: StorageSubscriber): () => void {

@@ -28,7 +28,7 @@ type EventsSubscriber = (state: EventsSharedState) => void
 const eventsSubscribers = new Set<EventsSubscriber>()
 
 function notifyEventsSubscribers() {
-  eventsSubscribers.forEach(subscriber => subscriber(eventsSharedState))
+  Array.from(eventsSubscribers).forEach(subscriber => subscriber(eventsSharedState))
 }
 
 export function subscribeEventsCache(callback: EventsSubscriber): () => void {
