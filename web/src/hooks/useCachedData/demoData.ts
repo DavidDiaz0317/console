@@ -42,7 +42,6 @@ import type {
 } from '../useMCP'
 import type { Workload } from '../useWorkloads'
 import type { CiliumStatus } from '../../types/cilium'
-import type { JaegerStatus } from '../../types/jaeger'
 
 // ---------------------------------------------------------------------------
 // Local type stubs used only by demo data — avoid circular import with
