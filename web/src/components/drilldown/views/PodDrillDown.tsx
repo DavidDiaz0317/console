@@ -123,8 +123,8 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   const activeWsRef = useRef(new Set<WebSocket>())
 
   /** Create a tracked WebSocket — automatically removed from the set when closed. */
-  const openTrackedWs = useCallback(() => {
-    const ws = openTrackedWs()
+  const openTrackedWs = useCallback((): WebSocket => {
+    const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
     activeWsRef.current.add(ws)
     const origClose = ws.close.bind(ws)
     ws.close = (...args: Parameters<WebSocket['close']>) => {
@@ -267,7 +267,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId && msg.payload?.output) {
@@ -334,7 +334,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId && msg.payload?.output) {
@@ -373,7 +373,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId && msg.payload?.output) {
@@ -423,7 +423,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
               payload: { context: cluster, args }
             }))
           }
-          ws.onmessage = (event) => {
+          ws.onmessage = (event: MessageEvent) => {
             try {
               const msg = JSON.parse(event.data)
               if (msg.id === requestId && msg.payload?.output) {
@@ -562,7 +562,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId) {
@@ -632,7 +632,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId && msg.payload?.output) {
@@ -671,7 +671,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId && msg.payload?.output) {
@@ -823,7 +823,7 @@ Please:
         }))
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(event.data)
           if (msg.id === requestId) {
@@ -882,7 +882,7 @@ Please:
               payload: { context: cluster, args }
             }))
           }
-          ws.onmessage = (event) => {
+          ws.onmessage = (event: MessageEvent) => {
             try {
               const msg = JSON.parse(event.data)
               if (msg.id === requestId) {
@@ -1019,7 +1019,7 @@ Please:
               payload: { context: cluster, args }
             }))
           }
-          ws.onmessage = (event) => {
+          ws.onmessage = (event: MessageEvent) => {
             try {
               const msg = JSON.parse(event.data)
               if (msg.id === requestId) {
@@ -1156,7 +1156,7 @@ Please:
               payload: { context: cluster, args }
             }))
           }
-          ws.onmessage = (event) => {
+          ws.onmessage = (event: MessageEvent) => {
             try {
               const msg = JSON.parse(event.data)
               if (msg.id === requestId && msg.payload?.output) {
