@@ -2,6 +2,7 @@
  * Utility functions for formatting values for display
  */
 
+import type { TFunction } from 'i18next'
 import { MS_PER_SECOND, MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY, MS_PER_MONTH, MS_PER_YEAR, SECONDS_PER_MINUTE, MINUTES_PER_HOUR } from './constants/time'
 
 /**
@@ -240,22 +241,23 @@ function cardSyncKeys(prefix: string): CardSyncKeys {
  * or an explicit {@link CardSyncKeys} object for non-standard cards.
  */
 export function createCardSyncFormatter(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  t: (key: any, options?: any) => string,
+  t: TFunction<'cards'>,
   keys: string | CardSyncKeys,
 ): (isoString: string) => string {
   const k = typeof keys === 'string' ? cardSyncKeys(keys) : keys
+  // Cast to loose signature — sync keys are computed at runtime from card prefixes
+  const tDynamic = t as (key: string, options?: Record<string, unknown>) => string
 
   return (isoString: string): string => {
     const parsed = new Date(isoString).getTime()
-    if (!isoString || isNaN(parsed)) return t(k.justNow)
+    if (!isoString || isNaN(parsed)) return tDynamic(k.justNow)
 
     const diff = Date.now() - parsed
-    if (diff < 0) return t(k.justNow)
+    if (diff < 0) return tDynamic(k.justNow)
 
-    if (diff < MS_PER_MINUTE) return t(k.justNow)
-    if (diff < MS_PER_HOUR) return t(k.minutesAgo, { count: Math.floor(diff / MS_PER_MINUTE) })
-    if (diff < MS_PER_DAY) return t(k.hoursAgo, { count: Math.floor(diff / MS_PER_HOUR) })
-    return t(k.daysAgo, { count: Math.floor(diff / MS_PER_DAY) })
+    if (diff < MS_PER_MINUTE) return tDynamic(k.justNow)
+    if (diff < MS_PER_HOUR) return tDynamic(k.minutesAgo, { count: Math.floor(diff / MS_PER_MINUTE) })
+    if (diff < MS_PER_DAY) return tDynamic(k.hoursAgo, { count: Math.floor(diff / MS_PER_HOUR) })
+    return tDynamic(k.daysAgo, { count: Math.floor(diff / MS_PER_DAY) })
   }
 }
