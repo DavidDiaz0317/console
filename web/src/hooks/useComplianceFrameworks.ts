@@ -84,7 +84,7 @@ export function useComplianceFrameworks() {
       setFrameworks(data)
       saveCache(data)
       setError(null)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load frameworks')
     } finally {
       setIsLoading(false)
@@ -112,7 +112,7 @@ export function useFrameworkEvaluation() {
         { cluster },
       )
       setResult(data)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Evaluation failed')
       setResult(null)
     } finally {

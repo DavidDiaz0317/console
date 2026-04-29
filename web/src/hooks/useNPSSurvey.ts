@@ -132,7 +132,7 @@ export function useNPSSurvey(): NPSSurveyState {
         // 5xx / 400 / 401 / 403 — real server failure, surface to the user.
         throw new Error(`NPS submit failed: ${resp.status} ${resp.statusText}`)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       // Re-throw only if this wasn't a 404/405 we already swallowed above.
       // Network errors (DNS failure, connection refused, timeout) still
       // propagate so the user sees a failure toast and can retry.

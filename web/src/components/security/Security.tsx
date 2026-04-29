@@ -80,7 +80,7 @@ export function Security() {
       // For now, just simulate a refresh
       await new Promise(resolve => setTimeout(resolve, SHORT_DELAY_MS))
       setLastUpdated(new Date())
-    } catch (error) {
+    } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to refresh security data'
       setRefreshError(message)
     } finally {

@@ -232,7 +232,7 @@ export function useTopology(): UseTopologyResult {
 
       // Save to cache
       saveToCache(TOPOLOGY_CACHE_KEY, data)
-    } catch (err) {
+    } catch (err: unknown) {
       // Suppress 401 errors in demo mode — expected when no auth token
       const isAuthError = err instanceof Error && (err.message.includes('401') || err.message.includes('Unauthorized'))
       if (isAuthError) { console.debug('[useTopology] Skipped — no auth') } else { console.error('[useTopology] Fetch error:', err) }

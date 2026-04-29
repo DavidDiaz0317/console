@@ -239,7 +239,7 @@ export function useServices(cluster?: string, namespace?: string) {
           }
           return
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[useServices] kubectl proxy failed for ${cluster}:`, err)
       }
     }

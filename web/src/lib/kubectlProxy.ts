@@ -207,7 +207,7 @@ class KubectlProxy {
                   pending.resolve(message.payload as KubectlResponse)
                 }
               }
-            } catch (e) {
+            } catch (e: unknown) {
               console.error('[KubectlProxy] Failed to parse message:', e)
             }
           }
@@ -243,7 +243,7 @@ class KubectlProxy {
               ),
             )
           }
-        } catch (err) {
+        } catch (err: unknown) {
           this.isConnecting = false
           this.connectPromise = null
           this.lastConnectionFailureAt = Date.now()
@@ -313,7 +313,7 @@ class KubectlProxy {
     try {
       const response = await this.execImmediate(request.args, request.options)
       request.resolve(response)
-    } catch (err) {
+    } catch (err: unknown) {
       request.reject(err instanceof Error ? err : new Error(String(err)))
     } finally {
       this.activeRequests--
@@ -364,7 +364,7 @@ class KubectlProxy {
 
       try {
         ws.send(JSON.stringify(message))
-      } catch (err) {
+      } catch (err: unknown) {
         clearTimeout(timeoutHandle)
         this.pendingRequests.delete(id)
         reject(err instanceof Error ? err : new Error(String(err)))
@@ -658,7 +658,7 @@ class KubectlProxy {
         memoryUsageBytes: totalMemoryBytes,
         metricsAvailable: true,
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`[ClusterUsage] ${context}: error getting usage -`, err)
       return {
         cpuUsageMillicores: 0,
@@ -695,7 +695,7 @@ class KubectlProxy {
           ),
         )
         usageMetrics = await Promise.race([usagePromise, timeoutPromise])
-      } catch (err) {
+      } catch (err: unknown) {
         // Usage metrics failed or timed out - continue without them
         console.error(
           `[ClusterHealth] ${context}: Usage metrics unavailable, using requests only`,
@@ -748,7 +748,7 @@ class KubectlProxy {
       }
 
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
       console.error(`[ClusterHealth] ERROR for ${context}: ${errorMsg}`)
       return {

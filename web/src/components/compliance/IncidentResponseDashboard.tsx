@@ -97,7 +97,7 @@ const IncidentResponseDashboard = memo(function IncidentResponseDashboard() {
       setIncidents(await iRes.json())
       setMetrics(await mRes.json())
       setPlaybooks(await pRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

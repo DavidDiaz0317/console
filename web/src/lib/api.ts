@@ -276,7 +276,7 @@ export async function checkBackendAvailability(forceCheck = false): Promise<bool
           available: backendAvailable,
           timestamp: backendLastCheckTime,
         }))
-      } catch (e) { console.error('[api] failed to cache backend status:', e) }
+      } catch (e: unknown) { console.error('[api] failed to cache backend status:', e) }
       return backendAvailable
     } catch {
       backendAvailable = false
@@ -356,7 +356,7 @@ function markBackendFailure(): void {
   // Persisting false causes fresh page loads to inherit stale "backend down" state.
   try {
     localStorage.removeItem(BACKEND_STATUS_KEY)
-  } catch (e) { console.error('[api] failed to clear backend status cache:', e) }
+  } catch (e: unknown) { console.error('[api] failed to clear backend status cache:', e) }
 }
 
 function markBackendSuccess(): void {
@@ -367,7 +367,7 @@ function markBackendSuccess(): void {
       available: true,
       timestamp: backendLastCheckTime,
     }))
-  } catch (e) { console.error('[api] failed to cache backend success:', e) }
+  } catch (e: unknown) { console.error('[api] failed to cache backend success:', e) }
 }
 
 /**
@@ -539,7 +539,7 @@ class ApiClient {
       const data = await response.json().catch(() => null)
       if (data === null) throw new Error('Invalid JSON response from API')
       return { data }
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Request timeout after ${(options?.timeout ?? DEFAULT_TIMEOUT) / 1000}s: ${path}`)
@@ -594,7 +594,7 @@ class ApiClient {
       const data = await response.json().catch(() => null)
       if (data === null) throw new Error('Invalid JSON response from API')
       return { data }
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Request timeout after ${(options?.timeout ?? DEFAULT_TIMEOUT) / 1000}s: ${path}`)
@@ -649,7 +649,7 @@ class ApiClient {
       const data = await response.json().catch(() => null)
       if (data === null) throw new Error('Invalid JSON response from API')
       return { data }
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Request timeout after ${(options?.timeout ?? DEFAULT_TIMEOUT) / 1000}s: ${path}`)
@@ -700,7 +700,7 @@ class ApiClient {
       }
       markBackendSuccess()
       this.checkTokenRefresh(response)
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId)
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Request timeout after ${(options?.timeout ?? DEFAULT_TIMEOUT) / 1000}s: ${path}`)

@@ -113,7 +113,7 @@ const enableMocking = async () => {
     // mockServiceWorker.js URL string never appears in the index bundle.
     const { startMocking: start } = await import('./mocks/browser')
     await start()
-  } catch (error) {
+  } catch (error: unknown) {
     // If service worker fails to start (e.g., in some browser contexts),
     // log the error but continue rendering the app without mocking
     console.error('MSW service worker failed to start:', error)
@@ -158,9 +158,9 @@ enableMocking()
 
         const { meta } = await rpc.preloadAll()
         initPreloadedMeta(meta)
-      } catch (e) {
+      } catch (e: unknown) {
         console.warn('[Cache] SQLite worker init: using IndexedDB fallback:', e)
-        try { await migrateFromLocalStorage() } catch (migrateErr) { console.warn('[Cache] failed to migrate from localStorage:', migrateErr) }
+        try { await migrateFromLocalStorage() } catch (migrateErr: unknown) { console.warn('[Cache] failed to migrate from localStorage:', migrateErr) }
       }
     })()
 

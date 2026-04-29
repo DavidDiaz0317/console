@@ -460,7 +460,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
             }
           }
           missionStatusTimers.current.clear()
-        } catch (err) {
+        } catch (err: unknown) {
           // #6767 — Message is issue-agnostic; this branch now covers
           // #6758, #6762, and #6767 follow-ups.
           console.warn('[Missions] Cross-tab remote reset detected — failed to clear local mission state to match:', err)
@@ -485,7 +485,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
           const next = new Set([...prev].filter(id => reloadedIds.has(id)))
           return next.size === prev.size ? prev : next
         })
-      } catch (err) {
+      } catch (err: unknown) {
         console.warn('[Missions] issue 6668 — failed to reload from cross-tab write:', err)
       }
     }
@@ -957,7 +957,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
           try {
             const message = JSON.parse(event.data)
             handleAgentMessageRef.current(message)
-          } catch (e) {
+          } catch (e: unknown) {
             console.error('[Missions] Failed to parse message:', e)
           }
         }
@@ -1157,7 +1157,7 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
           setAgentsLoading(false)
           reject(new Error('CONNECTION_FAILED'))
         }
-      } catch (err) {
+      } catch (err: unknown) {
         clearTimeout(timeout)
         reject(err)
       }
@@ -2896,7 +2896,7 @@ Install the console locally with the KubeStellar Console agent to use AI mission
       }), () => {
         console.error('[Missions] Failed to send agent selection after retries')
       })
-    }).catch(err => {
+    }).catch((err: unknown) => {
       selectAgentPending.current = null
       console.error('[Missions] Failed to select agent:', err)
     })
@@ -2908,7 +2908,7 @@ Install the console locally with the KubeStellar Console agent to use AI mission
     // connection requests (e.g. clicking "Reconnect" after giveup).
     // Moved from ensureConnection so auto-reconnect preserves backoff.
     wsReconnectAttempts.current = 0
-    ensureConnection().catch(err => {
+    ensureConnection().catch((err: unknown) => {
       console.error('[Missions] Failed to connect to agent:', err)
     })
   }

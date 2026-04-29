@@ -227,7 +227,7 @@ export function useCachedAllNodes(): CachedHookResult<NodeInfo[]> & {
             nodes: (data.nodes || []).map((n) => ({ ...n, cluster: cluster.name })),
             error: null,
           }
-        } catch (err) {
+        } catch (err: unknown) {
           // Per-cluster failure: tolerate it so a single unreachable cluster
           // doesn't wipe the whole aggregate. Accumulated nodes from other
           // clusters still render.  Issue 9355 — classify the error (auth /

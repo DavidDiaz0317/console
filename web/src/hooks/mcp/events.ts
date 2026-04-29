@@ -141,7 +141,7 @@ export function useEvents(cluster?: string, namespace?: string, limit = 20) {
           reportAgentDataSuccess()
           return
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[useEvents] Local agent failed for ${cluster}:`, err)
       }
     }
@@ -172,7 +172,7 @@ export function useEvents(cluster?: string, namespace?: string, limit = 20) {
       setLastUpdated(now)
       setConsecutiveFailures(0)
       setLastRefresh(now)
-    } catch (err) {
+    } catch (err: unknown) {
       // Use name check instead of instanceof to handle both Error and DOMException
       // across all browser versions (DOMException may not extend Error in older Safari).
       if ((err as { name?: string })?.name === 'AbortError') return
@@ -353,7 +353,7 @@ export function useWarningEvents(cluster?: string, namespace?: string, limit = 2
       setEvents(allEvents.slice(0, limit))
       setError(null)
       setLastUpdated(now)
-    } catch (err) {
+    } catch (err: unknown) {
       // Use name check instead of instanceof to handle both Error and DOMException
       // across all browser versions (DOMException may not extend Error in older Safari).
       if ((err as { name?: string })?.name === 'AbortError') return

@@ -287,7 +287,7 @@ async function fetchSingleCluster(cluster: string): Promise<KubescapeClusterStat
       passedControls,
       failedControls,
       controls }
-  } catch (err) {
+  } catch (err: unknown) {
     const isDemoError = err instanceof Error && err.message.includes('demo mode')
     if (!isDemoError) {
       console.error(`[useKubescape] Error fetching from ${cluster}:`, err)

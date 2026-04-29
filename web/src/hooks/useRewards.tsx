@@ -76,7 +76,7 @@ function loadRewards(userId: string): UserRewards | null {
       const allRewards = JSON.parse(stored) as Record<string, UserRewards>
       return allRewards[userId] || null
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('[useRewards] Failed to load rewards:', e)
   }
   return null
@@ -88,7 +88,7 @@ function saveRewards(userId: string, rewards: UserRewards): void {
     const allRewards = stored ? JSON.parse(stored) : {}
     allRewards[userId] = rewards
     localStorage.setItem(REWARDS_STORAGE_KEY, JSON.stringify(allRewards))
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('[useRewards] Failed to save rewards:', e)
   }
 }
@@ -220,7 +220,7 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
           saveRewards(effectiveUserId, merged)
           return merged
         })
-      } catch (err) {
+      } catch (err: unknown) {
         // 401 simply means the user is logged out — silently fall back to
         // the cached local state (which is what we already painted).
         if (err instanceof RewardsUnauthenticatedError) return
@@ -261,7 +261,7 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
           }
           return next
         })
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('[useRewards] Failed to parse cross-tab rewards update:', err)
       }
 
@@ -282,7 +282,7 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
             return merged
           })
         })
-        .catch(refreshErr => {
+        .catch((refreshErr: unknown) => {
           if (refreshErr instanceof RewardsUnauthenticatedError) return
           console.warn('[useRewards] cross-tab server refresh failed:', refreshErr)
         })
@@ -358,7 +358,7 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
     // JWT so the request would always 401.
     const isDemoSession = getDemoMode() || currentUserId === DEMO_REWARDS_USER_ID
     if (!isDemoSession) {
-      apiIncrementCoins(rewardConfig.coins).catch(err => {
+      apiIncrementCoins(rewardConfig.coins).catch((err: unknown) => {
         if (err instanceof RewardsUnauthenticatedError) return
         console.warn('[useRewards] failed to persist coin delta to backend:', err)
       })

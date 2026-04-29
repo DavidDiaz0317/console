@@ -197,7 +197,7 @@ export function useGitHubRewards() {
       setData(merged)
       saveCache(githubLogin, merged)
       setError(null)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       const cached = loadCache(githubLogin)
       if (!cached) {

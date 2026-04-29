@@ -210,7 +210,7 @@ async function fetchAIPredictions(): Promise<void> {
       isStale = true
       notifySubscribers()
     }
-  } catch (error) {
+  } catch (error: unknown) {
     // Network error, timeout, or AbortError — backend is unreachable. Mark
     // predictions stale and notify subscribers so the UI updates immediately
     // rather than continuing to show data as if it were fresh (#5937, #5938).

@@ -93,7 +93,7 @@ export const STIGDashboardContent = memo(function STIGDashboardContent() {
       setBenchmarks(await bRes.json())
       setFindings(await fRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

@@ -209,7 +209,7 @@ describe('useCachedAllNodes — Issue 9355 clusterErrors surfacing', () => {
             const res: PromiseSettledResult<unknown> = { status: 'fulfilled', value }
             results.push(res)
             if (handleSettled) await handleSettled(res as PromiseSettledResult<never>)
-          } catch (reason) {
+          } catch (reason: unknown) {
             const res: PromiseSettledResult<unknown> = { status: 'rejected', reason }
             results.push(res)
             if (handleSettled) await handleSettled(res as PromiseSettledResult<never>)

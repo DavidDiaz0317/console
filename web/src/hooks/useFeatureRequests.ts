@@ -360,7 +360,7 @@ export function useFeatureRequests(currentUserId?: string, options?: UseFeatureR
       const { data } = await api.post<FeatureRequest>('/api/feedback/requests', input, mergedOpts)
       setRequests(prev => [data, ...prev])
       return data
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof RateLimitError) {
         throw new Error('Too many requests — please wait a moment and try again.')
       }

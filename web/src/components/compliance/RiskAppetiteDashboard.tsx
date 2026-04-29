@@ -86,7 +86,7 @@ export const RiskAppetiteDashboardContent = memo(function RiskAppetiteDashboardC
       setThresholds(await tRes.json())
       setKRIs(await kRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

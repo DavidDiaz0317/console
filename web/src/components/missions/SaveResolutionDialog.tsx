@@ -202,7 +202,7 @@ Return ONLY valid JSON, no markdown code blocks or explanation.`
             sessionId: `resolution-${mission.id}`,
             agent: mission.agent || undefined }
         }))
-      } catch (err) {
+      } catch (err: unknown) {
         settle(() => {
           ws.close()
           reject(err instanceof Error ? err : new Error('Failed to send AI summary request'))
@@ -370,7 +370,7 @@ export function SaveResolutionDialog({
       setSummary(`**Problem:** ${aiSummary.problem}\n\n**Solution:** ${aiSummary.solution}`)
       setSteps(aiSummary.steps.length > 0 ? aiSummary.steps : [''])
       setYaml(aiSummary.yaml || '')
-    } catch (err) {
+    } catch (err: unknown) {
       setAiError(err instanceof Error ? err.message : 'Failed to generate summary')
       // Fall back to basic extraction
       setTitle(currentMission.title)
@@ -457,7 +457,7 @@ export function SaveResolutionDialog({
 
       onSaved?.()
       onClose()
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('dashboard.missions.failedToSave'))
     } finally {
       setIsSaving(false)

@@ -126,7 +126,7 @@ describe('useNPSSurvey', () => {
     await act(async () => {
       try {
         await result.current.submitResponse(3)
-      } catch (err) {
+      } catch (err: unknown) {
         caught = err
       }
     })

@@ -437,7 +437,7 @@ function RSSFeedInternal({ config }: RSSFeedProps) {
       const sourceCount = activeFeed.isAggregate ? ` from ${activeFeed.sourceUrls?.length || 0} sources` : ''
       setFetchSuccess(`Fetched ${feedItems.length} items${sourceCount}`)
       cacheFeed(cacheKey, feedItems)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to load feed'
 
       // Try to use stale cache - if we have cached items, don't show error

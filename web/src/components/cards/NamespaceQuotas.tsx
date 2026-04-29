@@ -154,7 +154,7 @@ function QuotaModal({
     try {
       await onSave({ cluster, namespace, name, hard })
       onClose()
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to save quota')
     }
   }

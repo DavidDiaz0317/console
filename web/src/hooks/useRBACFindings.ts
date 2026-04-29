@@ -293,7 +293,7 @@ async function fetchSingleCluster(cluster: string): Promise<ClusterFetchResult> 
           binding: `RoleBinding/${rb.metadata.name}` })
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     const isDemoErr = err instanceof Error && err.message.includes('demo mode')
     if (!isDemoErr) {
       console.error(`[useRBACFindings] Error fetching from ${cluster}:`, err)
@@ -399,7 +399,7 @@ export function useRBACFindings() {
       } else {
         setConsecutiveFailures(0)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch RBAC data')
       setIsLoading(false)
       setIsRefreshing(false)

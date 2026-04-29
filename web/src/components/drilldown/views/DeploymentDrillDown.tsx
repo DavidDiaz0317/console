@@ -366,7 +366,7 @@ export function DeploymentDrillDown({ data }: Props) {
         // Issue 9284: don't leak raw kubectl stderr — map to a friendly message.
         setScaleError(t(classifyScaleError(output)))
       }
-    } catch (err) {
+    } catch (err: unknown) {
       // Issue 9284: don't leak raw stack traces; map through the same helper.
       setScaleError(t(classifyScaleError(err instanceof Error ? err.message : '')))
     } finally {

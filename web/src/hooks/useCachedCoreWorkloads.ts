@@ -677,7 +677,7 @@ export function useCachedSecurityIssues(
         try {
           const issues = await fetchSecurityIssuesViaKubectl(cluster, namespace)
           if (issues.length > 0) return issues
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('[useCachedSecurityIssues] kubectl fetch failed:', err)
         }
       }
@@ -689,7 +689,7 @@ export function useCachedSecurityIssues(
         try {
           const data = await fetchBackendAPI<{ issues: SecurityIssue[] }>('security-issues', { cluster, namespace })
           if (data?.issues && data.issues.length > 0) return data.issues
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('[useCachedSecurityIssues] API fetch failed:', err)
         }
       }
@@ -703,7 +703,7 @@ export function useCachedSecurityIssues(
         try {
           const issues = await fetchSecurityIssuesViaKubectl(cluster, namespace, onProgress)
           if (issues.length > 0) return issues
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('[useCachedSecurityIssues] progressive kubectl fetch failed:', err)
         }
       }

@@ -175,7 +175,7 @@ export function NetworkUtils() {
         timestamp: new Date(),
         statusCode: data.statusCode,
         error: data.error || undefined }
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         return {
           host,

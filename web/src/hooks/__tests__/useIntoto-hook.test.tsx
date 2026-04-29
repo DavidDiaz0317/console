@@ -24,7 +24,7 @@ const {
   mockUseClusters: vi.fn(),
   mockKubectlExec: vi.fn(),
   mockSettledWithConcurrency: vi.fn(async (tasks: (() => Promise<unknown>)[]) => {
-    return Promise.all(tasks.map(t => t().then(v => ({ status: 'fulfilled' as const, value: v })).catch(e => ({ status: 'rejected' as const, reason: e }))))
+    return Promise.all(tasks.map(t => t().then(v => ({ status: 'fulfilled' as const, value: v })).catch((e: unknown) => ({ status: 'rejected' as const, reason: e }))))
   }),
   mockRegisterCacheReset: vi.fn(),
   mockRegisterRefetch: vi.fn(() => vi.fn()),

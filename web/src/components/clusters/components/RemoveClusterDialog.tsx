@@ -38,7 +38,7 @@ export function RemoveClusterDialog({
     try {
       await onConfirm(contextName)
       onClose()
-    } catch (err) {
+    } catch (err: unknown) {
       setStatus({
         removing: false,
         error: err instanceof Error ? err.message : t('cluster.removeClusterError') })

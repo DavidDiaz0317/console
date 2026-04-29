@@ -191,7 +191,7 @@ async function fetchAllNodes(): Promise<NodeData[]> {
       nodesFetchError = null
       notifyNodesSubscribers()
     }
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[OfflineDetection] Error fetching nodes:', error)
     nodesFetchError = message

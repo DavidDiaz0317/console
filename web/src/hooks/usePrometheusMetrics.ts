@@ -147,7 +147,7 @@ export function usePrometheusMetrics(
         setMetrics(podMap)
         setError(null)
       }
-    } catch (e) {
+    } catch (e: unknown) {
       if (controller.signal.aborted) return
       setMetrics(null)
       setError(e instanceof Error ? e.message : 'Unknown error')

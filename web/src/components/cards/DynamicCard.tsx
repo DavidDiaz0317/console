@@ -164,7 +164,7 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
         setApiData(Array.isArray(json) ? json : json.items || json.data || [json])
         setApiLoading(false)
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         if (cancelled) return
         setApiError(err.message)
         setApiLoading(false)
@@ -434,7 +434,7 @@ export function Tier2CardRuntime({ definition, config }: Tier2Props) {
         cleanupRef.current = componentResult.cleanup
         setCardComponent(() => componentResult.component)
         setCompiling(false)
-      } catch (err) {
+      } catch (err: unknown) {
         if (cancelled) return
         const message = err instanceof Error ? err.message : String(err)
         // Message is already surfaced to the user via setError below (#8816)

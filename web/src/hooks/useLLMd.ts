@@ -248,7 +248,7 @@ export function useLLMdServers(clusters: string[] = ['vllm-d', 'platform-eval'])
               const items = data.items || []
               allDeployments.push(...items)
             }
-          } catch (err) {
+          } catch (err: unknown) {
             // Suppress demo mode errors - they're expected when agent is unavailable
             const errMsg = err instanceof Error ? err.message : String(err)
             if (!errMsg.includes('demo mode')) {
@@ -405,7 +405,7 @@ export function useLLMdServers(clusters: string[] = ['vllm-d', 'platform-eval'])
               initialLoadDone.current = true
             }
           }
-        } catch (err) {
+        } catch (err: unknown) {
           // Suppress demo mode errors - they're expected when agent is unavailable
           const errMsg = err instanceof Error ? err.message : String(err)
           if (!errMsg.includes('demo mode')) {
@@ -418,7 +418,7 @@ export function useLLMdServers(clusters: string[] = ['vllm-d', 'platform-eval'])
       setConsecutiveFailures(0)
       setLastRefresh(new Date())
       initialLoadDone.current = true
-    } catch (err) {
+    } catch (err: unknown) {
       // Suppress demo mode errors
       const errMsg = err instanceof Error ? err.message : String(err)
       if (!errMsg.includes('demo mode')) {
@@ -438,7 +438,7 @@ export function useLLMdServers(clusters: string[] = ['vllm-d', 'platform-eval'])
   }
 
   useEffect(() => {
-    refetch(false).catch(err => {
+    refetch(false).catch((err: unknown) => {
       console.error('[useLLMdServers] Initial fetch error:', err)
     })
     const interval = setInterval(() => refetch(true), REFRESH_INTERVAL_MS)
@@ -550,7 +550,7 @@ export function useLLMdModels(clusters: string[] = ['vllm-d', 'platform-eval']) 
               initialLoadDone.current = true
             }
           }
-        } catch (err) {
+        } catch (err: unknown) {
           // Suppress demo mode errors - they're expected when agent is unavailable
           const errMsg = err instanceof Error ? err.message : String(err)
           if (!errMsg.includes('demo mode')) {
@@ -563,7 +563,7 @@ export function useLLMdModels(clusters: string[] = ['vllm-d', 'platform-eval']) 
       setConsecutiveFailures(0)
       setLastRefresh(new Date())
       initialLoadDone.current = true
-    } catch (err) {
+    } catch (err: unknown) {
       setConsecutiveFailures(prev => prev + 1)
       setLastRefresh(new Date())
       if (!silent) {

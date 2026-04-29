@@ -88,7 +88,7 @@ export const RiskMatrixDashboardContent = memo(function RiskMatrixDashboardConte
       setRisks(await rRes.json())
       setHeatmap(await hRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

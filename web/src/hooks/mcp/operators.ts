@@ -206,7 +206,7 @@ export function useOperators(cluster?: string) {
           setConsecutiveFailures(0)
           setLastRefresh(Date.now())
         }
-      } catch (err) {
+      } catch (err: unknown) {
         if (!controller.signal.aborted) {
           // #7547: Surface the error message so the UI can show it instead
           // of silently displaying an empty state.
@@ -374,7 +374,7 @@ export function useOperatorSubscriptions(cluster?: string) {
           setConsecutiveFailures(0)
           setLastRefresh(Date.now())
         }
-      } catch (err) {
+      } catch (err: unknown) {
         if (!controller.signal.aborted) {
           // #7547: Surface the error message so the UI can show it instead
           // of silently displaying an empty state.

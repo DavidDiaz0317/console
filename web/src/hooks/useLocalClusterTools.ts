@@ -116,7 +116,7 @@ export function useLocalClusterTools() {
         setTools(data.tools || [])
         setError(null)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch local cluster tools:', err)
       setError('Failed to fetch cluster tools')
     }
@@ -145,7 +145,7 @@ export function useLocalClusterTools() {
         setClusters(data.clusters || [])
         setError(null)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch local clusters:', err)
       setError('Failed to fetch clusters')
     } finally {
@@ -191,7 +191,7 @@ export function useLocalClusterTools() {
         const text = await response.text()
         return { status: 'error', message: text }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create cluster'
       setError(message)
       return { status: 'error', message }
@@ -231,7 +231,7 @@ export function useLocalClusterTools() {
         setError(text)
         return false
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed to ${action} cluster`
       setError(message)
       return false
@@ -276,7 +276,7 @@ export function useLocalClusterTools() {
         setError(text)
         return false
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete cluster'
       setError(message)
       return false
@@ -322,7 +322,7 @@ export function useLocalClusterTools() {
         setVclusterInstances([])
         setVClustersError(message)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch vCluster instances'
       console.error('Failed to fetch vCluster instances:', err)
       setVclusterInstances([])
@@ -348,7 +348,7 @@ export function useLocalClusterTools() {
           return [...filtered, data]
         })
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`Failed to check vCluster on ${context}:`, err)
     }
   }
@@ -398,7 +398,7 @@ export function useLocalClusterTools() {
         const text = await response.text()
         return { status: 'error', message: text }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create vCluster'
       setError(message)
       return { status: 'error', message }
@@ -443,7 +443,7 @@ export function useLocalClusterTools() {
         setError(text)
         return false
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to connect to vCluster'
       setError(message)
       return false
@@ -488,7 +488,7 @@ export function useLocalClusterTools() {
         setError(text)
         return false
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to disconnect from vCluster'
       setError(message)
       return false
@@ -533,7 +533,7 @@ export function useLocalClusterTools() {
         setError(text)
         return false
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete vCluster'
       setError(message)
       return false

@@ -307,7 +307,7 @@ async function fetchSingleCluster(cluster: string): Promise<KyvernoClusterStatus
       totalViolations,
       enforcingCount: policies.filter(p => p.status === 'enforcing').length,
       auditCount: policies.filter(p => p.status === 'audit').length }
-  } catch (err) {
+  } catch (err: unknown) {
     const isDemoError = err instanceof Error && err.message.includes('demo mode')
     if (!isDemoError) {
       console.error(`[useKyverno] Error fetching from ${cluster}:`, err)

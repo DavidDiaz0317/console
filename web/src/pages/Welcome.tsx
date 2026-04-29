@@ -159,7 +159,7 @@ export function Welcome() {
         if (cancelled) return
         setCardCount(String(m.getRegisteredCardTypes().length))
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         console.warn('Welcome: failed to load cardRegistry chunk', err)
       })
     return () => {

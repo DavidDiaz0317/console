@@ -119,7 +119,7 @@ export const SLSADashboardContent = memo(function SLSADashboardContent() {
       setAttestations(Array.isArray(aData) ? aData : [])
       setProvenance(Array.isArray(pData) ? pData : [])
       setSummary(sData ?? null)
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

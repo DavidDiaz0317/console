@@ -154,7 +154,7 @@ function useVersionCheckCore() {
           setError(`kc-agent returned ${resp.status}`)
         }
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.debug('[version-check] Auto-update status error:', err)
       consecutiveFailuresRef.current += 1
       if (consecutiveFailuresRef.current >= ERROR_DISPLAY_THRESHOLD) {
@@ -213,7 +213,7 @@ function useVersionCheckCore() {
       } else {
         console.debug('[version-check] GitHub API error:', resp.status)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.debug('[version-check] Failed to fetch main SHA:', err)
       // Load from cache as fallback
       const cached = localStorage.getItem(DEV_SHA_CACHE_KEY)
@@ -265,7 +265,7 @@ function useVersionCheckCore() {
       } else {
         console.debug('[version-check] Compare API error:', resp.status)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.debug('[version-check] Failed to fetch commits:', err)
     }
   }, [commitHash, latestMainSHA])
@@ -337,7 +337,7 @@ function useVersionCheckCore() {
         : `kc-agent returned ${resp.status}`
       console.debug('[version-check] Update trigger failed:', errText)
       return { success: false, error: errText }
-    } catch (err) {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'kc-agent not reachable'
       console.debug('[version-check] Update trigger error:', msg)
       return { success: false, error: msg }
@@ -369,7 +369,7 @@ function useVersionCheckCore() {
         ? 'kc-agent does not support cancel yet — restart with latest code'
         : `kc-agent returned ${resp.status}`
       return { success: false, error: errText }
-    } catch (err) {
+    } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'kc-agent not reachable'
       return { success: false, error: msg }
     }
@@ -439,7 +439,7 @@ function useVersionCheckCore() {
       setError(null)
       setLastChecked(Date.now())
       localStorage.setItem(UPDATE_STORAGE_KEYS.LAST_CHECK, Date.now().toString())
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to check for updates'
       consecutiveFailuresRef.current += 1
       if (consecutiveFailuresRef.current >= ERROR_DISPLAY_THRESHOLD) {

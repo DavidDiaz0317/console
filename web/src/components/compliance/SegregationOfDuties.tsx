@@ -74,7 +74,7 @@ export const SegregationOfDutiesContent = memo(function SegregationOfDutiesConte
       setRules(await rRes.json())
       setPrincipals(await pRes.json())
       setViolations(await vRes.json())
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setLoading(false)

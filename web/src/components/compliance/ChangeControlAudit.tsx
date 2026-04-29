@@ -92,7 +92,7 @@ export const ChangeControlAuditContent = memo(function ChangeControlAuditContent
       setChanges(Array.isArray(cData) ? cData : [])
       setViolations(Array.isArray(vData) ? vData : [])
       setPolicies(Array.isArray(pData) ? pData : [])
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setLoading(false)

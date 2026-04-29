@@ -70,7 +70,7 @@ export function useMCSStatus() {
         error: null,
         lastUpdated: Date.now(),
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BackendUnavailableError) {
         setState((prev) => ({
           ...prev,
@@ -148,7 +148,7 @@ export function useServiceExports(cluster?: string, namespace?: string) {
         error: null,
         lastUpdated: Date.now(),
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BackendUnavailableError) {
         setState((prev) => ({
           ...prev,
@@ -240,7 +240,7 @@ export function useServiceImports(cluster?: string, namespace?: string) {
         error: null,
         lastUpdated: Date.now(),
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BackendUnavailableError) {
         setState((prev) => ({
           ...prev,
@@ -323,7 +323,7 @@ export function useServiceExport(cluster: string, namespace: string, name: strin
         error: null,
         lastUpdated: Date.now(),
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BackendUnavailableError) {
         setState((prev) => ({
           ...prev,
@@ -388,7 +388,7 @@ export function useServiceImport(cluster: string, namespace: string, name: strin
         error: null,
         lastUpdated: Date.now(),
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof BackendUnavailableError) {
         setState((prev) => ({
           ...prev,

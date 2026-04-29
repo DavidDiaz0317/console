@@ -447,7 +447,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -538,7 +538,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -582,7 +582,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -712,7 +712,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -763,7 +763,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -805,7 +805,7 @@ describe('fetcher callback — agentFetchAllClusters', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -953,7 +953,7 @@ describe('agentFetch — namespace parameter handling', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1005,7 +1005,7 @@ describe('agentFetch — namespace parameter handling', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1055,7 +1055,7 @@ describe('agentFetch — missing data key fallback', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1105,7 +1105,7 @@ describe('agentFetch — abort timeout behavior', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1151,7 +1151,7 @@ describe('agentFetch — abort timeout behavior', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1337,7 +1337,7 @@ describe('agentFetchAllClusters — cluster context fallback', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }
@@ -1387,7 +1387,7 @@ describe('agentFetchAllClusters — items annotated with cluster name', () => {
         try {
           const value = await fn(items[i], i)
           results.push({ status: 'fulfilled', value })
-        } catch (reason) {
+        } catch (reason: unknown) {
           results.push({ status: 'rejected', reason })
         }
       }

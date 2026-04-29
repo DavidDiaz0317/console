@@ -38,7 +38,7 @@ export function PagerDutyNotificationSettings({
         pagerdutyRoutingKey: config.pagerdutyRoutingKey,
       })
       setTestResult({ type: 'pagerduty', success: true, message: t('settings.notifications.pagerduty.testSuccess') })
-    } catch (error) {
+    } catch (error: unknown) {
       setTestResult({
         type: 'pagerduty',
         success: false,

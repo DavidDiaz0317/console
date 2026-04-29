@@ -365,7 +365,7 @@ async function fetchSingleCluster(cluster: string): Promise<TrestleClusterStatus
 
     // Installed but no assessment data yet
     return emptyStatus(cluster, true)
-  } catch (err) {
+  } catch (err: unknown) {
     return emptyStatus(
       cluster, false,
       err instanceof Error ? err.message : 'Unknown error'

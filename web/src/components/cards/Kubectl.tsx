@@ -152,7 +152,7 @@ export function Kubectl() {
 
       setYamlError(null)
       return true
-    } catch (err) {
+    } catch (err: unknown) {
       setYamlError(err instanceof Error ? err.message : 'Invalid YAML')
       return false
     }
@@ -204,7 +204,7 @@ export function Kubectl() {
 
       setCommand('')
       setHistoryIndex(-1)
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Command failed'
       setOutput(prev => [
         ...prev,
@@ -277,7 +277,7 @@ export function Kubectl() {
       setAiPrompt('')
       setShowAI(false)
       commandInputRef.current?.focus()
-    } catch (err) {
+    } catch (err: unknown) {
       setOutput(prev => [
         ...prev,
         `AI Error: ${err instanceof Error ? err.message : 'Failed to generate command'}`,
@@ -365,7 +365,7 @@ data:
       setShowYAMLEditor(true)
       setShowAI(false)
       setAiPrompt('')
-    } catch (err) {
+    } catch (err: unknown) {
       setOutput(prev => [
         ...prev,
         `AI Error: ${err instanceof Error ? err.message : 'Failed to generate YAML'}`,
@@ -420,7 +420,7 @@ data:
         setYamlContent('')
         setShowYAMLEditor(false)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setOutput(prev => [
         ...prev,
         `Error applying YAML: ${err instanceof Error ? err.message : 'Unknown error'}`,

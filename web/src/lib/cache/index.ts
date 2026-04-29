@@ -330,7 +330,7 @@ class IndexedDBStorage implements CacheStorage {
             store.createIndex('timestamp', 'timestamp', { unique: false })
           }
         }
-      } catch (e) { this.isSupported = false; reject(e) }
+      } catch (e: unknown) { this.isSupported = false; reject(e) }
     })
     return this.dbPromise
   }
@@ -407,7 +407,7 @@ class IndexedDBStorage implements CacheStorage {
         req.onsuccess = () => resolve()
         req.onerror = () => reject(req.error)
       })
-    } catch (e) { console.warn('[Cache] IndexedDB put failed:', e) }
+    } catch (e: unknown) { console.warn('[Cache] IndexedDB put failed:', e) }
   }
 
   async delete(key: string): Promise<void> {
@@ -420,7 +420,7 @@ class IndexedDBStorage implements CacheStorage {
         req.onsuccess = () => resolve()
         req.onerror = () => resolve()
       })
-    } catch (e) { console.warn('[Cache] IndexedDB delete failed:', e) }
+    } catch (e: unknown) { console.warn('[Cache] IndexedDB delete failed:', e) }
   }
 
   async clear(): Promise<void> {
@@ -433,7 +433,7 @@ class IndexedDBStorage implements CacheStorage {
         req.onsuccess = () => resolve()
         req.onerror = () => resolve()
       })
-    } catch (e) { console.warn('[Cache] IndexedDB clear failed:', e) }
+    } catch (e: unknown) { console.warn('[Cache] IndexedDB clear failed:', e) }
   }
 
   async getStats(): Promise<{ keys: string[]; count: number }> {
@@ -498,7 +498,7 @@ export async function initCacheWorker(): Promise<CacheWorkerRpc> {
     workerRpc = rpc
     cacheStorage = new WorkerStorage(rpc)
     return rpc
-  } catch (e) {
+  } catch (e: unknown) {
     console.warn('[Cache] SQLite Worker unavailable, using IndexedDB fallback:', e)
     // Reuse the existing _idbStorage instance so that the snapshot hydrated by
     // preloadAll() remains consistent with the active storage backend.
@@ -687,7 +687,7 @@ class CacheStore<T> {
     ssWrite(this.key, data, Date.now())
     try {
       await cacheStorage.set(this.key, data)
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(`[Cache] Failed to save ${this.key}:`, e)
     }
   }
@@ -947,7 +947,7 @@ class CacheStore<T> {
         isFailed: false,
         consecutiveFailures: 0,
         lastRefresh: Date.now() })
-    } catch (e) {
+    } catch (e: unknown) {
       // If a reset happened during fetch, discard stale error
       if (this.resetVersion !== fetchVersion) {
         this.fetchingRef = false
@@ -1637,7 +1637,7 @@ export async function migrateIDBToSQLite(): Promise<void> {
     try {
       indexedDB.deleteDatabase(DB_NAME)
     } catch { /* ignore */ }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('[Cache] IDB→SQLite migration failed:', e)
   }
 }

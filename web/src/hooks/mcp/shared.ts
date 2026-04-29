@@ -1977,7 +1977,7 @@ export async function fetchWithRetry(
       }
 
       return response
-    } catch (err) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId)
       lastError = err
       // Only retry on transient errors

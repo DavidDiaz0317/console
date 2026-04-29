@@ -89,7 +89,7 @@ const SIEMDashboard = memo(function SIEMDashboard() {
       setEvents(await eRes.json())
       setAlerts(await aRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

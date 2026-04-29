@@ -56,7 +56,7 @@ export const SessionDashboardContent = memo(function SessionDashboardContent() {
       setSummary(await smRes.json())
       setSessions(await sRes.json())
       setPolicies(await pRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load session data')
     } finally {
       setLoading(false)

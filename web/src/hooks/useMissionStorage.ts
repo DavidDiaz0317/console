@@ -47,7 +47,7 @@ export function loadMissions(): Mission[] {
       let parsed: unknown
       try {
         parsed = JSON.parse(stored)
-      } catch (parseErr) {
+      } catch (parseErr: unknown) {
         console.error('[Missions] Corrupted localStorage JSON — clearing:', parseErr)
         localStorage.removeItem(MISSIONS_STORAGE_KEY)
         return getDemoMode() ? DEMO_MISSIONS_AS_MISSIONS : []
@@ -127,7 +127,7 @@ export function loadMissions(): Mission[] {
         return mission
       })
     }
-  } catch (e) {
+  } catch (e: unknown) {
     // issue 6437 — If the persisted payload is unparseable (the previous
     // saveMissions pass may have been interrupted mid-write, or quota
     // pressure corrupted it), fully clear the key instead of leaving a
@@ -153,7 +153,7 @@ export function loadMissions(): Mission[] {
 export function saveMissions(missions: Mission[]) {
   try {
     localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(missions))
-  } catch (e) {
+  } catch (e: unknown) {
     // QuotaExceededError: DOMException with name 'QuotaExceededError', or legacy
     // browsers that use numeric code 22 instead of the named exception.
     // Pattern matches useMetricsHistory for consistency across the codebase.
@@ -208,7 +208,7 @@ export function loadUnreadMissionIds(): Set<string> {
       if (!Array.isArray(parsed)) return new Set()
       return new Set(parsed)
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('Failed to load unread missions from localStorage:', e)
   }
   return new Set()
@@ -218,7 +218,7 @@ export function loadUnreadMissionIds(): Set<string> {
 export function saveUnreadMissionIds(ids: Set<string>) {
   try {
     localStorage.setItem(UNREAD_MISSIONS_KEY, JSON.stringify([...ids]))
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('Failed to save unread missions to localStorage:', e)
   }
 }

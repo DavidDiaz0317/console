@@ -82,7 +82,7 @@ export default function LicenseComplianceDashboard() {
       setPackages(await pkgRes.json())
       setCategories(await catRes.json())
       setSummary(await sumRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load license data')
     } finally {
       setLoading(false)

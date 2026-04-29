@@ -303,7 +303,7 @@ function DraggableWorkloadItem({ workload, isSelected, onSelect, onScaled }: Dra
         } else {
           setScaleError(failures.map(r => `${r.cluster}: ${r.message || 'Scale failed'}`).join('; '))
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         if (
           agentErr &&
           typeof agentErr === 'object' &&

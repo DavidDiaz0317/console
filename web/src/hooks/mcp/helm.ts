@@ -253,7 +253,7 @@ export function useHelmReleases(cluster?: string) {
         setConsecutiveFailures(0)
         setLastRefresh(Date.now())
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Helm releases'
 
       // Increment failure count
@@ -426,7 +426,7 @@ export function useHelmHistory(cluster?: string, release?: string, namespace?: s
         })
         saveHelmHistoryToStorage(helmHistoryCache)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Helm history'
       setError(errorMessage)
       setConsecutiveFailures(prev => prev + 1)
@@ -581,7 +581,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
           consecutiveFailures: 0
         })
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Helm values'
       setError(errorMessage)
       setConsecutiveFailures(prev => prev + 1)
@@ -692,7 +692,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
             timestamp: Date.now(),
             consecutiveFailures: 0
           })
-        } catch (err) {
+        } catch (err: unknown) {
           const errorMessage = err instanceof Error ? err.message : 'Failed to fetch Helm values'
           setError(errorMessage)
           setConsecutiveFailures(prev => prev + 1)

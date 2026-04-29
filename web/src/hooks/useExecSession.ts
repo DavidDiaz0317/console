@@ -238,7 +238,7 @@ export function useExecSession(): UseExecSessionResult {
     let ws: WebSocket
     try {
       ws = new WebSocket(appendWsAuthToken(wsUrl))
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create WebSocket connection'
       updateStatus(
         'error',

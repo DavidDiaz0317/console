@@ -61,7 +61,7 @@ export function SlackNotificationSettings({
         slackChannel: config.slackChannel,
       })
       setTestResult({ type: 'slack', success: true, message: t('settings.notifications.slack.testSuccess') })
-    } catch (error) {
+    } catch (error: unknown) {
       setTestResult({
         type: 'slack',
         success: false,

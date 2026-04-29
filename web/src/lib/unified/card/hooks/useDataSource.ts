@@ -294,7 +294,7 @@ function useApiDataSourceInternal(
       // Skip state update if route became inactive while fetch was in flight (#5891)
       if (!keepAliveActiveRef.current) return
       setData(resultData)
-    } catch (err) {
+    } catch (err: unknown) {
       if (!keepAliveActiveRef.current) return
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {

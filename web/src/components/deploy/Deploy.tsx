@@ -113,7 +113,7 @@ export function Deploy() {
             targetGroupRef: groupName ? { name: groupName } : undefined,
             targetClusters: groupName ? undefined : targetClusters,
             strategy: 'RollingUpdate' } })
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Failed to create persistence CRs:', err)
         showToast('Failed to create deployment tracking records', 'warning')
         // Continue with deploy even if CR creation fails
@@ -149,7 +149,7 @@ export function Deploy() {
                 warnings: resp.warnings } })
           }
         } })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Deploy failed:', err)
       const errorMessage = (err instanceof Error && err.message.trim()) ? err.message.trim() : 'Deploy failed'
       showToast(errorMessage, 'error')

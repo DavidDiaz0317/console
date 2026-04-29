@@ -604,7 +604,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         setAiAnalysisLoading(false)
         ws.close()
       }
-    } catch (err) {
+    } catch (err: unknown) {
       // #5945 — Unexpected errors (kubectl failures, network issues, etc.)
       // must also be surfaced so the failure is not silent.
       const errMsg = `Failed to perform AI analysis: ${err instanceof Error ? err.message : String(err)}`
@@ -846,7 +846,7 @@ Please:
         setDeletingPod(false)
         ws.close()
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setDeleteError(err instanceof Error ? err.message : 'Unknown error')
       setDeletingPod(false)
     }
@@ -961,7 +961,7 @@ Please:
       setPendingLabelChanges({})
       setNewLabelKey('')
       setNewLabelValue('')
-    } catch (err) {
+    } catch (err: unknown) {
       setLabelError(`Failed to save: ${err}`)
     } finally {
       setLabelSaving(false)
@@ -1098,7 +1098,7 @@ Please:
       setPendingAnnotationChanges({})
       setNewAnnotationKey('')
       setNewAnnotationValue('')
-    } catch (err) {
+    } catch (err: unknown) {
       setAnnotationError(`Failed to save: ${err}`)
     } finally {
       setAnnotationSaving(false)

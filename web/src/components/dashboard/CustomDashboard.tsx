@@ -354,7 +354,7 @@ export function CustomDashboard() {
         }
       }
       setLastUpdated(new Date())
-    } catch (error) {
+    } catch (error: unknown) {
       // Discard errors from stale requests
       if (thisRequestId !== requestIdRef.current) return
 
@@ -439,7 +439,7 @@ export function CustomDashboard() {
       for (const card of cardsToAdd) {
         try {
           await api.post(`/api/dashboards/${id}/cards`, card)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Failed to persist card:', error)
           showToast('Failed to persist card to backend', 'error')
         }
@@ -457,7 +457,7 @@ export function CustomDashboard() {
     if (id) {
       try {
         await api.delete(`/api/dashboards/${id}/cards/${cardId}`)
-      } catch (error) {
+      } catch (error: unknown) {
         // Card is already removed from UI state above — backend failure is
         // non-critical. Log for debugging but don't alarm the user. (#8564)
         console.debug('Backend card deletion failed (card already removed from UI):', error)
@@ -511,7 +511,7 @@ export function CustomDashboard() {
       for (const card of templateCards) {
         try {
           await api.post(`/api/dashboards/${id}/cards`, card)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Failed to persist template card:', error)
           showToast('Failed to persist template card', 'error')
         }

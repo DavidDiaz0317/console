@@ -476,7 +476,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAnalyticsUserProperties({ auth_mode: 'github-oauth' })
       // Detect developer running cloned repo with startup-oauth.sh
       emitDeveloperSession()
-    } catch (error) {
+    } catch (error: unknown) {
       // #6067 — If the backend is temporarily unreachable but we have a real
       // token, keep the cached user ONLY if it's still fresh. Stale caches
       // drop the user to login instead of silently trusting old data forever.
@@ -630,7 +630,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.removeItem(STORAGE_KEY_HAS_SESSION)
             }
           }
-        } catch (err) {
+        } catch (err: unknown) {
           emitSessionRefreshFailure(err instanceof Error ? err.message : 'network error')
         }
       })
@@ -658,7 +658,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cacheUser(null)
         try {
           localStorage.removeItem(AUTH_USER_CACHE_VALIDATED_KEY)
-        } catch (e) { console.warn('[auth] failed to clear cached user validation key:', e) }
+        } catch (e: unknown) { console.warn('[auth] failed to clear cached user validation key:', e) }
         document.getElementById('session-expiry-warning')?.remove()
         // Only redirect if we're not already on the login page to avoid a loop
         if (!window.location.pathname.startsWith('/login')) {

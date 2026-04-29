@@ -93,7 +93,7 @@ export function RequestApprovalModal({
       const data = await res.json() as { html_url: string }
       setIssueUrl(data.html_url)
       showToast('Approval request created on GitHub', 'success')
-    } catch (err) {
+    } catch (err: unknown) {
       showToast(`Network error: ${err instanceof Error ? err.message : 'unknown'}`, 'error')
     } finally {
       setSubmitting(false)

@@ -218,7 +218,7 @@ async function fetchSingleCluster(cluster: string): Promise<TrivyClusterStatus> 
       totalReports,
       scannedImages: imageSet.size,
       images: topImages }
-  } catch (err) {
+  } catch (err: unknown) {
     const isDemoError = err instanceof Error && err.message.includes('demo mode')
     if (!isDemoError) {
       console.error(`[useTrivy] Error fetching from ${cluster}:`, err)

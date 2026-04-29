@@ -156,7 +156,7 @@ async function agentFetch<T>(path: string, cluster: string, namespace?: string):
       throw new Error(classified)
     }
     return await res.json()
-  } catch (err) {
+  } catch (err: unknown) {
     clearTimeout(tid)
     console.warn(`[kagenti] fetch failed for ${path} (cluster: ${cluster}):`, err)
     // If already classified (from !res.ok branch), re-throw as-is

@@ -56,7 +56,7 @@ export const OIDCDashboardContent = memo(function OIDCDashboardContent() {
       setSummary(await smRes.json())
       setProviders(await pRes.json())
       setSessions(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load OIDC data')
     } finally {
       setLoading(false)

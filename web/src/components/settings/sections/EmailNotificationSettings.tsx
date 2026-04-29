@@ -78,7 +78,7 @@ export function EmailNotificationSettings({
         emailPassword: config.emailPassword,
       })
       setTestResult({ type: 'email', success: true, message: t('settings.notifications.email.testSuccess') })
-    } catch (error) {
+    } catch (error: unknown) {
       setTestResult({
         type: 'email',
         success: false,

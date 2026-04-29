@@ -105,7 +105,7 @@ function parseYamlDocuments(text: string): { resources: ParsedResource[]; errors
 
       resources.push({ kind, name, namespace, image })
     }
-  } catch (err) {
+  } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     errors.push(`YAML parse error: ${message}`)
   }

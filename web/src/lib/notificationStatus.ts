@@ -30,7 +30,7 @@ export function setBrowserNotifVerified(verified: boolean): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ verified, at: Date.now() }))
     return true
-  } catch (e) {
+  } catch (e: unknown) {
     // Common causes: QuotaExceededError, SecurityError (private browsing
     // with storage disabled), or browser storage policies. Log so the
     // failure isn't completely silent for users / support.

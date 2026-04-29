@@ -486,7 +486,7 @@ export function usePods(cluster?: string, namespace?: string, sortBy: 'restarts'
       setLastUpdated(now)
       setConsecutiveFailures(0)
       setLastRefresh(now)
-    } catch (err) {
+    } catch (err: unknown) {
       // Ignore AbortError — expected when cluster/namespace changes during a fetch
       if (err instanceof DOMException && err.name === 'AbortError') return
       // Keep stale data on error — only fall back to demo data when demo mode is active
@@ -657,7 +657,7 @@ export function useAllPods(cluster?: string, namespace?: string, forceLive = fal
       setError(null)
       setClusterErrors(collectedErrors)
       setLastUpdated(now)
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to fetch pods'
       console.warn('[useAllPods] Fetch failed:', message)
@@ -831,7 +831,7 @@ export function usePodIssues(cluster?: string, namespace?: string): UsePodIssues
           setIsRefreshing(false)
         }
         return
-      } catch (proxyErr) {
+      } catch (proxyErr: unknown) {
         // kubectl proxy failed, fall through to SSE
         console.debug('[usePodIssues] kubectl proxy failed, falling back to SSE:', proxyErr)
       }
@@ -867,7 +867,7 @@ export function usePodIssues(cluster?: string, namespace?: string): UsePodIssues
       setLastUpdated(now)
       setConsecutiveFailures(0)
       setLastRefresh(now)
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to fetch pod issues'
       console.warn('[usePodIssues] Fetch failed:', message)
@@ -1030,7 +1030,7 @@ export function useDeploymentIssues(cluster?: string, namespace?: string): UseDe
       setLastUpdated(now)
       setConsecutiveFailures(0)
       setLastRefresh(now)
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setConsecutiveFailures(prev => prev + 1)
       setLastRefresh(new Date())
@@ -1209,7 +1209,7 @@ export function useDeployments(cluster?: string, namespace?: string): UseDeploym
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent unavailable — fall through to kubectl proxy
         console.debug('[useDeployments] Agent fetch failed, falling back to kubectl proxy:', agentErr)
       }
@@ -1244,7 +1244,7 @@ export function useDeployments(cluster?: string, namespace?: string): UseDeploym
           }
           return
         }
-      } catch (proxyErr) {
+      } catch (proxyErr: unknown) {
         // kubectl proxy unavailable — fall through to REST API
         console.debug('[useDeployments] kubectl proxy failed, falling back to REST API:', proxyErr)
       }
@@ -1284,7 +1284,7 @@ export function useDeployments(cluster?: string, namespace?: string): UseDeploym
       setConsecutiveFailures(0)
       setLastRefresh(now)
       deploymentsCache = { data: newDeployments, timestamp: now, key: cacheKey }
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch deployments'
       console.error('[useDeployments] All fetch sources failed:', message, err)
       setConsecutiveFailures(prev => prev + 1)
@@ -1380,7 +1380,7 @@ export function useJobs(cluster?: string, namespace?: string): UseJobsResult {
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to SSE
         console.debug('[useJobs] Agent fetch failed, falling back to SSE:', agentErr)
       }
@@ -1409,7 +1409,7 @@ export function useJobs(cluster?: string, namespace?: string): UseJobsResult {
       setJobs(result)
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to fetch jobs'
       console.warn('[useJobs] Fetch failed:', message)
@@ -1462,7 +1462,7 @@ export function useHPAs(cluster?: string, namespace?: string): UseHPAsResult {
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to REST API
         console.debug('[useHPAs] Agent fetch failed, falling back to REST API:', agentErr)
       }
@@ -1475,7 +1475,7 @@ export function useHPAs(cluster?: string, namespace?: string): UseHPAsResult {
       setHPAs(data.hpas || [])
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch HPAs'
       if (err instanceof Error && err.name === 'UnauthenticatedError') { console.debug('[useHPAs] Skipped — no auth token') } else { console.error('[useHPAs] Fetch failed:', message, err) }
       setError(message)
@@ -1527,7 +1527,7 @@ export function useReplicaSets(cluster?: string, namespace?: string): UseReplica
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to REST API
         console.debug('[useReplicaSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
@@ -1540,7 +1540,7 @@ export function useReplicaSets(cluster?: string, namespace?: string): UseReplica
       setReplicaSets(data.replicasets || [])
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch ReplicaSets'
       if (err instanceof Error && err.name === 'UnauthenticatedError') { console.debug('[useReplicaSets] Skipped — no auth token') } else { console.error('[useReplicaSets] Fetch failed:', message, err) }
       setError(message)
@@ -1590,7 +1590,7 @@ export function useStatefulSets(cluster?: string, namespace?: string): UseStatef
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to REST API
         console.debug('[useStatefulSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
@@ -1603,7 +1603,7 @@ export function useStatefulSets(cluster?: string, namespace?: string): UseStatef
       setStatefulSets(data.statefulsets || [])
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch StatefulSets'
       if (err instanceof Error && err.name === 'UnauthenticatedError') { console.debug('[useStatefulSets] Skipped — no auth token') } else { console.error('[useStatefulSets] Fetch failed:', message, err) }
       setError(message)
@@ -1653,7 +1653,7 @@ export function useDaemonSets(cluster?: string, namespace?: string): UseDaemonSe
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to REST API
         console.debug('[useDaemonSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
@@ -1666,7 +1666,7 @@ export function useDaemonSets(cluster?: string, namespace?: string): UseDaemonSe
       setDaemonSets(data.daemonsets || [])
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch DaemonSets'
       if (err instanceof Error && err.name === 'UnauthenticatedError') { console.debug('[useDaemonSets] Skipped — no auth token') } else { console.error('[useDaemonSets] Fetch failed:', message, err) }
       setError(message)
@@ -1716,7 +1716,7 @@ export function useCronJobs(cluster?: string, namespace?: string): UseCronJobsRe
           reportAgentDataSuccess()
           return
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         // Agent failed — fall through to REST API
         console.debug('[useCronJobs] Agent fetch failed, falling back to REST API:', agentErr)
       }
@@ -1729,7 +1729,7 @@ export function useCronJobs(cluster?: string, namespace?: string): UseCronJobsRe
       setCronJobs(data.cronjobs || [])
       setError(null)
       setConsecutiveFailures(0)
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch CronJobs'
       if (err instanceof Error && err.name === 'UnauthenticatedError') { console.debug('[useCronJobs] Skipped — no auth token') } else { console.error('[useCronJobs] Fetch failed:', message, err) }
       setError(message)
@@ -1780,7 +1780,7 @@ export function usePodLogs(cluster: string, namespace: string, pod: string, cont
       params.append('tail', tail.toString())
       const { data } = await api.get<{ logs: string }>(`${LOCAL_AGENT_HTTP_URL}/pods/logs?${params}`)
       setLogs(data.logs || '')
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch logs')
       setLogs('')
     } finally {

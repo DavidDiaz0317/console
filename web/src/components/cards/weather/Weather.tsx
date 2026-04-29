@@ -237,7 +237,7 @@ export function Weather({ config }: { config?: WeatherConfig }) {
         setCitySearchResults([])
         setShowCityDropdown(false)
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('City search error:', error)
       showToast(t('errors.citySearchFailed', 'City search failed. Please try again.'), 'error')
       setCitySearchResults([])

@@ -98,7 +98,7 @@ export const SBOMDashboardContent = memo(function SBOMDashboardContent() {
       setPackages(await pRes.json())
       setVulnerabilities(await vRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

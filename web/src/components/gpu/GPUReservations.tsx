@@ -473,7 +473,7 @@ export function GPUReservations() {
     try {
       await apiDeleteReservation(deleteConfirmId)
       showToast('GPU reservation deleted', 'success')
-    } catch (err) {
+    } catch (err: unknown) {
       showToast(`Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
     } finally {
       setIsDeleting(false)
