@@ -64,12 +64,12 @@ export function NamespaceOverview({ config }: NamespaceOverviewProps) {
   // Persist cluster selection so it survives page navigation (#3115)
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY_NS_OVERVIEW_CLUSTER, selectedCluster) } catch (e) { console.warn('[NamespaceOverview] failed to persist cluster selection:', e); showToast(t('errors.storagePersistFailed'), 'warning') }
-  }, [selectedCluster])
+  }, [selectedCluster, showToast, t])
 
   // Persist namespace selection so it survives page navigation (#3115)
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY_NS_OVERVIEW_NAMESPACE, selectedNamespace) } catch (e) { console.warn('[NamespaceOverview] failed to persist namespace selection:', e); showToast(t('errors.storagePersistFailed'), 'warning') }
-  }, [selectedNamespace])
+  }, [selectedNamespace, showToast, t])
 
   // Auto-select first available cluster when none is selected (#3113 — works in both demo and live mode)
   useEffect(() => {
