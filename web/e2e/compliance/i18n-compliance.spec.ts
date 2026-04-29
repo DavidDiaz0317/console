@@ -178,6 +178,13 @@ async function setupMockServer(page: Page) {
 test.describe.configure({ mode: 'serial' })
 
 test('i18n compliance — internationalization audit', async ({ page }) => {
+  // This test navigates 13+ routes (Phase 5c spot-checks + Phase 6 multi-page)
+  // and performs DOM evaluations on each. The default 60s timeout is insufficient
+  // in CI where page loads are slower. Use 180s to match the global CI retry budget.
+  const CI_AUDIT_TIMEOUT_MS = 180_000
+  const LOCAL_AUDIT_TIMEOUT_MS = 90_000
+  test.setTimeout(IS_CI ? CI_AUDIT_TIMEOUT_MS : LOCAL_AUDIT_TIMEOUT_MS)
+
   const checks: I18nCheck[] = []
 
   function addCheck(
