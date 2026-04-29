@@ -44,7 +44,7 @@ const workloadsSubscribers = new Set<WorkloadsSubscriber>()
 
 // Notify all subscribers of cache reset
 function notifyWorkloadsSubscribers() {
-  workloadsSubscribers.forEach(subscriber => subscriber(workloadsSharedState))
+  Array.from(workloadsSubscribers).forEach(subscriber => subscriber(workloadsSharedState))
 }
 
 // Subscribe to workloads cache changes (for hooks that need reactive updates)

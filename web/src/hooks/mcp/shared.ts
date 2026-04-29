@@ -371,14 +371,14 @@ export const clusterSubscribers: Set<ClusterSubscriber> = new Set<ClusterSubscri
 export function notifyClusterDataSubscribers() {
   const snapshot = clusterCache
   startTransition(() => {
-    dataSubscribers.forEach(subscriber => subscriber(snapshot))
+    Array.from(dataSubscribers).forEach(subscriber => subscriber(snapshot))
   })
 }
 
 /** Notify only UI subscribers, urgently (outside startTransition). */
 export function notifyClusterUISubscribers() {
   const snapshot = clusterCache
-  uiSubscribers.forEach(subscriber => subscriber(snapshot))
+  Array.from(uiSubscribers).forEach(subscriber => subscriber(snapshot))
 }
 
 /**
@@ -397,11 +397,11 @@ export function notifyClusterUISubscribers() {
 export function notifyClusterSubscribers() {
   const snapshot = clusterCache
   // Urgent leg — UI subscribers + legacy (merged) subscribers.
-  uiSubscribers.forEach(subscriber => subscriber(snapshot))
-  clusterSubscribers.forEach(subscriber => subscriber(snapshot))
+  Array.from(uiSubscribers).forEach(subscriber => subscriber(snapshot))
+  Array.from(clusterSubscribers).forEach(subscriber => subscriber(snapshot))
   // Interruptible leg — only the heavy-data subscribers.
   startTransition(() => {
-    dataSubscribers.forEach(subscriber => subscriber(snapshot))
+    Array.from(dataSubscribers).forEach(subscriber => subscriber(snapshot))
   })
 }
 
@@ -513,7 +513,7 @@ export function notifyClusterSubscribersDebounced() {
   }
   notifyTimeout = setTimeout(() => {
     const snapshot = clusterCache
-    clusterSubscribers.forEach(subscriber => subscriber(snapshot))
+    Array.from(clusterSubscribers).forEach(subscriber => subscriber(snapshot))
     notifyClusterDataSubscribers()
     notifyTimeout = null
   }, CLUSTER_NOTIFY_DEBOUNCE_MS)
@@ -552,7 +552,7 @@ export function updateClusterCache(updates: Partial<ClusterCache>) {
   // call so the pre-split contract (one notify per update) is preserved.
   if (touchesUI || touchesData) {
     const snapshot = clusterCache
-    clusterSubscribers.forEach(subscriber => subscriber(snapshot))
+    Array.from(clusterSubscribers).forEach(subscriber => subscriber(snapshot))
   } else {
     // If the updates somehow touch neither slice, fall back to notifying
     // every subscriber so nothing gets silently dropped.
