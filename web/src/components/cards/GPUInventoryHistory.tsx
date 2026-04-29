@@ -12,6 +12,7 @@ import { CardClusterFilter } from '../../lib/cards/CardComponents'
 import { Skeleton, SkeletonStats } from '../ui/Skeleton'
 import { useCardLoadingState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { cn } from '../../lib/cn'
 import {
   CHART_HEIGHT_STANDARD,
@@ -193,12 +194,11 @@ function getTypeColor(index: number): string {
 // ---------------------------------------------------------------------------
 
 /** Extracted chart sub-component to keep the main component readable */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function GPUInventoryChart({ displayChartData, chartMode, chartGPUTypes, t }: {
   displayChartData: GPUHistoryDataPoint[]
   chartMode: ChartMode
   chartGPUTypes: string[]
-  t: any
+  t: TFunction<readonly ['cards', 'common']>
 }) {
   const chartOption = useMemo(() => {
     const timeData = (displayChartData || []).map(d => d.time)
