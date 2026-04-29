@@ -64,6 +64,10 @@ func (s *Server) handleEventsStreamSSE(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
+	// Override the server-level WriteTimeout for this long-lived SSE stream.
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Now().Add(sseWatchTimeout + time.Minute))
+
 	client, err := s.k8sClient.GetClient(cluster)
 	if err != nil {
 		sseWriteError(w, flusher, fmt.Sprintf("failed to get client for cluster %s: %v", cluster, err))
@@ -94,6 +98,7 @@ func (s *Server) handleEventsStreamSSE(w http.ResponseWriter, r *http.Request) {
 		case <-heartbeat.C:
 			// Keepalive comment — ignored by SSE clients but prevents
 			// proxies/load-balancers from closing idle connections.
+			rc.SetWriteDeadline(time.Now().Add(sseWatchTimeout + time.Minute))
 			fmt.Fprintf(w, ":heartbeat\n\n")
 			flusher.Flush()
 

@@ -467,6 +467,7 @@ func (s *Server) handlePodsHTTP(w http.ResponseWriter, r *http.Request) {
 // pods SSE stream handler. Each cluster fetch is capped independently so one
 // slow cluster does not block the rest of the stream.
 const podsStreamPerClusterTimeout = 15 * time.Second
+const podsStreamSSETimeout = 2 * time.Minute
 
 // handlePodsStreamSSE streams pod data per cluster via Server-Sent Events.
 // The frontend subscribes to this endpoint for progressive multi-cluster pod
@@ -506,6 +507,10 @@ func (s *Server) handlePodsStreamSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
+
+	// Override the server-level WriteTimeout for this SSE stream.
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Now().Add(podsStreamSSETimeout))
 
 	bw := bufio.NewWriter(w)
 
