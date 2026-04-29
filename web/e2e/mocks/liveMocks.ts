@@ -528,6 +528,7 @@ export async function setLiveColdMode(page: Page, user?: typeof mockUser): Promi
         localStorage.setItem('demo-user-onboarded', 'true')
         localStorage.setItem('kubestellar-console-tour-completed', 'true')
         localStorage.setItem('kc-user-cache', JSON.stringify(usr))
+        localStorage.setItem('kc-agent-setup-dismissed', 'true')
         localStorage.setItem('kc-backend-status', JSON.stringify({ available: true, timestamp: Date.now() }))
         localStorage.setItem('kc-sqlite-migrated', '2')
 
@@ -585,6 +586,7 @@ export async function setMode(page: Page, mode: 'demo' | 'live' | 'live+cache', 
     'kc-user-cache': JSON.stringify(u),
     'kc-backend-status': JSON.stringify({ available: true, timestamp: Date.now() }),
     'kc-sqlite-migrated': '2',
+    'kc-agent-setup-dismissed': 'true',
   }
 
   if (mode === 'live+cache') {
