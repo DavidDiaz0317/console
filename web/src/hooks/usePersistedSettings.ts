@@ -8,7 +8,7 @@ import {
   SETTINGS_CHANGED_EVENT } from '../lib/settingsSync'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 import { agentFetch } from './mcp/shared'
-import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, FETCH_EXTERNAL_TIMEOUT_MS } from '../lib/constants/network'
 import { isNetlifyDeployment } from '../lib/demoMode'
 import { safeRevokeObjectURL } from '../lib/download'
 
@@ -27,7 +27,7 @@ async function settingsFetch<T>(path: string, options?: RequestInit): Promise<T>
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest', // #10000 CSRF defence-in-depth
       ...options?.headers },
-    signal: options?.signal ?? AbortSignal.timeout(15000) })
+    signal: options?.signal ?? AbortSignal.timeout(FETCH_EXTERNAL_TIMEOUT_MS) })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   // Use .catch() on .json() to prevent Firefox from firing unhandledrejection
   // before the caller's try/catch processes the rejection (microtask timing issue).
@@ -129,7 +129,7 @@ export function usePersistedSettings() {
       await settingsFetch('/settings/import', {
         method: 'PUT',
         body: text,
-        signal: AbortSignal.timeout(10000) })
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       // Reload settings from backend after import
       const data = await settingsFetch<AllSettings>('/settings')
       if (data) {

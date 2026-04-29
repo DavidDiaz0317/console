@@ -8,7 +8,7 @@ import type {
   UpdateProgress } from '../types/updates'
 import { emitSessionContext } from '../lib/analytics'
 import { UPDATE_STORAGE_KEYS } from '../types/updates'
-import { FETCH_EXTERNAL_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, FETCH_EXTERNAL_TIMEOUT_MS } from '../lib/constants/network'
 import { MS_PER_MINUTE } from '../lib/constants/time'
 import { useLocalAgent } from './useLocalAgent'
 
@@ -132,7 +132,7 @@ function useVersionCheckCore() {
       console.debug('[version-check] Fetching auto-update status from kc-agent...')
       const resp = await fetch('/api/agent/auto-update/status', {
         credentials: 'include',
-        signal: AbortSignal.timeout(10000) })
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       if (resp.ok) {
         const data = await safeJsonParse<AutoUpdateStatus>(resp, 'Auto-update status')
         console.debug('[version-check] Auto-update status:', data)
@@ -247,7 +247,7 @@ function useVersionCheckCore() {
       console.debug('[version-check] Fetching commits:', currentSHA.slice(0, 7), '→', latestSHA.slice(0, 7))
       const resp = await fetch(
         `/api/github/repos/kubestellar/console/compare/${currentSHA}...${latestSHA}`,
-        { headers, signal: AbortSignal.timeout(10000) }
+        { headers, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) }
       )
       if (resp.ok) {
         const data = await safeJsonParse<{ commits?: Array<{ sha: string; commit: { message: string; author: { name: string; date: string } } }> }>(resp, 'GitHub compare')
