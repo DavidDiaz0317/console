@@ -1,18 +1,15 @@
 /**
  * useCachedAttestation — Hook for the Runtime Attestation Score card (#9987).
  *
- * Follows the useCached* caching contract from CLAUDE.md:
- *   - Returns: data, isLoading, isRefreshing, isDemoData, isFailed,
- *     consecutiveFailures, lastRefresh, refetch.
- *   - isDemoData is suppressed while isLoading is true (so CardWrapper shows
- *     a skeleton instead of flashing demo data).
+ * Uses the createCachedHook factory for zero-boilerplate caching.
+ * Returns CachedHookResult<AttestationData> — consumers alias
+ * `isDemoFallback` as `isDemoData` in their destructure.
  *
  * Data source: GET /api/attestation/score — returns per-cluster scores from
  * four CNCF signals (TUF, SPIFFE/SPIRE, Kyverno, privilege posture).
  */
 
-import { useCache, type RefreshCategory } from '../lib/cache'
-import { useDemoMode } from './useDemoMode'
+import { createCachedHook } from '../lib/cache'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 
 // ---------------------------------------------------------------------------
@@ -152,48 +149,12 @@ async function fetchAttestationScore(): Promise<AttestationData> {
 }
 
 // ---------------------------------------------------------------------------
-// Hook return type
+// Hook (factory)
 // ---------------------------------------------------------------------------
 
-export interface UseCachedAttestationResult {
-  data: AttestationData
-  isLoading: boolean
-  isRefreshing: boolean
-  isDemoData: boolean
-  isFailed: boolean
-  consecutiveFailures: number
-  lastRefresh: number | null
-  refetch: () => Promise<void>
-}
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
-export function useCachedAttestation(): UseCachedAttestationResult {
-  const { isDemoMode } = useDemoMode()
-
-  const result = useCache<AttestationData>({
-    key: CACHE_KEY_ATTESTATION,
-    category: 'default' as RefreshCategory,
-    initialData: INITIAL_DATA,
-    demoData: DEMO_DATA,
-    persist: true,
-    fetcher: fetchAttestationScore,
-  })
-
-  // Never surface demo data during loading (CLAUDE.md rule).
-  const isDemoData = (isDemoMode || result.isDemoFallback) && !result.isLoading
-  const isRefreshing = isDemoMode ? false : result.isRefreshing
-
-  return {
-    data: isDemoMode ? DEMO_DATA : result.data,
-    isLoading: isDemoMode ? false : result.isLoading,
-    isRefreshing,
-    isDemoData,
-    isFailed: isDemoMode ? false : result.isFailed,
-    consecutiveFailures: isDemoMode ? 0 : result.consecutiveFailures,
-    lastRefresh: isDemoMode ? Date.now() : result.lastRefresh,
-    refetch: result.refetch,
-  }
-}
+export const useCachedAttestation = createCachedHook<AttestationData>({
+  key: CACHE_KEY_ATTESTATION,
+  initialData: INITIAL_DATA,
+  demoData: DEMO_DATA,
+  fetcher: fetchAttestationScore,
+})

@@ -2,24 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 const mockUseCache = vi.fn()
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
-  useCache: (args: unknown) => mockUseCache(args),
-}))
-
-const mockIsDemoMode = vi.fn(() => false)
-vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
-  useDemoMode: () => ({ isDemoMode: mockIsDemoMode() }),
-  isDemoModeForced: () => false,
-  canToggleDemoMode: () => true,
-  isNetlifyDeployment: () => false,
-  isDemoToken: () => false,
-  hasRealToken: () => true,
-  setDemoToken: vi.fn(),
-  getDemoMode: () => false,
-  setGlobalDemoMode: vi.fn(),
-}))
+vi.mock('../../lib/cache', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../lib/cache')>()
+    return {
+        ...actual,
+        useCache: (args: unknown) => mockUseCache(args),
+    }
+})
 
 import {
   useCachedAttestation,
@@ -40,22 +29,23 @@ describe('useCachedAttestation', () => {
     isLoading: false,
     isRefreshing: false,
     isDemoFallback: false,
+    error: null,
     isFailed: false,
     consecutiveFailures: 0,
     lastRefresh: 123456789,
     refetch: vi.fn(),
+    clearAndRefetch: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsDemoMode.mockReturnValue(false)
     mockUseCache.mockReturnValue({ ...defaultCacheReturn })
   })
 
-  it('returns data from cache when not in demo mode', () => {
+  it('returns data from cache', () => {
     const { result } = renderHook(() => useCachedAttestation())
     expect(result.current.data).toEqual(emptyData)
-    expect(result.current.isDemoData).toBe(false)
+    expect(result.current.isDemoFallback).toBe(false)
     expect(result.current.isLoading).toBe(false)
   })
 
@@ -66,34 +56,24 @@ describe('useCachedAttestation', () => {
     )
   })
 
-  it('returns demo data in demo mode', () => {
-    mockIsDemoMode.mockReturnValue(true)
-    const { result } = renderHook(() => useCachedAttestation())
-    expect(result.current.isDemoData).toBe(true)
-    expect(result.current.data.clusters.length).toBeGreaterThan(0)
-    expect(result.current.isLoading).toBe(false)
-    expect(result.current.isRefreshing).toBe(false)
-    expect(result.current.isFailed).toBe(false)
-    expect(result.current.consecutiveFailures).toBe(0)
-  })
-
-  it('isDemoData is true when isDemoFallback is true and not loading', () => {
+  it('surfaces isDemoFallback when useCache reports demo fallback', () => {
     mockUseCache.mockReturnValue({
       ...defaultCacheReturn,
       isDemoFallback: true,
     })
     const { result } = renderHook(() => useCachedAttestation())
-    expect(result.current.isDemoData).toBe(true)
+    expect(result.current.isDemoFallback).toBe(true)
   })
 
-  it('isDemoData is false during loading even when isDemoFallback is true', () => {
+  it('isDemoFallback is false during loading even when demo data exists', () => {
     mockUseCache.mockReturnValue({
       ...defaultCacheReturn,
       isLoading: true,
       isDemoFallback: true,
     })
     const { result } = renderHook(() => useCachedAttestation())
-    expect(result.current.isDemoData).toBe(false)
+    // Factory applies isDemoFallback && !isLoading
+    expect(result.current.isDemoFallback).toBe(false)
   })
 
   it('respects isLoading state', () => {
@@ -105,23 +85,13 @@ describe('useCachedAttestation', () => {
     expect(result.current.isLoading).toBe(true)
   })
 
-  it('respects isRefreshing state when not in demo mode', () => {
+  it('respects isRefreshing state', () => {
     mockUseCache.mockReturnValue({
       ...defaultCacheReturn,
       isRefreshing: true,
     })
     const { result } = renderHook(() => useCachedAttestation())
     expect(result.current.isRefreshing).toBe(true)
-  })
-
-  it('isRefreshing is always false in demo mode', () => {
-    mockIsDemoMode.mockReturnValue(true)
-    mockUseCache.mockReturnValue({
-      ...defaultCacheReturn,
-      isRefreshing: true,
-    })
-    const { result } = renderHook(() => useCachedAttestation())
-    expect(result.current.isRefreshing).toBe(false)
   })
 
   it('exposes failure state', () => {

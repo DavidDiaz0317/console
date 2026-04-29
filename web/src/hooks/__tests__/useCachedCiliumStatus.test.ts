@@ -2,56 +2,54 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 const mockUseCache = vi.fn()
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
-    useCache: (args: any) => mockUseCache(args),
-}))
-
-const mockIsDemoMode = vi.fn(() => false)
-vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
-    useDemoMode: () => ({ isDemoMode: mockIsDemoMode() }),
-    isDemoModeForced: () => false,
-    canToggleDemoMode: () => true,
-    isNetlifyDeployment: () => false,
-    isDemoToken: () => false,
-    hasRealToken: () => true,
-    setDemoToken: vi.fn(),
-    getDemoMode: () => false,
-    setGlobalDemoMode: vi.fn(),
-}))
+vi.mock('../../lib/cache', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../lib/cache')>()
+    return {
+        ...actual,
+        useCache: (args: unknown) => mockUseCache(args),
+    }
+})
 
 import { useCachedCiliumStatus } from '../useCachedCiliumStatus'
 
 describe('useCachedCiliumStatus', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mockIsDemoMode.mockReturnValue(false)
         mockUseCache.mockReturnValue({
             data: { status: 'Healthy', nodes: [] },
             isLoading: false,
             isRefreshing: false,
             isDemoFallback: false,
+            error: null,
             isFailed: false,
             consecutiveFailures: 0,
             lastRefresh: 123456789,
             refetch: vi.fn(),
+            clearAndRefetch: vi.fn(),
         })
     })
 
-    it('returns data from cache when not in demo mode', () => {
+    it('returns data from cache', () => {
         const { result } = renderHook(() => useCachedCiliumStatus())
         expect(result.current.data.status).toBe('Healthy')
-        expect(result.current.isDemoData).toBe(false)
+        expect(result.current.isDemoFallback).toBe(false)
     })
 
-    it('returns demo data when demo mode is enabled', () => {
-        mockIsDemoMode.mockReturnValue(true)
+    it('surfaces isDemoFallback when useCache reports demo fallback', () => {
+        mockUseCache.mockReturnValue({
+            data: { status: 'Healthy', nodes: [] },
+            isLoading: false,
+            isRefreshing: false,
+            isDemoFallback: true,
+            error: null,
+            isFailed: false,
+            consecutiveFailures: 0,
+            lastRefresh: 123456789,
+            refetch: vi.fn(),
+            clearAndRefetch: vi.fn(),
+        })
         const { result } = renderHook(() => useCachedCiliumStatus())
-        expect(result.current.isDemoData).toBe(true)
-        expect(result.current.data.nodes.length).toBeGreaterThan(0)
-        // Check that one of the demo nodes is present (e.g. kind-worker)
-        expect(result.current.data.nodes.some((n: any) => n.name.includes('node') || n.name.includes('kind'))).toBe(true)
+        expect(result.current.isDemoFallback).toBe(true)
     })
 
     it('respects isLoading state', () => {
@@ -60,12 +58,32 @@ describe('useCachedCiliumStatus', () => {
             isLoading: true,
             isRefreshing: false,
             isDemoFallback: false,
+            error: null,
             isFailed: false,
             consecutiveFailures: 0,
             lastRefresh: null,
             refetch: vi.fn(),
+            clearAndRefetch: vi.fn(),
         })
         const { result } = renderHook(() => useCachedCiliumStatus())
         expect(result.current.isLoading).toBe(true)
+    })
+
+    it('isDemoFallback is false during loading even when demo data exists', () => {
+        mockUseCache.mockReturnValue({
+            data: { status: 'Healthy', nodes: [] },
+            isLoading: true,
+            isRefreshing: false,
+            isDemoFallback: true,
+            error: null,
+            isFailed: false,
+            consecutiveFailures: 0,
+            lastRefresh: null,
+            refetch: vi.fn(),
+            clearAndRefetch: vi.fn(),
+        })
+        const { result } = renderHook(() => useCachedCiliumStatus())
+        // Factory applies isDemoFallback && !isLoading
+        expect(result.current.isDemoFallback).toBe(false)
     })
 })
