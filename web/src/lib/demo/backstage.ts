@@ -15,7 +15,7 @@ import { MS_PER_MINUTE, MS_PER_HOUR } from '../constants/time'
 // ---------------------------------------------------------------------------
 
 /** Overall health roll-up for the Backstage instance. */
-export type BackstageHealth = 'healthy' | 'degraded' | 'not-installed'
+export type BackstageHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 /** Status of a single Backstage plugin install. */
 export type BackstagePluginStatus = 'enabled' | 'disabled' | 'error'

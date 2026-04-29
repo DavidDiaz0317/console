@@ -24,7 +24,7 @@ import { MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY } from '../../../lib/constants/t
 // Types
 // ---------------------------------------------------------------------------
 
-export type VolcanoHealth = 'healthy' | 'degraded' | 'not-installed'
+export type VolcanoHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 export type VolcanoJobPhase =
   | 'Pending'
   | 'Running'

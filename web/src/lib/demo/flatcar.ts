@@ -25,7 +25,7 @@ import { MS_PER_MINUTE, MS_PER_HOUR } from '../constants/time'
 // Types
 // ---------------------------------------------------------------------------
 
-export type FlatcarHealth = 'healthy' | 'degraded' | 'not-installed'
+export type FlatcarHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 export type FlatcarChannel = 'stable' | 'beta' | 'alpha' | 'lts'
 export type FlatcarNodeState =
   | 'up-to-date'
