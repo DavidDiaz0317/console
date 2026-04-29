@@ -499,6 +499,9 @@ func (s *Server) handleSetKey(w http.ResponseWriter, r *http.Request) {
 	if req.Model != "" {
 		if err := cm.SetModel(req.Provider, req.Model); err != nil {
 			slog.Error("failed to save model preference", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(protocol.ErrorPayload{Code: "save_failed", Message: "failed to save model preference"})
+			return
 		}
 	}
 
