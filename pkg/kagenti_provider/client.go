@@ -12,6 +12,15 @@ import (
 	"time"
 )
 
+// drainAndClose fully drains and closes an HTTP response body.
+// Draining before close allows the underlying TCP connection to be reused.
+func drainAndClose(body io.ReadCloser) {
+	if body != nil {
+		io.Copy(io.Discard, body)
+		body.Close()
+	}
+}
+
 const (
 	defaultClientTimeout        = 30 * time.Second
 	defaultDetectTimeout        = 3 * time.Second
@@ -142,7 +151,7 @@ func (c *KagentiClient) StatusWithContext(ctx context.Context) (bool, error) {
 			if err != nil {
 				continue
 			}
-			resp.Body.Close()
+			drainAndClose(resp.Body)
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				return true, nil
 			}
@@ -159,7 +168,7 @@ func (c *KagentiClient) StatusWithContext(ctx context.Context) (bool, error) {
 		if err != nil {
 			continue
 		}
-		resp.Body.Close()
+		drainAndClose(resp.Body)
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return true, nil
 		}
@@ -197,7 +206,7 @@ func (c *KagentiClient) ListAgentsWithContext(ctx context.Context) ([]AgentInfo,
 					name = card.Name
 				}
 			}
-			resp.Body.Close()
+			drainAndClose(resp.Body)
 			if name != "" {
 				break
 			}
@@ -231,13 +240,13 @@ func (c *KagentiClient) ListAgentsWithContext(ctx context.Context) ([]AgentInfo,
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			drainAndClose(resp.Body)
 			lastErr = fmt.Errorf("list agents at %s returned %d: %s", path, resp.StatusCode, string(body))
 			continue
 		}
 
 		agents, err := decodeAgentList(resp.Body)
-		resp.Body.Close()
+		drainAndClose(resp.Body)
 		if err != nil {
 			lastErr = fmt.Errorf("failed to decode agent list at %s: %w", path, err)
 			continue
@@ -282,7 +291,7 @@ func (c *KagentiClient) Discover(namespace, agentName string) (*AgentCard, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover agent %s/%s: %w", namespace, agentName, err)
 	}
-	defer resp.Body.Close()
+	defer drainAndClose(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -333,7 +342,7 @@ func (c *KagentiClient) Invoke(ctx context.Context, namespace, agentName, messag
 			}
 
 			errBody, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			drainAndClose(resp.Body)
 			lastErr = fmt.Errorf("direct invoke returned %d: %s", resp.StatusCode, string(errBody))
 		}
 
@@ -388,7 +397,7 @@ func (c *KagentiClient) Invoke(ctx context.Context, namespace, agentName, messag
 		}
 
 		errBody, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		drainAndClose(resp.Body)
 		lastErr = fmt.Errorf("kagenti invoke at %s returned %d: %s", url, resp.StatusCode, string(errBody))
 	}
 
@@ -464,7 +473,7 @@ func (c *KagentiClient) DetectWithContext(ctx context.Context) string {
 			if err != nil {
 				continue
 			}
-			resp.Body.Close()
+			drainAndClose(resp.Body)
 			if resp.StatusCode >= 200 && resp.StatusCode < 400 {
 				return base
 			}
