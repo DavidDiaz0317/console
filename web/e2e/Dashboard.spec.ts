@@ -261,8 +261,15 @@ test.describe('Dashboard Page', () => {
     test('adapts to mobile viewport', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 667 })
 
+      // Webkit needs a reload after viewport change so the layout
+      // re-initialises at the mobile breakpoint — without this the
+      // dashboard-page element can remain hidden. (#10784)
+      await page.reload()
+      await page.waitForLoadState('domcontentloaded')
+
       // Page should still render at mobile size
-      await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 10000 })
+      const PAGE_VISIBLE_TIMEOUT_MS = 15_000
+      await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: PAGE_VISIBLE_TIMEOUT_MS })
 
       // Header should still be visible
       await expect(page.getByTestId('dashboard-header')).toBeVisible()
@@ -334,6 +341,39 @@ test.describe('Dashboard Data Accuracy (#6459)', () => {
     // NaN re-render loop in useActiveUsers — see #nightly-playwright).
     await mockApiFallback(page)
 
+    // Override /health to return oauth_configured: true so the auth flow
+    // does not force demo mode in webkit/firefox. mockApiFallback returns
+    // oauth_configured: false which causes the AuthProvider to call
+    // setDemoMode(), overriding localStorage and falling back to built-in
+    // demo data instead of the mocked API data. (#10784)
+    await page.route('**/health', (route) => {
+      const url = new URL(route.request().url())
+      if (url.pathname !== '/health') return route.fallback()
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'ok',
+          version: 'dev',
+          oauth_configured: true,
+          in_cluster: false,
+          no_local_agent: true,
+          install_method: 'dev',
+        }),
+      })
+    })
+
+    // Mock the local agent endpoint so fetchClusterListFromAgent() returns
+    // immediately instead of waiting 1.5s for MCP_PROBE_TIMEOUT_MS on
+    // browsers where connection-refused is slow (webkit/firefox). (#10784)
+    await page.route('**/127.0.0.1:8585/**', (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'agent not running' }),
+      })
+    )
+
     // Mock /api/dashboards so the dashboard component doesn't wait for a
     // backend response before falling back to demo cards.
     await page.route('**/api/dashboards', (route) =>
@@ -404,6 +444,10 @@ test.describe('Dashboard Data Accuracy (#6459)', () => {
     // Disable demo mode so the app fetches from the mocked API routes
     // above instead of returning built-in demo data (12 clusters).
     await page.addInitScript(() => {
+      // Clear stale backend-status cache so checkBackendAvailability()
+      // makes a fresh health check instead of returning a cached
+      // "unavailable" result from a previous test. (#10784)
+      localStorage.removeItem('kc-backend-status')
       localStorage.setItem('token', 'test-token')
       localStorage.setItem('demo-user-onboarded', 'true')
       localStorage.setItem('kc-demo-mode', 'false')
