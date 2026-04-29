@@ -117,6 +117,34 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   const { checkPermission } = useCanI()
   const { close: closeDrillDown } = useDrillDown()
 
+  // Track all active WebSocket connections so they can be cleaned up on unmount.
+  // Without this, WS connections opened by async handlers leak if the component
+  // unmounts before the server responds.
+  const activeWsRef = useRef(new Set<WebSocket>())
+
+  /** Create a tracked WebSocket — automatically removed from the set when closed. */
+  const openTrackedWs = useCallback(() => {
+    const ws = openTrackedWs()
+    activeWsRef.current.add(ws)
+    const origClose = ws.close.bind(ws)
+    ws.close = (...args: Parameters<WebSocket['close']>) => {
+      activeWsRef.current.delete(ws)
+      origClose(...args)
+    }
+    return ws
+  }, [])
+
+  // Close all tracked WebSocket connections on unmount
+  useEffect(() => {
+    const wsSet = activeWsRef.current
+    return () => {
+      for (const ws of Array.from(wsSet)) {
+        try { ws.close() } catch { /* already closed */ }
+      }
+      wsSet.clear()
+    }
+  }, [])
+
   // Pod data from the issue
   const status = data.status as string
   const restarts = (data.restarts as number) || 0
@@ -228,7 +256,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
     setDescribeLoading(true)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `describe-${Date.now()}`
 
       ws.onopen = () => {
@@ -295,7 +323,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
     setLogsLoading(true)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `logs-${Date.now()}`
 
       ws.onopen = () => {
@@ -334,7 +362,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
     setEventsLoading(true)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `events-${Date.now()}`
 
       ws.onopen = () => {
@@ -379,7 +407,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
       // Helper to run a kubectl command and get output
       const runKubectl = (args: string[]): Promise<string> => {
         return new Promise((resolve) => {
-          const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+          const ws = openTrackedWs()
           const requestId = `kubectl-${Date.now()}-${Math.random().toString(36).slice(2)}`
           let output = ''
 
@@ -506,7 +534,7 @@ ${annotations ? Object.entries(annotations).map(([k, v]) => `${k}=${v}`).join('\
 `.trim()
 
       // Now request AI analysis via Claude
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `ai-analyze-${Date.now()}`
 
       ws.onopen = () => {
@@ -593,7 +621,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
     setPodStatusLoading(true)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `status-${Date.now()}`
 
       ws.onopen = () => {
@@ -632,7 +660,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
     setYamlLoading(true)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `yaml-${Date.now()}`
 
       ws.onopen = () => {
@@ -784,7 +812,7 @@ Please:
     setDeleteError(null)
 
     try {
-      const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+      const ws = openTrackedWs()
       const requestId = `delete-pod-${Date.now()}`
 
       ws.onopen = () => {
@@ -839,7 +867,7 @@ Please:
     try {
       const runKubectl = (args: string[]): Promise<{ success: boolean; error?: string }> => {
         return new Promise((resolve) => {
-          const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+          const ws = openTrackedWs()
           const requestId = `label-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
           const timeout = setTimeout(() => {
@@ -976,7 +1004,7 @@ Please:
     try {
       const runKubectl = (args: string[]): Promise<{ success: boolean; error?: string }> => {
         return new Promise((resolve) => {
-          const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+          const ws = openTrackedWs()
           const requestId = `annotate-${Date.now()}-${Math.random().toString(36).slice(2)}`
 
           const timeout = setTimeout(() => {
@@ -1112,7 +1140,7 @@ Please:
     try {
       const runKubectl = (args: string[]): Promise<string> => {
         return new Promise((resolve) => {
-          const ws = new WebSocket(appendWsAuthToken(LOCAL_AGENT_WS_URL))
+          const ws = openTrackedWs()
           const requestId = `related-${Date.now()}-${Math.random().toString(36).slice(2)}`
           let output = ''
 
