@@ -570,12 +570,12 @@ func (s *Server) validateAPIKeyValue(provider, apiKey string) (bool, error) {
 	}
 }
 
-// refreshProviderAvailability updates provider availability after key changes
+// refreshProviderAvailability is intentionally a no-op after config mutations.
+// In-memory config is already authoritative after SetAPIKey/SetModel/RemoveAPIKey/SetBaseURL/RemoveBaseURL.
+// Calling Load() would re-read a potentially stale disk file and overwrite
+// concurrent in-memory writes, causing silent API key loss under concurrent requests.
+// Providers check availability on each request, so no explicit reload is needed.
 func (s *Server) refreshProviderAvailability() {
-	// In-memory config is already authoritative after SetAPIKey/SetModel/RemoveAPIKey.
-	// Calling Load() here would re-read a potentially stale disk file and overwrite
-	// concurrent in-memory writes, causing silent API key loss under concurrent requests.
-	// Providers check availability on each request, so no explicit reload is needed.
 }
 
 // perKeyValidationTimeout is the timeout for each individual API key validation request.
