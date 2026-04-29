@@ -62,7 +62,7 @@ func (s *Server) handleGPUNodesHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), agentDefaultTimeout)
 	defer cancel()
 
-	var allNodes []k8s.GPUNode
+	allNodes := make([]k8s.GPUNode, 0)
 
 	if cluster != "" {
 		nodes, err := s.k8sClient.GetGPUNodes(ctx, cluster)
@@ -137,7 +137,7 @@ func (s *Server) handleNodesHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), agentDefaultTimeout)
 	defer cancel()
 
-	var allNodes []k8s.NodeInfo
+	allNodes := make([]k8s.NodeInfo, 0)
 
 	if cluster != "" {
 		// Query specific cluster

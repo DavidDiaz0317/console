@@ -144,7 +144,7 @@ func buildReportLines(fw *frameworks.Framework, result *frameworks.EvaluationRes
 
 func paginateLines(lines []reportLine, usableHeight float64, defaultLineHeight float64) [][]reportLine {
 	var pages [][]reportLine
-	var current []reportLine
+	current := make([]reportLine, 0)
 	y := 0.0
 
 	for _, line := range lines {

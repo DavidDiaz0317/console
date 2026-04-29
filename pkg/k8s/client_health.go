@@ -172,9 +172,9 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 		var totalCPU int64
 		var totalMemory int64
 		var totalStorage int64
-		var diskPressureNodes []string
-		var memoryPressureNodes []string
-		var pidPressureNodes []string
+		diskPressureNodes := make([]string, 0)
+		memoryPressureNodes := make([]string, 0)
+		pidPressureNodes := make([]string, 0)
 		for _, node := range nodes.Items {
 			// Count ready nodes and check node conditions
 			for _, condition := range node.Status.Conditions {
@@ -543,7 +543,7 @@ func (m *MultiClusterClient) CheckSecurityIssues(ctx context.Context, contextNam
 		return nil, err
 	}
 
-	var issues []SecurityIssue
+	issues := make([]SecurityIssue, 0)
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
 			sc := container.SecurityContext

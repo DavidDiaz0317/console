@@ -837,7 +837,7 @@ func (s *Server) BroadcastToClients(msgType string, payload interface{}) {
 
 	// Write to each client using its per-connection mutex + deadline.
 	// A slow client only blocks its own write, not other clients.
-	var dead []*websocket.Conn
+	dead := make([]*websocket.Conn, 0)
 	for _, c := range clients {
 		c.wsc.writeMu.Lock()
 		c.conn.SetWriteDeadline(time.Now().Add(wsWriteTimeout))

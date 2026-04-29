@@ -24,7 +24,7 @@ func (s *Server) getClaudeInfo() *protocol.ClaudeInfo {
 
 	// Return info about available providers
 	available := s.registry.ListAvailable()
-	var providerNames []string
+	providerNames := make([]string, 0)
 	for _, p := range available {
 		providerNames = append(providerNames, p.DisplayName)
 	}
@@ -290,7 +290,7 @@ func (s *Server) saveTokenUsage() {
 //   - kubectl/helm/oc commands inside markdown fenced code blocks (```...```)
 //   - Bare kubectl/helm/oc commands on standalone lines
 func extractCommandsFromResponse(content string) []string {
-	var commands []string
+	commands := make([]string, 0)
 	seen := make(map[string]bool) // deduplicate commands
 	inCodeBlock := false
 

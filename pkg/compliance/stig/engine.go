@@ -31,7 +31,7 @@ func (e *Engine) Benchmarks() []Benchmark {
 func (e *Engine) Findings() []Finding {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	var out []Finding
+	out := make([]Finding, 0)
 	for _, b := range e.benchmarks {
 		out = append(out, b.Findings...)
 	}

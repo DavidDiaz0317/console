@@ -623,7 +623,7 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 		"search-state.json": true,
 	}
 
-	var entries []fiber.Map
+	entries := make([]fiber.Map, 0)
 	for _, e := range ghEntries {
 		entryType, _ := e["type"].(string)
 		if entryType == "dir" {
@@ -765,7 +765,7 @@ func (h *MissionsHandler) ValidateMission(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"valid": false, "errors": []string{"invalid JSON format"}})
 	}
 
-	var errs []string
+	errs := make([]string, 0)
 	if mission.APIVersion != "kc-mission-v1" {
 		errs = append(errs, "apiVersion must be 'kc-mission-v1'")
 	}

@@ -626,7 +626,7 @@ func (h *FeedbackHandler) getCachedOrFetchPRs(ctx context.Context) []GitHubPR {
 	h.prCacheMu.RUnlock()
 
 	v, _, _ := h.prFetchGroup.Do("prs", func() (interface{}, error) {
-		var allPRs []GitHubPR
+		allPRs := make([]GitHubPR, 0)
 		for _, state := range []string{"open", "closed"} {
 			prs := h.fetchPRPages(ctx, state)
 			allPRs = append(allPRs, prs...)
@@ -655,7 +655,7 @@ func (h *FeedbackHandler) getCachedOrFetchPRs(ctx context.Context) []GitHubPR {
 // fetchPRPages fetches up to maxPRPages pages of PRs for the given state,
 // using the shared HTTP client for connection reuse.
 func (h *FeedbackHandler) fetchPRPages(ctx context.Context, state string) []GitHubPR {
-	var allPRs []GitHubPR
+	allPRs := make([]GitHubPR, 0)
 
 	apiBase := resolveGitHubAPIBase()
 	for page := 1; page <= maxPRPages; page++ {
@@ -680,7 +680,7 @@ func (h *FeedbackHandler) fetchPRPages(ctx context.Context, state string) []GitH
 			break
 		}
 
-		var prs []GitHubPR
+		prs := make([]GitHubPR, 0)
 		if err := json.NewDecoder(resp.Body).Decode(&prs); err != nil {
 			resp.Body.Close()
 			break
@@ -757,7 +757,7 @@ func (h *FeedbackHandler) fetchGitHubIssuesFromRepo(ctx context.Context, githubL
 			break
 		}
 
-		var issues []GitHubIssue
+		issues := make([]GitHubIssue, 0)
 		if err := json.Unmarshal(body, &issues); err != nil {
 			break
 		}

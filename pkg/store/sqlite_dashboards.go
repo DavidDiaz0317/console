@@ -42,7 +42,7 @@ func (s *SQLiteStore) GetUserDashboards(ctx context.Context, userID uuid.UUID, l
 	}
 	defer rows.Close()
 
-	var dashboards []models.Dashboard
+	dashboards := make([]models.Dashboard, 0)
 	for rows.Next() {
 		d, err := s.scanDashboardRow(ctx, rows)
 		if err != nil {
@@ -163,7 +163,7 @@ func (s *SQLiteStore) GetDashboardCards(ctx context.Context, dashboardID uuid.UU
 	}
 	defer rows.Close()
 
-	var cards []models.Card
+	cards := make([]models.Card, 0)
 	for rows.Next() {
 		c, err := s.scanCardRow(ctx, rows)
 		if err != nil {
@@ -429,7 +429,7 @@ func (s *SQLiteStore) GetUserCardHistory(ctx context.Context, userID uuid.UUID, 
 	}
 	defer rows.Close()
 
-	var history []models.CardHistory
+	history := make([]models.CardHistory, 0)
 	for rows.Next() {
 		var h models.CardHistory
 		var idStr, userIDStr string
@@ -480,7 +480,7 @@ func (s *SQLiteStore) GetUserPendingSwaps(ctx context.Context, userID uuid.UUID,
 	}
 	defer rows.Close()
 
-	var swaps []models.PendingSwap
+	swaps := make([]models.PendingSwap, 0)
 	for rows.Next() {
 		swap, err := s.scanPendingSwapRow(ctx, rows)
 		if err != nil {
@@ -508,7 +508,7 @@ func (s *SQLiteStore) GetDueSwaps(ctx context.Context, limit, offset int) ([]mod
 	}
 	defer rows.Close()
 
-	var swaps []models.PendingSwap
+	swaps := make([]models.PendingSwap, 0)
 	for rows.Next() {
 		swap, err := s.scanPendingSwapRow(ctx, rows)
 		if err != nil {
@@ -640,7 +640,7 @@ func (s *SQLiteStore) GetRecentEvents(ctx context.Context, userID uuid.UUID, sin
 	}
 	defer rows.Close()
 
-	var events []models.UserEvent
+	events := make([]models.UserEvent, 0)
 	for rows.Next() {
 		var e models.UserEvent
 		var idStr, userIDStr string

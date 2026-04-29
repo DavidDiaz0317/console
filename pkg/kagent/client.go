@@ -85,7 +85,7 @@ func (c *KagentClient) ListAgents() ([]AgentInfo, error) {
 		return nil, fmt.Errorf("list agents returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	var agents []AgentInfo
+	agents := make([]AgentInfo, 0)
 	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
 		return nil, fmt.Errorf("failed to decode agent list: %w", err)
 	}

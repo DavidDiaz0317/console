@@ -275,7 +275,7 @@ func decodeAgentList(body io.Reader) ([]AgentInfo, error) {
 		return wrapped.Items, nil
 	}
 
-	var direct []AgentInfo
+	direct := make([]AgentInfo, 0)
 	if err := json.Unmarshal(raw, &direct); err == nil {
 		return direct, nil
 	}

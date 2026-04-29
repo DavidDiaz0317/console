@@ -88,7 +88,7 @@ func (m *MultiClusterClient) getGPUNodesWithPods(ctx context.Context, contextNam
 		}
 	}
 
-	var gpuNodes []GPUNode
+	gpuNodes := make([]GPUNode, 0)
 	for _, node := range nodes.Items {
 		// Check for various accelerator types in allocatable resources
 		// GPUs
@@ -272,7 +272,7 @@ func (m *MultiClusterClient) getGPUNodesWithPods(ctx context.Context, contextNam
 		// filtering of "available" GPUs. Only NoSchedule and
 		// NoExecute gate scheduling; PreferNoSchedule is advisory and is
 		// intentionally dropped here.
-		var nodeTaints []GPUTaint
+		nodeTaints := make([]GPUTaint, 0)
 		for _, t := range node.Spec.Taints {
 			if t.Effect != corev1.TaintEffectNoSchedule && t.Effect != corev1.TaintEffectNoExecute {
 				continue
@@ -345,7 +345,7 @@ func (m *MultiClusterClient) GetGPUNodeHealth(ctx context.Context, contextName s
 	}
 
 	// 3. Find GPU operator pods across known namespaces
-	var operatorPods []corev1.Pod
+	operatorPods := make([]corev1.Pod, 0)
 	for _, ns := range gpuOperatorNamespaces {
 		pods, listErr := client.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		if listErr != nil {
@@ -372,7 +372,7 @@ func (m *MultiClusterClient) GetGPUNodeHealth(ctx context.Context, contextName s
 
 	// 6. Build health status for each GPU node
 	checkedAt := time.Now().UTC().Format(time.RFC3339)
-	var results []GPUNodeHealthStatus
+	results := make([]GPUNodeHealthStatus, 0)
 
 	for _, gpuNode := range gpuNodes {
 		nodeObj, exists := nodeMap[gpuNode.Name]

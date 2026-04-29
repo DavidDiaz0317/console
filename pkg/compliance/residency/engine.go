@@ -52,7 +52,7 @@ func (e *Engine) SetClusterRegion(cluster string, region Region, jurisdiction st
 // In demo mode this generates synthetic workload-to-cluster mappings.
 func (e *Engine) Evaluate() ([]Violation, *ResidencySummary) {
 	workloads := e.demoWorkloads()
-	var violations []Violation
+	violations := make([]Violation, 0)
 
 	for _, w := range workloads {
 		cr, ok := e.clusterRegions[w.cluster]

@@ -1360,7 +1360,7 @@ func fetchGitHubReleases() ([]githubReleaseInfo, error) {
 		return nil, fmt.Errorf("github API returned %d", resp.StatusCode)
 	}
 
-	var releases []githubReleaseInfo
+	releases := make([]githubReleaseInfo, 0)
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return nil, err
 	}

@@ -81,7 +81,7 @@ type RewardsHandler struct {
 // Org-level tokens are not expanded (no API call); only explicit repo
 // tokens are used.
 func parseRepos(orgs string) []string {
-	var repos []string
+	repos := make([]string, 0)
 	for _, token := range strings.Fields(orgs) {
 		if strings.HasPrefix(token, "repo:") {
 			repos = append(repos, strings.TrimPrefix(token, "repo:"))
@@ -260,7 +260,7 @@ type searchPRRef struct {
 // time are returned. Items created before sinceISO are filtered out
 // client-side (the API's `since` param filters by updated_at, not created_at).
 func (h *RewardsHandler) listRepoItems(repo, login, sinceISO, token string) ([]searchItem, error) {
-	var allItems []searchItem
+	allItems := make([]searchItem, 0)
 
 	for page := 1; page <= rewardsMaxPages; page++ {
 		apiURL := fmt.Sprintf("https://api.github.com/repos/%s/issues?state=all&per_page=%d&page=%d&sort=created&direction=desc&since=%s",
@@ -291,7 +291,7 @@ func (h *RewardsHandler) listRepoItems(repo, login, sinceISO, token string) ([]s
 			return allItems, fmt.Errorf("GitHub API returned %d: %s", resp.StatusCode, string(body[:min(len(body), 200)]))
 		}
 
-		var pageItems []searchItem
+		pageItems := make([]searchItem, 0)
 		if err := json.Unmarshal(body, &pageItems); err != nil {
 			return allItems, fmt.Errorf("unmarshal: %w", err)
 		}

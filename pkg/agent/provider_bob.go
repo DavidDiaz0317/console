@@ -32,7 +32,7 @@ type bobResponse struct {
 // cleanBobOutput removes debug lines and markers from Bob CLI output
 func cleanBobOutput(content string) string {
 	lines := strings.Split(content, "\n")
-	var cleanLines []string
+	cleanLines := make([]string, 0)
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)

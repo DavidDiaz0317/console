@@ -598,7 +598,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 
 		// Accumulate reports into a pending batch and flush every batchSize reports.
 		const batchSize = 8
-		var pendingBatch []BenchmarkReport
+		pendingBatch := make([]BenchmarkReport, 0)
 
 		// safeFlush writes pending data and cancels the context on write error
 		// (which signals that the client has disconnected).
@@ -672,7 +672,7 @@ func (h *BenchmarkHandlers) StreamReports(c *fiber.Ctx) error {
 		}
 
 		// Filter to folders only, skip folders older than cutoff
-		var experiments []driveFile
+		experiments := make([]driveFile, 0)
 		for _, item := range topLevel {
 			if item.MimeType != driveFolderMIME {
 				continue
@@ -832,7 +832,7 @@ func (h *BenchmarkHandlers) fetchAllReports(ctx context.Context, cutoff time.Tim
 	}
 
 	// Filter experiments up-front so we know the work set.
-	var experiments []driveFile
+	experiments := make([]driveFile, 0)
 	for _, item := range topLevel {
 		if item.MimeType != driveFolderMIME {
 			continue
@@ -911,8 +911,8 @@ func (h *BenchmarkHandlers) fetchRunFolder(ctx context.Context, folderID, experi
 	}
 
 	// First: look for benchmark YAML files directly in this folder
-	var reports []BenchmarkReport
-	var subfolders []driveFile
+	reports := make([]BenchmarkReport, 0)
+	subfolders := make([]driveFile, 0)
 	parseFailures := 0
 	for _, f := range items {
 		if f.MimeType == driveFolderMIME {
@@ -964,7 +964,7 @@ func (h *BenchmarkHandlers) collectBenchmarkFiles(ctx context.Context, folderID,
 	if err != nil {
 		return nil, 0, err
 	}
-	var reports []BenchmarkReport
+	reports := make([]BenchmarkReport, 0)
 	parseFailures := 0
 	for _, f := range files {
 		if f.MimeType == driveFolderMIME {
@@ -1000,7 +1000,7 @@ func (h *BenchmarkHandlers) downloadAndParseReport(ctx context.Context, f driveF
 // listDriveFolder lists all files in a Google Drive folder, handling pagination
 // so that folders with more than 1000 items are not silently truncated.
 func (h *BenchmarkHandlers) listDriveFolder(ctx context.Context, folderID string) ([]driveFile, error) {
-	var allFiles []driveFile
+	allFiles := make([]driveFile, 0)
 	pageToken := ""
 
 	for {
@@ -1145,7 +1145,7 @@ func adaptV1ToV2(raw rawV1Report, experimentName, runName, fileCreatedTime strin
 }
 
 func buildStackComponents(raw rawV1Report) []BenchmarkStackComponent {
-	var components []BenchmarkStackComponent
+	components := make([]BenchmarkStackComponent, 0)
 
 	// Build one component per accelerator entry
 	for i, accel := range raw.Scenario.Host.Accelerator {

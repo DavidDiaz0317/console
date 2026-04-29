@@ -176,7 +176,7 @@ func (s *Server) handleChatMessageStreaming(connCtx context.Context, conn *webso
 	}
 
 	// Convert protocol history to provider history
-	var history []ChatMessage
+	history := make([]ChatMessage, 0)
 	for _, m := range req.History {
 		history = append(history, ChatMessage{
 			Role:    m.Role,
@@ -487,7 +487,7 @@ func (s *Server) handleCancelChat(conn *websocket.Conn, msg protocol.Message, wr
 // The cancel functions are collected under the lock and invoked after releasing
 // it, mirroring the deadlock-prevention pattern in handleCancelChat (#7432).
 func (s *Server) cancelAllChatsForConn(conn *websocket.Conn) {
-	var toCancel []context.CancelFunc
+	toCancel := make([]context.CancelFunc, 0)
 
 	s.activeChatCtxsMu.Lock()
 	for sessionID, entry := range s.activeChatCtxs {
@@ -631,7 +631,7 @@ func (s *Server) handleChatMessage(msg protocol.Message, forceAgent string, pare
 	}
 
 	// Convert protocol history to provider history
-	var history []ChatMessage
+	history := make([]ChatMessage, 0)
 	for _, msg := range req.History {
 		history = append(history, ChatMessage{
 			Role:    msg.Role,

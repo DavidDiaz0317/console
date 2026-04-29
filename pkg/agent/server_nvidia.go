@@ -84,7 +84,7 @@ func (s *Server) handleNvidiaOperatorsHTTP(w http.ResponseWriter, r *http.Reques
 	ctx, cancel := context.WithTimeout(r.Context(), agentDefaultTimeout)
 	defer cancel()
 
-	var results []nvidiaOperatorStatus
+	results := make([]nvidiaOperatorStatus, 0)
 
 	if cluster != "" {
 		client, err := s.k8sClient.GetClient(cluster)
@@ -171,7 +171,7 @@ func detectGPUOperator(ctx context.Context, client kubernetes.Interface) *gpuOpe
 		Ready:     true, // assume ready, downgrade if components are unhealthy
 	}
 
-	var components []operatorComponent
+	components := make([]operatorComponent, 0)
 
 	// Check for GPU operator deployment
 	deps, err := client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
@@ -256,7 +256,7 @@ func detectNetworkOperator(ctx context.Context, client kubernetes.Interface) *ne
 		Ready:     true,
 	}
 
-	var components []operatorComponent
+	components := make([]operatorComponent, 0)
 
 	deps, err := client.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
 	if err == nil {

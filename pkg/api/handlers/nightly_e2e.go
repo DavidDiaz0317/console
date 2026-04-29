@@ -542,7 +542,7 @@ func (h *NightlyE2EHandler) fetchAllGuideImages() map[string]map[string]string {
 
 	// Collect unique guide paths
 	seen := make(map[string]bool)
-	var guidePaths []string
+	guidePaths := make([]string, 0)
 	for _, wf := range nightlyWorkflows {
 		if wf.GuidePath != "" && !seen[wf.GuidePath] {
 			seen[wf.GuidePath] = true
@@ -566,7 +566,7 @@ func (h *NightlyE2EHandler) fetchAllGuideImages() map[string]map[string]string {
 			images := make(map[string]string)
 
 			// Find YAML files under this guide's directory
-			var files []treeEntry
+			files := make([]treeEntry, 0)
 			for _, f := range yamlFiles {
 				if strings.HasPrefix(f.Path, prefix) {
 					files = append(files, f)
@@ -639,7 +639,7 @@ func (h *NightlyE2EHandler) fetchGuideYAMLFiles() []treeEntry {
 		return nil
 	}
 
-	var results []treeEntry
+	results := make([]treeEntry, 0)
 	for _, entry := range tree.Tree {
 		if entry.Type != "blob" {
 			continue
