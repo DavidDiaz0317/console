@@ -362,7 +362,7 @@ const IssueActivityChart = memo(function IssueActivityChart(props: { config?: Is
       setStats(data)
       setIsDemoFallback(false)
       setCachedStats(repo, lookbackDays, data)
-    } catch (err) {
+    } catch (err: unknown) {
       if (signal?.aborted) return
       const message = err instanceof Error ? err.message : 'Failed to fetch issue data'
       setError(message)

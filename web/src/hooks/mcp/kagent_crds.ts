@@ -76,7 +76,7 @@ async function agentFetch<T>(path: string, cluster: string, namespace?: string):
     clearTimeout(tid)
     if (!res.ok) throw new Error(`Agent returned ${res.status} for ${path} (cluster: ${cluster})`)
     return await res.json()
-  } catch (err) {
+  } catch (err: unknown) {
     clearTimeout(tid)
     // Log the error so it is visible in the console
     console.warn(`[kagent_crds] fetch failed for ${path} (cluster: ${cluster}):`, err)

@@ -253,7 +253,7 @@ export function useMarketplace() {
       } catch {
         // Cache write failed — non-critical
       }
-    } catch (err) {
+    } catch (err: unknown) {
       // #7543: On fetch failure, keep cached/current items with a stale indicator
       // instead of clearing to empty which falsely implies no items exist.
       const staleMsg = err instanceof Error ? err.message : 'Failed to load marketplace'
@@ -328,7 +328,7 @@ export function useMarketplace() {
     try {
       response = await fetch(item.downloadUrl, {
         signal: AbortSignal.timeout(FETCH_EXTERNAL_TIMEOUT_MS) })
-    } catch (e) {
+    } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'network error'
       emitMarketplaceInstallFailed(item.type, item.name, msg)
       throw e
@@ -377,7 +377,7 @@ export function useMarketplace() {
           throw new Error('no dashboard available to install card-preset into')
         }
         await api.post(`/api/dashboards/${target.id}/cards`, newCard)
-      } catch (e) {
+      } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'backend persist failed'
         emitMarketplaceInstallFailed(item.type, item.name, msg)
         throw e

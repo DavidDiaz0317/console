@@ -105,7 +105,7 @@ export function useHelmActions(): UseHelmActionsResult {
         output: data.output }
       setLastResult(result)
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const result: HelmActionResult = {
         success: false,
         message: err instanceof Error ? err.message : 'Network error' }

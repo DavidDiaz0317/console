@@ -301,7 +301,7 @@ export function useDataCompliance() {
         setError(null)
       }
       initialLoadDone.current = true
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch compliance data')
     } finally {
       setIsLoading(false)

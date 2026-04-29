@@ -104,7 +104,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
     if (!exportConfig) return ''
     try {
       return generateWidget(exportConfig)
-    } catch (err) {
+    } catch (err: unknown) {
       return `// Error generating widget: ${err}`
     }
   }, [exportConfig])

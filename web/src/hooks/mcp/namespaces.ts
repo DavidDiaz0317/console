@@ -104,7 +104,7 @@ export function useNamespaces(cluster?: string, forceLive = false) {
             return
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[useNamespaces] Local agent failed for ${cluster}:`, err)
       }
     }
@@ -132,7 +132,7 @@ export function useNamespaces(cluster?: string, forceLive = false) {
           setIsLoading(false)
           return
         }
-      } catch (err) {
+      } catch (err: unknown) {
         if (timerId !== null) clearTimeout(timerId)
         console.error(`[useNamespaces] kubectl proxy failed for ${cluster}:`, err)
       }

@@ -383,7 +383,7 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
 function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(`Failed to save ${key} to localStorage:`, e)
   }
 }
@@ -406,7 +406,7 @@ function saveAlerts(alerts: Alert[]): void {
   // QuotaExceededError propagates to our own catch block (#7576).
   try {
     localStorage.setItem(ALERTS_KEY, JSON.stringify(toSave))
-  } catch (e) {
+  } catch (e: unknown) {
     // QuotaExceededError: DOMException with name 'QuotaExceededError', or legacy
     // browsers that use numeric code 22 instead of the named exception.
     // Pattern matches useMissions/useMetricsHistory for consistency across the codebase.
@@ -422,7 +422,7 @@ function saveAlerts(alerts: Alert[]): void {
       const pruned = [...firing, ...resolved]
       try {
         localStorage.setItem(ALERTS_KEY, JSON.stringify(pruned))
-      } catch (retryError) {
+      } catch (retryError: unknown) {
         console.error('[Alerts] localStorage still full after pruning, clearing alerts', retryError)
         safeRemove(ALERTS_KEY)
       }
@@ -1028,7 +1028,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
         const data = await response.json().catch(() => ({}))
         throw new Error(data.message || 'Failed to send notifications')
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Silent failure - notifications are best-effort
       // Only log unexpected errors (not network issues)
       if (error instanceof Error && !error.message.includes('fetch')) {

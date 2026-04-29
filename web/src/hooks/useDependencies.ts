@@ -143,7 +143,7 @@ export function useResolveDependencies() {
         const result: DependencyResolution = await res.json()
         setData(result)
         return result
-      } catch (restErr) {
+      } catch (restErr: unknown) {
         restError = restErr
         console.error('[useDependencies] REST API failed, trying agent:', restErr)
       }
@@ -156,7 +156,7 @@ export function useResolveDependencies() {
           setData(agentResult)
           return agentResult
         }
-      } catch (agentErr) {
+      } catch (agentErr: unknown) {
         agentError = agentErr
         console.error('[useDependencies] Agent resolve-deps failed:', agentErr)
       }

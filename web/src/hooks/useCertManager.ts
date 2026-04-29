@@ -342,7 +342,7 @@ export function useCertManager() {
                 certificateCount: 0 })
             }
           }
-        } catch (err) {
+        } catch (err: unknown) {
           // Silence expected errors in demo mode (agent unavailable)
           const isDemoError = err instanceof Error && err.message.includes('demo mode')
           if (!isDemoError) {
@@ -370,7 +370,7 @@ export function useCertManager() {
 
       // Save to localStorage cache
       saveToCache(allCertificates, allIssuers, certManagerFound)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[useCertManager] Error:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch cert-manager data')
       setConsecutiveFailures(prev => prev + 1)

@@ -103,7 +103,7 @@ export function EventsDrillDown({ data }: Props) {
       } else {
         setError('Failed to fetch events')
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch events')
     } finally {
       setIsLoading(false)

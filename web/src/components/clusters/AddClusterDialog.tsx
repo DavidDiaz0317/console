@@ -104,7 +104,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
       const data = await res.json()
       setPreviewContexts(data.contexts || [])
       setImportState('previewed')
-    } catch (err) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : String(err))
       setImportState('error')
     }
@@ -132,7 +132,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
         resetImportState()
         onClose()
       }, 1500)
-    } catch (err) {
+    } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : String(err))
       setImportState('error')
     }
@@ -158,7 +158,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
       const data = await res.json()
       setTestResult(data)
       setConnectState('tested')
-    } catch (err) {
+    } catch (err: unknown) {
       setConnectError(err instanceof Error ? err.message : String(err))
       setConnectState('error')
     }
@@ -194,7 +194,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
         resetConnectState()
         onClose()
       }, 1500)
-    } catch (err) {
+    } catch (err: unknown) {
       setConnectError(err instanceof Error ? err.message : String(err))
       setConnectState('error')
     }

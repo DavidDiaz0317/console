@@ -227,7 +227,7 @@ async function fetchAllFromIndex() {
     missionCache.fetchedAt = Date.now()
     missionCache.fetchError = null
     persistCacheToStorage()
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn('[MissionBrowser] Failed to fetch index:', err)
     missionCache.fetchError = err instanceof Error ? err.message : 'Failed to load missions. Please try again.'
   } finally {

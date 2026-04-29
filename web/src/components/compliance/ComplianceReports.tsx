@@ -79,7 +79,7 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
       document.body.removeChild(a)
 
       setSuccess(`Report downloaded: ${filename}`)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Report generation failed')
     } finally {
       setGenerating(false)

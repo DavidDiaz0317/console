@@ -80,7 +80,7 @@ export default function SigningStatusDashboard() {
       setImages(await imgRes.json())
       setPolicies(await polRes.json())
       setSummary(await sumRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load signing data')
     } finally {
       setLoading(false)

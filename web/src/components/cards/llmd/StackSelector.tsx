@@ -309,7 +309,7 @@ export function StackSelector() {
     setFetchError(null)
     try {
       await refetch?.()
-    } catch (err) {
+    } catch (err: unknown) {
       setFetchError(err instanceof Error ? err.message : 'Failed to refresh stacks')
     }
   }

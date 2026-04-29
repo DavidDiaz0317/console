@@ -67,7 +67,7 @@ export const RBACAuditDashboardContent = memo(function RBACAuditDashboardContent
       setSummary(await smRes.json())
       setBindings(await bRes.json())
       setFindings(await fRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load RBAC data')
     } finally {
       setLoading(false)

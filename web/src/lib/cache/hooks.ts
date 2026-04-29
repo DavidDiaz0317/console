@@ -62,7 +62,7 @@ export function useLocalPreference<T>(
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(value))
-    } catch (e) {
+    } catch (e: unknown) {
       // Quota exceeded - remove old preferences
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         cleanupOldPreferences()
@@ -170,7 +170,7 @@ export function useIndexedData<T>({
           setData(result.data)
           setLastSaved(result.timestamp)
         }
-      } catch (e) {
+      } catch (e: unknown) {
         console.error(`[IndexedData] Failed to load ${key}:`, e)
       } finally {
         if (mounted) {
@@ -191,7 +191,7 @@ export function useIndexedData<T>({
     try {
       const db = await openDatabase()
       await saveToDB(db, key, { data: newData, timestamp })
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(`[IndexedData] Failed to save ${key}:`, e)
     }
   }
@@ -203,7 +203,7 @@ export function useIndexedData<T>({
     try {
       const db = await openDatabase()
       await deleteFromDB(db, key)
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(`[IndexedData] Failed to clear ${key}:`, e)
     }
   }

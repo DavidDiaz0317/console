@@ -118,7 +118,7 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
       setRules(Array.isArray(rulesData) ? rulesData : [])
       setClusters(Array.isArray(clustersData) ? clustersData : [])
       setViolations(Array.isArray(violationsData) ? violationsData : [])
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
     } finally {
       setLoading(false)

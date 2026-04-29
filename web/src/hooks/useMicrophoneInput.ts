@@ -174,7 +174,7 @@ export function useMicrophoneInput(): UseMicrophoneInputReturn {
       }
 
       recognition.start()
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to access microphone'
       setError(errorMessage)
       setIsRecording(false)
@@ -184,7 +184,7 @@ export function useMicrophoneInput(): UseMicrophoneInputReturn {
   const stopRecording = useCallback(async () => {
     try {
       await stopRecordingInternal()
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to stop recording'
       setError(errorMessage)
     }

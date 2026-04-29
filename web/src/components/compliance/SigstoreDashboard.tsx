@@ -105,7 +105,7 @@ export const SigstoreDashboardContent = memo(function SigstoreDashboardContent()
       setSignatures(await sigRes.json())
       setVerifications(await verRes.json())
       setSummary(await sumRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

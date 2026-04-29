@@ -267,7 +267,7 @@ function persistState(state: MissionControlState) {
       savedAt: Date.now(),
       schemaVersion: PERSISTED_SCHEMA_VERSION }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entry))
-  } catch (e) {
+  } catch (e: unknown) {
     // #6665 — Do not silently swallow quota errors. Log a warning naming
     // the wizard so the user can see which draft was at risk, and surface
     // an ephemeral flag in sessionStorage so the Mission Control dialog
@@ -1099,7 +1099,7 @@ Include real CNCF projects only. Consider dependencies between projects.`
           sendMessage(missionId, prompt)
           setState((prev) => ({ ...prev, aiStreaming: true }))
         }
-      } catch (err) {
+      } catch (err: unknown) {
         aiRequestInFlightRef.current = false
         console.error('[MissionControl] #6811 — askAIForSuggestions failed:', err)
         showToast('AI suggestion request failed — please try again', 'error')
@@ -1264,7 +1264,7 @@ Order phases by dependency — prerequisites first. Each phase completes before 
           sendMessage(missionId, prompt)
           setState((prev) => ({ ...prev, aiStreaming: true }))
         }
-      } catch (err) {
+      } catch (err: unknown) {
         aiRequestInFlightRef.current = false
         console.error('[MissionControl] #7117 — askAIForAssignments failed:', err)
         showToast('AI assignment request failed — please try again', 'error')

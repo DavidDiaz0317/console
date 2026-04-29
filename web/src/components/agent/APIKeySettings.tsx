@@ -186,7 +186,7 @@ export function APIKeySettings({ isOpen, onClose }: APIKeySettingsProps) {
       setKeysStatus(data.keys)
       setRegisteredProviders(data.registeredProviders || [])
       setConfigPath(data.configPath)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('agent.failedToConnect'))
     } finally {
       setLoading(false)
@@ -224,7 +224,7 @@ export function APIKeySettings({ isOpen, onClose }: APIKeySettingsProps) {
       setBaseURLSaved(prev => new Set(prev).add(provider))
       // Refresh status so the row reflects the new resolved value.
       await fetchKeysStatus()
-    } catch (err) {
+    } catch (err: unknown) {
       setBaseURLError(e => ({ ...e, [provider]: err instanceof Error ? err.message : t('agent.failedToSaveKey') }))
     } finally {
       setSaving(false)
@@ -276,7 +276,7 @@ export function APIKeySettings({ isOpen, onClose }: APIKeySettingsProps) {
       await fetchKeysStatus()
       emitApiKeyConfigured(provider)
       emitConversionStep(5, 'api_key', { provider })
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('agent.failedToSaveKey'))
     } finally {
       setSaving(false)
@@ -304,7 +304,7 @@ export function APIKeySettings({ isOpen, onClose }: APIKeySettingsProps) {
 
       await fetchKeysStatus()
       emitApiKeyRemoved(provider)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('agent.failedToDeleteKey'))
     } finally {
       setSaving(false)

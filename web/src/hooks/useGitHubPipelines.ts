@@ -517,7 +517,7 @@ export function usePipelineMutations() {
           error: body.error,
           status: res.status,
         }
-      } catch (err) {
+      } catch (err: unknown) {
         return { ok: false, error: (err as Error).message, status: 0 }
       }
     },
@@ -548,7 +548,7 @@ export async function fetchPipelineLog(
       lines: body.lines ?? 0,
       truncatedFrom: body.truncatedFrom ?? 0,
     }
-  } catch (err) {
+  } catch (err: unknown) {
     return { error: (err as Error).message }
   }
 }

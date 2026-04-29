@@ -515,7 +515,7 @@ export function useNodes(cluster?: string) {
             return
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[useNodes] Local agent failed for ${cluster}:`, err)
       }
     }

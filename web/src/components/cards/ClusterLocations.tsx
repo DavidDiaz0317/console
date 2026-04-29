@@ -267,7 +267,7 @@ export function ClusterLocations({ config: _config }: ClusterLocationsProps) {
         setMapSvg(DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }))
         setMapLoading(false)
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         if (err.name !== 'AbortError') {
           console.error('Failed to load world map:', err)
           showToast('Failed to load world map', 'error')

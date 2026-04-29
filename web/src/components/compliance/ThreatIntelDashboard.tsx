@@ -120,7 +120,7 @@ const ThreatIntelDashboard = memo(function ThreatIntelDashboard() {
       setFeeds(await fRes.json())
       setIOCs(await iRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

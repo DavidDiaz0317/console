@@ -58,7 +58,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
       setAgreements(await agRes.json())
       setAlerts(await alRes.json())
       setSummary(await smRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load BAA data')
     } finally {
       setLoading(false)

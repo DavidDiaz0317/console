@@ -116,7 +116,7 @@ export function usePersistedSettings() {
       a.click()
       document.body.removeChild(a)
       safeRevokeObjectURL(url)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[settings] export failed:', err)
       throw err
     }
@@ -139,7 +139,7 @@ export function usePersistedSettings() {
         setSyncStatus('saved')
         setLastSaved(new Date())
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[settings] import failed:', err)
       throw err
     }

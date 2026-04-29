@@ -85,7 +85,7 @@ export function NodeConditions() {
     setActionError(null)
     try {
       await execute(cluster, [action, nodeName])
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : `Failed to ${action} node`
       setActionError(`${action} ${nodeName}: ${message}`)
     } finally {

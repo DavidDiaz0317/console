@@ -138,7 +138,7 @@ async function fetchHardwareHealth(): Promise<HardwareHealthData> {
     }
 
     return result
-  } catch (e) {
+  } catch (e: unknown) {
     clearTimeout(timeoutId)
     throw e
   }
@@ -332,7 +332,7 @@ export function useGPUHealthCronJob(cluster?: string) {
         throw new Error(text || `Install failed: ${response.status}`)
       }
       await result.refetch()
-    } catch (err) {
+    } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to install CronJob')
     } finally {
       setActionInProgress(null)
@@ -363,7 +363,7 @@ export function useGPUHealthCronJob(cluster?: string) {
         throw new Error(text || `Uninstall failed: ${response.status}`)
       }
       await result.refetch()
-    } catch (err) {
+    } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to uninstall CronJob')
     } finally {
       setActionInProgress(null)

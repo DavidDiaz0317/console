@@ -97,7 +97,7 @@ export const NISTDashboardContent = memo(function NISTDashboardContent() {
       setFamilies(Array.isArray(familiesData) ? familiesData : [])
       setMappings(Array.isArray(mappingsData) ? mappingsData : [])
       setSummary(summaryData ?? null)
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

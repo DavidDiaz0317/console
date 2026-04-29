@@ -154,7 +154,7 @@ What would you like to modify about this policy?`,
       } else {
         setYamlContent('# No YAML returned from cluster\n# You can write new YAML here')
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[OPA] Failed to fetch policy YAML:', err)
       setYamlContent(`# Failed to fetch policy YAML\n# Error: ${err}\n\n# You can write new YAML here`)
     }
@@ -199,7 +199,7 @@ Please proceed with applying this policy.`,
       )
       showToast('Policy mode updated successfully', 'success')
       onRefresh()
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to toggle mode:', err)
       showToast('Failed to toggle policy mode', 'error')
     }
@@ -215,7 +215,7 @@ Please proceed with applying this policy.`,
       setDeleteConfirm(null)
       showToast('Policy deleted successfully', 'success')
       onRefresh()
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to delete policy:', err)
       showToast('Failed to delete policy', 'error')
     }

@@ -311,7 +311,7 @@ export function useClusterCapabilities(enabled = true) {
       }
       const capabilities = await res.json()
       setData(capabilities)
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error('Unknown error'))
     } finally {
       setIsLoading(false)
@@ -364,7 +364,7 @@ export function useDeployWorkload() {
       const result = await res.json()
       options?.onSuccess?.(result)
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error('Unknown error')
       setError(error)
       options?.onError?.(error)
@@ -414,7 +414,7 @@ export function useScaleWorkload() {
       const result = await res.json()
       options?.onSuccess?.(result)
       return result
-    } catch (err) {
+    } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error('Unknown error')
       setError(error)
       options?.onError?.(error)
@@ -467,7 +467,7 @@ export function useDeleteWorkload() {
         throw new Error(errorData.error || 'Failed to delete workload')
       }
       options?.onSuccess?.()
-    } catch (err) {
+    } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error('Unknown error')
       setError(error)
       options?.onError?.(error)

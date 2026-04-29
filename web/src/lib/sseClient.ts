@@ -291,7 +291,7 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
                 for (const sub of subs) {
                   try { sub.onClusterData(clusterName, tagged) } catch { /* subscriber error */ }
                 }
-              } catch (e) {
+              } catch (e: unknown) {
                 console.error('[SSE] Failed to parse cluster_data:', e)
               }
             } else if (eventType === 'cluster_error') {
@@ -310,7 +310,7 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
                 for (const sub of subs) {
                   try { sub.onClusterError?.(clusterName, errorMessage) } catch { /* subscriber error */ }
                 }
-              } catch (e) {
+              } catch (e: unknown) {
                 console.error('[SSE] Failed to parse cluster_error:', e)
               }
             } else if (eventType === 'done') {

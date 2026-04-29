@@ -256,7 +256,7 @@ async function fetchISO27001AuditViaKubectl(
     .map(({ name, context }) => async () => {
       try {
         return await runISO27001ChecksForCluster(name, context || name)
-      } catch (err) {
+      } catch (err: unknown) {
         console.error(`[ISO27001] Audit failed for cluster ${name}:`, err)
         return []
       }

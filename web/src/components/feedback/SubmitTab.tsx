@@ -296,7 +296,7 @@ export function SubmitForm({
         screenshotsUploaded: result.screenshots_uploaded,
         screenshotsFailed: result.screenshots_failed,
       })
-    } catch (err) {
+    } catch (err: unknown) {
       const message = err instanceof Error ? err.message : ''
       try {
         const parsed = JSON.parse(message)

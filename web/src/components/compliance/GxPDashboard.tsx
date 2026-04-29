@@ -68,7 +68,7 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
       setRecords(await recRes.json())
       setSignatures(await sigRes.json())
       setChainStatus(await chainRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load GxP data')
     } finally {
       setLoading(false)

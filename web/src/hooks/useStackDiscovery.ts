@@ -678,7 +678,7 @@ export function useStackDiscovery(clusters: string[]) {
             mergeIntoState(cluster, batchStacks, false)
           }
 
-        } catch (err) {
+        } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err)
           if (!errMsg.includes('demo mode') && !errMsg.includes('timed out')) {
             console.error(`[useStackDiscovery] Error fetching from ${cluster}:`, err)
@@ -689,7 +689,7 @@ export function useStackDiscovery(clusters: string[]) {
       setError(null)
       setLastRefresh(new Date())
       initialLoadDone.current = true
-    } catch (err) {
+    } catch (err: unknown) {
       // Suppress demo mode errors
       const errMsg = err instanceof Error ? err.message : String(err)
       if (!errMsg.includes('demo mode')) {

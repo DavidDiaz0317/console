@@ -69,7 +69,7 @@ function loadFromStorage(): { data: BuildpackImage[]; timestamp: number } {
         return { data: parsed.data, timestamp: parsed.timestamp || 0 }
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.debug('[Buildpacks] Failed to load from storage:', err)
   }
   return { data: [], timestamp: 0 }
@@ -81,7 +81,7 @@ function saveToStorage(data: BuildpackImage[], timestamp: number) {
       BUILDPACK_CACHE_KEY,
       JSON.stringify({ data, timestamp })
     )
-  } catch (err) {
+  } catch (err: unknown) {
     console.debug('[Buildpacks] Failed to save to storage:', err)
   }
 }
@@ -228,7 +228,7 @@ export function useBuildpackImages(cluster?: string) {
         setConsecutiveFailures(0)
         setLastRefresh(Date.now())
         setIsDemoData(false)
-      } catch (err) {
+      } catch (err: unknown) {
         const message =
           err instanceof Error
             ? err.message
@@ -313,7 +313,7 @@ if (typeof window !== 'undefined') {
   registerCacheReset('buildpack-images', () => {
     try {
       localStorage.removeItem(BUILDPACK_CACHE_KEY)
-    } catch (err) {
+    } catch (err: unknown) {
       console.debug('[Buildpacks] Failed to remove cache from storage:', err)
     }
 

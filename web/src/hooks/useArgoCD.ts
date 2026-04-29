@@ -892,7 +892,7 @@ export function useArgoApplicationSets(): UseArgoApplicationSetsResult {
 
       // API explicitly indicated demo data — fall through to mock
       throw new Error('No ArgoCD ApplicationSet data available')
-    } catch (err) {
+    } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch ApplicationSets'
       console.error('[ArgoCD] ApplicationSets fetch failed:', errorMsg)
       setError(errorMsg)

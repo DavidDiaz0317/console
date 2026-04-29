@@ -149,7 +149,7 @@ Based on this analysis:
 Start with the highest-priority policy.`,
         context: { cluster: selectedCluster },
       })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[OPA] Failed to analyze cluster:', err)
       if (mountedRef.current) showToast('Failed to gather cluster data', 'error')
     } finally {

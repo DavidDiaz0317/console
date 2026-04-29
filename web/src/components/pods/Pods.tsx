@@ -83,7 +83,7 @@ export function Pods() {
       await kubectlProxy.exec(['delete', 'pod', name, '-n', namespace], { context: cluster })
       showToast(t('pods.restartSuccess', 'Pod deletion triggered (it will restart if managed)'), 'success')
       refetchPodIssues()
-    } catch (err) {
+    } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : String(err)
       showToast(t('pods.restartErrorDetail', 'Failed to restart pod: {{detail}}', { detail }), 'error')
     }
@@ -106,7 +106,7 @@ export function Pods() {
       await kubectlProxy.exec(['delete', 'pod', target.name, '-n', target.namespace], { context: target.cluster })
       showToast(t('pods.deleteSuccess', 'Pod deleted'), 'success')
       refetchPodIssues()
-    } catch (err) {
+    } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : String(err)
       showToast(t('pods.deleteErrorDetail', 'Failed to delete pod: {{detail}}', { detail }), 'error')
     } finally {

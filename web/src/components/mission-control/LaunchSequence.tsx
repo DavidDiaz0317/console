@@ -248,7 +248,7 @@ export function LaunchSequence({
               : p
           )
         )
-      } catch (err) {
+      } catch (err: unknown) {
         // #7143 — Capture the full error message. When `err` is an array
         // (e.g. from Promise.all rejections or grouped validation errors),
         // stringify each element individually to avoid losing detail.

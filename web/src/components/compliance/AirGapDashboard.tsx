@@ -89,7 +89,7 @@ export const AirGapDashboardContent = memo(function AirGapDashboardContent() {
       setRequirements(await rRes.json())
       setClusters(await cRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

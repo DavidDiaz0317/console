@@ -84,7 +84,7 @@ function loadFromStorage() {
           timestamp: parsed.timestamp || 0 }
       }
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.debug('[Crossplane] Failed to load cache:', err)
   }
 
@@ -100,7 +100,7 @@ function saveToStorage(
       CACHE_KEY,
       JSON.stringify({ data, timestamp })
     )
-  } catch (err) {
+  } catch (err: unknown) {
     console.debug('[Crossplane] Failed to save cache:', err)
   }
 }
@@ -233,7 +233,7 @@ export function useCrossplaneManagedResources(cluster?: string) {
         setConsecutiveFailures(0)
         setLastRefresh(Date.now())
         setIsDemoData(false)
-      } catch (err) {
+      } catch (err: unknown) {
         const message =
           err instanceof Error
             ? err.message
@@ -320,7 +320,7 @@ if (typeof window !== 'undefined') {
   registerCacheReset('crossplane-managed', () => {
     try {
       localStorage.removeItem(CACHE_KEY)
-    } catch (err) {
+    } catch (err: unknown) {
       console.debug('[Crossplane] Failed to clear cache:', err)
     }
 

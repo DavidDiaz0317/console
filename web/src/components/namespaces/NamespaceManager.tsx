@@ -254,7 +254,7 @@ export function NamespaceManager() {
     try {
       const response = await api.get<{ bindings: typeof accessEntries }>(`/api/namespaces/${encodeURIComponent(namespace.name)}/access?cluster=${encodeURIComponent(namespace.cluster)}`)
       setAccessEntries(response.data?.bindings || [])
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch access:', err)
       setAccessEntries([])
       const message = err instanceof Error && err.message?.includes('403')
@@ -341,7 +341,7 @@ export function NamespaceManager() {
         setSelectedNamespace(null)
       }
       setNamespaceToDelete(null)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to delete namespace:', err)
       setError('Failed to delete namespace')
       showToast('Failed to delete namespace', 'error')
@@ -379,7 +379,7 @@ export function NamespaceManager() {
         throw new Error(errorData.error || 'Failed to revoke access')
       }
       fetchAccess(selectedNamespace)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to revoke access:', err)
       setError('Failed to revoke access')
       showToast('Failed to revoke access', 'error')

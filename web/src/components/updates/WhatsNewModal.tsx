@@ -128,7 +128,7 @@ export function WhatsNewModal({ isOpen, onClose }: WhatsNewModalProps) {
             merged_at: pr.merged_at!,
           }))
         setRecentPRs(merged)
-      } catch (err) {
+      } catch (err: unknown) {
         if (cancelled) return
         if (err instanceof RateLimitError) {
           setPrsError('GitHub API rate limit reached — data will refresh automatically. Try again in a moment.')
@@ -172,7 +172,7 @@ export function WhatsNewModal({ isOpen, onClose }: WhatsNewModalProps) {
       emitWhatsNewUpdateClicked(latestRelease?.tag ?? '', installMethod ?? 'unknown')
       showToast('Update running in background', 'info')
       onClose()
-    } catch (err) {
+    } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Update failed', 'error')
     } finally {
       setUpdating(false)

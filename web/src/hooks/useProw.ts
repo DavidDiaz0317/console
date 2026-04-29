@@ -123,7 +123,7 @@ export function useProwJobs(prowCluster = 'prow', namespace = 'prow') {
       setConsecutiveFailures(0)
       setLastRefresh(new Date())
       initialLoadDone.current = true
-    } catch (err) {
+    } catch (err: unknown) {
       setConsecutiveFailures(prev => prev + 1)
       setLastRefresh(new Date())
       if (!silent) {

@@ -61,7 +61,7 @@ vi.mock('../../../lib/utils/concurrency', () => ({
       try {
         const value = await task()
         onSettled({ status: 'fulfilled', value })
-      } catch (reason) {
+      } catch (reason: unknown) {
         onSettled({ status: 'rejected', reason })
       }
     }

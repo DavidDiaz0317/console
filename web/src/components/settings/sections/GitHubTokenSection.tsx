@@ -150,7 +150,7 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
         reset: new Date(data.rate.reset * 1000),
       })
       return true
-    } catch (err) {
+    } catch (err: unknown) {
       setTokenError(err instanceof Error ? err.message : 'Failed to validate token')
       setRateLimit(null)
       return false
@@ -203,7 +203,7 @@ export function GitHubTokenSection({ forceVersionCheck }: GitHubTokenSectionProp
         // Trigger system updates check with the new token
         forceVersionCheck()
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setTokenError(err instanceof Error ? err.message : 'Failed to save token')
     } finally {
       setTokenTesting(false)

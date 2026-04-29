@@ -239,7 +239,7 @@ async function hydrateFromBackend(): Promise<void> {
       lastKnownSessionId = record.last_agent_session_id
     }
     updateSharedUsage({ byCategory: merged }, true)
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof TokenUsageUnauthenticatedError) {
       backendUnauthenticated = true
       return
@@ -298,7 +298,7 @@ async function flushPendingDeltas(): Promise<void> {
         delta,
         agent_session_id: lastKnownSessionId ?? '',
       })
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof TokenUsageUnauthenticatedError) {
         backendUnauthenticated = true
         return

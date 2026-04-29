@@ -64,7 +64,7 @@ export async function safeJsonParse<T>(response: Response, label: string): Promi
   }
   try {
     return (await response.json()) as T
-  } catch (err) {
+  } catch (err: unknown) {
     // Guard against malformed JSON even when Content-Type looks correct
     throw new Error(
       `${label}: failed to parse response as JSON — ${err instanceof Error ? err.message : String(err)}`

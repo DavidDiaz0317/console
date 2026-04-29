@@ -373,7 +373,7 @@ export const T2_TEMPLATES: T2Template[] = [
 
   // Persist forwards
   useEffect(() => {
-    try { window?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify(forwards)) } catch (e) { console.warn('[CardFactoryModal] failed to persist port-forwards:', e) }
+    try { window?.localStorage?.setItem?.(STORAGE_KEY, JSON.stringify(forwards)) } catch (e: unknown) { console.warn('[CardFactoryModal] failed to persist port-forwards:', e) }
   }, [forwards])
 
   const addForward = () => {

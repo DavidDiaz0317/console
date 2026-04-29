@@ -143,7 +143,7 @@ export function NodeDebug() {
       setOutput(`$ ${cmdStr}\n\n${text}`)
       setWasTruncated(truncated)
       showToast(t('nodeDebug.commandCompleted'), 'success')
-    } catch (err) {
+    } catch (err: unknown) {
       setOutput(`$ ${cmdStr}\n\nError: ${err instanceof Error ? err.message : String(err)}`)
       setWasTruncated(false)
     } finally {
@@ -173,7 +173,7 @@ export function NodeDebug() {
       setOutput(`$ ${cmdStr}\n\n${text}`)
       setWasTruncated(truncated)
       showToast(t('nodeDebug.commandCompleted'), 'success')
-    } catch (err) {
+    } catch (err: unknown) {
       setOutput(`$ ${cmdStr}\n\nError: ${err instanceof Error ? err.message : String(err)}`)
       setWasTruncated(false)
     } finally {

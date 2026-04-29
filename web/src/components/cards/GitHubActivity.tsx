@@ -161,7 +161,7 @@ function setCachedData(repo: string, data: Omit<CachedGitHubData, 'timestamp'>, 
       timestamp: Date.now()
     }
     localStorage.setItem(CACHE_KEY_PREFIX + repo.replace('/', '_'), JSON.stringify(cached))
-  } catch (e) {
+  } catch (e: unknown) {
     // Non-critical: localStorage may be full or disabled. The card still
     // works, it just won't persist cached data across page reloads.
     console.warn('[GitHubActivity] Failed to cache data (storage may be full):', e)
@@ -421,7 +421,7 @@ function useGitHubActivity(config?: GitHubActivityConfig) {
         openIssueCount: calculatedOpenIssueCount }, (msg) => showToast(msg, 'warning'))
 
       setLastRefresh(new Date())
-    } catch (err) {
+    } catch (err: unknown) {
       // Abort errors are expected during cleanup — do not treat as failures
       if (err instanceof DOMException && err.name === 'AbortError') return
       if (signal?.aborted) return

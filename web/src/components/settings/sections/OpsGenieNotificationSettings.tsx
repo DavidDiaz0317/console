@@ -38,7 +38,7 @@ export function OpsGenieNotificationSettings({
         opsgenieApiKey: config.opsgenieApiKey,
       })
       setTestResult({ type: 'opsgenie', success: true, message: t('settings.notifications.opsgenie.testSuccess') })
-    } catch (error) {
+    } catch (error: unknown) {
       setTestResult({
         type: 'opsgenie',
         success: false,

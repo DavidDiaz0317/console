@@ -89,7 +89,7 @@ export function Workloads() {
       await kubectlProxy.exec(['rollout', 'restart', 'deployment', name, '-n', namespace], { context: cluster })
       showToast(t('workloads.restartSuccess', 'Restart triggered'), 'success')
       refetchDeployments()
-    } catch (err) {
+    } catch (err: unknown) {
       showToast(t('workloads.restartError', 'Failed to restart deployment'), 'error')
     }
   }
@@ -108,7 +108,7 @@ export function Workloads() {
       await kubectlProxy.exec(['delete', 'deployment', name, '-n', namespace], { context: cluster })
       showToast(t('workloads.deleteSuccess', 'Deployment deleted'), 'success')
       refetchDeployments()
-    } catch (err) {
+    } catch (err: unknown) {
       showToast(t('workloads.deleteError', 'Failed to delete deployment'), 'error')
     }
   }

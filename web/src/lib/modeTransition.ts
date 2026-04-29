@@ -58,7 +58,7 @@ export function clearAllRegisteredCaches(): void {
   cacheResetRegistry.forEach((resetFn, key) => {
     try {
       resetFn()
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(`[ModeTransition] Failed to reset cache '${key}':`, e)
       failures.push(key)
     }
@@ -112,7 +112,7 @@ export function triggerAllRefetches(): void {
   refetchRegistry.forEach((refetchFn, key) => {
     try {
       refetchFn()
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(`[ModeTransition] Failed to refetch '${key}':`, e)
     }
   })

@@ -181,7 +181,7 @@ describe('rewardsApi', () => {
       try {
         await claimDailyBonus()
         expect.fail('should have thrown')
-      } catch (e) {
+      } catch (e: unknown) {
         expect(e).toBeInstanceOf(DailyBonusUnavailableError)
         expect((e as DailyBonusUnavailableError).rewards).toBeUndefined()
       }

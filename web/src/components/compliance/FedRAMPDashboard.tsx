@@ -102,7 +102,7 @@ export const FedRAMPDashboardContent = memo(function FedRAMPDashboardContent() {
       setControls(await cRes.json())
       setPOAMs(await pRes.json())
       setScore(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

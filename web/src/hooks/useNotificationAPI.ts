@@ -45,7 +45,7 @@ export function useNotificationAPI() {
         }
 
         return data
-      } catch (err) {
+      } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to test notification'
         setError(message)
         throw err
@@ -72,7 +72,7 @@ export function useNotificationAPI() {
         }
 
         return data
-      } catch (err) {
+      } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to send notification'
         setError(message)
         throw err

@@ -185,7 +185,7 @@ export function SyncDialog({
       }
 
       setPhase('plan')
-    } catch (err) {
+    } catch (err: unknown) {
       // Error states should be shown immediately (not deferred with startTransition)
       updateLastLog('error')
       const message = err instanceof Error ? err.message : 'Detection failed'
@@ -283,7 +283,7 @@ export function SyncDialog({
         addLog(`Sync failed: ${data.message}`, 'error')
         setError(data.message)
       }
-    } catch (err) {
+    } catch (err: unknown) {
       updateLastLog('error')
       const message = err instanceof Error ? err.message : 'Sync failed'
       addLog(`Error: ${message}`, 'error')

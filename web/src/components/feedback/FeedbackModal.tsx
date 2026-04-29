@@ -224,7 +224,7 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
         issueUrl: result.github_issue_url,
         screenshotsUploaded: result.screenshots_uploaded,
         screenshotsFailed: result.screenshots_failed })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[Screenshot] Failed to submit feedback:', err)
       const message = err instanceof Error ? err.message : 'Failed to submit feedback'
       if (screenshots.length > 0) emitScreenshotUploadFailed(message, screenshots.length)

@@ -403,7 +403,7 @@ export function Dashboard() {
           setLocalCards((items) => items.filter((item) => item.id !== active.id))
           // Show success toast
           showToast(`Card moved to "${targetDashboardName}"`, 'success')
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Failed to move card:', error)
           showToast('Failed to move card', 'error')
         }
@@ -421,7 +421,7 @@ export function Dashboard() {
           setLocalCards((items) => items.filter((item) => item.id !== active.id))
           showToast(`Card moved to "${newDash.name || 'New Dashboard'}"`, 'success')
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to create dashboard and move card:', error)
         showToast('Failed to create dashboard', 'error')
       }
@@ -500,7 +500,7 @@ export function Dashboard() {
                 warnings: resp.warnings } })
           }
         } })
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Deploy failed:', err)
       showToast(
         `Deploy failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
@@ -636,7 +636,7 @@ export function Dashboard() {
         // Update cache with demo cards
         dashboardCache = { dashboard: null, cards, timestamp: Date.now() }
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Don't log expected failures (backend unavailable or timeout)
       const isExpectedFailure = error instanceof BackendUnavailableError ||
         error instanceof UnauthenticatedError ||
@@ -711,7 +711,7 @@ export function Dashboard() {
       for (const card of newCards) {
         try {
           await api.post(`/api/dashboards/${dashboard.id}/cards`, card)
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Failed to persist card:', error)
           showToast('Failed to persist card to backend', 'error')
         }
@@ -741,7 +741,7 @@ export function Dashboard() {
     if (dashboard?.id) {
       try {
         await api.delete(`/api/cards/${cardId}`)
-      } catch (error) {
+      } catch (error: unknown) {
         // Card is already removed from UI state above — backend failure is
         // non-critical. Log for debugging but don't alarm the user. (#8564)
         console.debug('Backend card deletion failed (card already removed from UI):', error)
@@ -773,7 +773,7 @@ export function Dashboard() {
             position: { ...(card.position || { w: 4, h: 2 }), w: newWidth }
           })
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to update card width:', error)
         showToast('Failed to update card width', 'error')
       }
@@ -799,7 +799,7 @@ export function Dashboard() {
             position: { ...(card.position || { x: 0, y: 0, w: 4, h: 2 }), h: newHeight }
           })
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to update card height:', error)
         showToast('Failed to update card height', 'error')
       }
@@ -834,7 +834,7 @@ export function Dashboard() {
     if (dashboard?.id && !cardId.startsWith('demo-') && !cardId.startsWith('new-') && !cardId.startsWith('rec-') && !cardId.startsWith('template-') && !cardId.startsWith('restored-') && !cardId.startsWith('ai-')) {
       try {
         await api.put(`/api/cards/${cardId}`, { config: newConfig, title: newTitle })
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to update card configuration:', error)
         showToast('Failed to update card configuration', 'error')
       }

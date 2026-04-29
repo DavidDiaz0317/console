@@ -291,7 +291,7 @@ export function AddCardModal({ isOpen, onClose, onAddCards, existingCardTypes = 
     try {
       didAddCards.current = cardsToAdd.length > 0
       onAddCards(cardsToAdd)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error adding cards:', error)
       showToast(t('dashboard.addCard.failedToAdd'), 'error')
     }

@@ -414,7 +414,7 @@ export async function runPreflightCheck(
     }
 
     return { ok: true, context }
-  } catch (err) {
+  } catch (err: unknown) {
     // Connection-level failures (WebSocket down, agent unavailable)
     // #7317 — Guard against cross-realm Error objects where instanceof fails
     // and err.message may be undefined, resulting in the string "undefined"

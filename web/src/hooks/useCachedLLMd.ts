@@ -302,7 +302,7 @@ export async function fetchLLMdServers(
   const tasks = clusters.map((cluster) => async () => {
     try {
       return await fetchLLMdServersForCluster(cluster)
-    } catch (err) {
+    } catch (err: unknown) {
       // Suppress demo mode errors - they're expected when agent is unavailable
       const errMsg = err instanceof Error ? err.message : String(err)
       if (!errMsg.includes('demo mode')) {
@@ -395,7 +395,7 @@ export async function fetchLLMdModels(
         })
       }
       return clusterModels
-    } catch (err) {
+    } catch (err: unknown) {
       // Suppress demo mode errors - they're expected when agent is unavailable
       const errMsg = err instanceof Error ? err.message : String(err)
       if (!errMsg.includes('demo mode')) {

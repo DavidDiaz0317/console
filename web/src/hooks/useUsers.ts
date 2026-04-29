@@ -140,7 +140,7 @@ export function useConsoleUsers() {
     try {
       const { data } = await api.get<ConsoleUser[]>('/api/users')
       setUsers(data || [])
-    } catch (err) {
+    } catch (err: unknown) {
       // Don't fall back to demo data - show error state
       // Users will be empty, but the current user is displayed from auth context
       setError(err instanceof Error ? err.message : 'Failed to load users')
@@ -475,7 +475,7 @@ export function useK8sServiceAccounts(cluster?: string, namespace?: string) {
       const { data } = await api.get<K8sServiceAccount[]>(`/api/rbac/service-accounts?${params}`, { timeout: RBAC_QUERY_TIMEOUT_MS })
       setServiceAccounts(data || [])
       setError(null)
-    } catch (err) {
+    } catch (err: unknown) {
       // Set error message for unreachable clusters
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch service accounts'
       if (errorMsg.includes('connection refused') || errorMsg.includes('unreachable')) {

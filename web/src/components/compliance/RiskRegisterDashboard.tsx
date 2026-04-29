@@ -102,7 +102,7 @@ export const RiskRegisterDashboardContent = memo(function RiskRegisterDashboardC
       setRisks(await rRes.json())
       setCategories(await cRes.json())
       setSummary(await sRes.json())
-    } catch (e) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)

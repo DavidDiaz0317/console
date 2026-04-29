@@ -143,7 +143,7 @@ function applyTheme(theme: Theme) {
   } else {
     root.classList.remove('theme-gradient-accents')
   }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error applying theme:', error)
   }
 }

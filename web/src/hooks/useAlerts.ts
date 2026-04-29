@@ -25,7 +25,7 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
     if (stored) {
       return JSON.parse(stored)
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(`Failed to load ${key} from localStorage:`, e)
   }
   return defaultValue
@@ -35,7 +35,7 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
 function saveToStorage<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(`Failed to save ${key} to localStorage:`, e)
   }
 }
@@ -231,7 +231,7 @@ export function useSlackNotification() {
           throw new Error(`Notification send failed (${response.status}): ${errText}`)
         }
         return true
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Failed to send Slack notification:', error)
         throw error
       }

@@ -230,7 +230,7 @@ export function GitOps() {
               status: 'ok' as const,
               drifted: data.drifted,
               resources: data.resources || [] } satisfies DriftResult }
-        } catch (e) {
+        } catch (e: unknown) {
           // #6156 — Failed drift checks MUST NOT be coerced to
           // `drifted: false` — that rendered as "synced + healthy" (false
           // green). Return status: 'error' so the UI can render a distinct

@@ -306,7 +306,7 @@ export function RemediationConsole({
         type: 'output',
         message: output,
       })
-    } catch (error) {
+    } catch (error: unknown) {
       // Fall back to simulated output when backend is unavailable
       const message = error instanceof Error ? error.message : 'Connection failed'
       setShellError(`MCP bridge unavailable: ${message}`)

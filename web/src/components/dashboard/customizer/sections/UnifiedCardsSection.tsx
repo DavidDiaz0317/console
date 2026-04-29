@@ -180,7 +180,7 @@ export function UnifiedCardsSection({
         }
       }
     }
-    try { onAddCards(cardsToAdd) } catch (error) {
+    try { onAddCards(cardsToAdd) } catch (error: unknown) {
       console.error('Error adding cards:', error)
       showToast(t('dashboard.addCard.failedToAdd'), 'error')
     }

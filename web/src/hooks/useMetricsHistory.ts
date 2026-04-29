@@ -70,7 +70,7 @@ function persistSnapshots() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots))
     window.dispatchEvent(new Event(HISTORY_CHANGED_EVENT))
-  } catch (e) {
+  } catch (e: unknown) {
     // QuotaExceededError - try to free up space
     if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.code === 22)) {
       console.warn('[MetricsHistory] Storage quota exceeded, cleaning up old data...')

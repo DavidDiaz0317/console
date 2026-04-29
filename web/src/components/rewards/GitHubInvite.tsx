@@ -85,7 +85,7 @@ export function GitHubInviteModal({ isOpen, onClose }: GitHubInviteProps) {
       }
 
       setUsername('')
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send invite')
     } finally {
       setIsSubmitting(false)
