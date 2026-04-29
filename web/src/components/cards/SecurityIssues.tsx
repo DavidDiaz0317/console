@@ -14,7 +14,8 @@ import { CardClusterFilter, CardSearchInput, CardAIActions } from '../../lib/car
 import { SEVERITY_COLORS, SeverityLevel } from '../../lib/accessibility'
 import { useCardLoadingState, useCardDemoState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+/** Loose translation function type for helper functions that use dynamic keys */
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string
 
 // Demo security issues data for demo mode
 function getDemoSecurityIssues(): SecurityIssue[] {
@@ -76,7 +77,7 @@ interface SecurityIssuesProps {
   config?: Record<string, unknown>
 }
 
-const getIssueIcon = (issue: string | undefined, t: TFunction): { icon: typeof Shield; tooltip: string } => {
+const getIssueIcon = (issue: string | undefined, t: TranslateFn): { icon: typeof Shield; tooltip: string } => {
   const s = issue || ''
   if (s.includes('Privileged')) return { icon: Shield, tooltip: t('securityIssues.privilegedContainer') }
   if (s.includes('root')) return { icon: User, tooltip: t('securityIssues.runningAsRoot') }
@@ -301,7 +302,7 @@ function SecurityIssuesInternal({ config }: SecurityIssuesProps) {
           card within standard card height when rendered at lg grid size. */}
       <div ref={containerRef} className="flex-1 space-y-2 overflow-y-auto min-h-card-content" style={containerStyle}>
         {issues.map((issue: SecurityIssue, idx: number) => {
-          const { icon: Icon, tooltip: iconTooltip } = getIssueIcon(issue.issue, t)
+          const { icon: Icon, tooltip: iconTooltip } = getIssueIcon(issue.issue, t as unknown as TranslateFn)
           const colors = getSeverityColor(issue.severity)
 
           return (
