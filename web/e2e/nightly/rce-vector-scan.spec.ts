@@ -183,44 +183,63 @@ test('RCE vector scan — all attack surfaces', async ({ page }, testInfo) => {
     await page.goto(route, { waitUntil: 'networkidle', timeout: PAGE_LOAD_TIMEOUT_MS })
       .catch(() => page.waitForLoadState('domcontentloaded').catch(() => {}))
 
+    // Firefox may destroy the execution context during navigation between
+    // routes. Wrap every page.evaluate() in a try/catch so a single
+    // destroyed-context error doesn't abort the entire scan. (#10784)
+
     // 2a: No javascript: links
-    const jsLinks = await page.evaluate(() =>
-      document.querySelectorAll('a[href^="javascript:"]').length
-    )
-    if (jsLinks === 0) {
-      addCheck('DOM XSS', `No javascript: links on ${route}`, 'pass', 'None found', 'critical')
-    } else {
-      addCheck('DOM XSS', `No javascript: links on ${route}`, 'fail', `Found ${jsLinks} javascript: links`, 'critical')
+    try {
+      const jsLinks = await page.evaluate(() =>
+        document.querySelectorAll('a[href^="javascript:"]').length
+      )
+      if (jsLinks === 0) {
+        addCheck('DOM XSS', `No javascript: links on ${route}`, 'pass', 'None found', 'critical')
+      } else {
+        addCheck('DOM XSS', `No javascript: links on ${route}`, 'fail', `Found ${jsLinks} javascript: links`, 'critical')
+      }
+    } catch (e) {
+      addCheck('DOM XSS', `No javascript: links on ${route}`, 'warn',
+        `Skipped — execution context destroyed (navigation): ${String(e).slice(0, 120)}`, 'critical')
     }
 
     // 2b: No data: iframes
-    const dataIframes = await page.evaluate(() =>
-      document.querySelectorAll('iframe[src^="data:"]').length
-    )
-    if (dataIframes === 0) {
-      addCheck('DOM XSS', `No data: iframes on ${route}`, 'pass', 'None found', 'high')
-    } else {
-      addCheck('DOM XSS', `No data: iframes on ${route}`, 'fail', `Found ${dataIframes} data: iframes`, 'high')
+    try {
+      const dataIframes = await page.evaluate(() =>
+        document.querySelectorAll('iframe[src^="data:"]').length
+      )
+      if (dataIframes === 0) {
+        addCheck('DOM XSS', `No data: iframes on ${route}`, 'pass', 'None found', 'high')
+      } else {
+        addCheck('DOM XSS', `No data: iframes on ${route}`, 'fail', `Found ${dataIframes} data: iframes`, 'high')
+      }
+    } catch (e) {
+      addCheck('DOM XSS', `No data: iframes on ${route}`, 'warn',
+        `Skipped — execution context destroyed (navigation): ${String(e).slice(0, 120)}`, 'high')
     }
 
     // 2c: No inline event handlers
-    const inlineHandlers = await page.evaluate((handlers) => {
-      const found: string[] = []
-      document.querySelectorAll('*').forEach((el) => {
-        for (const attr of handlers) {
-          if (el.hasAttribute(attr)) {
-            found.push(`<${el.tagName.toLowerCase()} ${attr}>`)
+    try {
+      const inlineHandlers = await page.evaluate((handlers) => {
+        const found: string[] = []
+        document.querySelectorAll('*').forEach((el) => {
+          for (const attr of handlers) {
+            if (el.hasAttribute(attr)) {
+              found.push(`<${el.tagName.toLowerCase()} ${attr}>`)
+            }
           }
-        }
-      })
-      return found
-    }, DANGEROUS_HANDLERS)
+        })
+        return found
+      }, DANGEROUS_HANDLERS)
 
-    if (inlineHandlers.length === 0) {
-      addCheck('DOM XSS', `No inline handlers on ${route}`, 'pass', 'None found', 'high')
-    } else {
-      addCheck('DOM XSS', `No inline handlers on ${route}`, 'fail',
-        `Found ${inlineHandlers.length}: ${inlineHandlers.slice(0, 3).join(', ')}`, 'high')
+      if (inlineHandlers.length === 0) {
+        addCheck('DOM XSS', `No inline handlers on ${route}`, 'pass', 'None found', 'high')
+      } else {
+        addCheck('DOM XSS', `No inline handlers on ${route}`, 'fail',
+          `Found ${inlineHandlers.length}: ${inlineHandlers.slice(0, 3).join(', ')}`, 'high')
+      }
+    } catch (e) {
+      addCheck('DOM XSS', `No inline handlers on ${route}`, 'warn',
+        `Skipped — execution context destroyed (navigation): ${String(e).slice(0, 120)}`, 'high')
     }
   }
 

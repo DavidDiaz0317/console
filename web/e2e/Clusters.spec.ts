@@ -8,6 +8,40 @@ async function setupClustersTest(page: Page) {
   // Catch-all API mock prevents unmocked requests hanging in webkit/firefox
   await mockApiFallback(page)
 
+  // Override /health to return oauth_configured: true so the auth flow
+  // does not force demo mode in webkit/firefox. mockApiFallback returns
+  // oauth_configured: false which causes the AuthProvider to call
+  // setDemoMode(), overriding localStorage and falling back to built-in
+  // demo data instead of the mocked API data. (#10784)
+  await page.route('**/health', (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname !== '/health') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ok',
+        version: 'dev',
+        oauth_configured: true,
+        in_cluster: false,
+        no_local_agent: true,
+        install_method: 'dev',
+      }),
+    })
+  })
+
+  // Mock the local agent endpoint so fetchClusterListFromAgent() returns
+  // immediately instead of waiting for the 1.5s MCP_PROBE_TIMEOUT_MS on
+  // browsers where the connection-refused error is slow (webkit/firefox).
+  // This also prevents cross-origin errors from 127.0.0.1:8585. (#10784)
+  await page.route('**/127.0.0.1:8585/**', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'agent not running' }),
+    })
+  )
+
   // Mock authentication
   await page.route('**/api/me', (route) =>
     route.fulfill({
@@ -56,6 +90,10 @@ async function setupClustersTest(page: Page) {
     // Clear the IndexedDB cache so stale data from previous tests doesn't bleed in.
     // Tests run against the same origin so cache entries are shared across tests.
     indexedDB.deleteDatabase('kc_cache')
+    // Clear stale backend-status cache so checkBackendAvailability() makes a
+    // fresh health check instead of returning a cached "unavailable" result
+    // from a previous test. (#10784)
+    localStorage.removeItem('kc-backend-status')
     localStorage.setItem('token', 'test-token')
     localStorage.setItem('kc-demo-mode', 'false')
     localStorage.setItem('demo-user-onboarded', 'true')
