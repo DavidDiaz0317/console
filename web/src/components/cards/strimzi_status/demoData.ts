@@ -20,7 +20,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type StrimziHealth = 'healthy' | 'degraded' | 'not-installed'
+export type StrimziHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 export type ClusterHealth = 'healthy' | 'degraded' | 'unavailable'
 export type TopicStatus = 'active' | 'inactive' | 'error'
 export type ConsumerGroupStatus = 'ok' | 'warning' | 'error'

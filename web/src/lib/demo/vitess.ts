@@ -18,7 +18,7 @@
 
 export type VitessTabletType = 'PRIMARY' | 'REPLICA' | 'RDONLY'
 export type VitessTabletState = 'SERVING' | 'NOT_SERVING' | 'UNKNOWN'
-export type VitessHealth = 'healthy' | 'degraded' | 'not-installed'
+export type VitessHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export interface VitessTablet {
   alias: string

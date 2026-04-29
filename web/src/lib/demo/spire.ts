@@ -20,7 +20,7 @@ import { MS_PER_HOUR, MS_PER_DAY } from '../constants/time'
 // Types
 // ---------------------------------------------------------------------------
 
-export type SpireHealth = 'healthy' | 'degraded' | 'not-installed'
+export type SpireHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export type SpirePodPhase =
   | 'Running'

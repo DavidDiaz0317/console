@@ -24,7 +24,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type WasmcloudHealth = 'healthy' | 'degraded' | 'not-installed'
+export type WasmcloudHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 export type WasmcloudHostStatus = 'ready' | 'starting' | 'unreachable'
 export type WasmcloudProviderStatus = 'running' | 'starting' | 'failed'
 export type WasmcloudLinkStatus = 'active' | 'pending' | 'failed'
