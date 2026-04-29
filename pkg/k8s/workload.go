@@ -70,7 +70,7 @@ var (
 
 // ListWorkloads lists all workloads across clusters
 func (m *MultiClusterClient) ListWorkloads(ctx context.Context, cluster, namespace, workloadType string) (*v1alpha1.WorkloadList, error) {
-	var clusterNames []string
+	clusterNames := make([]string, 0)
 	if cluster != "" {
 		clusterNames = []string{cluster}
 	} else {
@@ -1273,7 +1273,7 @@ func (m *MultiClusterClient) LabelClusterNodes(ctx context.Context, cluster stri
 		return fmt.Errorf("failed to list nodes in %s: %w", cluster, err)
 	}
 
-	var errs []error
+	errs := make([]error, 0)
 	for _, node := range nodeList.Items {
 		nodeName := node.GetName()
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -1317,7 +1317,7 @@ func (m *MultiClusterClient) RemoveClusterNodeLabels(ctx context.Context, cluste
 		return fmt.Errorf("failed to list nodes in %s: %w", cluster, err)
 	}
 
-	var errs []error
+	errs := make([]error, 0)
 	for _, node := range nodeList.Items {
 		nodeName := node.GetName()
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {

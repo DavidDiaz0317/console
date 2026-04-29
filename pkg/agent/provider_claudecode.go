@@ -39,7 +39,7 @@ func (e *ToolDependencyError) Error() string {
 // is available on PATH via exec.LookPath. Returns nil when all tools are
 // present, or a *ToolDependencyError listing the missing ones.
 func CheckToolDependencies() error {
-	var missing []string
+	missing := make([]string, 0)
 	for _, tool := range RequiredMissionTools {
 		if _, err := exec.LookPath(tool); err != nil {
 			missing = append(missing, tool)
@@ -99,7 +99,7 @@ type claudeCodeStreamEvent struct {
 // cleanEnvForCLI returns the current environment with CLAUDECODE unset so the
 // CLI subprocess doesn't refuse to start when launched from inside a Claude Code session.
 func cleanEnvForCLI() []string {
-	var env []string
+	env := make([]string, 0)
 	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "CLAUDECODE=") {
 			env = append(env, e)

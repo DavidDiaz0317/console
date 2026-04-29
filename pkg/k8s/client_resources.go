@@ -26,7 +26,7 @@ func (m *MultiClusterClient) GetPods(ctx context.Context, contextName, namespace
 		return nil, err
 	}
 
-	var result []PodInfo
+	result := make([]PodInfo, 0)
 	for _, pod := range pods.Items {
 		ready := 0
 		total := len(pod.Spec.Containers)
@@ -43,7 +43,7 @@ func (m *MultiClusterClient) GetPods(ctx context.Context, contextName, namespace
 		}
 
 		// Build container info
-		var containers []ContainerInfo
+		containers := make([]ContainerInfo, 0)
 		for _, c := range pod.Spec.Containers {
 			ci := ContainerInfo{
 				Name:  c.Name,
@@ -121,14 +121,14 @@ func (m *MultiClusterClient) FindPodIssues(ctx context.Context, contextName, nam
 
 	now := time.Now()
 
-	var issues []PodIssue
+	issues := make([]PodIssue, 0)
 	for _, pod := range pods.Items {
 		// Skip completed/succeeded pods (e.g. finished Jobs)
 		if pod.Status.Phase == corev1.PodSucceeded {
 			continue
 		}
 
-		var podIssues []string
+		podIssues := make([]string, 0)
 		restarts := 0
 
 		// Determine effective status (mirrors kubectl logic)
@@ -267,7 +267,7 @@ func (m *MultiClusterClient) GetEvents(ctx context.Context, contextName, namespa
 		return EffectiveEventTime(&events.Items[i]).After(EffectiveEventTime(&events.Items[j]))
 	})
 
-	var result []Event
+	result := make([]Event, 0)
 	for i, event := range events.Items {
 		if limit > 0 && i >= limit {
 			break
@@ -316,7 +316,7 @@ func (m *MultiClusterClient) GetWarningEvents(ctx context.Context, contextName, 
 		return EffectiveEventTime(&events.Items[i]).After(EffectiveEventTime(&events.Items[j]))
 	})
 
-	var result []Event
+	result := make([]Event, 0)
 	for i, event := range events.Items {
 		if limit > 0 && i >= limit {
 			break
@@ -358,7 +358,7 @@ func (m *MultiClusterClient) GetNodes(ctx context.Context, contextName string) (
 		return nil, err
 	}
 
-	var nodeInfos []NodeInfo
+	nodeInfos := make([]NodeInfo, 0)
 	for _, node := range nodes.Items {
 		info := NodeInfo{
 			Name:           node.Name,
@@ -539,7 +539,7 @@ func (m *MultiClusterClient) GetFlatcarNodes(ctx context.Context, contextName st
 		return nil, err
 	}
 
-	var result []FlatcarNodeInfo
+	result := make([]FlatcarNodeInfo, 0)
 	for _, node := range nodes.Items {
 		osImage := node.Status.NodeInfo.OSImage
 		if strings.Contains(strings.ToLower(osImage), "flatcar") {
@@ -566,7 +566,7 @@ func (m *MultiClusterClient) FindDeploymentIssues(ctx context.Context, contextNa
 		return nil, err
 	}
 
-	var issues []DeploymentIssue
+	issues := make([]DeploymentIssue, 0)
 	for _, deploy := range deployments.Items {
 		// Check for issues
 		var reason, message string
@@ -634,7 +634,7 @@ func (m *MultiClusterClient) GetDeployments(ctx context.Context, contextName, na
 		return nil, err
 	}
 
-	var result []Deployment
+	result := make([]Deployment, 0)
 	for _, deploy := range deployments.Items {
 		// Kubernetes defaults Replicas to 1 when unset
 		desired := int32(1)
@@ -737,13 +737,13 @@ func (m *MultiClusterClient) GetServices(ctx context.Context, contextName, names
 			"cluster", contextName, "namespace", namespace, "error", epErr)
 	}
 
-	var result []Service
+	result := make([]Service, 0)
 	for _, svc := range services.Items {
 		// Build ports list. We populate both the legacy flat []string
 		// form (existing consumers) and the structured PortDetails form
 		// which preserves the port Name (issue #6163).
-		var ports []string
-		var portDetails []ServicePortDetail
+		ports := make([]string, 0)
+		portDetails := make([]ServicePortDetail, 0)
 		for _, p := range svc.Spec.Ports {
 			portStr := fmt.Sprintf("%d/%s", p.Port, p.Protocol)
 			if p.NodePort != 0 {
@@ -820,7 +820,7 @@ func (m *MultiClusterClient) GetJobs(ctx context.Context, contextName, namespace
 		return nil, err
 	}
 
-	var result []Job
+	result := make([]Job, 0)
 	for _, job := range jobs.Items {
 		// Determine status
 		status := "Running"
@@ -884,7 +884,7 @@ func (m *MultiClusterClient) GetHPAs(ctx context.Context, contextName, namespace
 		return nil, err
 	}
 
-	var result []HPA
+	result := make([]HPA, 0)
 	for _, hpa := range hpas.Items {
 		// Get target reference
 		reference := fmt.Sprintf("%s/%s", hpa.Spec.ScaleTargetRef.Kind, hpa.Spec.ScaleTargetRef.Name)
@@ -947,7 +947,7 @@ func (m *MultiClusterClient) GetConfigMaps(ctx context.Context, contextName, nam
 		return nil, err
 	}
 
-	var result []ConfigMap
+	result := make([]ConfigMap, 0)
 	for _, cm := range configmaps.Items {
 		// Calculate age
 		age := formatAge(cm.CreationTimestamp.Time)
@@ -978,7 +978,7 @@ func (m *MultiClusterClient) GetSecrets(ctx context.Context, contextName, namesp
 		return nil, err
 	}
 
-	var result []Secret
+	result := make([]Secret, 0)
 	for _, secret := range secrets.Items {
 		// Calculate age
 		age := formatAge(secret.CreationTimestamp.Time)
@@ -1010,19 +1010,19 @@ func (m *MultiClusterClient) GetServiceAccounts(ctx context.Context, contextName
 		return nil, err
 	}
 
-	var result []ServiceAccount
+	result := make([]ServiceAccount, 0)
 	for _, sa := range serviceAccounts.Items {
 		// Calculate age
 		age := formatAge(sa.CreationTimestamp.Time)
 
 		// Get secret names
-		var secrets []string
+		secrets := make([]string, 0)
 		for _, s := range sa.Secrets {
 			secrets = append(secrets, s.Name)
 		}
 
 		// Get image pull secret names
-		var imagePullSecrets []string
+		imagePullSecrets := make([]string, 0)
 		for _, s := range sa.ImagePullSecrets {
 			imagePullSecrets = append(imagePullSecrets, s.Name)
 		}
@@ -1054,7 +1054,7 @@ func (m *MultiClusterClient) GetPVCs(ctx context.Context, contextName, namespace
 		return nil, err
 	}
 
-	var result []PVC
+	result := make([]PVC, 0)
 	for _, pvc := range pvcs.Items {
 		age := formatAge(pvc.CreationTimestamp.Time)
 
@@ -1067,7 +1067,7 @@ func (m *MultiClusterClient) GetPVCs(ctx context.Context, contextName, namespace
 		}
 
 		// Get access modes
-		var accessModes []string
+		accessModes := make([]string, 0)
 		for _, mode := range pvc.Spec.AccessModes {
 			accessModes = append(accessModes, string(mode))
 		}
@@ -1107,7 +1107,7 @@ func (m *MultiClusterClient) GetPVs(ctx context.Context, contextName string) ([]
 		return nil, err
 	}
 
-	var result []PV
+	result := make([]PV, 0)
 	for _, pv := range pvs.Items {
 		age := formatAge(pv.CreationTimestamp.Time)
 
@@ -1120,7 +1120,7 @@ func (m *MultiClusterClient) GetPVs(ctx context.Context, contextName string) ([]
 		}
 
 		// Get access modes
-		var accessModes []string
+		accessModes := make([]string, 0)
 		for _, mode := range pv.Spec.AccessModes {
 			accessModes = append(accessModes, string(mode))
 		}
@@ -1167,7 +1167,7 @@ func (m *MultiClusterClient) GetReplicaSets(ctx context.Context, contextName, na
 		return nil, err
 	}
 
-	var result []ReplicaSet
+	result := make([]ReplicaSet, 0)
 	for _, rs := range rsList.Items {
 		replicas := int32(0)
 		if rs.Spec.Replicas != nil {
@@ -1206,7 +1206,7 @@ func (m *MultiClusterClient) GetStatefulSets(ctx context.Context, contextName, n
 		return nil, err
 	}
 
-	var result []StatefulSet
+	result := make([]StatefulSet, 0)
 	for _, ss := range ssList.Items {
 		replicas := int32(0)
 		if ss.Spec.Replicas != nil {
@@ -1251,7 +1251,7 @@ func (m *MultiClusterClient) GetDaemonSets(ctx context.Context, contextName, nam
 		return nil, err
 	}
 
-	var result []DaemonSet
+	result := make([]DaemonSet, 0)
 	for _, ds := range dsList.Items {
 		status := "running"
 		if ds.Status.NumberReady < ds.Status.DesiredNumberScheduled {
@@ -1288,7 +1288,7 @@ func (m *MultiClusterClient) GetCronJobs(ctx context.Context, contextName, names
 		return nil, err
 	}
 
-	var result []CronJob
+	result := make([]CronJob, 0)
 	for _, cj := range cronList.Items {
 		lastSchedule := ""
 		if cj.Status.LastScheduleTime != nil {
@@ -1326,9 +1326,9 @@ func (m *MultiClusterClient) GetIngresses(ctx context.Context, contextName, name
 		return nil, err
 	}
 
-	var result []Ingress
+	result := make([]Ingress, 0)
 	for _, ing := range ingList.Items {
-		var hosts []string
+		hosts := make([]string, 0)
 		for _, rule := range ing.Spec.Rules {
 			if rule.Host != "" {
 				hosts = append(hosts, rule.Host)
@@ -1374,15 +1374,15 @@ func (m *MultiClusterClient) GetNetworkPolicies(ctx context.Context, contextName
 		return nil, err
 	}
 
-	var result []NetworkPolicy
+	result := make([]NetworkPolicy, 0)
 	for _, np := range npList.Items {
-		var policyTypes []string
+		policyTypes := make([]string, 0)
 		for _, pt := range np.Spec.PolicyTypes {
 			policyTypes = append(policyTypes, string(pt))
 		}
 		podSelector := ""
 		if len(np.Spec.PodSelector.MatchLabels) > 0 {
-			var parts []string
+			parts := make([]string, 0)
 			for k, v := range np.Spec.PodSelector.MatchLabels {
 				parts = append(parts, k+"="+v)
 			}
@@ -1416,7 +1416,7 @@ func (m *MultiClusterClient) GetResourceQuotas(ctx context.Context, contextName,
 		return nil, err
 	}
 
-	var result []ResourceQuota
+	result := make([]ResourceQuota, 0)
 	for _, quota := range quotas.Items {
 		age := formatAge(quota.CreationTimestamp.Time)
 
@@ -1458,11 +1458,11 @@ func (m *MultiClusterClient) GetLimitRanges(ctx context.Context, contextName, na
 		return nil, err
 	}
 
-	var result []LimitRange
+	result := make([]LimitRange, 0)
 	for _, lr := range limitRanges.Items {
 		age := formatAge(lr.CreationTimestamp.Time)
 
-		var limits []LimitRangeItem
+		limits := make([]LimitRangeItem, 0)
 		for _, limit := range lr.Spec.Limits {
 			item := LimitRangeItem{
 				Type: string(limit.Type),

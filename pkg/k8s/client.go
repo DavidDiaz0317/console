@@ -1275,7 +1275,7 @@ func (m *MultiClusterClient) ListClusters(ctx context.Context) ([]ClusterInfo, e
 		m.mu.RUnlock()
 	}
 
-	var clusters []ClusterInfo
+	clusters := make([]ClusterInfo, 0)
 
 	// If we have in-cluster config, add the local cluster with detected name
 	if inClusterConfig != nil {
@@ -1358,7 +1358,7 @@ func (m *MultiClusterClient) DeduplicatedClusters(ctx context.Context) ([]Cluste
 		others  []string
 	}
 	serverGroups := make(map[string]*group)
-	var noServer []ClusterInfo
+	noServer := make([]ClusterInfo, 0)
 
 	for _, cl := range clusters {
 		if cl.Server == "" {

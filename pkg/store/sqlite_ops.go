@@ -38,7 +38,7 @@ func (s *SQLiteStore) ListClusterGroups(ctx context.Context) (map[string][]byte,
 	groups := make(map[string][]byte)
 	for rows.Next() {
 		var name string
-		var data []byte
+		data := make([]byte, 0)
 		if err := rows.Scan(&name, &data); err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func (s *SQLiteStore) QueryTimeline(ctx context.Context, filter TimelineFilter) 
 		limit = clusterEventMaxLimit
 	}
 
-	var clauses []string
+	clauses := make([]string, 0)
 	var args []interface{}
 
 	if filter.Cluster != "" {

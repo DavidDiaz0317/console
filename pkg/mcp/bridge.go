@@ -162,7 +162,7 @@ func (b *Bridge) Start(ctx context.Context) error {
 	close(errCh)
 
 	// Collect any errors
-	var errs []error
+	errs := make([]error, 0)
 	for err := range errCh {
 		errs = append(errs, err)
 	}
@@ -187,7 +187,7 @@ func (b *Bridge) Stop() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	var errs []error
+	errs := make([]error, 0)
 
 	if b.opsClient != nil {
 		if err := b.opsClient.Stop(); err != nil {

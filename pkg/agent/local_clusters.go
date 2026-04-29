@@ -353,7 +353,7 @@ func minikubeProfileStatus(name string) string {
 		Kubelet   string `json:"Kubelet"`
 		APIServer string `json:"APIServer"`
 	}
-	var entries []statusEntry
+	entries := make([]statusEntry, 0)
 	if raw[0] == '[' {
 		if err := json.Unmarshal(raw, &entries); err != nil {
 			return "unknown"
@@ -511,7 +511,7 @@ func listKindContainers(name string) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("docker ps failed: %s", stderr.String())
 	}
-	var names []string
+	names := make([]string, 0)
 	for _, line := range strings.Split(strings.TrimSpace(stdout.String()), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
@@ -694,7 +694,7 @@ func (m *LocalClusterManager) ListVClusters() ([]VClusterInstance, error) {
 		return nil, fmt.Errorf("vcluster list failed: %s", strings.TrimSpace(stderr.String()))
 	}
 
-	var entries []vclusterListEntry
+	entries := make([]vclusterListEntry, 0)
 	if err := json.Unmarshal(stdout.Bytes(), &entries); err != nil {
 		return nil, fmt.Errorf("failed to parse vcluster list output: %w", err)
 	}
@@ -951,7 +951,7 @@ func (m *LocalClusterManager) CheckVClusterOnAllClusters() ([]VClusterClusterSta
 	}
 
 	contexts := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	var results []VClusterClusterStatus
+	results := make([]VClusterClusterStatus, 0)
 
 	for _, ctx := range contexts {
 		if ctx == "" {

@@ -46,7 +46,7 @@ func (s *Server) handleMixedModeChat(ctx context.Context, conn *websocket.Conn, 
 	}
 
 	// Convert protocol history to provider history
-	var history []ChatMessage
+	history := make([]ChatMessage, 0)
 	for _, m := range req.History {
 		history = append(history, ChatMessage{Role: m.Role, Content: m.Content})
 	}

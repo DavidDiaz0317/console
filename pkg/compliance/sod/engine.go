@@ -95,7 +95,7 @@ func (e *Engine) Summary() SoDSummary {
 
 // evaluate checks all principals against all rules.
 func (e *Engine) evaluate() []SoDViolation {
-	var violations []SoDViolation
+	violations := make([]SoDViolation, 0)
 	vid := 0
 
 	for _, p := range e.principals {

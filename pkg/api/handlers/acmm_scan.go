@@ -222,7 +222,7 @@ func ACMMScanHandler(c *fiber.Ctx) error {
 	}
 
 	// Detect criteria
-	var detected []string
+	detected := make([]string, 0)
 	for _, crit := range acmmCriteria {
 		if matchesPatterns(treePaths, crit.Patterns) {
 			detected = append(detected, crit.ID)
@@ -411,7 +411,7 @@ type acmmSearchItem struct {
 }
 
 func searchAllACMMPages(ctx context.Context, baseURL, token string) []acmmSearchItem {
-	var items []acmmSearchItem
+	items := make([]acmmSearchItem, 0)
 	for page := 1; page <= searchMaxPages; page++ {
 		url := fmt.Sprintf("%s&per_page=%d&page=%d", baseURL, searchPageSize, page)
 		body, err := githubGet(ctx, url, token)

@@ -87,7 +87,7 @@ func ghpGetRepos() []string {
 	if env == "" {
 		return ghpDefaultRepos
 	}
-	var repos []string
+	repos := make([]string, 0)
 	for _, s := range strings.Split(env, ",") {
 		s = strings.TrimSpace(s)
 		if s != "" {
@@ -521,7 +521,7 @@ func (h *GitHubPipelinesHandler) serveCached(c *fiber.Ctx, key string, build fun
 	}
 	// Build merged JSON: { ...payload, "repos": [...] }
 	reposJSON, _ := json.Marshal(ghpRepos)
-	var body []byte
+	body := make([]byte, 0)
 	if len(inner) > 2 && inner[0] == '{' {
 		// Merge repos into existing object.
 		// Guard against integer overflow before computing the allocation size
@@ -727,7 +727,7 @@ type workflowRunRaw struct {
 }
 
 func normalizeRunRaw(r workflowRunRaw, repo string) ghpWorkflowRun {
-	var prs []ghpPullRequestRef
+	prs := make([]ghpPullRequestRef, 0)
 	for _, pr := range r.PullRequests {
 		prs = append(prs, ghpPullRequestRef{Number: pr.Number, URL: pr.URL})
 	}
@@ -796,7 +796,7 @@ func (h *GitHubPipelinesHandler) fetchRuns(ctx context.Context, repo, query stri
 		baseQuery += "&"
 	}
 
-	var out []ghpWorkflowRun
+	out := make([]ghpWorkflowRun, 0)
 	for page := 1; page <= maxPages; page++ {
 		pageQuery := fmt.Sprintf("%sper_page=%d&page=%d", baseQuery, pageSize, page)
 		res, err := h.ghGetWithRetry(ctx, fmt.Sprintf("/repos/%s/actions/runs?%s", repo, pageQuery))
@@ -1221,7 +1221,7 @@ func (h *GitHubPipelinesHandler) buildFlowFromQuery(c *fiber.Ctx) (any, error) {
 	}
 
 	ctx := c.UserContext()
-	var all []ghpFlowRun
+	all := make([]ghpFlowRun, 0)
 	for _, repo := range repos {
 		inProgress, errP := h.fetchRuns(ctx, repo, fmt.Sprintf("status=in_progress&per_page=%d", ghpFlowMaxRunsPerRepo))
 		if errP != nil {
@@ -1263,7 +1263,7 @@ func (h *GitHubPipelinesHandler) buildFailuresFromQuery(c *fiber.Ctx) (any, erro
 	}
 
 	ctx := c.UserContext()
-	var rows []ghpFailureRow
+	rows := make([]ghpFailureRow, 0)
 	for _, repo := range repos {
 		runs, err := h.fetchRuns(ctx, repo, fmt.Sprintf("status=failure&per_page=%d", ghpFailuresOverfetch))
 		if err != nil {

@@ -454,7 +454,7 @@ func (m *MultiClusterClient) ResolveDependencies(
 	wg.Wait()
 
 	// Collect results preserving order
-	var fetchedDeps []Dependency
+	fetchedDeps := make([]Dependency, 0)
 	for _, r := range results {
 		if r.warn != "" {
 			bundle.Warnings = append(bundle.Warnings, r.warn)
@@ -632,8 +632,8 @@ func walkVolumeRefs(volumes []interface{}) (configMaps, secrets, pvcs []string) 
 func (m *MultiClusterClient) resolveRBACForSA(
 	ctx context.Context, cluster, namespace, saName string,
 ) ([]Dependency, []string) {
-	var deps []Dependency
-	var warnings []string
+	deps := make([]Dependency, 0)
+	warnings := make([]string, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -719,8 +719,8 @@ func (m *MultiClusterClient) resolveRBACForSA(
 func (m *MultiClusterClient) findMatchingServices(
 	ctx context.Context, cluster, namespace string, podLabels map[string]string,
 ) ([]Dependency, []string) {
-	var deps []Dependency
-	var warnings []string
+	deps := make([]Dependency, 0)
+	warnings := make([]string, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -757,7 +757,7 @@ func (m *MultiClusterClient) findMatchingServices(
 func (m *MultiClusterClient) findMatchingIngresses(
 	ctx context.Context, cluster, namespace string, serviceNames []string,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -842,7 +842,7 @@ func ingressReferencesServices(obj map[string]interface{}, svcSet map[string]boo
 func (m *MultiClusterClient) findMatchingNetworkPolicies(
 	ctx context.Context, cluster, namespace string, podLabels map[string]string,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -877,7 +877,7 @@ func (m *MultiClusterClient) findMatchingNetworkPolicies(
 func (m *MultiClusterClient) findMatchingHPAs(
 	ctx context.Context, cluster, namespace string, workloadObj *unstructured.Unstructured,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -918,7 +918,7 @@ func (m *MultiClusterClient) findMatchingHPAs(
 func (m *MultiClusterClient) findMatchingPDBs(
 	ctx context.Context, cluster, namespace string, podLabels map[string]string,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -1016,7 +1016,7 @@ func isSystemClusterRole(name string) bool {
 
 // collectServiceNames extracts Service dependency names from a bundle
 func collectServiceNames(deps []Dependency) []string {
-	var names []string
+	names := make([]string, 0)
 	for _, d := range deps {
 		if d.Kind == DepService {
 			names = append(names, d.Name)
@@ -1030,7 +1030,7 @@ func collectServiceNames(deps []Dependency) []string {
 func (m *MultiClusterClient) findRelatedCRDs(
 	ctx context.Context, cluster, namespace string, serviceNames []string,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {
@@ -1072,7 +1072,7 @@ func (m *MultiClusterClient) findRelatedCRDs(
 func (m *MultiClusterClient) findMatchingWebhookConfigs(
 	ctx context.Context, cluster, namespace string, serviceNames []string, mutating bool,
 ) []Dependency {
-	var deps []Dependency
+	deps := make([]Dependency, 0)
 
 	dynClient, err := m.GetDynamicClient(cluster)
 	if err != nil {

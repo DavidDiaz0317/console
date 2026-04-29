@@ -62,9 +62,9 @@ func (m *MultiClusterClient) ListServiceAccounts(ctx context.Context, contextNam
 	// Pre-fetch all bindings once to avoid N+1 queries per SA
 	saRolesMap := m.buildServiceAccountRolesMap(ctx, client, namespace)
 
-	var result []models.K8sServiceAccount
+	result := make([]models.K8sServiceAccount, 0)
 	for _, sa := range sas.Items {
-		var secrets []string
+		secrets := make([]string, 0)
 		for _, s := range sa.Secrets {
 			secrets = append(secrets, s.Name)
 		}
@@ -145,7 +145,7 @@ func (m *MultiClusterClient) ListRoles(ctx context.Context, contextName, namespa
 		return nil, err
 	}
 
-	var result []models.K8sRole
+	result := make([]models.K8sRole, 0)
 	for _, role := range roles.Items {
 		result = append(result, models.K8sRole{
 			Name:      role.Name,
@@ -171,7 +171,7 @@ func (m *MultiClusterClient) ListClusterRoles(ctx context.Context, contextName s
 		return nil, err
 	}
 
-	var result []models.K8sRole
+	result := make([]models.K8sRole, 0)
 	for _, role := range roles.Items {
 		// Skip system roles unless requested
 		if !includeSystem && isSystemRole(role.Name) {
@@ -217,7 +217,7 @@ func (m *MultiClusterClient) ListRoleBindings(ctx context.Context, contextName, 
 		return nil, err
 	}
 
-	var result []models.K8sRoleBinding
+	result := make([]models.K8sRoleBinding, 0)
 	for _, rb := range rbs.Items {
 		binding := models.K8sRoleBinding{
 			Name:      rb.Name,
@@ -258,7 +258,7 @@ func (m *MultiClusterClient) ListClusterRoleBindings(ctx context.Context, contex
 		return nil, err
 	}
 
-	var result []models.K8sRoleBinding
+	result := make([]models.K8sRoleBinding, 0)
 	for _, crb := range crbs.Items {
 		// Skip system bindings unless requested
 		if !includeSystem && isSystemRole(crb.Name) {
@@ -656,7 +656,7 @@ func (m *MultiClusterClient) GetAllK8sUsers(ctx context.Context, contextName str
 	}
 
 	seen := make(map[string]bool)
-	var users []models.K8sUser
+	users := make([]models.K8sUser, 0)
 
 	// From RoleBindings
 	rbs, err := client.RbacV1().RoleBindings("").List(ctx, metav1.ListOptions{})
@@ -803,7 +803,7 @@ func (m *MultiClusterClient) listAllNamespaces(ctx context.Context, contextName 
 		return nil, err
 	}
 
-	var namespaces []string
+	namespaces := make([]string, 0)
 	for _, ns := range nsList.Items {
 		namespaces = append(namespaces, ns.Name)
 	}
@@ -906,7 +906,7 @@ func (m *MultiClusterClient) getAccessibleNamespaces(ctx context.Context, contex
 	}
 
 	probeNamespaces := buildProbeNamespaces(userNamespaceFromContext(ctx))
-	var accessible []string
+	accessible := make([]string, 0)
 
 	for _, ns := range probeNamespaces {
 		// Try to get the namespace
@@ -990,7 +990,7 @@ func (m *MultiClusterClient) ListNamespacesWithDetails(ctx context.Context, cont
 		return nil, err
 	}
 
-	var namespaces []models.NamespaceDetails
+	namespaces := make([]models.NamespaceDetails, 0)
 	for _, ns := range nsList.Items {
 		namespaces = append(namespaces, models.NamespaceDetails{
 			Name:      ns.Name,
@@ -1061,7 +1061,7 @@ func (m *MultiClusterClient) ListOpenShiftUsers(ctx context.Context, contextName
 		return []models.OpenShiftUser{}, nil
 	}
 
-	var users []models.OpenShiftUser
+	users := make([]models.OpenShiftUser, 0)
 	for _, item := range list.Items {
 		user := parseOpenShiftUser(item, contextName)
 		users = append(users, user)

@@ -406,7 +406,7 @@ func (mh *MetricsHistory) loadFromDisk() {
 		return
 	}
 
-	var snapshots []MetricsSnapshot
+	snapshots := make([]MetricsSnapshot, 0)
 	if err := json.Unmarshal(data, &snapshots); err != nil {
 		slog.Error("[MetricsHistory] error parsing history file", "error", err)
 		return

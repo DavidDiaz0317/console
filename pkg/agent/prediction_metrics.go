@@ -194,8 +194,8 @@ func GetMetricsHandler() http.Handler {
 
 // Helper function to split a pipe-delimited key
 func splitKey(key string) []string {
-	var parts []string
-	var current []rune
+	parts := make([]string, 0)
+	current := make([]rune, 0)
 	for _, r := range key {
 		if r == '|' {
 			parts = append(parts, string(current))

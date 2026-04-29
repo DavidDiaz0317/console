@@ -120,7 +120,7 @@ func (s *Service) SendAlert(alert Alert) error {
 		return nil
 	}
 
-	var errors []string
+	errors := make([]string, 0)
 	for id, notifier := range notifiers {
 		if err := notifier.Send(alert); err != nil {
 			errMsg := fmt.Sprintf("failed to send notification via %s: %v", id, err)
@@ -174,7 +174,7 @@ func (s *Service) SendAlertToChannels(alert Alert, channels []NotificationChanne
 		return nil
 	}
 
-	var errors []string
+	errors := make([]string, 0)
 	for i, channel := range channels {
 		if !channel.Enabled {
 			continue

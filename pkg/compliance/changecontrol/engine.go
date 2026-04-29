@@ -91,7 +91,7 @@ func (e *Engine) Summary() AuditSummary {
 }
 
 func (e *Engine) evaluate() []PolicyViolation {
-	var violations []PolicyViolation
+	violations := make([]PolicyViolation, 0)
 	vid := 0
 	for _, change := range e.changes {
 		for _, policy := range e.policies {

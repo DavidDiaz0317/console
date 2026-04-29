@@ -53,7 +53,7 @@ func (m *MultiClusterClient) ListGateways(ctx context.Context) (*v1alpha1.Gatewa
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	gateways := make([]v1alpha1.Gateway, 0)
-	var errs []error
+	errs := make([]error, 0)
 
 	for _, clusterName := range clusters {
 		wg.Add(1)
@@ -197,7 +197,7 @@ func (m *MultiClusterClient) ListHTTPRoutes(ctx context.Context) (*v1alpha1.HTTP
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	routes := make([]v1alpha1.HTTPRoute, 0)
-	var errs []error
+	errs := make([]error, 0)
 
 	for _, clusterName := range clusters {
 		wg.Add(1)
