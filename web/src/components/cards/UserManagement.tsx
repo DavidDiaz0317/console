@@ -18,12 +18,14 @@ import type { ConsoleUser, UserRole, OpenShiftUser } from '../../types/users'
 import { Skeleton } from '../ui/Skeleton'
 import { useCardLoadingState } from './CardDataContext'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useToast } from '../ui/Toast'
 import { useDemoMode } from '../../hooks/useDemoMode'
 import { emitUserRoleChanged, emitUserRemoved } from '../../lib/analytics'
 import { ConfirmDialog } from '../../lib/modals'
+
+/** Loose translation function type for helper functions that use dynamic keys */
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string
 
 const MAX_VISIBLE_GROUPS = 3
 
@@ -37,7 +39,7 @@ type OpenShiftUserSortBy = 'name' | 'kind'
 type SASortBy = 'name' | 'namespace'
 
 // Sort options defined in component to access t()
-function getConsoleUserSortOptions(t: TFunction) {
+function getConsoleUserSortOptions(t: TranslateFn) {
   return [
     { value: 'name' as const, label: t('common:common.name') },
     { value: 'role' as const, label: t('common:common.role') },
@@ -45,14 +47,14 @@ function getConsoleUserSortOptions(t: TFunction) {
   ]
 }
 
-function getOpenShiftUserSortOptions(t: TFunction) {
+function getOpenShiftUserSortOptions(t: TranslateFn) {
   return [
     { value: 'name' as const, label: t('userManagement.username') },
     { value: 'kind' as const, label: t('userManagement.fullName') },
   ]
 }
 
-function getSASortOptions(t: TFunction) {
+function getSASortOptions(t: TranslateFn) {
   return [
     { value: 'name' as const, label: t('common:common.name') },
     { value: 'namespace' as const, label: t('common:common.namespace') },
@@ -257,9 +259,9 @@ export function UserManagement({ config: _config }: UserManagementProps) {
     : activeTab === 'serviceAccounts' ? setSaItemsPerPage
     : setConsoleUserItemsPerPage
 
-  const activeSortOptions = activeTab === 'clusterUsers' ? getOpenShiftUserSortOptions(t)
-    : activeTab === 'serviceAccounts' ? getSASortOptions(t)
-    : getConsoleUserSortOptions(t)
+  const activeSortOptions = activeTab === 'clusterUsers' ? getOpenShiftUserSortOptions(t as unknown as TranslateFn)
+    : activeTab === 'serviceAccounts' ? getSASortOptions(t as unknown as TranslateFn)
+    : getConsoleUserSortOptions(t as unknown as TranslateFn)
 
   const isAdmin = currentUser?.role === 'admin'
 
