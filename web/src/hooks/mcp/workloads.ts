@@ -28,61 +28,31 @@ export interface PodClusterError {
 // Return types for exported hooks
 // ---------------------------------------------------------------------------
 
-export interface UsePodsResult {
-  pods: PodInfo[]
+/** Shared fields returned by hooks with full retry/failure tracking. */
+interface WorkloadHookBaseResult<T> {
   isLoading: boolean
-  isRefreshing: boolean
-  lastUpdated: Date | null
   error: string | null
   refetch: () => Promise<void>
   consecutiveFailures: number
   isFailed: boolean
-  lastRefresh: Date | null
-}
-
-export interface UseAllPodsResult {
-  pods: PodInfo[]
-  isLoading: boolean
-  isRefreshing: boolean
-  lastUpdated: Date | null
-  error: string | null
-  clusterErrors: PodClusterError[]
-  refetch: () => Promise<void>
-}
-
-export interface UsePodIssuesResult {
+export interface UsePodIssuesResult extends WorkloadHookBaseResult<PodIssue[]> {
   issues: PodIssue[]
-  isLoading: boolean
   isRefreshing: boolean
   lastUpdated: Date | null
-  error: string | null
-  refetch: () => Promise<void>
-  consecutiveFailures: number
-  isFailed: boolean
   lastRefresh: Date | null
 }
 
-export interface UseDeploymentIssuesResult {
+export interface UseDeploymentIssuesResult extends WorkloadHookBaseResult<DeploymentIssue[]> {
   issues: DeploymentIssue[]
-  isLoading: boolean
   isRefreshing: boolean
   lastUpdated: Date | null
-  error: string | null
-  refetch: () => Promise<void>
-  consecutiveFailures: number
-  isFailed: boolean
   lastRefresh: Date | null
 }
 
-export interface UseDeploymentsResult {
+export interface UseDeploymentsResult extends WorkloadHookBaseResult<Deployment[]> {
   deployments: Deployment[]
-  isLoading: boolean
   isRefreshing: boolean
   lastUpdated: Date | null
-  error: string | null
-  refetch: () => Promise<void>
-  consecutiveFailures: number
-  isFailed: boolean
   lastRefresh: Date | null
 }
 
