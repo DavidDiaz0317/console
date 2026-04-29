@@ -33,6 +33,7 @@ import type { TFunction } from 'i18next'
 import { MetricTile } from '../../../lib/cards/CardComponents'
 import { Skeleton, SkeletonList, SkeletonStats } from '../../ui/Skeleton'
 import { useCachedKserve } from '../../../hooks/useCachedKserve'
+import { useReportCardDataState } from '../CardDataContext'
 import { cn } from '../../../lib/cn'
 import type {
   KServeService,
@@ -167,11 +168,15 @@ export function KServeStatus() {
   const {
     data,
     isRefreshing,
+    isDemoData,
+    isFailed,
+    consecutiveFailures,
     error,
     showSkeleton,
     showEmptyState,
-    isDemoData,
   } = useCachedKserve()
+
+  useReportCardDataState({ isFailed, consecutiveFailures, isDemoData, isRefreshing, hasData: data.health !== 'unknown' })
 
   if (showSkeleton) {
     return (
