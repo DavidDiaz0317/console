@@ -89,7 +89,7 @@ export function RuntimeAttestationCard() {
     data,
     isLoading,
     isRefreshing,
-    isDemoData,
+    isDemoFallback: isDemoData,
     isFailed,
     consecutiveFailures,
     lastRefresh,

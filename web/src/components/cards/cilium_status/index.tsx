@@ -27,7 +27,7 @@ export const CiliumStatus: React.FC<CardComponentProps> = () => {
         data,
         isLoading,
         isRefreshing,
-        isDemoData,
+        isDemoFallback: isDemoData,
         isFailed,
         consecutiveFailures,
         lastRefresh
