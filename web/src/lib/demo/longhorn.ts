@@ -20,7 +20,7 @@ import { BYTES_PER_GIB, BYTES_PER_TIB } from '../constants/units'
 // Types
 // ---------------------------------------------------------------------------
 
-export type LonghornInstallHealth = 'healthy' | 'degraded' | 'not-installed'
+export type LonghornInstallHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 /**
  * Volume operational state as reported by `volume.status.state`.

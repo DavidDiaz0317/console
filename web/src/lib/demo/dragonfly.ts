@@ -23,7 +23,7 @@ import { BYTES_PER_GIB } from '../constants/units'
 // Types
 // ---------------------------------------------------------------------------
 
-export type DragonflyHealth = 'healthy' | 'degraded' | 'not-installed'
+export type DragonflyHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export type DragonflyComponent = 'manager' | 'scheduler' | 'seed-peer' | 'dfdaemon'
 

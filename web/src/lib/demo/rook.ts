@@ -20,7 +20,7 @@ import { BYTES_PER_GIB, BYTES_PER_TIB } from '../constants/units'
 // ---------------------------------------------------------------------------
 
 export type RookCephHealth = 'HEALTH_OK' | 'HEALTH_WARN' | 'HEALTH_ERR'
-export type RookInstallHealth = 'healthy' | 'degraded' | 'not-installed'
+export type RookInstallHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export interface RookCephCluster {
   /** Namespace/name of the CephCluster custom resource. */

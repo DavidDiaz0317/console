@@ -41,7 +41,7 @@ export interface TufSummary {
   expiringSoonRoles: number
 }
 
-export type TufHealth = 'healthy' | 'degraded' | 'not-installed'
+export type TufHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export interface TufStatusData {
   health: TufHealth

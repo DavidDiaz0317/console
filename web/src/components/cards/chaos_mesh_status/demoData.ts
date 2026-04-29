@@ -24,7 +24,7 @@ export interface ChaosMeshSummary {
   failed: number
 }
 
-export type ChaosMeshHealth = 'healthy' | 'degraded' | 'not-installed'
+export type ChaosMeshHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export interface ChaosMeshStatusData {
   experiments: ChaosMeshExperiment[]

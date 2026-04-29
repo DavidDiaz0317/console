@@ -71,7 +71,7 @@ export interface CustodianSummary {
   dryRunPolicies: number
 }
 
-export type CustodianHealth = 'healthy' | 'degraded' | 'not-installed'
+export type CustodianHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 
 export interface CloudCustodianStatusData {
   health: CustodianHealth

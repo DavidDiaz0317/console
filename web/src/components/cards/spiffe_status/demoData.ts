@@ -24,7 +24,7 @@ import { MS_PER_MINUTE, MS_PER_HOUR, MS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_D
 // Types
 // ---------------------------------------------------------------------------
 
-export type SpiffeHealth = 'healthy' | 'degraded' | 'not-installed'
+export type SpiffeHealth = 'healthy' | 'degraded' | 'not-installed' | 'unknown'
 export type SvidType = 'x509' | 'jwt'
 export type FederationStatus = 'active' | 'pending' | 'failed'
 
