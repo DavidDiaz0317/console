@@ -45,6 +45,7 @@ vi.mock('../../../lib/modeTransition', () => ({
 vi.mock('../shared', () => ({
   MIN_REFRESH_INDICATOR_MS: 0,
   getEffectiveInterval: (ms: number) => ms,
+  agentFetch: (...args: unknown[]) => fetch(...(args as Parameters<typeof fetch>)),
 }))
 
 vi.mock('../pollingManager', () => ({
