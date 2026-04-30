@@ -107,6 +107,7 @@ vi.mock('../../../lib/analytics', () => ({
 // ---------------------------------------------------------------------------
 import {
   agentFetch,
+  _resetAgentTokenState,
   clearClusterCacheOnLogout,
   clusterCache,
   clusterSubscribers,
@@ -151,6 +152,8 @@ describe('agentFetch — token injection and signal fallback', () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     localStorage.clear()
+    _resetAgentTokenState()
+    mockEmitAgentTokenFailure.mockClear()
   })
 
   it('injects Authorization header when token exists in localStorage', async () => {
@@ -228,6 +231,7 @@ describe('getAgentToken — emits GA4 on failure', () => {
     globalThis.fetch = originalFetch
     localStorage.clear()
     mockEmitAgentTokenFailure.mockClear()
+    _resetAgentTokenState()
   })
 
   it('emits emitAgentTokenFailure when /api/agent/token returns non-OK', async () => {

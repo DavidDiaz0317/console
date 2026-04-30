@@ -59,8 +59,11 @@ vi.mock('../../constants', async (importOriginal) => {
   return { ...actual, STORAGE_KEY_KUBECTL_HISTORY: 'kubectl-history' }
 })
 
+let _mockRpcInstance: Record<string, unknown> | null = null
+
 vi.mock('../workerRpc', () => ({
-  CacheWorkerRpc: vi.fn(),
+  // Must use a regular function (not arrow) so `new CacheWorkerRpc()` works.
+  CacheWorkerRpc: vi.fn().mockImplementation(function() { return _mockRpcInstance ?? {} }),
 }))
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -1004,9 +1007,19 @@ describe('saveMeta localStorage fallback', () => {
 // ============================================================================
 
 describe('worker-active IndexedDB mirror write', () => {
+  let _savedWorker: typeof globalThis.Worker
+
+  beforeEach(() => {
+    _savedWorker = globalThis.Worker
+  })
+
+  afterEach(() => {
+    globalThis.Worker = _savedWorker
+    _mockRpcInstance = null
+  })
+
   it('mirrors data to _idbStorage.set when workerRpc is active', async () => {
     // Mock the Worker constructor so initCacheWorker() doesn't try to spawn a real worker
-    const originalWorker = globalThis.Worker
     globalThis.Worker = vi.fn() as unknown as typeof Worker
 
     const mockRpc = {
@@ -1021,11 +1034,9 @@ describe('worker-active IndexedDB mirror write', () => {
       migrate: vi.fn().mockResolvedValue(undefined),
     }
 
-    // Must register doMock BEFORE importFresh() resets modules, so the fresh
-    // cache/index.ts import picks up the mocked CacheWorkerRpc constructor.
-    vi.doMock('../workerRpc', () => ({
-      CacheWorkerRpc: vi.fn().mockImplementation(() => mockRpc),
-    }))
+    // Must set _mockRpcInstance BEFORE importFresh() resets modules, so the
+    // persistent vi.mock factory picks up the correct CacheWorkerRpc implementation.
+    _mockRpcInstance = mockRpc
 
     const mod = await importFresh()
     const { useCache, initCacheWorker, isSQLiteWorkerActive, __testables: testables } = mod
@@ -1053,7 +1064,6 @@ describe('worker-active IndexedDB mirror write', () => {
     expect(idbSetSpy).toHaveBeenCalledWith('idb-mirror-test', testData)
 
     idbSetSpy.mockRestore()
-    globalThis.Worker = originalWorker
   })
 
   it('does not mirror to IDB when workerRpc is null (fallback mode)', async () => {
