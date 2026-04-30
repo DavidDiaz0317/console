@@ -226,7 +226,7 @@ function buildScopeString(filters: Record<string, OrbitResourceFilter[]>): strin
 export function StandaloneOrbitDialog({ onClose, prefill }: StandaloneOrbitDialogProps) {
   const { t } = useTranslation()
   const { saveMission } = useMissions()
-  const { deduplicatedClusters, isLoading: clustersLoading } = useClusters()
+  const { deduplicatedClusters = [], isLoading: clustersLoading } = useClusters()
 
   const templates = getApplicableOrbitTemplates(['*'])
 

@@ -234,7 +234,7 @@ export function CustomDashboard() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { getDashboardWithCards, deleteDashboard, exportDashboard, importDashboard } = useDashboards()
-  const { deduplicatedClusters, isLoading: isClustersLoading } = useClusters()
+  const { deduplicatedClusters = [], isLoading: isClustersLoading } = useClusters()
   const { config, removeItem } = useSidebarConfig()
   const { drillToAllClusters, drillToAllNodes, drillToAllPods } = useDrillDownActions()
   const { t } = useTranslation()
@@ -245,15 +245,15 @@ export function CustomDashboard() {
 
   // Stats data from clusters — use the centralised state machine so these
   // counts always match the main cluster grid and sidebar (#5928).
-  const healthyClusters = deduplicatedClusters.filter((c) => !isClusterUnreachable(c) && getClusterHealthState(c) === 'healthy').length
-  const unhealthyClusters = deduplicatedClusters.filter((c) => !isClusterUnreachable(c) && getClusterHealthState(c) === 'unhealthy').length
-  const totalNodes = deduplicatedClusters.reduce((sum, c) => sum + (c.nodeCount || 0), 0)
-  const totalPods = deduplicatedClusters.reduce((sum, c) => sum + (c.podCount || 0), 0)
+  const healthyClusters = (deduplicatedClusters || []).filter((c) => !isClusterUnreachable(c) && getClusterHealthState(c) === 'healthy').length
+  const unhealthyClusters = (deduplicatedClusters || []).filter((c) => !isClusterUnreachable(c) && getClusterHealthState(c) === 'unhealthy').length
+  const totalNodes = (deduplicatedClusters || []).reduce((sum, c) => sum + (c.nodeCount || 0), 0)
+  const totalPods = (deduplicatedClusters || []).reduce((sum, c) => sum + (c.podCount || 0), 0)
 
   const getDashboardStatValue = (blockId: string): StatBlockValue => {
     switch (blockId) {
       case 'clusters':
-        return { value: deduplicatedClusters.length, sublabel: 'total clusters', onClick: () => drillToAllClusters(), isClickable: deduplicatedClusters.length > 0 }
+        return { value: (deduplicatedClusters || []).length, sublabel: 'total clusters', onClick: () => drillToAllClusters(), isClickable: (deduplicatedClusters || []).length > 0 }
       case 'healthy':
         return { value: healthyClusters, sublabel: 'healthy', onClick: () => drillToAllClusters('healthy'), isClickable: healthyClusters > 0 }
       case 'warnings':
@@ -628,8 +628,8 @@ export function CustomDashboard() {
       <StatsOverview
         dashboardType="dashboard"
         getStatValue={getStatValue}
-        hasData={deduplicatedClusters.length > 0}
-        isLoading={isClustersLoading && deduplicatedClusters.length === 0}
+        hasData={(deduplicatedClusters || []).length > 0}
+        isLoading={isClustersLoading && (deduplicatedClusters || []).length === 0}
         lastUpdated={lastUpdated}
         collapsedStorageKey={`kubestellar-custom-${id}-stats-collapsed`}
       />

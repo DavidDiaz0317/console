@@ -31,7 +31,17 @@ vi.mock('../../lib/dashboards/DashboardPage', () => ({
 
 vi.mock('../../hooks/useMCP', () => ({
   useClusters: () => ({
-    clusters: [], deduplicatedClusters: [], isLoading: false, isRefreshing: false, refetch: vi.fn(),
+    clusters: [],
+    deduplicatedClusters: [],
+    metricsCompleteness: { contributingClusters: [], missingClusters: [], isComplete: false },
+    isLoading: false,
+    isRefreshing: false,
+    lastUpdated: null,
+    error: null,
+    refetch: vi.fn(),
+    consecutiveFailures: 0,
+    isFailed: false,
+    lastRefresh: null,
   }),
 }))
 

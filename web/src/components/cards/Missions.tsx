@@ -145,7 +145,7 @@ const CLUSTER_FILTER_STORAGE_KEY = 'kubestellar-card-filter:deployment-missions-
 export function Missions(_props: MissionsProps) {
   const { t } = useTranslation(['common', 'cards'])
   const { missions: liveMissions, activeMissions: liveActive, completedMissions: liveCompleted } = useDeployMissions()
-  const { deduplicatedClusters, isLoading, isRefreshing, isFailed, consecutiveFailures } = useClusters()
+  const { deduplicatedClusters = [], isLoading, isRefreshing, isFailed, consecutiveFailures } = useClusters()
   const { isDemoMode: demoMode } = useDemoMode()
   const missions = demoMode ? DEMO_MISSIONS : liveMissions
   const activeMissions = demoMode ? [] : liveActive
@@ -179,7 +179,7 @@ export function Missions(_props: MissionsProps) {
   const { showKeyPrompt, checkKeyAndRun, goToSettings, dismissPrompt } = useApiKeyCheck()
 
   // Report state to CardWrapper for refresh animation
-  const hasData = missions.length > 0 || deduplicatedClusters.length > 0
+  const hasData = missions.length > 0 || (deduplicatedClusters || []).length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
     isRefreshing,
@@ -230,7 +230,7 @@ export function Missions(_props: MissionsProps) {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
-  const availableClusters = deduplicatedClusters.filter(c => c.reachable !== false)
+  const availableClusters = (deduplicatedClusters || []).filter(c => c.reachable !== false)
 
   const toggleMission = (id: string) => {
     setExpandedMissions(prev => {

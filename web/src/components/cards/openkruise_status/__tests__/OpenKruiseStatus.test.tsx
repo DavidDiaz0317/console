@@ -67,7 +67,17 @@ vi.mock('../../CardDataContext', () => ({
 }))
 
 vi.mock('../../../../hooks/useMCP', () => ({
-  useClusters: () => ({ isLoading: false, clusters: [], deduplicatedClusters: [] }),
+  useClusters: () => ({ isLoading: false, clusters: [],
+    deduplicatedClusters: [],
+    metricsCompleteness: { contributingClusters: [], missingClusters: [], isComplete: false },
+    isRefreshing: false,
+    lastUpdated: null,
+    error: null,
+    refetch: vi.fn(),
+    consecutiveFailures: 0,
+    isFailed: false,
+    lastRefresh: null,
+  }),
 }))
 
 vi.mock('../../../../hooks/useGlobalFilters', () => ({

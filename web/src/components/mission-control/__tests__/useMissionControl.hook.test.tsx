@@ -32,9 +32,17 @@ describe('useMissionControl hook', () => {
       missions: [],
     } as any)
     vi.spyOn(useClustersModule, 'useClusters').mockReturnValue({
-      clusters: [], deduplicatedClusters: [],
+      clusters: [],
+      deduplicatedClusters: [],
+      metricsCompleteness: { contributingClusters: [], missingClusters: [], isComplete: false },
       isLoading: false,
+      isRefreshing: false,
       lastUpdated: new Date(),
+      error: null,
+      refetch: vi.fn(),
+      consecutiveFailures: 0,
+      isFailed: false,
+      lastRefresh: null,
     } as any)
     vi.spyOn(useHelmReleasesModule, 'useHelmReleases').mockReturnValue({
       releases: [],

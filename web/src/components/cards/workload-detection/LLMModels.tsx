@@ -27,7 +27,7 @@ interface LLMModelsProps {
 export function LLMModels({ config: _config }: LLMModelsProps) {
   const { t } = useTranslation(['cards', 'common'])
   // Dynamically discover LLM-d clusters instead of using static list
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const { nodes: gpuNodes } = useCachedGPUNodes()
   const gpuClusterNames = new Set(gpuNodes.map(n => n.cluster))
   const llmdClusters = useLLMdClusters(deduplicatedClusters, gpuClusterNames)

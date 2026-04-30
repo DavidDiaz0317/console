@@ -138,14 +138,14 @@ const SAVED_FILTER_SETS_KEY = 'globalFilter:savedFilterSets'
 const DEFAULT_GROUPS: ClusterGroup[] = []
 
 export function GlobalFiltersProvider({ children }: { children: ReactNode }) {
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const availableClusters = useMemo(
-    () => deduplicatedClusters.map(c => c.name),
+    () => (deduplicatedClusters || []).map(c => c.name),
     [deduplicatedClusters]
   )
   const clusterInfoMap = useMemo(() => {
     const map: Record<string, ClusterInfo> = {}
-    deduplicatedClusters.forEach(c => { map[c.name] = c })
+    (deduplicatedClusters || []).forEach(c => { map[c.name] = c })
     return map
   }, [deduplicatedClusters])
 

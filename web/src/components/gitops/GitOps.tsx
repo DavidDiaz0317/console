@@ -138,10 +138,10 @@ export function GitOps() {
     c.context || c.name.split('/').pop() || ''
   const resolveAppCluster = (preferred: string): { cluster: string; ambiguous: boolean } => {
     if (preferred) return { cluster: preferred, ambiguous: false }
-    if (deduplicatedClusters.length === EXACTLY_ONE_CLUSTER) {
+    if ((deduplicatedClusters || []).length === EXACTLY_ONE_CLUSTER) {
       return { cluster: clusterDisplayName(deduplicatedClusters[0]), ambiguous: false }
     }
-    return { cluster: '', ambiguous: deduplicatedClusters.length > EXACTLY_ONE_CLUSTER }
+    return { cluster: '', ambiguous: (deduplicatedClusters || []).length > EXACTLY_ONE_CLUSTER }
   }
 
   // #5952 — detectAllDrift is now a callable ref so the refresh button can

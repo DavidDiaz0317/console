@@ -163,7 +163,7 @@ export function FleetComplianceHeatmap({ config: _config }: CardConfig) {
   const { statuses: trivyStatuses, isLoading: trivyLoading, isRefreshing: trivyRefreshing, isDemoData: trivyDemoData, installed: trivyInstalled, refetch: trivyRefetch, clustersChecked: trivyChecked, totalClusters: trivyTotal } = useTrivy()
   const { statuses: kubescapeStatuses, isLoading: kubescapeLoading, isRefreshing: kubescapeRefreshing, isDemoData: kubescapeDemoData, installed: kubescapeInstalled, refetch: kubescapeRefetch, clustersChecked: kubescapeChecked, totalClusters: kubescapeTotal } = useKubescape()
   const { selectedClusters, isAllClustersSelected } = useGlobalFilters()
-  const { deduplicatedClusters, consecutiveFailures: clusterFailures } = useClusters()
+  const { deduplicatedClusters = [], consecutiveFailures: clusterFailures } = useClusters()
   const { isDemoMode } = useDemoMode()
   const { startMission } = useMissions()
 

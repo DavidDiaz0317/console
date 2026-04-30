@@ -176,7 +176,7 @@ export function SidebarShell({
 }: SidebarShellProps) {
   const { config, toggleCollapsed, setCollapsed, reorderItems, updateItem, removeItem, closeMobileSidebar, setWidth } = useSidebarConfig()
   const { isMobile } = useMobile()
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const dashboardContext = useDashboardContextOptional()
   const { isFullScreen: isMissionFullScreen } = useMissions()
   const { viewerCount, hasError: viewersError, isLoading: viewersLoading } = useActiveUsers()
@@ -294,9 +294,9 @@ export function SidebarShell({
   const dragCounter = useRef(0)
 
   // ---- Cluster status counts ----
-  const unreachableClusters = deduplicatedClusters.filter((c) => isClusterUnreachable(c)).length
-  const healthyClusters = deduplicatedClusters.filter((c) => !isClusterUnreachable(c) && isClusterHealthy(c)).length
-  const unhealthyClusters = deduplicatedClusters.length - healthyClusters - unreachableClusters
+  const unreachableClusters = (deduplicatedClusters || []).filter((c) => isClusterUnreachable(c)).length
+  const healthyClusters = (deduplicatedClusters || []).filter((c) => !isClusterUnreachable(c) && isClusterHealthy(c)).length
+  const unhealthyClusters = (deduplicatedClusters || []).length - healthyClusters - unreachableClusters
 
   // ---- Snoozed / swap handlers ----
   const handleApplySwap = (_swap: SnoozedSwap) => { navigate(ROUTES.HOME) }

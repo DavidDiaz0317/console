@@ -126,7 +126,7 @@ export function Layout({ children: _children }: LayoutProps) {
   const { isDemoMode, toggleDemoMode } = useDemoMode()
   const { showToast } = useToast()
   const { status: agentStatus } = useLocalAgent()
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const { progress: updateProgress, dismiss: dismissUpdateProgress } =
     useUpdateProgress()
   const { isOnline, wasOffline } = useNetworkStatus()
@@ -276,7 +276,7 @@ export function Layout({ children: _children }: LayoutProps) {
   // Sets GA4 user property "cluster_count" so you can compute averages across users.
   const prevClusterCountRef = useRef<number>(-1)
   useEffect(() => {
-    const total = deduplicatedClusters.length
+    const total = (deduplicatedClusters || []).length
     if (total === 0 || total === prevClusterCountRef.current) return
     prevClusterCountRef.current = total
 

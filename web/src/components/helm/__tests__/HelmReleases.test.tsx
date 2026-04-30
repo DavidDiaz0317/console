@@ -11,6 +11,11 @@ vi.mock('../../../hooks/useMCP', () => ({
   useClusters: () => ({
     clusters: [], deduplicatedClusters: [], isLoading: false, isRefreshing: false,
     lastUpdated: null, refetch: vi.fn(), error: null,
+    deduplicatedClusters: [],
+    metricsCompleteness: { contributingClusters: [], missingClusters: [], isComplete: false },
+    consecutiveFailures: 0,
+    isFailed: false,
+    lastRefresh: null,
   }),
 }))
 

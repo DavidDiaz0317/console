@@ -42,7 +42,7 @@ const COMPONENT_FILTERS: { value: LLMdComponentType | 'all' | 'autoscale', label
 
 export function LLMInference({ config: _config }: LLMInferenceProps) {
   // Dynamically discover LLM-d clusters instead of using static list
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const { nodes: gpuNodes } = useCachedGPUNodes()
   const gpuClusterNames = new Set(gpuNodes.map(n => n.cluster))
   const llmdClusters = useLLMdClusters(deduplicatedClusters, gpuClusterNames)

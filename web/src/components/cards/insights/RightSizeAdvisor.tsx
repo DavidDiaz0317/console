@@ -107,7 +107,7 @@ const VERDICT_CONFIG: Record<Verdict, { color: 'red' | 'green' | 'yellow' | 'gra
 
 export function RightSizeAdvisor() {
   const { t } = useTranslation()
-  const { deduplicatedClusters, isLoading, isRefreshing, isFailed, consecutiveFailures, error } = useClusters()
+  const { deduplicatedClusters = [], isLoading, isRefreshing, isFailed, consecutiveFailures, error } = useClusters()
   const { nodes: gpuNodes, isDemoFallback } = useCachedGPUNodes()
   const { selectedClusters: globalSelectedClusters, isAllClustersSelected } = useGlobalFilters()
   const { isDemoMode } = useDemoMode()
@@ -258,7 +258,7 @@ export function RightSizeAdvisor() {
         }}
         clusterIndicator={{
           selectedCount: localClusterFilter.length || clusters.length,
-          totalCount: deduplicatedClusters.length,
+          totalCount: (deduplicatedClusters || []).length,
         }}
         cardControls={{
           limit,

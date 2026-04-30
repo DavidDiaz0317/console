@@ -98,7 +98,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export function LLMdStackMonitor({ config: _config }: LLMdStackMonitorProps) {
   const { t } = useTranslation()
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const { nodes: gpuNodes } = useCachedGPUNodes()
 
   // Dynamically discover clusters that likely have llm-d stacks
@@ -186,7 +186,7 @@ export function LLMdStackMonitor({ config: _config }: LLMdStackMonitorProps) {
     return result
   })()
 
-  const availableClusters = deduplicatedClusters.filter(c => c.reachable !== false)
+  const availableClusters = (deduplicatedClusters || []).filter(c => c.reachable !== false)
 
   const toggleClusterFilter = (cluster: string) => {
     if (localClusterFilter.includes(cluster)) {

@@ -94,20 +94,26 @@ vi.mock('../../lib/dashboards/DashboardPage', () => ({
 // ---------------------------------------------------------------------------
 
 function defaultClustersReturn() {
+  const clusters = [
+    { name: 'cluster-a', reachable: true },
+    { name: 'cluster-b', reachable: true },
+  ]
   return {
-    clusters: [
-      { name: 'cluster-a', reachable: true },
-      { name: 'cluster-b', reachable: true },
-    ],
-    deduplicatedClusters: [
-      { name: 'cluster-a', reachable: true },
-      { name: 'cluster-b', reachable: true },
-    ],
+    clusters,
+    deduplicatedClusters: clusters,
+    metricsCompleteness: {
+      contributingClusters: ['cluster-a', 'cluster-b'],
+      missingClusters: [],
+      isComplete: true,
+    },
     isLoading: false,
     refetch: vi.fn(),
     lastUpdated: Date.now(),
     isRefreshing: false,
     error: null,
+    consecutiveFailures: 0,
+    isFailed: false,
+    lastRefresh: null,
   }
 }
 

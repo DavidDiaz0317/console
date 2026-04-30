@@ -100,7 +100,7 @@ interface ClusterDetailModalProps {
 export function ClusterDetailModal({ clusterName, clusterUser, onClose, onRename, onRemove }: ClusterDetailModalProps) {
   const { t } = useTranslation()
   const { health, isLoading, error: healthError } = useClusterHealth(clusterName)
-  const { deduplicatedClusters, clusters: rawClusters } = useClusters()
+  const { deduplicatedClusters = [], clusters: rawClusters } = useClusters()
   const { issues: podIssues } = usePodIssues(clusterName)
   const { issues: deploymentIssues } = useDeploymentIssues(clusterName)
   const { nodes: gpuNodes, isLoading: gpuLoading, isRefreshing: gpuRefreshing } = useGPUNodes(clusterName)
@@ -114,10 +114,10 @@ export function ClusterDetailModal({ clusterName, clusterUser, onClose, onRename
   // First try deduplicated clusters, then raw clusters, also check aliases
   const clusterInfo = (() => {
     // Direct match in deduplicated clusters
-    let found = deduplicatedClusters.find(c => c.name === clusterName)
+    let found = (deduplicatedClusters || []).find(c => c.name === clusterName)
     if (found) return found
     // Check if clusterName is an alias
-    found = deduplicatedClusters.find(c => c.aliases?.includes(clusterName))
+    found = (deduplicatedClusters || []).find(c => c.aliases?.includes(clusterName))
     if (found) return found
     // Fallback to raw clusters
     return rawClusters.find(c => c.name === clusterName)
@@ -126,7 +126,7 @@ export function ClusterDetailModal({ clusterName, clusterUser, onClose, onRename
   // Build a map of raw cluster names to deduplicated primary names for GPU deduplication
   const clusterNameMap = (() => {
     const map: Record<string, string> = {}
-    deduplicatedClusters.forEach(c => {
+    (deduplicatedClusters || []).forEach(c => {
       map[c.name] = c.name // Primary maps to itself
       c.aliases?.forEach(alias => {
         map[alias] = c.name // Aliases map to primary

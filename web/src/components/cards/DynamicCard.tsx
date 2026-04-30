@@ -13,6 +13,8 @@ import { useCache } from '../../lib/cache'
 import type { DynamicCardDefinition, DynamicCardDefinition_T1 } from '../../lib/dynamic-cards/types'
 import type { CardComponentProps, CardComponent } from './cardRegistry'
 import { useTranslation } from 'react-i18next'
+import { useCache } from '../../lib/cache'
+import { FETCH_DEFAULT_TIMEOUT_MS } from '../../lib/constants/network'
 
 const MAX_AUTO_GRID_COLS = 3
 
@@ -122,32 +124,33 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
   // Compute validation flags up front (before hooks) to keep hook call order stable (#4910)
   const isInvalidConfig = !cardDefinition || typeof cardDefinition !== 'object'
   const isMissingEndpoint = !isInvalidConfig && cardDefinition?.dataSource === 'api' && !cardDefinition?.apiEndpoint
-
   const isApiSource = !isInvalidConfig && cardDefinition?.dataSource === 'api'
-  const apiEndpoint = cardDefinition?.apiEndpoint || ''
 
-  // API data via useCache (persists across navigation, SWR pattern, demo fallback)
-  const {
-    data: apiData,
-    isLoading: apiLoading,
-    isFailed: apiFailed,
-    isDemoFallback,
-    error: apiError,
-    consecutiveFailures,
-  } = useCache<Record<string, unknown>[]>({
-    key: `dynamic-card-api-${apiEndpoint}`,
+  // Fetch API data via useCache for demo mode + warm return (#11095)
+  const apiEndpoint = cardDefinition?.apiEndpoint || ''
+  const { data: apiData, isLoading: apiLoading, isRefreshing, isDemoFallback, error, isFailed, consecutiveFailures } = useCache<Record<string, unknown>[]>({
+    key: `dynamic-card-tier1:${apiEndpoint}`,
+    category: 'default',
     initialData: [],
-    demoData: [{ id: 'demo-1', name: 'Demo Item', status: 'active' }],
+    demoData: [],
     persist: true,
-    enabled: isApiSource && !isInvalidConfig && !isMissingEndpoint && !!apiEndpoint,
     fetcher: async () => {
+      if (isInvalidConfig || isMissingEndpoint || !isApiSource || !apiEndpoint) {
+        return []
+      }
+
       const token = localStorage.getItem(STORAGE_KEY_TOKEN)
-      const res = await fetch(apiEndpoint, {
+      const response = await fetch(apiEndpoint, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      return Array.isArray(json) ? json : (json.items || json.data || [json])
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const json = await response.json()
+      return Array.isArray(json) ? json : json.items || json.data || [json]
     },
   })
 
@@ -158,13 +161,15 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
         : apiData)
 
   // Report loading state to CardWrapper so header stays in sync with body (#5208)
+  const effectiveIsDemoData = isDemoFallback && !apiLoading
   useReportCardDataState({
-    isFailed: apiFailed,
-    consecutiveFailures,
-    errorMessage: apiError ?? undefined,
+    isFailed: isApiSource ? isFailed : false,
+    consecutiveFailures: isApiSource ? consecutiveFailures : 0,
+    errorMessage: isApiSource ? (error?.message ?? undefined) : undefined,
     isLoading: isApiSource ? apiLoading : false,
+    isRefreshing: isApiSource ? isRefreshing : false,
     hasData: isApiSource ? apiData.length > 0 : true,
-    isDemoData: isDemoFallback && !apiLoading,
+    isDemoData: isApiSource ? effectiveIsDemoData : false,
   })
 
   // useCardData for search/pagination — guard against undefined cardDefinition
@@ -216,7 +221,7 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
     )
   }
 
-  if (apiLoading) {
+  if (isApiSource && apiLoading && apiData.length === 0) {
     return (
       <div className="space-y-3 p-2">
         <Skeleton variant="text" width={120} height={20} />
@@ -226,12 +231,12 @@ export function Tier1CardRuntime({ cardDefinition }: Tier1Props) {
     )
   }
 
-  if (apiError) {
+  if (isApiSource && isFailed && apiData.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-4 text-center">
         <AlertTriangle className="w-6 h-6 text-yellow-400 mb-2" />
         <p className="text-sm text-yellow-400">{t('dynamicCard.fetchFailed')}</p>
-        <p className="text-xs text-muted-foreground mt-1">{apiError}</p>
+        <p className="text-xs text-muted-foreground mt-1">{error?.message || 'Unknown error'}</p>
       </div>
     )
   }

@@ -544,7 +544,7 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
 
   // Manual cluster filter -- Workload has targetClusters[] not a single cluster field,
   // so we can't use useCardData's built-in clusterField filtering.
-  const { deduplicatedClusters, isLoading: clustersLoading } = useClusters()
+  const { deduplicatedClusters = [], isLoading: clustersLoading } = useClusters()
 
   // Check demo mode to avoid fetching live data when in demo mode
   const { isDemoMode: demoMode } = useDemoMode()
@@ -609,7 +609,7 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
       const demoClusterNames = new Set(DEMO_WORKLOADS.flatMap(w => w.targetClusters))
       return Array.from(demoClusterNames).map(name => ({ name, reachable: true }))
     }
-    return deduplicatedClusters.filter(c => c.reachable !== false)
+    return (deduplicatedClusters || []).filter(c => c.reachable !== false)
   })()
   const workloads: Workload[] = useMemo(() => {
     if (isDemo) return [...DEMO_WORKLOADS, ...importedWorkloads]

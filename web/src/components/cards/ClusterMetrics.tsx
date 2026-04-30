@@ -147,7 +147,7 @@ export const ClusterMetrics = memo(function ClusterMetrics() {
   const TIME_RANGE_OPTIONS = SUPPORTED_TIME_RANGE_KEYS.map(opt => ({ ...opt, label: String(t(opt.labelKey)) }))
 
   // Report state to CardWrapper for refresh animation
-  const hasData = deduplicatedClusters.length > 0
+  const hasData = (deduplicatedClusters || []).length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
     isRefreshing,

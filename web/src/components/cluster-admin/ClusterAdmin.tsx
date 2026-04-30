@@ -17,7 +17,7 @@ export function ClusterAdmin() {
   // (e.g. the user sees "22 reachable" from 24 contexts when there are only
   // 12 unique cluster servers). My Clusters already uses the deduplicated set;
   // both pages must agree.
-  const { deduplicatedClusters, isLoading, isRefreshing, lastUpdated, refetch, error } = useClusters()
+  const { deduplicatedClusters = [], isLoading, isRefreshing, lastUpdated, refetch, error } = useClusters()
 
   const clusters = deduplicatedClusters || []
 

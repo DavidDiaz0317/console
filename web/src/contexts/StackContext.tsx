@@ -176,7 +176,7 @@ export function StackProvider({ children }: StackProviderProps) {
   const { isDemoMode } = useDemoMode()
 
   // Get only confirmed-reachable clusters — exclude offline and unknown
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const onlineClusterNames = deduplicatedClusters
       .filter(c => c.reachable === true)
       .map(c => c.name)

@@ -22,6 +22,15 @@ vi.mock('../../../hooks/useMCP', () => ({
   useClusters: () => ({
     clusters: [{ name: 'cluster-a' }, { name: 'cluster-b' }],
     deduplicatedClusters: [{ name: 'cluster-a' }, { name: 'cluster-b' }],
+    metricsCompleteness: { contributingClusters: [], missingClusters: [], isComplete: false },
+    isLoading: false,
+    isRefreshing: false,
+    lastUpdated: null,
+    error: null,
+    refetch: vi.fn(),
+    consecutiveFailures: 0,
+    isFailed: false,
+    lastRefresh: null,
   }),
   useNamespaces: () => ({
     namespaces: ['default', 'kube-system'],

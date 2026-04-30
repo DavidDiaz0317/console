@@ -124,7 +124,7 @@ export function HardwareHealthCard() {
   const [snoozeMenuOpen, setSnoozeMenuOpen] = useState<string | null>(null)
   const [snoozeAllMenuOpen, setSnoozeAllMenuOpen] = useState(false)
   const { drillToNode } = useDrillDownActions()
-  const { deduplicatedClusters } = useClusters()
+  const { deduplicatedClusters = [] } = useClusters()
   const { snoozeAlert, snoozeMultiple, unsnoozeAlert, isSnoozed, getSnoozeRemaining, clearAllSnoozed } = useSnoozedAlerts()
   const snoozeMenuRef = useRef<HTMLDivElement>(null)
   const snoozeAllMenuRef = useRef<HTMLDivElement>(null)
@@ -132,7 +132,7 @@ export function HardwareHealthCard() {
   // Build a map of raw cluster names to deduplicated primary names (same as ClusterDetailModal)
   const clusterNameMap = useMemo(() => {
     const map: Record<string, string> = {}
-    deduplicatedClusters.forEach(c => {
+    (deduplicatedClusters || []).forEach(c => {
       map[c.name] = c.name // Primary maps to itself
       c.aliases?.forEach(alias => {
         map[alias] = c.name // Aliases map to primary

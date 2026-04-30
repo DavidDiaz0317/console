@@ -248,7 +248,7 @@ function RecommendedPoliciesInternal({ config: _config }: CardConfig) {
   const { statuses: kyvernoStatuses, isLoading: kyvernoLoading, isRefreshing: kyvernoRefreshing, installed: kyvernoInstalled, isDemoData: kyvernoDemoData, clustersChecked: kyvernoChecked, totalClusters: kyvernoTotal } = useKyverno()
   const { isLoading: kubescapeLoading, isRefreshing: kubescapeRefreshing, installed: kubescapeInstalled, isDemoData: kubescapeDemoData, clustersChecked: kubescapeChecked, totalClusters: kubescapeTotal } = useKubescape()
   const { isLoading: trivyLoading, isRefreshing: trivyRefreshing, installed: trivyInstalled, isDemoData: trivyDemoData, clustersChecked: trivyChecked, totalClusters: trivyTotal } = useTrivy()
-  const { deduplicatedClusters, isFailed, consecutiveFailures } = useClusters()
+  const { deduplicatedClusters = [], isFailed, consecutiveFailures } = useClusters()
   const { startMission } = useMissions()
   const { selectedClusters } = useGlobalFilters()
   const { isDemoMode } = useDemoMode()

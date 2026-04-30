@@ -71,12 +71,12 @@ export function NamespaceManager() {
   const lastFetchKeyRef = useRef<string>('')
 
   // Get all available clusters
-  const allClusterNames = deduplicatedClusters.map(c => c.name)
+  const allClusterNames = (deduplicatedClusters || []).map(c => c.name)
 
   // Get target clusters based on global filter selection
   // We don't check permissions upfront - let the API handle auth errors per-cluster
   const targetClusters = isAllClustersSelected
-    ? deduplicatedClusters.map(c => c.name)
+    ? (deduplicatedClusters || []).map(c => c.name)
     : selectedClusters
 
 
