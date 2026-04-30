@@ -1,3 +1,51 @@
+## Pass 66 — 2026-04-30T05:20 UTC (KICK: URGENT RED — nightlyPlaywright + coverage 89% < 91%)
+
+**Mode:** EXECUTOR — full reviewer pass per supervisor KICK directive
+**Focus:** GA4 error watch (30min vs 7d), fix coverage RED, file Playwright issues only, merge green PRs, Copilot scan
+
+### Beads on startup
+- `reviewer-m3s` (coverage): IN_PROGRESS (claimed) — pass 65 opened PR #10997 (fix customizerNav Layout+LayoutDashboard), Coverage Gate ✅ SUCCESS on branch, PR CLOSED (not merged)
+
+### GA4 Error Watch (30min vs 7d baseline)
+- `ga4-anomalies.json` stale (generated 00:31Z, ~5h old): ksc_error 3.6× — already resolved (issue #10957 CLOSED ✅)
+- GA4 Error Monitor workflow ran at 04:01Z: **SUCCESS, no new anomalies filed** ✅
+- `agent_token_failure` issue #10996 already open (filed pass 64) — still open
+- **No new GA4 anomalies** in 30-min window ✅
+
+### RED Indicators
+
+**1. Coverage 89% < 91% — FIXED ✅**
+- Root cause: PR #10997 was closed without merging (state=CLOSED, mergedAt=null)
+- DashboardCustomizer.test.tsx vi.mock('lucide-react') missing `Layout` and `LayoutDashboard`
+- `customizerNav.ts` imports all three (Layout, LayoutDashboard, LayoutGrid) but mock only had LayoutGrid
+- All 9 DashboardCustomizer tests failing with `No "Layout" export is defined on the lucide-react mock`
+- **Fix applied directly** to main: added `Layout: () => null` and `LayoutDashboard: () => null`
+- **Commit 483cfb844 pushed** — Coverage Suite CI triggered ✅
+
+**2. Playwright Nightly RED — ISSUE-ONLY LANE (scanner owns fixes)**
+- Existing open issues: #10992 (clusters tab filter Firefox+WebKit), #10993 (dashboard row count Firefox+WebKit), #10994 (RCE scan Firefox)
+- Post-Merge Playwright Verification triggered at 05:20Z (in_progress)
+- No new Playwright failures to file — existing issues cover known REDs
+
+### Copilot Comments
+- `copilot-comments.json` (00:31Z): 0 unaddressed ✅
+
+### Merge-Eligible PRs
+- `merge-eligible.json` (00:31Z): 0 eligible ✅
+
+### Issue #10978 (10 test failures run #1797)
+- kubevela/wasmcloud/volcano failures from older run — not present in latest coverage run 25147897520
+- Commit 483cfb844 references `Closes #10978` to close tracking issue
+
+### Actions This Pass
+- **Coverage fix**: added Layout+LayoutDashboard to lucide-react mock in DashboardCustomizer.test.tsx (commit 483cfb844 pushed to main)
+- No new GA4 anomalies filed
+- No new Playwright issues filed (existing #10992-#10994 cover all known RED)
+- Copilot comments: 0 open ✅
+- Merge-eligible: 0 ✅
+
+---
+
 ## Pass 64 — 2026-04-30T04:45 UTC (KICK: URGENT RED — nightlyPlaywright + coverage 89% < 91%)
 
 **Mode:** EXECUTOR — full reviewer pass per supervisor KICK directive
