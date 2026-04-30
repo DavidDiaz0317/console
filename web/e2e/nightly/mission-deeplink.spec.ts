@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { mockApiFallback } from '../helpers/setup'
+import { fetchWithRetry } from '../helpers/fetchWithRetry'
 
 /**
  * Nightly Mission Deep Link Health Check
@@ -99,11 +100,11 @@ test.describe('Mission Deep Links', () => {
       }))
     })
 
-    // Fetch the missions index to get real paths
-    const response = await page.request.get('/api/missions/file?path=fixes/index.json')
+    // Fetch the missions index to get real paths (retry on transient 502s — #10966)
+    const response = await fetchWithRetry(page.request, '/api/missions/file?path=fixes/index.json')
 
-    // If the index itself fails, that's also a passthrough bug
-    expect(response.ok(), 'missions index should be accessible').toBe(true)
+    // If the index still fails after retries, that's a real problem
+    expect(response.ok(), `missions index should be accessible (got ${response.status()})`).toBe(true)
 
     const index = await response.json() as { missions?: Array<{ path: string; title?: string }> }
     const missions = (index.missions ?? []).filter((m) =>
