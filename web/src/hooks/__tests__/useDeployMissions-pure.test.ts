@@ -151,7 +151,7 @@ describe('loadMissions', () => {
   })
 
   it('returns missions from primary storage key', () => {
-    const missions = [{ id: 'm1', status: 'orbit', workload: 'test', clusterStatuses: [] }]
+    const missions = [{ id: 'm1', status: 'orbit', workload: 'test', targetClusters: [], clusterStatuses: [] }]
     localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(missions))
     expect(loadMissions()).toEqual(missions)
   })
