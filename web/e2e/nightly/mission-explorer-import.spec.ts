@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { fetchWithRetry } from '../helpers/fetchWithRetry'
 
 /**
  * Nightly Mission Explorer Import Check
@@ -168,9 +169,10 @@ async function setupDemoMode(page: Page) {
  * Returns the full list of index entries.
  */
 async function fetchFixesIndex(page: Page): Promise<IndexEntry[]> {
-  const resp = await page.request.get(
+  // Retry on transient 502s from GitHub raw content CDN (#10966)
+  const resp = await fetchWithRetry(
+    page.request,
     '/api/missions/file?path=fixes%2Findex.json',
-    { timeout: 30_000 }
   )
   expect(resp.ok(), `Index fetch failed: ${resp.status()}`).toBeTruthy()
   const body = await resp.json()
@@ -249,9 +251,9 @@ test.describe('Mission Explorer Import (Nightly)', () => {
     for (const entry of selected) {
       const path = entry.path
       try {
-        const fileResp = await page.request.get(
+        const fileResp = await fetchWithRetry(
+          page.request,
           `/api/missions/file?path=${encodeURIComponent(path)}`,
-          { timeout: MISSION_FETCH_TIMEOUT }
         )
 
         if (!fileResp.ok()) {
@@ -353,9 +355,9 @@ test.describe('Mission Explorer Import (Nightly)', () => {
 
     for (const entry of selected) {
       const path = entry.path
-      const fileResp = await page.request.get(
+      const fileResp = await fetchWithRetry(
+        page.request,
         `/api/missions/file?path=${encodeURIComponent(path)}`,
-        { timeout: MISSION_FETCH_TIMEOUT }
       )
       if (!fileResp.ok()) continue
 
