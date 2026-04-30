@@ -1,3 +1,51 @@
+## Pass 64 — 2026-04-30T04:45 UTC (KICK: URGENT RED — nightlyPlaywright + coverage 89% < 91%)
+
+**Mode:** EXECUTOR — full reviewer pass per supervisor KICK directive
+**Focus:** GA4 error watch (30min vs 7d), fix coverage RED, file Playwright issues only, merge green PRs, Copilot scan
+
+### Beads on startup
+- `reviewer-m3s` (coverage): IN_PROGRESS (claimed) — pass 63 closed coverage PR #10991, but new test regressions emerged
+
+### GA4 Error Watch (30min vs 7d baseline)
+- `ga4-anomalies.json` stale (generated 00:31Z, 4h old): previous ksc_error 3.6× spike — **fixed** by #10990 (already merged), issue #10957 CLOSED ✅
+- Checked live `/api/analytics-dashboard` (28-day window, cached 04:29Z)
+- **NEW ANOMALY**: `agent_token_failure` trending up: 4 (Apr 28) → 17 (Apr 29) → 60 (Apr 30) — was 0 baseline for 25 days
+  - **Filed issue #10996** 🐛 agent_token_failure 15× baseline spike
+- `ws_auth_missing`: 16 (Apr 29) → 1 (Apr 30) — was spiking, now resolving, no issue needed
+
+### RED Indicators
+
+**1. Coverage 89% < 91% — FIXED ✅**
+Root cause: PR #10991 (coverage fix) added DashboardCustomizer tests and merged fine, but two regressions broke those tests on main after subsequent PRs:
+- **#10991 + #10990 conflict**: `loadMissions()` patched by #10990 to add `targetClusters:[]` normalization; `useDeployMissions-pure.test.ts` fixture missing this field → deepEqual fails
+- **customizerNav.ts** imports `LayoutGrid` from `lucide-react`; `DashboardCustomizer.test.tsx` vi.mock missing `LayoutGrid` → all 9 DashboardCustomizer tests crash
+  - **PR #10995 opened** 🐛 Fix coverage test regressions → coverage-gate ✅ SUCCESS → **MERGED** ✅
+
+**2. Playwright Nightly RED — ISSUE-ONLY LANE (scanner owns fixes)**
+- Latest nightly: 2026-04-29T07:17Z (pre-fix) — all failures from that run already filed:
+  - **#10963, #10964, #10965, #10966, #10967**: all CLOSED ✅ (scanner PRs #10975, #10988, #10989 merged)
+  - **#10992** OPEN — cluster tab filter Firefox+WebKit
+  - **#10993** OPEN — dashboard row count Firefox+WebKit
+  - **#10994** OPEN — RCE scan Firefox
+- Post-merge Playwright Verification on main: **SUCCESS** at 04:37Z ✅
+- Nightly Playwright will next run tonight; expecting improved results (3 known issues remain)
+
+### Copilot Comments
+- `copilot-comments.json` (00:31Z): 0 unaddressed ✅
+
+### Merge-Eligible PRs
+- `merge-eligible.json` (00:31Z): 0 eligible
+- **PR #10975** (Fix MSW mocks): already **MERGED** ✅ (state=MERGED, all CI green)
+- **PR #10995**: MERGED ✅ this pass
+
+### Actions This Pass
+- **Filed issue #10996** — GA4 agent_token_failure trending up (new anomaly)
+- **PR #10995 MERGED** ✅ — Fix 10 failing tests (LayoutGrid mock + targetClusters fixture)
+- No new Playwright issues filed (all pre-existing failures already captured)
+- Copilot comments: 0 open ✅
+
+---
+
 ## Pass 60 — 2026-04-30T03:20 UTC (KICK: RED — nightlyPlaywright + coverage 89% < 91%)
 
 **Mode:** EXECUTOR — full reviewer pass per supervisor KICK directive  
