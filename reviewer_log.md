@@ -1,5 +1,55 @@
 # Reviewer Log
 
+## Pass 76 — 2026-04-30T10:56–11:xx UTC
+
+**Trigger:** KICK — RED indicators: nightlyPlaywright=RED, coverage=90%<91%
+
+### Pre-flight
+- `git pull /tmp/hive` — rebase conflict on initial commit divergence; rebased aborted, repo already at `origin/main` (8aef6f611)
+- Beads: `reviewer-1po`, `reviewer-oxr` blocked (V8CoverageProvider TTY infrastructure — ongoing)
+- No in-progress reviewer beads
+
+### GA4 Watch (30-min window vs 7d baseline)
+- `ga4-anomalies.json` fresh at 10:38 UTC (18 min old at pass start)
+- **Result: GA4 NOMINAL — 0 anomalies** ✅
+- Prior open issues: **#10996** (agent_token_failure trend 4→17→60, filed Pass 73), **#11006** (ksc_error 3.6× spike, filed Pass 71) — both outstanding, scanner owns
+- No new anomaly classes in this window — no new issues to file
+
+### Coverage RED (90% < 91%) → FIX IN PROGRESS
+- Coverage at **90.27%** (by bytes, V8 data: 90,486,341/100,238,124)
+- Byte coverage target 91% = 91,216,693 bytes — gap: 730,352 bytes
+- **Root cause of gap**: Pass 75 fix commit `8aef6f611` removed test assertions (weakened tests) rather than adding net-new coverage
+- **Low-coverage in-scope files identified**:
+  - `DashboardCustomizer.tsx` — 61.1% (5 section branches uncovered: collections, widgets, create-dashboard, card-factory, stat-factory)
+  - `useClusterGroups.ts` — 72.9% (evaluateGroup/previewQuery/generateAIQuery error paths)
+  - `resourceCategories.ts` — 80.0% (no test file at all)
+  - `CardPreview.tsx` — 79.7%
+- **Background agent dispatched** (`coverage-fix-pass76`): targeting all 3 top files, PR to be opened fixing #10978
+
+### Playwright Cross-Browser (Nightly) RED → FILED (scanner owns fix)
+- Issues #10992, #10993, #10994 filed by prior passes — scanner owns
+- Issue #11019 (mobile-safari route.fulfill redirect) — scanner owns
+- **No new Playwright issues to file**
+
+### B.5 CI / Merge Sweep
+- PRs: 0 merge-eligible (`merge-eligible.json` generated 00:31 UTC, 0 items)
+- Copilot comments: 0 unaddressed (`copilot-comments.json` generated 10:44 UTC)
+- `actionable.json` issues: #10978, #10985, #10992, #10993, #10994, #10996 — all pre-existing
+
+### Open Items
+- **#10978**: Coverage RED (coverage fix agent in-flight → PR expected)
+- **#10985**: worker-active IndexedDB mirror write test — unblocked but unassigned
+- **#10992/10993/10994**: Playwright cross-browser — scanner owns
+- **#11006**: ksc_error spike — scanner owns
+- **#10996**: agent_token_failure trend — outstanding
+- **#11019**: Playwright mobile-safari nightly — scanner owns
+
+### Bead Status
+- `reviewer-1po`: blocked (V8CoverageProvider TTY infrastructure)
+- `reviewer-oxr`: blocked (same)
+
+---
+
 ## Pass 74 — 2026-04-30T09:56–10:12 UTC
 
 **Trigger:** KICK — RED indicators: nightlyPlaywright=RED, coverage=90%<91%
