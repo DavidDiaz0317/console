@@ -86,7 +86,9 @@ vi.mock('../../../widgets/WidgetExportModal', () => ({
 }))
 
 vi.mock('lucide-react', () => ({
+  Layout: () => null,
   LayoutGrid: () => null,
+  LayoutDashboard: () => null,
   Palette: () => null,
   Undo2: () => null,
   Redo2: () => null,
