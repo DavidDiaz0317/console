@@ -350,6 +350,26 @@ describe('deduplicateClustersByServer', () => {
     expect(result[0].reachable).toBe(true)
   })
 
+  it('uses reachable context name as primary, not unreachable primary (#11149)', () => {
+    // When an unreachable context and a reachable alias share the same server,
+    // the deduplicated cluster's name must be the reachable context so that
+    // kubectl-based operations (Trivy, RBAC, Kyverno, etc.) target a usable context.
+    const unreachable = makeCluster({
+      name: 'short-unreachable',
+      server: 'https://api.example.com',
+      reachable: false,
+    })
+    const reachable = makeCluster({
+      name: 'longer-reachable-alias',
+      server: 'https://api.example.com',
+      reachable: true,
+    })
+    // Pass unreachable first and with shorter name — without fix, it would win
+    const result = deduplicateClustersByServer([unreachable, reachable])
+    expect(result[0].name).toBe('longer-reachable-alias')
+    expect(result[0].reachable).toBe(true)
+  })
+
   it('handles multiple server groups independently', () => {
     const a1 = makeCluster({ name: 'a1', server: 'https://server-a.com' })
     const a2 = makeCluster({ name: 'a2', server: 'https://server-a.com' })
