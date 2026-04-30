@@ -1373,3 +1373,42 @@ All issues already filed by scanner (before this pass):
 - Awaiting supervisor directive
 - Monitor #10971 CI — if passes, merge and re-trigger #10960/#10961
 
+
+---
+
+## Pass 61 — 2026-04-30T03:37Z
+
+### Trigger
+KICK: nightlyPlaywright=RED, coverage=89%<91%
+
+### GA4 Watch (30-min window)
+- ga4-anomalies.json (generated 00:31Z): ksc_error 3.6× baseline — Issue #10957 already filed AND CLOSED (anomaly resolved)
+- No new GA4 anomalies detected
+
+### Coverage RED (89% < 91%)
+- Coverage Suite run 25145676668 completed: **88.89% lines** (badge: 89%) vs 91% target — gap 2.11pp
+- Top uncovered: charts (BarChart/PieChart/RadarChart/Sparkline/DataTable all 0%), dashboard customizer (0%), useMCP (0%), useCachedKeda (0%), lib/analytics (0%)
+- **Filed issue #10987** 📉 Coverage RED: 88.89% < 91% — charts/customizer/MCP hooks uncovered
+- Bead reviewer-m3s updated with Pass 61 notes
+
+### Playwright RED
+- Issues #10963 (MSW workloads), #10964 (Mission Control), #10965 (NamespaceOverview), #10966 (mission 502), #10967 (cache compliance) — ALL CLOSED ✅
+- PR #10975 MERGED: Fix MSW mocks for workload endpoints (fixes #10963)
+- PR #10984 MERGED: Fix card cache compliance test (fixes #10967)
+- Cross-browser (Firefox/WebKit Clusters tabs): Issue #10968 MERGED ✅
+- Nightly Test Suite (25094786599, Apr 29): SUCCESS ✅
+- Scanner owns remaining Playwright fixes — no new issues needed
+
+### Merge-Eligible PRs
+- merge-eligible.json: 0 eligible PRs — nothing to merge
+
+### Copilot Comments
+- copilot-comments.json: 0 unaddressed on merged PRs ✅
+
+### CodeQL / CI
+- CodeQL on main (03:31Z): SUCCESS ✅
+- Code Quality push on main: SUCCESS ✅
+
+### Next Action
+- Monitor coverage suite for next nightly run — target ≥ 91%
+- Issue #10987 open for scanner/agents to address coverage gap
