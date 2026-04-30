@@ -82,18 +82,21 @@ describe('getDemoWorkloads', () => {
     const { getDemoWorkloads } = await importFresh()
     const workloads = getDemoWorkloads()
 
-    expect(workloads.length).toBeGreaterThan(0)
-    // Every workload must have required fields
+    expect(workloads.length).toBe(7)
+    // Every workload must have required fields with correct types
     for (const w of workloads) {
-      expect(w.name).toBeTruthy()
-      expect(w.namespace).toBeTruthy()
-      expect(w.type).toBeTruthy()
-      expect(w.cluster).toBeTruthy()
-      expect(w.replicas).toBeGreaterThanOrEqual(0)
-      expect(w.readyReplicas).toBeGreaterThanOrEqual(0)
-      expect(w.status).toBeTruthy()
-      expect(w.image).toBeTruthy()
-      expect(w.createdAt).toBeTruthy()
+      expect(typeof w.name).toBe('string')
+      expect(w.name.length).toBeGreaterThan(0)
+      expect(typeof w.namespace).toBe('string')
+      expect(w.namespace.length).toBeGreaterThan(0)
+      expect(['Deployment', 'StatefulSet', 'DaemonSet']).toContain(w.type)
+      expect(typeof w.cluster).toBe('string')
+      expect(w.cluster!.length).toBeGreaterThan(0)
+      expect(typeof w.replicas).toBe('number')
+      expect(w.readyReplicas).toBeLessThanOrEqual(w.replicas)
+      expect(['Running', 'Degraded', 'Failed', 'Pending']).toContain(w.status)
+      expect(w.image).toMatch(/:/)
+      expect(new Date(w.createdAt).getTime()).not.toBeNaN()
     }
   })
 
@@ -906,9 +909,11 @@ describe('useWorkloads via agent with clusters', () => {
     const { result } = renderHook(() => useWorkloads())
 
     await waitFor(() => {
-      expect(result.current.data).toBeDefined()
       expect(result.current.isLoading).toBe(false)
     })
+    expect(result.current.data).toBeDefined()
+    // Verify the agent concurrency path was actually invoked
+    expect(mapSettledMock).toHaveBeenCalled()
   })
 
   it('falls back to REST when agent returns null (no clusters)', async () => {
@@ -916,7 +921,7 @@ describe('useWorkloads via agent with clusters', () => {
     const mockWorkloads = [
       { name: 'web', namespace: 'default', type: 'Deployment', replicas: 1, readyReplicas: 1, status: 'Running', image: 'web:v2', createdAt: '2025-01-01T00:00:00Z' },
     ]
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ items: mockWorkloads }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -926,9 +931,13 @@ describe('useWorkloads via agent with clusters', () => {
     const { result } = renderHook(() => useWorkloads())
 
     await waitFor(() => {
-      expect(result.current.data).toBeDefined()
       expect(result.current.isLoading).toBe(false)
     })
+    // Verify it fell back to REST API fetch (not agent path)
+    expect(fetchSpy).toHaveBeenCalled()
+    const fetchUrl = fetchSpy.mock.calls[0][0] as string
+    expect(fetchUrl).toContain('/api/')
+    expect(result.current.data).toBeDefined()
   })
 
   it('authHeaders returns empty object when no token stored', async () => {
