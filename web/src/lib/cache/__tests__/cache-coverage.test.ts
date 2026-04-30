@@ -1020,53 +1020,57 @@ describe('worker-active IndexedDB mirror write', () => {
   it('mirrors data to _idbStorage.set when workerRpc is active', async () => {
     // Mock the Worker constructor so initCacheWorker() doesn't try to spawn a real worker
     originalWorker = globalThis.Worker
-    globalThis.Worker = vi.fn() as unknown as typeof Worker
+    try {
+      globalThis.Worker = vi.fn() as unknown as typeof Worker
 
-    const mockRpc = {
-      waitForReady: vi.fn().mockResolvedValue(undefined),
-      set: vi.fn(),
-      get: vi.fn().mockResolvedValue(null),
-      getStats: vi.fn().mockResolvedValue({ keys: [], count: 0 }),
-      deleteKey: vi.fn(),
-      clear: vi.fn().mockResolvedValue(undefined),
-      setMeta: vi.fn(),
-      getMeta: vi.fn().mockResolvedValue(null),
-      migrate: vi.fn().mockResolvedValue(undefined),
+      const mockRpc = {
+        waitForReady: vi.fn().mockResolvedValue(undefined),
+        set: vi.fn(),
+        get: vi.fn().mockResolvedValue(null),
+        getStats: vi.fn().mockResolvedValue({ keys: [], count: 0 }),
+        deleteKey: vi.fn(),
+        clear: vi.fn().mockResolvedValue(undefined),
+        setMeta: vi.fn(),
+        getMeta: vi.fn().mockResolvedValue(null),
+        migrate: vi.fn().mockResolvedValue(undefined),
+      }
+
+      // resetModules first, THEN register doMock so the fresh import picks it up.
+      // (vi.resetModules clears pending doMock registrations, so ordering matters.)
+      vi.resetModules()
+      vi.doMock('../workerRpc', () => ({
+        CacheWorkerRpc: vi.fn().mockImplementation(function () { return mockRpc }),
+      }))
+
+      const mod = await import('../index')
+      const { useCache, initCacheWorker, isSQLiteWorkerActive, __testables: testables } = mod
+
+      // Activate the SQLite worker path
+      await initCacheWorker()
+      expect(isSQLiteWorkerActive()).toBe(true)
+
+      // Spy on the IndexedDB storage mirror target
+      const idbSetSpy = vi.spyOn(testables._idbStorage, 'set').mockResolvedValue(undefined)
+
+      const testData = [1, 2, 3]
+      const { result } = renderHook(() => useCache({
+        key: 'idb-mirror-test',
+        fetcher: () => Promise.resolve(testData),
+        initialData: [] as number[],
+        autoRefresh: false,
+      }))
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // The mirror write should have been called with the correct key and data
+      expect(idbSetSpy).toHaveBeenCalledWith('idb-mirror-test', testData)
+
+      idbSetSpy.mockRestore()
+    } finally {
+      globalThis.Worker = originalWorker
     }
-
-    // resetModules first, THEN register doMock so the fresh import picks it up.
-    // (vi.resetModules clears pending doMock registrations, so ordering matters.)
-    vi.resetModules()
-    vi.doMock('../workerRpc', () => ({
-      CacheWorkerRpc: vi.fn().mockImplementation(function () { return mockRpc }),
-    }))
-
-    const mod = await import('../index')
-    const { useCache, initCacheWorker, isSQLiteWorkerActive, __testables: testables } = mod
-
-    // Activate the SQLite worker path
-    await initCacheWorker()
-    expect(isSQLiteWorkerActive()).toBe(true)
-
-    // Spy on the IndexedDB storage mirror target
-    const idbSetSpy = vi.spyOn(testables._idbStorage, 'set').mockResolvedValue(undefined)
-
-    const testData = [1, 2, 3]
-    const { result } = renderHook(() => useCache({
-      key: 'idb-mirror-test',
-      fetcher: () => Promise.resolve(testData),
-      initialData: [] as number[],
-      autoRefresh: false,
-    }))
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    // The mirror write should have been called with the correct key and data
-    expect(idbSetSpy).toHaveBeenCalledWith('idb-mirror-test', testData)
-
-    idbSetSpy.mockRestore()
   })
 
   it('does not mirror to IDB when workerRpc is null (fallback mode)', async () => {
