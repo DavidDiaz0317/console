@@ -344,9 +344,9 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
               }`}
             >
               {t('feedback.updates')}
-              {unreadCount > 0 && (
+              {requests.length > 0 && (
                 <span className="min-w-5 h-5 px-1 text-xs rounded-full bg-purple-500 text-white flex items-center justify-center">
-                  {unreadCount}
+                  {requests.length}
                 </span>
               )}
             </button>
