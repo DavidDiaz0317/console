@@ -596,6 +596,10 @@ describe('useMCPStatus — additional branches', () => {
     mockAgentFetch.mockReset()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('sets status to null when fetch errors, even if previous status existed', async () => {
     // Use fake timers BEFORE rendering so subscribePolling creates fake intervals
     vi.useFakeTimers()
@@ -604,38 +608,45 @@ describe('useMCPStatus — additional branches', () => {
       deployClient: { available: true, toolCount: 3 },
     }
     mockAgentFetch.mockResolvedValueOnce(new Response(JSON.stringify(initialStatus), { status: 200 }))
+    // After success, hang to prevent cascade from effect re-run
+    mockAgentFetch.mockImplementation(() => new Promise(() => {}))
     const { result } = renderHook(() => useMCPStatus())
     await act(async () => { await Promise.resolve() })
     expect(result.current.status).toEqual(initialStatus)
+    expect(result.current.consecutiveFailures).toBe(0)
 
-    // Subsequent poll errors
-    mockAgentFetch.mockRejectedValue(new Error('Network error'))
+    // Subsequent poll errors — reject once then hang to prevent cascading
+    mockAgentFetch.mockRejectedValueOnce(new Error('Network error'))
+    mockAgentFetch.mockImplementation(() => new Promise(() => {}))
     await act(async () => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
     await act(async () => { await Promise.resolve() })
     expect(result.current.error).toBe('MCP bridge not available')
     expect(result.current.status).toBeNull()
-    vi.useRealTimers()
+    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
   })
 
   it('clears error when fetch succeeds after failure', async () => {
     // Use fake timers BEFORE rendering so subscribePolling creates fake intervals
     vi.useFakeTimers()
+    // Reject once then hang to prevent cascade from effect re-run
     mockAgentFetch.mockRejectedValueOnce(new Error('err'))
+    mockAgentFetch.mockImplementation(() => new Promise(() => {}))
     const { result } = renderHook(() => useMCPStatus())
     await act(async () => { await Promise.resolve() })
     expect(result.current.error).toBe('MCP bridge not available')
+    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
 
-    // Now succeed
+    // Now succeed — advance enough to cover backoff interval
     const good: MCPStatus = {
       opsClient: { available: true, toolCount: 1 },
       deployClient: { available: false, toolCount: 0 },
     }
     mockAgentFetch.mockImplementation(() => Promise.resolve(new Response(JSON.stringify(good), { status: 200 })))
-    await act(async () => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS) })
+    await act(async () => { vi.advanceTimersByTime(REFRESH_INTERVAL_MS * 4) })
     await act(async () => { await Promise.resolve() })
     expect(result.current.error).toBeNull()
     expect(result.current.status).toEqual(good)
-    vi.useRealTimers()
+    expect(result.current.consecutiveFailures).toBe(0)
   })
 })
 
@@ -643,6 +654,7 @@ describe('useClusterHealth — additional branches', () => {
   const CLUSTER = 'branch-coverage-cluster'
 
   beforeEach(() => {
+    vi.useRealTimers()
     resetSharedState()
     mockFetchSingleClusterHealth.mockReset()
     mockIsDemoMode.mockReturnValue(false)

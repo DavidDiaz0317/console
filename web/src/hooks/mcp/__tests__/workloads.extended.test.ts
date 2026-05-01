@@ -86,7 +86,11 @@ vi.mock('../../../lib/kubectlProxy', () => ({
 vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
-  getEffectiveInterval: (ms: number) => ms,
+  getEffectiveInterval: (ms: number, consecutiveFailures = 0) => {
+    if (consecutiveFailures <= 0) return ms
+    const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
+    return Math.min(ms * multiplier, 600_000)
+  },
   LOCAL_AGENT_URL: 'http://localhost:8585',
   clusterCacheRef: mockClusterCacheRef,
   agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
@@ -266,11 +270,7 @@ describe('useDeployments (extended)', () => {
     const { result } = renderHook(() => useDeployments())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // Trigger two more refetches to accumulate 3 total failures
-    await act(async () => { result.current.refetch() })
-    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(2))
-
-    await act(async () => { result.current.refetch() })
+    // With consecutiveFailures in the useEffect deps, failures cascade automatically.
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(3))
     expect(result.current.isFailed).toBe(true)
   })

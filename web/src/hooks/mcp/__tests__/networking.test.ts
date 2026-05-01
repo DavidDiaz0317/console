@@ -71,7 +71,11 @@ vi.mock('../../../lib/kubectlProxy', () => ({
 vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
-  getEffectiveInterval: (ms: number) => ms,
+  getEffectiveInterval: (ms: number, consecutiveFailures = 0) => {
+    if (consecutiveFailures <= 0) return ms
+    const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
+    return Math.min(ms * multiplier, 600_000)
+  },
   LOCAL_AGENT_URL: 'http://localhost:8585',
   agentFetch: (...args: unknown[]) => fetch(...(args as Parameters<typeof fetch>)),
   clusterCacheRef: mockClusterCacheRef,
@@ -418,25 +422,17 @@ describe('useServices', () => {
     const { result } = renderHook(() => useServices())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // First fetch fails (initial mount)
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
-
-    // Trigger two more refetches to reach 3 consecutive failures
-    await act(async () => { result.current.refetch() })
-    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(2))
-
-    await act(async () => { result.current.refetch() })
+    // With consecutiveFailures in the useEffect deps, failures cascade automatically.
+    // Each failure triggers the effect to re-run and refetch, compounding failures.
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(3))
-
     expect(result.current.isFailed).toBe(true)
   })
 
   it('resets consecutiveFailures to 0 on successful fetch after failures', async () => {
-    // Start with failures
+    // Start with failures — let cascade run
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
     const { result } = renderHook(() => useServices())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
+    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1))
 
     // Now succeed
     globalThis.fetch = vi.fn().mockResolvedValue({

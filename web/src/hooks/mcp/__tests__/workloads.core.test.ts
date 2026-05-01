@@ -84,7 +84,11 @@ vi.mock('../../../lib/kubectlProxy', () => ({
 vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
-  getEffectiveInterval: (ms: number) => ms,
+  getEffectiveInterval: (ms: number, consecutiveFailures = 0) => {
+    if (consecutiveFailures <= 0) return ms
+    const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
+    return Math.min(ms * multiplier, 600_000)
+  },
   clusterCacheRef: mockClusterCacheRef,
   agentFetch: vi.fn().mockImplementation(async (...args: unknown[]) => {
     const result = await mockApiGet(...args)
@@ -426,7 +430,9 @@ describe('usePodIssues', () => {
   })
 
   it('tracks consecutive failures', async () => {
-    mockFetchSSE.mockRejectedValue(new Error('SSE error'))
+    // Reject once then hang to prevent cascading from effect re-run
+    mockFetchSSE.mockRejectedValueOnce(new Error('SSE error'))
+    mockFetchSSE.mockImplementation(() => new Promise(() => {}))
 
     const { result } = renderHook(() => usePodIssues())
 

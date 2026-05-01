@@ -50,7 +50,11 @@ vi.mock('../../../lib/modeTransition', () => ({
 
 vi.mock('../shared', () => ({
   MIN_REFRESH_INDICATOR_MS: 500,
-  getEffectiveInterval: (ms: number) => ms,
+  getEffectiveInterval: (ms: number, consecutiveFailures = 0) => {
+    if (consecutiveFailures <= 0) return ms
+    const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
+    return Math.min(ms * multiplier, 600_000)
+  },
   agentFetch: vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }))),
 }))
 
@@ -298,9 +302,10 @@ describe('useHelmReleases', () => {
 
     await waitFor(() => expect(result.current.releases).toEqual(fakeReleases))
 
-    // Second fetch fails
-    mockFetchSSE.mockRejectedValue(new Error('now failing'))
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('now failing'))
+    // Second fetch fails — reject once then hang to prevent cascading
+    mockFetchSSE.mockRejectedValueOnce(new Error('now failing'))
+    mockFetchSSE.mockImplementation(() => new Promise(() => {}))
+    globalThis.fetch = vi.fn().mockImplementation(() => new Promise(() => {}))
 
     await act(async () => { await result.current.refetch() })
 

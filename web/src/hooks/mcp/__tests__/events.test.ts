@@ -63,7 +63,11 @@ vi.mock('../../../lib/modeTransition', () => ({
 vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
-  getEffectiveInterval: (ms: number) => ms,
+  getEffectiveInterval: (ms: number, consecutiveFailures = 0) => {
+    if (consecutiveFailures <= 0) return ms
+    const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
+    return Math.min(ms * multiplier, 600_000)
+  },
   LOCAL_AGENT_URL: 'http://localhost:8585',
   agentFetch: (...args: unknown[]) => fetch(...(args as Parameters<typeof fetch>)),
 }))
@@ -223,7 +227,9 @@ describe('useEvents', () => {
   })
 
   it('handles SSE failure without surfacing an error (events are optional)', async () => {
-    mockFetchSSE.mockRejectedValue(new Error('SSE error'))
+    // Reject once then hang to prevent cascading from effect re-run
+    mockFetchSSE.mockRejectedValueOnce(new Error('SSE error'))
+    mockFetchSSE.mockImplementation(() => new Promise(() => {}))
 
     const { result } = renderHook(() => useEvents())
 
@@ -234,7 +240,7 @@ describe('useEvents', () => {
     expect(
       result.current.error === null || result.current.error === 'Failed to fetch events'
     ).toBe(true)
-    // isFailed is only true after 3 consecutive failures
+    // isFailed is only true after 3 consecutive failures — with a single rejection it stays false
     expect(result.current.isFailed).toBe(false)
   })
 
@@ -367,17 +373,9 @@ describe('useEvents', () => {
     const { result } = renderHook(() => useEvents())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // First failure
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
-    expect(result.current.isFailed).toBe(false)
-
-    // Trigger two more failures via explicit refetch
-    await act(async () => { result.current.refetch() })
-    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(2))
-
-    await act(async () => { result.current.refetch() })
+    // With consecutiveFailures in the useEffect deps, failures cascade automatically
+    // (effect re-runs on each increment, calling refetch again). Wait for isFailed.
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(3))
-
     expect(result.current.isFailed).toBe(true)
   })
 
