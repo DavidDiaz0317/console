@@ -98,29 +98,29 @@ export function Missions(_props: MissionsProps) {
       icon: Rocket,
       color: 'text-blue-400',
       bg: 'bg-blue-500/20',
-      label: t('cards.missionStatus.launching', 'Launching'),
+      label: t('cards:missionStatus.launching', 'Launching'),
       animateClass: 'animate-rocket-launch' },
     deploying: {
       icon: Loader2,
       color: 'text-yellow-400',
       bg: 'bg-yellow-500/20',
-      label: t('cards.missionStatus.deploying', 'Deploying'),
+      label: t('cards:missionStatus.deploying', 'Deploying'),
       animateClass: 'animate-spin' },
     orbit: {
       icon: Orbit,
       color: 'text-green-400',
       bg: 'bg-green-500/20',
-      label: t('cards.missionStatus.inOrbit', 'In Orbit') },
+      label: t('cards:missionStatus.inOrbit', 'In Orbit') },
     abort: {
       icon: XCircle,
       color: 'text-red-400',
       bg: 'bg-red-500/20',
-      label: t('cards.missionStatus.aborted', 'Aborted') },
+      label: t('cards:missionStatus.aborted', 'Aborted') },
     partial: {
       icon: AlertTriangle,
       color: 'text-orange-400',
       bg: 'bg-orange-500/20',
-      label: t('cards.missionStatus.partial', 'Partial') } }
+      label: t('cards:missionStatus.partial', 'Partial') } }
 
   // ClusterStatusRow renders a row's text (`color`), a progress bar
   // (`barColor`), and a status label. The `bg` field used to be declared here
@@ -136,23 +136,23 @@ export function Missions(_props: MissionsProps) {
     barColor: string
     label: string
   }> = {
-    pending: { color: 'text-muted-foreground', barColor: 'bg-muted-foreground', label: t('cards.clusterStatus.pending', 'Pending') },
-    applying: { color: 'text-yellow-400', barColor: 'bg-yellow-500', label: t('cards.clusterStatus.applying', 'Applying') },
-    running: { color: 'text-green-400', barColor: 'bg-green-500', label: t('cards.clusterStatus.running', 'Running') },
-    failed: { color: 'text-red-400', barColor: 'bg-red-500', label: t('cards.clusterStatus.failed', 'Failed') } }
+    pending: { color: 'text-muted-foreground', barColor: 'bg-muted-foreground', label: t('cards:clusterStatus.pending', 'Pending') },
+    applying: { color: 'text-yellow-400', barColor: 'bg-yellow-500', label: t('cards:clusterStatus.applying', 'Applying') },
+    running: { color: 'text-green-400', barColor: 'bg-green-500', label: t('cards:clusterStatus.running', 'Running') },
+    failed: { color: 'text-red-400', barColor: 'bg-red-500', label: t('cards:clusterStatus.failed', 'Failed') } }
 
   const SORT_OPTIONS: { value: SortByOption; label: string }[] = [
-    { value: 'status', label: t('common.sortBy.status', 'Status') },
-    { value: 'workload', label: t('common.sortBy.workload', 'Workload') },
-    { value: 'time', label: t('common.sortBy.time', 'Time') },
-    { value: 'clusters', label: t('common.sortBy.clusters', 'Clusters') },
+    { value: 'status', label: t('common:sortBy.status', 'Status') },
+    { value: 'workload', label: t('common:sortBy.workload', 'Workload') },
+    { value: 'time', label: t('common:sortBy.time', 'Time') },
+    { value: 'clusters', label: t('common:sortBy.clusters', 'Clusters') },
   ]
 
   const DEP_ACTION_STYLES: Record<string, { color: string; label: string }> = {
-    created: { color: 'text-green-400', label: t('cards.dependencyAction.created', 'Created') },
-    updated: { color: 'text-blue-400', label: t('cards.dependencyAction.updated', 'Updated') },
-    skipped: { color: 'text-muted-foreground', label: t('cards.dependencyAction.skipped', 'Skipped') },
-    failed: { color: 'text-red-400', label: t('cards.dependencyAction.failed', 'Failed') } }
+    created: { color: 'text-green-400', label: t('cards:dependencyAction.created', 'Created') },
+    updated: { color: 'text-blue-400', label: t('cards:dependencyAction.updated', 'Updated') },
+    skipped: { color: 'text-muted-foreground', label: t('cards:dependencyAction.skipped', 'Skipped') },
+    failed: { color: 'text-red-400', label: t('cards:dependencyAction.failed', 'Failed') } }
 
   const { missions: liveMissions, activeMissions: liveActive, completedMissions: liveCompleted } = useDeployMissions()
   const { deduplicatedClusters, isLoading, isRefreshing, isFailed, consecutiveFailures } = useClusters()
@@ -426,7 +426,7 @@ Please:
       <CardSearchInput
         value={localSearch}
         onChange={setLocalSearch}
-        placeholder={t('common.searchMissions')}
+        placeholder={t('common:searchMissions')}
         className="mb-2 shrink-0"
       />
 
