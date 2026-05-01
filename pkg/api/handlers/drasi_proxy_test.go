@@ -23,6 +23,7 @@ func TestProxyDrasi_Server(t *testing.T) {
 		assert.Equal(t, "GET", req.Method)
 		assert.Equal(t, "foo=bar", req.URL.RawQuery)
 		assert.Equal(t, "test-value", req.Header.Get("X-Test-Header"))
+		assert.Empty(t, req.Header.Get("Proxy-Authenticate"), "hop-by-hop header must be stripped before reaching upstream")
 
 		header := make(http.Header)
 		header.Set("Content-Type", "application/json")
