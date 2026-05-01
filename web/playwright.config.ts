@@ -15,7 +15,6 @@ const isCI = Boolean(env.CI)
  * - Multi-cluster operations
  */
 export default defineConfig({
-  globalTeardown: './e2e/global-teardown.ts',
   testDir: './e2e',
 
   // #11296 — Register the coverage teardown. It is a no-op unless

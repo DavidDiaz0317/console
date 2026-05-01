@@ -39,7 +39,7 @@ test.describe('Full-app layout — desktop (1440×900)', () => {
     // #11293 — log rather than silence: screenshot still runs for pixel diff,
     // but the warning surfaces that the element wasn't ready at capture time.
     await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => {
-      console.warn('[visual] dashboard-cards-grid not visible before screenshot:', e.message)
+      console.warn('[visual] dashboard-cards-grid not visible before screenshot:', e)
     })
 
     await expect(page).toHaveScreenshot('app-dashboard-desktop-1440.png', {
@@ -54,7 +54,7 @@ test.describe('Full-app layout — desktop (1440×900)', () => {
       state: 'visible',
       timeout: DASHBOARD_SETTLE_TIMEOUT_MS,
     }).catch((e: Error) => {
-      console.warn('[visual] dashboard-header not visible before screenshot:', e.message)
+      console.warn('[visual] dashboard-header not visible before screenshot:', e)
     })
 
     await expect(page).toHaveScreenshot('app-header-controls-desktop-1440.png', {
@@ -70,7 +70,7 @@ test.describe('Full-app layout — laptop (1280×720)', () => {
     await setupAndNavigate(page)
 
     const grid = page.getByTestId('dashboard-cards-grid')
-    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e.message) })
+    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-dashboard-laptop-1280.png', {
       fullPage: false,
@@ -85,7 +85,7 @@ test.describe('Full-app layout — tablet (768×1024)', () => {
     await setupAndNavigate(page)
 
     const grid = page.getByTestId('dashboard-cards-grid')
-    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e.message) })
+    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-dashboard-tablet-768.png', {
       fullPage: false,
@@ -100,7 +100,7 @@ test.describe('Full-app layout — full page scroll', () => {
     await setupAndNavigate(page)
 
     const grid = page.getByTestId('dashboard-cards-grid')
-    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e.message) })
+    await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] grid not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-dashboard-fullpage-1440.png', {
       fullPage: true,
@@ -117,10 +117,10 @@ test.describe('Clusters page — desktop (1440×900)', () => {
     await setupAndNavigate(page, '/clusters')
 
     const clustersPage = page.getByTestId('clusters-page')
-    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e.message) })
+    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e) })
 
     const sidebar = page.getByTestId('sidebar')
-    await sidebar.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] sidebar not visible before screenshot:', e.message) })
+    await sidebar.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] sidebar not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-clusters-desktop-1440.png', {
       fullPage: false,
@@ -131,7 +131,7 @@ test.describe('Clusters page — desktop (1440×900)', () => {
     await setupAndNavigate(page, '/clusters')
 
     const clustersPage = page.getByTestId('clusters-page')
-    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e.message) })
+    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-clusters-fullpage-1440.png', {
       fullPage: true,
@@ -146,7 +146,7 @@ test.describe('Clusters page — tablet (768×1024)', () => {
     await setupAndNavigate(page, '/clusters')
 
     const clustersPage = page.getByTestId('clusters-page')
-    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e.message) })
+    await clustersPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] clustersPage not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-clusters-tablet-768.png', {
       fullPage: false,
@@ -163,7 +163,7 @@ test.describe('Settings page — desktop (1440×900)', () => {
     await setupAndNavigate(page, '/settings')
 
     const settingsPage = page.getByTestId('settings-page')
-    await settingsPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] settingsPage not visible before screenshot:', e.message) })
+    await settingsPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] settingsPage not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-settings-desktop-1440.png', {
       fullPage: false,
@@ -174,7 +174,7 @@ test.describe('Settings page — desktop (1440×900)', () => {
     await setupAndNavigate(page, '/settings')
 
     const settingsPage = page.getByTestId('settings-page')
-    await settingsPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] settingsPage not visible before screenshot:', e.message) })
+    await settingsPage.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => { console.warn('[visual] settingsPage not visible before screenshot:', e) })
 
     await expect(page).toHaveScreenshot('app-settings-fullpage-1440.png', {
       fullPage: true,
