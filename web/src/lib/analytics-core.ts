@@ -837,7 +837,7 @@ const API_ERROR_RING_BUFFER_SIZE = 30
 
 interface FailedApiCall {
   timestamp: string
-  status: number | string
+  status: string
   endpoint: string
   detail?: string
 }
@@ -847,7 +847,7 @@ const failedApiCalls: FailedApiCall[] = []
 export function pushFailedApiCall(status: number | string, endpoint: string, detail?: string) {
   const entry: FailedApiCall = {
     timestamp: new Date().toISOString(),
-    status,
+    status: String(status),
     endpoint: endpoint.slice(0, HTTP_ENDPOINT_MAX_LEN),
     ...(detail && { detail: detail.slice(0, ERROR_DETAIL_MAX_LEN) }),
   }
@@ -906,6 +906,7 @@ export function _resetAnalyticsState() {
   recentErrorEmissions.clear()
   pageErrorCounts.clear()
   capturedErrors.length = 0
+  failedApiCalls.length = 0
 }
 
 function isErrorThrottled(category: string, page: string, cardId?: string): boolean {
