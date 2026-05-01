@@ -464,12 +464,14 @@ func (h *MissionsHandler) githubGet(url string, clientToken string) (*http.Respo
 		if err != nil {
 			return nil, err
 		}
+		// Note: Caller is responsible for closing retryResp.Body
 		if retryResp.StatusCode == http.StatusForbidden || retryResp.StatusCode == http.StatusTooManyRequests {
 			slog.Error("[missions] unauthenticated retry also failed, likely rate-limited", "status", retryResp.StatusCode, "url", url)
 		}
 		return retryResp, nil
 	}
 
+	// Note: Caller is responsible for closing resp.Body
 	return resp, nil
 }
 
@@ -523,10 +525,10 @@ func (h *MissionsHandler) fetchWithCache(c *fiber.Ctx, cacheKey, url, logContext
 		if err != nil {
 			continue
 		}
+		defer resp.Body.Close()
 
 		limitedBody := io.LimitReader(resp.Body, missionsMaxBodyBytes)
 		body, err = io.ReadAll(limitedBody)
-		resp.Body.Close()
 		if err != nil {
 			slog.Error("[missions] failed to read response body "+logContext, append(logArgs, "error", err, "attempt", attempt+1)...)
 			continue

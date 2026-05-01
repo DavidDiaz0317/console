@@ -3939,5 +3939,11 @@
   "serviceStatus": {
     "emptyTitle": "No services found",
     "emptyMessage": "Services will appear here once they are deployed to your clusters."
+  },
+  "sortBy": {
+    "status": "Status",
+    "workload": "Workload",
+    "time": "Time",
+    "clusters": "Clusters"
   }
 }

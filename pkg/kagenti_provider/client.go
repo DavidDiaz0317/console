@@ -380,7 +380,7 @@ func (c *KagentiClient) Invoke(ctx context.Context, namespace, agentName, messag
 		// so long-running streams are controlled by ctx cancellation.
 		httpClient := c.httpClient
 		if httpClient == nil {
-			httpClient = &http.Client{}
+			httpClient = &http.Client{Timeout: 10 * time.Second}
 		} else {
 			clone := *httpClient
 			clone.Timeout = 0

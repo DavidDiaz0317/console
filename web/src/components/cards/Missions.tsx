@@ -68,60 +68,6 @@ const DEMO_MISSIONS: DeployMission[] = [
     completedAt: Date.now() - TWO_MINUTES_MS },
 ]
 
-const STATUS_CONFIG: Record<DeployMissionStatus, {
-  icon: typeof Rocket
-  color: string
-  bg: string
-  label: string
-  animateClass?: string
-}> = {
-  launching: {
-    icon: Rocket,
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/20',
-    label: 'Launching',
-    animateClass: 'animate-rocket-launch' },
-  deploying: {
-    icon: Loader2,
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/20',
-    label: 'Deploying',
-    animateClass: 'animate-spin' },
-  orbit: {
-    icon: Orbit,
-    color: 'text-green-400',
-    bg: 'bg-green-500/20',
-    label: 'In Orbit' },
-  abort: {
-    icon: XCircle,
-    color: 'text-red-400',
-    bg: 'bg-red-500/20',
-    label: 'Aborted' },
-  partial: {
-    icon: AlertTriangle,
-    color: 'text-orange-400',
-    bg: 'bg-orange-500/20',
-    label: 'Partial' } }
-
-// ClusterStatusRow renders a row's text (`color`), a progress bar
-// (`barColor`), and a status label. The `bg` field used to be declared here
-// but was never read by ClusterStatusRow — dropped so the config matches
-// the renderer. `pending`'s barColor is also never visually shown (the bar
-// is forced to 0% width for the pending state at the call site), so its
-// value is cosmetic; semantic-token choice there still matters for the
-// text color which IS rendered. Tinted accent colors
-// (yellow/green/red at /20 + /500) already read on both light and dark
-// themes, so no dark: variants needed.
-const CLUSTER_STATUS_CONFIG: Record<DeployClusterStatus['status'], {
-  color: string
-  barColor: string
-  label: string
-}> = {
-  pending: { color: 'text-muted-foreground', barColor: 'bg-muted-foreground', label: 'Pending' },
-  applying: { color: 'text-yellow-400', barColor: 'bg-yellow-500', label: 'Applying' },
-  running: { color: 'text-green-400', barColor: 'bg-green-500', label: 'Running' },
-  failed: { color: 'text-red-400', barColor: 'bg-red-500', label: 'Failed' } }
-
 // Status priority for sorting (active first)
 const STATUS_ORDER: Record<string, number> = {
   launching: 1,
@@ -132,18 +78,82 @@ const STATUS_ORDER: Record<string, number> = {
 
 type SortByOption = 'status' | 'workload' | 'time' | 'clusters'
 
-const SORT_OPTIONS: { value: SortByOption; label: string }[] = [
-  { value: 'status', label: 'Status' },
-  { value: 'workload', label: 'Workload' },
-  { value: 'time', label: 'Time' },
-  { value: 'clusters', label: 'Clusters' },
-]
+// Created at module level but will be recreated in Missions component with t()
 
 /** Storage key for persisted cluster filter selection */
 const CLUSTER_FILTER_STORAGE_KEY = 'kubestellar-card-filter:deployment-missions-clusters'
 
 export function Missions(_props: MissionsProps) {
   const { t } = useTranslation(['common', 'cards'])
+
+  // Translated config objects created here so they have access to t()
+  const STATUS_CONFIG: Record<DeployMissionStatus, {
+    icon: typeof Rocket
+    color: string
+    bg: string
+    label: string
+    animateClass?: string
+  }> = {
+    launching: {
+      icon: Rocket,
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/20',
+      label: t('cards.missionStatus.launching', 'Launching'),
+      animateClass: 'animate-rocket-launch' },
+    deploying: {
+      icon: Loader2,
+      color: 'text-yellow-400',
+      bg: 'bg-yellow-500/20',
+      label: t('cards.missionStatus.deploying', 'Deploying'),
+      animateClass: 'animate-spin' },
+    orbit: {
+      icon: Orbit,
+      color: 'text-green-400',
+      bg: 'bg-green-500/20',
+      label: t('cards.missionStatus.inOrbit', 'In Orbit') },
+    abort: {
+      icon: XCircle,
+      color: 'text-red-400',
+      bg: 'bg-red-500/20',
+      label: t('cards.missionStatus.aborted', 'Aborted') },
+    partial: {
+      icon: AlertTriangle,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/20',
+      label: t('cards.missionStatus.partial', 'Partial') } }
+
+  // ClusterStatusRow renders a row's text (`color`), a progress bar
+  // (`barColor`), and a status label. The `bg` field used to be declared here
+  // but was never read by ClusterStatusRow — dropped so the config matches
+  // the renderer. `pending`'s barColor is also never visually shown (the bar
+  // is forced to 0% width for the pending state at the call site), so its
+  // value is cosmetic; semantic-token choice there still matters for the
+  // text color which IS rendered. Tinted accent colors
+  // (yellow/green/red at /20 + /500) already read on both light and dark
+  // themes, so no dark: variants needed.
+  const CLUSTER_STATUS_CONFIG: Record<DeployClusterStatus['status'], {
+    color: string
+    barColor: string
+    label: string
+  }> = {
+    pending: { color: 'text-muted-foreground', barColor: 'bg-muted-foreground', label: t('cards.clusterStatus.pending', 'Pending') },
+    applying: { color: 'text-yellow-400', barColor: 'bg-yellow-500', label: t('cards.clusterStatus.applying', 'Applying') },
+    running: { color: 'text-green-400', barColor: 'bg-green-500', label: t('cards.clusterStatus.running', 'Running') },
+    failed: { color: 'text-red-400', barColor: 'bg-red-500', label: t('cards.clusterStatus.failed', 'Failed') } }
+
+  const SORT_OPTIONS: { value: SortByOption; label: string }[] = [
+    { value: 'status', label: t('common.sortBy.status', 'Status') },
+    { value: 'workload', label: t('common.sortBy.workload', 'Workload') },
+    { value: 'time', label: t('common.sortBy.time', 'Time') },
+    { value: 'clusters', label: t('common.sortBy.clusters', 'Clusters') },
+  ]
+
+  const DEP_ACTION_STYLES: Record<string, { color: string; label: string }> = {
+    created: { color: 'text-green-400', label: t('cards.dependencyAction.created', 'Created') },
+    updated: { color: 'text-blue-400', label: t('cards.dependencyAction.updated', 'Updated') },
+    skipped: { color: 'text-muted-foreground', label: t('cards.dependencyAction.skipped', 'Skipped') },
+    failed: { color: 'text-red-400', label: t('cards.dependencyAction.failed', 'Failed') } }
+
   const { missions: liveMissions, activeMissions: liveActive, completedMissions: liveCompleted } = useDeployMissions()
   const { deduplicatedClusters, isLoading, isRefreshing, isFailed, consecutiveFailures } = useClusters()
   const { isDemoMode: demoMode } = useDemoMode()
@@ -443,6 +453,9 @@ Please:
                 onDiagnose={handleDiagnose}
                 onRepair={handleRepair}
                 orbitStatus={mission.status === 'orbit' ? orbitMissionsByProject.get(mission.workload.toLowerCase()) : undefined}
+                statusConfig={STATUS_CONFIG}
+                clusterStatusConfig={CLUSTER_STATUS_CONFIG}
+                depActionStyles={DEP_ACTION_STYLES}
               />
             )
           })}
@@ -505,11 +518,24 @@ interface MissionRowProps {
   onDiagnose: (mission: DeployMission) => void
   onRepair: (mission: DeployMission) => void
   orbitStatus?: OrbitStatus
+  statusConfig: Record<DeployMissionStatus, {
+    icon: typeof Rocket
+    color: string
+    bg: string
+    label: string
+    animateClass?: string
+  }>
+  clusterStatusConfig: Record<DeployClusterStatus['status'], {
+    color: string
+    barColor: string
+    label: string
+  }>
+  depActionStyles: Record<string, { color: string; label: string }>
 }
 
-function MissionRow({ mission, isExpanded, onToggle, isActive, onDiagnose, onRepair, orbitStatus }: MissionRowProps) {
+function MissionRow({ mission, isExpanded, onToggle, isActive, onDiagnose, onRepair, orbitStatus, statusConfig, clusterStatusConfig, depActionStyles }: MissionRowProps) {
   const { t } = useTranslation(['common', 'cards'])
-  const config = STATUS_CONFIG[mission.status] || STATUS_CONFIG.launching
+  const config = statusConfig[mission.status] || statusConfig.launching
   const StatusIcon = config.icon
   const elapsed = getElapsed(mission.startedAt, mission.completedAt)
   const [showLogs, setShowLogs] = useState(false)
@@ -638,10 +664,10 @@ function MissionRow({ mission, isExpanded, onToggle, isActive, onDiagnose, onRep
       {isActive && !isExpanded && (mission.clusterStatuses || []).length > 0 && (
         <div className="px-3 pb-2 space-y-1">
           {(mission.clusterStatuses || []).map(cs => (
-            <ClusterStatusRow key={cs.cluster} status={cs} />
+            <ClusterStatusRow key={cs.cluster} status={cs} clusterStatusConfig={clusterStatusConfig} />
           ))}
           {mission.dependencies && mission.dependencies.length > 0 && (
-            <DependencySummary dependencies={mission.dependencies} />
+            <DependencySummary dependencies={mission.dependencies} depActionStyles={depActionStyles} />
           )}
         </div>
       )}
@@ -722,12 +748,12 @@ function MissionRow({ mission, isExpanded, onToggle, isActive, onDiagnose, onRep
             </div>
           )}
           {(mission.clusterStatuses || []).map(cs => (
-            <ClusterStatusRow key={cs.cluster} status={cs} />
+            <ClusterStatusRow key={cs.cluster} status={cs} clusterStatusConfig={clusterStatusConfig} />
           ))}
 
           {/* Dependencies summary */}
           {mission.dependencies && mission.dependencies.length > 0 && (
-            <DependencySummary dependencies={mission.dependencies} />
+            <DependencySummary dependencies={mission.dependencies} depActionStyles={depActionStyles} />
           )}
 
           {/* Warnings */}
@@ -753,10 +779,15 @@ function MissionRow({ mission, isExpanded, onToggle, isActive, onDiagnose, onRep
 
 interface ClusterStatusRowProps {
   status: DeployClusterStatus
+  clusterStatusConfig: Record<DeployClusterStatus['status'], {
+    color: string
+    barColor: string
+    label: string
+  }>
 }
 
-function ClusterStatusRow({ status }: ClusterStatusRowProps) {
-  const config = CLUSTER_STATUS_CONFIG[status.status]
+function ClusterStatusRow({ status, clusterStatusConfig }: ClusterStatusRowProps) {
+  const config = clusterStatusConfig[status.status]
   const replicaProgress = status.replicas > 0
     ? (status.readyReplicas / status.replicas) * 100
     : 0
@@ -792,13 +823,7 @@ function ClusterStatusRow({ status }: ClusterStatusRowProps) {
 // Dependency Summary
 // ============================================================================
 
-const DEP_ACTION_STYLES: Record<string, { color: string; label: string }> = {
-  created: { color: 'text-green-400', label: 'Created' },
-  updated: { color: 'text-blue-400', label: 'Updated' },
-  skipped: { color: 'text-muted-foreground', label: 'Skipped' },
-  failed: { color: 'text-red-400', label: 'Failed' } }
-
-function DependencySummary({ dependencies }: { dependencies: DeployedDep[] }) {
+function DependencySummary({ dependencies, depActionStyles }: { dependencies: DeployedDep[]; depActionStyles: Record<string, { color: string; label: string }> }) {
   // Group by kind for summary line
   const kindCounts: Record<string, number> = {}
   for (const dep of dependencies) {
@@ -825,7 +850,7 @@ function DependencySummary({ dependencies }: { dependencies: DeployedDep[] }) {
       {showAll && (
         <div className="mt-1 ml-4 space-y-0.5">
           {dependencies.map((dep, i) => {
-            const style = DEP_ACTION_STYLES[dep.action] ?? DEP_ACTION_STYLES.created
+            const style = depActionStyles[dep.action] ?? depActionStyles.created
             return (
               <div key={i} className="flex items-center gap-2 text-2xs">
                 <span className="text-muted-foreground/70 w-28 truncate">{dep.kind}</span>

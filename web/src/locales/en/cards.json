@@ -4635,5 +4635,24 @@
   },
   "podLogs": {
     "refreshLogsAria": "Refresh logs"
+  },
+  "missionStatus": {
+    "launching": "Launching",
+    "deploying": "Deploying",
+    "inOrbit": "In Orbit",
+    "aborted": "Aborted",
+    "partial": "Partial"
+  },
+  "clusterStatus": {
+    "pending": "Pending",
+    "applying": "Applying",
+    "running": "Running",
+    "failed": "Failed"
+  },
+  "dependencyAction": {
+    "created": "Created",
+    "updated": "Updated",
+    "skipped": "Skipped",
+    "failed": "Failed"
   }
 }

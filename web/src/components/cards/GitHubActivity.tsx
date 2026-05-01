@@ -254,8 +254,8 @@ function useGitHubActivity(config?: GitHubActivityConfig) {
 
       // Fetch open PRs and closed/merged PRs separately
       const [openPRsResponse, closedPRsResponse] = await Promise.all([
-        fetch(`/api/github/repos/${targetRepo}/pulls?state=open&per_page=50&sort=updated`, fetchOptions),
-        fetch(`/api/github/repos/${targetRepo}/pulls?state=closed&per_page=50&sort=updated`, fetchOptions)
+        fetch(`/api/github/repos/${targetRepo}/pulls?state=open&per_page=50&sort=updated`, { ...fetchOptions, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) }),
+        fetch(`/api/github/repos/${targetRepo}/pulls?state=closed&per_page=50&sort=updated`, { ...fetchOptions, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       ])
 
       if (!openPRsResponse.ok) throw await githubFetchError(openPRsResponse, 'Failed to fetch open PRs')
@@ -271,8 +271,8 @@ function useGitHubActivity(config?: GitHubActivityConfig) {
 
       // Fetch open Issues count and recent issues
       const [openIssuesResponse, recentIssuesResponse] = await Promise.all([
-        fetch(`/api/github/repos/${targetRepo}/issues?state=open&per_page=1`, fetchOptions),
-        fetch(`/api/github/repos/${targetRepo}/issues?state=all&per_page=50&sort=updated`, fetchOptions)
+        fetch(`/api/github/repos/${targetRepo}/issues?state=open&per_page=1`, { ...fetchOptions, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) }),
+        fetch(`/api/github/repos/${targetRepo}/issues?state=all&per_page=50&sort=updated`, { ...fetchOptions, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       ])
 
       let calculatedOpenIssueCount = 0

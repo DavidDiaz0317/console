@@ -138,6 +138,18 @@ func ACMMBadgeHandler(c *fiber.Ctx) error {
 		}, badgeCacheControlErrorSecs)
 	}
 
+	// Demo mode support
+	if isDemoMode(c) {
+		badge := &shieldsEndpointBadge{
+			SchemaVersion: 1,
+			Label:         "ACMM",
+			Message:       "Demo",
+			Color:         "blue",
+			CacheSeconds:  3600,
+		}
+		return serveBadge(c, badge, badgeCacheControlMaxAge)
+	}
+
 	// Look up cache
 	raw, _ := badgeCache.LoadOrStore(repo, &badgeCacheEntry{})
 	entry := raw.(*badgeCacheEntry)

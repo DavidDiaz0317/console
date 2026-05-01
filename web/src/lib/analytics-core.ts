@@ -1040,9 +1040,17 @@ function tryChunkReloadRecovery(msg: string): boolean {
 }
 
 /** Track unhandled promise rejections and runtime errors globally */
+// Store console originals at module scope for cleanup across multiple initializations
+let consoleRestoreCleanup: (() => void) | null = null
+
 export function startGlobalErrorTracking() {
   // Check if we just recovered from a chunk-load auto-reload
   checkChunkReloadRecovery()
+
+  // Restore previous interception (if any) to avoid chained wrappers
+  if (consoleRestoreCleanup) {
+    consoleRestoreCleanup()
+  }
 
   // Re-entrancy guard: if emitError() → send() triggers another error,
   // the global handler must NOT call emitError() again (infinite recursion → max call stack)
@@ -1204,6 +1212,12 @@ export function startGlobalErrorTracking() {
     pushCapturedError('warn', msg, 'console.warn')
     originalConsoleWarn.apply(console, args)
   }
+
+  // Store cleanup function to restore originals on next initialization
+  consoleRestoreCleanup = () => {
+    console.error = originalConsoleError
+    console.warn = originalConsoleWarn
+  }
 }
 
 export const __testables = {
@@ -1214,4 +1228,5 @@ export const __testables = {
   isErrorThrottled,
   markErrorReported,
   wasAlreadyReported,
+  restoreConsole: () => consoleRestoreCleanup?.(),
 }
