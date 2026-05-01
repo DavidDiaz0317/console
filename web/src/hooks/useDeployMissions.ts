@@ -472,9 +472,12 @@ export function useDeployMissions() {
                       // Fall back to 0 for non-finite values.
                       const replicas = safeReplicaCount(match.replicas)
                       const readyReplicas = safeReplicaCount(match.readyReplicas)
-                      // #11211 — Require updatedReplicas >= replicas so a partial
-                      // rollout (old pods still ready, new pods not yet) is not
-                      // marked "running". Mirrors the REST fallback path at ~line 608.
+                      // #11211 — Also check updatedReplicas so a partial rollout
+                      // (old pods still ready, new pods not yet rolled out) is not
+                      // prematurely marked "running". Mirrors the REST-path guards
+                      // added in #5955. When the agent response omits
+                      // updatedReplicas, fall back to replicas to keep existing
+                      // callers working.
                       const updatedReplicasRaw = match.updatedReplicas
                       const updatedReplicas = updatedReplicasRaw === undefined
                         ? replicas
@@ -482,9 +485,15 @@ export function useDeployMissions() {
                       let status: DeployClusterStatus['status'] = 'applying'
                       // Zero-replica workloads are valid (e.g. scale-to-zero) — treat
                       // readyReplicas >= replicas as success even when both are zero.
-                      if (String(match.status) === 'Running' && readyReplicas >= replicas && updatedReplicas >= replicas) {
+                      // Require deployment status to be 'Running' and updatedReplicas
+                      // to have caught up, so in-progress rollouts stay in 'applying'.
+                      if (
+                        String(match.status) === 'Running'
+                        && readyReplicas >= replicas
+                        && updatedReplicas >= replicas
+                      ) {
                         status = 'running'
-                      } else if (String(match.status) === 'Failed') {
+                      } else if (String(match.status) === 'failed' || String(match.status) === 'Failed') {
                         status = 'failed'
                       } else if (readyReplicas > 0) {
                         status = 'applying'
