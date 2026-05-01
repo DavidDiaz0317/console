@@ -183,7 +183,7 @@ func (h *SelfUpgradeHandler) GetStatus(c *fiber.Ctx) error {
 	resp.Namespace = namespace
 	resp.ReleaseName = getReleaseName()
 
-	ctx, cancel := context.WithTimeout(context.Background(), selfUpgradeTimeout)
+	ctx, cancel := context.WithTimeout(c.Context(), selfUpgradeTimeout)
 	defer cancel()
 
 	client, err := h.getInClusterClient()
@@ -300,7 +300,7 @@ func (h *SelfUpgradeHandler) TriggerUpgrade(c *fiber.Ctx) error {
 		})
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), selfUpgradeTimeout)
+	ctx, cancel := context.WithTimeout(c.Context(), selfUpgradeTimeout)
 	defer cancel()
 
 	client, err := h.getInClusterClient()

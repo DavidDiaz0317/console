@@ -248,9 +248,9 @@ func (h *NightlyE2EHandler) GetRuns(c *fiber.Ctx) error {
 	h.mu.RUnlock()
 
 	// #7053 — Use singleflight to coalesce concurrent cold-cache fetches
-	// into a single fetchAll call, preventing N × 17+ goroutine fan-out.
+	// into a single fetchAllWithContext call, preventing N × 17+ goroutine fan-out.
 	v, err, _ := h.fetchGroup.Do("runs", func() (interface{}, error) {
-		return h.fetchAll()
+		return h.fetchAllWithContext(c.Context())
 	})
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
