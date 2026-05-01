@@ -482,7 +482,7 @@ export function useDeployMissions() {
                       let status: DeployClusterStatus['status'] = 'applying'
                       // Zero-replica workloads are valid (e.g. scale-to-zero) — treat
                       // readyReplicas >= replicas as success even when both are zero.
-                      if (String(match.status) === 'Running'
+                      if (String(match.status) === 'running'
                           && readyReplicas >= replicas
                           && agentUpdated >= replicas) {
                         status = 'running'
