@@ -81,7 +81,7 @@ export function AIML() {
       <DashboardPage
         title={t('aiml.title')}
         subtitle={t('aiml.subtitle')}
-        icon="Brain"
+        icon="Sparkles"
         rightExtra={<RotatingTip page="ai-ml" />}
         storageKey={AIML_CARDS_KEY}
         defaultCards={DEFAULT_AIML_CARDS}

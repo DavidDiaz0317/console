@@ -117,7 +117,7 @@ export function Nodes() {
     <DashboardPage
       title={t('common:nodes.title')}
       subtitle={t('common:nodes.subtitle')}
-      icon="Server"
+      icon="CircuitBoard"
       rightExtra={
         <div className="flex items-center gap-3">
           <GPUTaintFilterControl

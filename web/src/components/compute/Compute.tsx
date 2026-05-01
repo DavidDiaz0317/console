@@ -310,7 +310,7 @@ export function Compute() {
     <DashboardPage
       title="Compute"
       subtitle="Monitor compute resources across clusters"
-      icon="Cpu"
+      icon="Monitor"
       rightExtra={<RotatingTip page="compute" />}
       storageKey={COMPUTE_CARDS_KEY}
       defaultCards={DEFAULT_COMPUTE_CARDS}

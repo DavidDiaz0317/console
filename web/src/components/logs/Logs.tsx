@@ -115,7 +115,7 @@ export function Logs() {
     <DashboardPage
       title="Logs & Events"
       subtitle="Monitor cluster events and application logs"
-      icon="ScrollText"
+      icon="FileText"
       rightExtra={<RotatingTip page="logs" />}
       storageKey={LOGS_CARDS_KEY}
       defaultCards={DEFAULT_LOGS_CARDS}

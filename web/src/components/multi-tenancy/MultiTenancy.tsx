@@ -29,7 +29,7 @@ export function MultiTenancy() {
     <DashboardPage
       title="Multi-Tenancy"
       subtitle="Tenant isolation with OVN, KubeFlex, K3s, KubeVirt"
-      icon="Shield"
+      icon="Users"
       rightExtra={<RotatingTip page="multi-tenancy" />}
       storageKey={MULTI_TENANCY_CARDS_KEY}
       defaultCards={DEFAULT_MULTI_TENANCY_CARDS}

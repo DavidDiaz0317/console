@@ -105,7 +105,7 @@ export function Deployments() {
     <DashboardPage
       title="Deployments"
       subtitle="Monitor deployment health and rollout status"
-      icon="Rocket"
+      icon="Layers"
       rightExtra={<RotatingTip page="deployments" />}
       storageKey={DEPLOYMENTS_CARDS_KEY}
       defaultCards={DEFAULT_DEPLOYMENTS_CARDS}

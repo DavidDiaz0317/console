@@ -279,7 +279,7 @@ export function Workloads() {
     <DashboardPage
       title="Workloads"
       subtitle="View and manage deployed applications across clusters"
-      icon="Layers"
+      icon="Box"
       rightExtra={
         <div className="flex items-center gap-2">
           <button

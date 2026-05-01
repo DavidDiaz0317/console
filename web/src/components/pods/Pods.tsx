@@ -186,7 +186,7 @@ export function Pods() {
     <DashboardPage
       title="Pods"
       subtitle="Monitor pod health and issues across clusters"
-      icon="Box"
+      icon="Hexagon"
       rightExtra={<RotatingTip page="pods" />}
       storageKey={PODS_CARDS_KEY}
       defaultCards={DEFAULT_POD_CARDS}
