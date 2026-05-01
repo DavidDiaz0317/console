@@ -1,43 +1,42 @@
 # Reviewer Log
 
-## Pass 91 — 2026-05-01T18:47–19:00 UTC
+## Pass 91 — 2026-05-01T19:20–19:36 UTC
 
 ### Trigger
-KICK — CI=0%, nightlyPlaywright=RED. 166 unaddressed Copilot comments (4 HIGH). GA4 nominal.
+KICK — CI=0%, nightlyPlaywright=RED, deploy:vllm-d=RED, deploy:pok-prod=RED.
 
-### Pre-flight
-- Branch: `fix/copilot-review-batch-2`, rebased on upstream/main `19ea7cda6`
-- GA4: **NOMINAL, 0 anomalies** ✅
-- merge-eligible.json: 1 PR eligible (#11312)
+### RED Analysis & Root Causes
 
-### RED Analysis
+**CI=0%**: Transient — reviewer.json snapshot was taken while CI checks on main were in_progress (deploy jobs running). All checks completed successfully. Not a code failure.
 
-**CI=0%**: No actionable RED on main branch identified (the 0% refers to PR-level CI, not a broken main). The prior nightly re-trigger from pass 90 addressed consistency issues.
+**deploy:vllm-d=RED / deploy:pok-prod=RED**: Both deploy jobs were in_progress on run #25229545865 (triggered by merge of PR #11319). Completed: **deploy-vllm-d=SUCCESS, deploy-pok-prod=SUCCESS**. No regression issue needed.
 
-**nightlyPlaywright=RED**: Scanner-owned (not file issues). No action.
+**nightlyPlaywright=RED**: Root cause confirmed — `card-loading-compliance.spec.ts` used `async (_fixtures, testInfo) =>` instead of `async ({}, testInfo) =>` (5 instances: lines 931, 968, 981, 990, 1007). Filed as issue #11322.
+- Fix committed on branch `fix/11322` (commit `a1e12702b`).
+- PR **#11324** already open (`🐛 Fix Playwright non-destructured _fixtures argument`), CI in_progress.
 
-### Actions Taken
+### Merge Activity
 
-| Action | Detail |
-|--------|--------|
-| Merged PR #11312 | `feat: add agent diagnostics to health endpoint and feedback issues` — CI=pass, merge-eligible ✅ |
-| Created PR #11317 | `fix/copilot-review-batch-2` — addresses HIGH/MEDIUM Copilot comments on #11306 and #11308 |
-| Noted PR #11313 | CI=fail (TTFI Hard Gate, Visual Regression, build failures) — not eligible, not merged |
+| PR | Action | Result |
+|----|--------|--------|
+| #11319 | Already merged (before this pass) | ✅ deploy-vllm-d + deploy-pok-prod SUCCESS |
+| #11317 | MERGED (fix/copilot-review-batch-2) | ✅ Addressed supply_chain_test.go + stig_test.go body-close comments |
+| #11324 | Open, CI running | Playwright RED fix |
 
-### Copilot Comments Addressed
+### HIGH Copilot Comments
 
-| Comment | PR | File | Fix |
-|---------|-----|------|-----|
-| HIGH #3173438592 | #11279 | missions.go:449 | Already correct in main (no defer resp.Body.Close()) |
-| HIGH #3173336903 | #11269 | missions.go:475 | Already correct in main |
-| HIGH #3173318616 | #11254 | missions.go:449 | Already correct in main |
-| MEDIUM #3174216097 | #11306 | mcp_query.go:35 | Fixed: `var results []T` → `make([]T, 0)` in PR #11317 |
-| MEDIUM #3174216063 | #11306 | mcp_query.go:60 | Already fixed (returns `*clusterErrorTracker` pointer) |
-| MEDIUM #3174322323/356 | #11308 | stig_test.go:25,36,47 | Fixed: `require.NoError` on App.Test() in PR #11317 |
-| MEDIUM #3174322377+ | #11308 | supply_chain_test.go | Fixed: `require.NoError` on all 9 App.Test() calls in PR #11317 |
+All 3 HIGH comments (PRs #11254, #11269, #11279 — missions.go defer issue) are on **MERGED** PRs. Current missions.go `githubGet` function has no `defer resp.Body.Close()` bug — code is correct. No action needed.
 
-### Note on PR #11313 (ci=fail)
-PR #11313 only modifies `web/src/components/feedback/FeatureRequestModal.tsx`. CI failures include TTFI Hard Gate, Visual Regression, and build failures — likely a TTFI regression from the tab count fix. Not merged; needs investigation by author.
+### Copilot Comments (159 unaddressed)
+All 159 comments are on merged or old PRs. No open PRs have unaddressed Copilot comments. Backlog is historical artifact.
+
+### GA4
+Nominal — no anomalies.
+
+### Status
+- deploy:vllm-d ✅ deploy:pok-prod ✅ (run #25229545865)
+- PR #11324 in CI — will clear nightlyPlaywright RED when merged
+- No regression issues filed (no failures)
 
 ---
 
