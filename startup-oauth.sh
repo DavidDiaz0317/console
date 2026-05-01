@@ -478,7 +478,22 @@ else
 
     write_stage "frontend_build"
     echo -e "${GREEN}Building frontend...${NC}"
-    (cd web && npm run build)
+    if ! (cd web && npm run build); then
+        echo ""
+        echo -e "${RED}========================================${NC}"
+        echo -e "${RED}  Frontend build failed.${NC}"
+        echo -e "${RED}========================================${NC}"
+        echo ""
+        echo "  This often happens after pulling new changes."
+        echo "  Try:"
+        echo "    1. git pull origin main"
+        echo "    2. cd web && npm install"
+        echo "    3. Re-run ./startup-oauth.sh"
+        echo ""
+        echo "  If the error persists, check the build output above for details."
+        echo ""
+        exit 1
+    fi
     echo -e "${GREEN}Frontend built successfully${NC}"
 
     # Start backend on port 8081 — watchdog on 8080 proxies to it
