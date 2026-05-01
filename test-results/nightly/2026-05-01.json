@@ -1,18 +1,17 @@
 {
-  "timestamp": "2026-05-01T07:53:29Z",
+  "timestamp": "2026-05-01T10:15:28Z",
   "fastMode": false,
   "summary": {
     "total": 32,
-    "passed": 31,
-    "failed": 1,
+    "passed": 32,
+    "failed": 0,
     "skipped": 0
   },
   "results": [
     {
       "suite": "consistency-test",
-      "status": "fail",
-      "duration": 4,
-      "failure_reason": "  Phase 6 (Cache Patterns)       ⚠️  8 warnings\n  Total: 4 errors, 77 warnings\nReports:\n  JSON:     web/e2e/test-results/consistency-report.json\n  Summary:  web/e2e/test-results/consistency-summary.md\n"
+      "status": "pass",
+      "duration": 4
     },
     {
       "suite": "helm-lint-test",
@@ -22,32 +21,32 @@
     {
       "suite": "license-compliance-test",
       "status": "pass",
-      "duration": 4
+      "duration": 3
     },
     {
       "suite": "mission-security-test",
       "status": "pass",
-      "duration": 6
+      "duration": 7
     },
     {
       "suite": "card-registry-integrity-test",
       "status": "pass",
-      "duration": 2
+      "duration": 1
     },
     {
       "suite": "unit-test",
       "status": "pass",
-      "duration": 846
+      "duration": 871
     },
     {
       "suite": "auth-lifecycle-test",
       "status": "pass",
-      "duration": 87
+      "duration": 94
     },
     {
       "suite": "settings-migration-test",
       "status": "pass",
-      "duration": 3
+      "duration": 2
     },
     {
       "suite": "update-lifecycle-test",
@@ -77,7 +76,7 @@
     {
       "suite": "ts-sast-test",
       "status": "pass",
-      "duration": 2
+      "duration": 3
     },
     {
       "suite": "container-scan-test",
@@ -97,42 +96,42 @@
     {
       "suite": "api-fuzz-test",
       "status": "pass",
-      "duration": 148
+      "duration": 154
     },
     {
       "suite": "error-boundary-test",
       "status": "pass",
-      "duration": 1
+      "duration": 0
     },
     {
       "suite": "console-error-scan",
       "status": "pass",
-      "duration": 121
+      "duration": 120
     },
     {
       "suite": "nav-test",
       "status": "pass",
-      "duration": 594
+      "duration": 606
     },
     {
       "suite": "perf-test",
       "status": "pass",
-      "duration": 1006
+      "duration": 1026
     },
     {
       "suite": "ui-compliance-test",
       "status": "pass",
-      "duration": 112
+      "duration": 116
     },
     {
       "suite": "deploy-test",
       "status": "pass",
-      "duration": 82
+      "duration": 84
     },
     {
       "suite": "cache-test",
       "status": "pass",
-      "duration": 152
+      "duration": 145
     },
     {
       "suite": "benchmark-test",
@@ -142,17 +141,17 @@
     {
       "suite": "ai-ml-test",
       "status": "pass",
-      "duration": 3
+      "duration": 4
     },
     {
       "suite": "a11y-test",
       "status": "pass",
-      "duration": 86
+      "duration": 90
     },
     {
       "suite": "error-resilience-test",
       "status": "pass",
-      "duration": 32
+      "duration": 34
     },
     {
       "suite": "i18n-test",
