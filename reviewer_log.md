@@ -1,5 +1,42 @@
 # Reviewer Log
 
+## Pass 86 — 2026-05-01 UTC
+
+### Trigger
+KICK — CI=0%, nightly=RED, nightlyPlaywright=RED, nightlyRel=RED. 62 unaddressed Copilot comments.
+
+### Pre-flight
+- Branch: `main`, HEAD `07bcabebb` (1 ahead of origin/main after pass 85 merge)
+- GA4: **NOMINAL, 0 anomalies** ✅
+
+### RED Analysis
+- **CI=0%**: Caused by Playwright E2E Tests failure (run #25204717430). Scanner owns.
+- **nightlyPlaywright=RED**: Same Playwright E2E run failure. Scanner owns.
+- **nightlyRel=RED**: Release run #25204538900 was in-progress (Docker multi-arch build); now monitoring.
+- **Nightly Test Suite**: in-progress run #25205585762 — not yet failed.
+
+### Source File Fixes
+Found `kagent_crds.ts` still using `LOCAL_AGENT_URL` (stale const snapshot) — same issue that PR #11210 fixed in `workloads.ts` but missed here.
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `web/src/hooks/mcp/kagent_crds.ts` | `LOCAL_AGENT_URL` stale const (not updated by `suppressLocalAgent()`) used in `agentFetch()` local helper | Replace with `LOCAL_AGENT_HTTP_URL` import from `constants/network`; add `\|\| !LOCAL_AGENT_HTTP_URL` guard |
+| `web/playwright.config.ts` | `testIgnore` excluded mission specs unconditionally (MEDIUM #11209:39) | Make conditional on `env.PLAYWRIGHT_BASE_URL`: excluded in CI (Vite preview, no backend), included locally (Playwright starts Go backend) |
+
+### Commit
+`11e4f4eab` — 🐛 Fix LOCAL_AGENT_URL stale const in kagent_crds.ts; conditional testIgnore for mission specs
+
+### HIGH Copilot Comments
+All 6 HIGH source-file comments addressed (passes 78–81). Verified no regressions.
+
+### Merge-Eligible PRs
+None (merge-eligible.json: count=0).
+
+### Status
+Changes pushed to main. CI will validate. nightlyRel monitoring continues.
+
+---
+
 ## Pass 85 — 2026-05-01 UTC
 
 ### Trigger
