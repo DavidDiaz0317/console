@@ -97,11 +97,7 @@ test.describe('Card Chat / AI Interaction on Dashboard', () => {
     const refreshButton = firstCard.locator('button[aria-label*="efresh"], button[title*="efresh"]').first()
     await expect(refreshButton).toBeVisible({ timeout: CHAT_INPUT_FOCUS_TIMEOUT_MS })
 
-    // Get the card type to make request URL matching more specific
-    const cardType = await firstCard.getAttribute('data-card-type')
-    
     // Capture specific API requests triggered by the refresh
-    // Use specific endpoint patterns based on card type rather than broad regex
     const requestPromise = page.waitForRequest(
       (req) => {
         const url = req.url()
