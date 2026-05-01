@@ -94,6 +94,9 @@ export function useLocalClusterTools() {
   // Real-time progress from kc-agent WebSocket
   const { progress: clusterProgress, dismiss: dismissProgress } = useClusterProgress()
 
+  // Track pending setTimeout IDs for cleanup on unmount
+  const pendingTimeoutsRef = useRef<NodeJS.Timeout[]>([])
+
   // Fetch detected tools
   const fetchTools = async () => {
     // In demo mode (without agent connected), show demo tools
@@ -224,7 +227,8 @@ export function useLocalClusterTools() {
 
       if (response.ok) {
         // Refresh clusters list after action starts
-        setTimeout(() => fetchClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return true
       } else {
         const text = await response.text()
@@ -269,7 +273,8 @@ export function useLocalClusterTools() {
 
       if (response.ok) {
         // Refresh clusters list after deletion starts
-        setTimeout(() => fetchClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return true
       } else {
         const text = await response.text()
@@ -392,7 +397,8 @@ export function useLocalClusterTools() {
       if (response.ok) {
         const data = await response.json()
         // Refresh vcluster list after creation starts
-        setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return { status: 'creating', message: data.message }
       } else {
         const text = await response.text()
@@ -436,7 +442,8 @@ export function useLocalClusterTools() {
 
       if (response.ok) {
         // Refresh vcluster list to update connected status
-        setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return true
       } else {
         const text = await response.text()
@@ -481,7 +488,8 @@ export function useLocalClusterTools() {
 
       if (response.ok) {
         // Refresh vcluster list to update connected status
-        setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return true
       } else {
         const text = await response.text()
@@ -526,7 +534,8 @@ export function useLocalClusterTools() {
 
       if (response.ok) {
         // Refresh vcluster list after deletion
-        setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        const timeoutId = setTimeout(() => fetchVClusters(), UI_FEEDBACK_TIMEOUT_MS)
+        pendingTimeoutsRef.current.push(timeoutId)
         return true
       } else {
         const text = await response.text()
@@ -549,6 +558,14 @@ export function useLocalClusterTools() {
     fetchVClusters()
     fetchVClusterClusterStatus()
   }
+
+  // Cleanup pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId))
+      pendingTimeoutsRef.current = []
+    }
+  }, [])
 
   // Initial fetch when connected or in demo mode — ref guard prevents infinite loop
   // from unstable function deps (fetchTools is not wrapped in useCallback)
