@@ -1257,7 +1257,7 @@ export function useDeployments(cluster?: string, namespace?: string): UseDeploym
       if (namespace) params.append('namespace', namespace)
       const url = `${LOCAL_AGENT_HTTP_URL}/deployments?${params}`
 
-      if (isDemoMode()) {
+      if (isDemoMode() || !LOCAL_AGENT_HTTP_URL) {
         setDeployments([])
         const now = new Date()
         setLastUpdated(now)
@@ -1467,6 +1467,10 @@ export function useHPAs(cluster?: string, namespace?: string): UseHPAsResult {
         console.debug('[useHPAs] Agent fetch failed, falling back to REST API:', agentErr)
       }
     }
+    if (!LOCAL_AGENT_HTTP_URL) {
+      setIsLoading(false)
+      return
+    }
     try {
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
@@ -1534,6 +1538,10 @@ export function useReplicaSets(cluster?: string, namespace?: string): UseReplica
         console.debug('[useReplicaSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
     }
+    if (!LOCAL_AGENT_HTTP_URL) {
+      setIsLoading(false)
+      return
+    }
     try {
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
@@ -1598,6 +1606,10 @@ export function useStatefulSets(cluster?: string, namespace?: string): UseStatef
         // Agent failed — fall through to REST API
         console.debug('[useStatefulSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
+    }
+    if (!LOCAL_AGENT_HTTP_URL) {
+      setIsLoading(false)
+      return
     }
     try {
       const params = new URLSearchParams()
@@ -1664,6 +1676,10 @@ export function useDaemonSets(cluster?: string, namespace?: string): UseDaemonSe
         console.debug('[useDaemonSets] Agent fetch failed, falling back to REST API:', agentErr)
       }
     }
+    if (!LOCAL_AGENT_HTTP_URL) {
+      setIsLoading(false)
+      return
+    }
     try {
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
@@ -1728,6 +1744,10 @@ export function useCronJobs(cluster?: string, namespace?: string): UseCronJobsRe
         // Agent failed — fall through to REST API
         console.debug('[useCronJobs] Agent fetch failed, falling back to REST API:', agentErr)
       }
+    }
+    if (!LOCAL_AGENT_HTTP_URL) {
+      setIsLoading(false)
+      return
     }
     try {
       const params = new URLSearchParams()
