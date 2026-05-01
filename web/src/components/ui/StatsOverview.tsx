@@ -275,7 +275,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
       {effectiveMode === 'sparkline' && hasEnoughHistory && !isNaN(numericValue) ? (
         <>
           <div className="flex items-end justify-between gap-2">
-            <div className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
+            <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
               {displayValue}
             </div>
             <Suspense fallback={<div style={{ height: 28, width: 64 }} className="bg-secondary/30 rounded" />}>
@@ -313,7 +313,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
         </>
       ) : effectiveMode === 'mini-bar' && !isNaN(numericValue) ? (
         <>
-          <div className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
+          <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
             {displayValue}
           </div>
           <div className="mt-1.5 w-full bg-secondary rounded-full overflow-hidden" style={{ height: MINI_BAR_HEIGHT_PX }}>
@@ -349,7 +349,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
           return (
             <>
               <div className="flex items-baseline gap-2">
-                <div className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
+                <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
                   {displayValue}
                 </div>
                 {delta !== undefined && (
@@ -368,7 +368,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
         })()
       ) : effectiveMode === 'stacked-bar' && !isNaN(numericValue) ? (
         <>
-          <div className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
+          <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
             {displayValue}
           </div>
           <div className="mt-1.5 w-full bg-secondary rounded-full overflow-hidden flex" style={{ height: MINI_BAR_HEIGHT_PX }}>
@@ -388,14 +388,14 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
             style={{ backgroundColor: hexColor, opacity: getHeatmapOpacity(numericValue) }}
           />
           <div className="relative">
-            <div className={`text-3xl font-bold ${numericValue > 0 ? 'text-white drop-shadow-xs' : valueColor}`}>{displayValue}</div>
+            <div data-testid={`stat-block-${block.id}-count`} className={`text-3xl font-bold ${numericValue > 0 ? 'text-white drop-shadow-xs' : valueColor}`}>{displayValue}</div>
             {data.sublabel && <div className={`text-xs ${numericValue > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{wrapAbbreviations(data.sublabel)}</div>}
           </div>
         </>
       ) : (
         /* Default numeric mode */
         <>
-          <div className={`text-3xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>{displayValue}</div>
+          <div data-testid={`stat-block-${block.id}-count`} className={`text-3xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>{displayValue}</div>
           {/* #9708 — Only show "Building trend…" when there is no sublabel.
               Both elements appearing together overflows the card height and
               creates visual inconsistency across stat cards. The sublabel

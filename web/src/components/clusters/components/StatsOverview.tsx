@@ -196,7 +196,7 @@ function StatBlock({ blockId, stats, hasData, onClick, color, icon }: StatBlockP
         <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${colorClass}`} />
         <span className="text-sm text-muted-foreground wrap-break-word leading-tight min-w-0" title={label}>{wrapAbbreviations(label)}</span>
       </div>
-      <div className={`text-3xl font-bold ${valueColor}`}>{value}</div>
+      <div data-testid={`stat-block-${blockId}-count`} className={`text-3xl font-bold ${valueColor}`}>{value}</div>
       <div className="text-xs text-muted-foreground">{sublabel}</div>
     </div>
   )
