@@ -119,6 +119,16 @@ func setupTestEnv(t *testing.T) *testEnv {
 	}
 }
 
+// gvrKindsToGVR is a helper to find the GVR for a given list kind
+func gvrKindsToGVR(gvrKinds map[schema.GroupVersionResource]string, listKind string) schema.GroupVersionResource {
+	for gvr, kind := range gvrKinds {
+		if kind == listKind {
+			return gvr
+		}
+	}
+	return schema.GroupVersionResource{}
+}
+
 // injectDynamicCluster creates a fake dynamic client with custom list kinds (for CRD resources
 // like Gateway, HTTPRoute, ServiceExport, etc.) and injects both dynamic and typed clients
 // into the test environment for the given cluster name.

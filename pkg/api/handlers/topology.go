@@ -201,9 +201,9 @@ func (h *TopologyHandlers) buildTopologyGraph(
 					Cluster:   exp.Cluster,
 					Namespace: exp.Namespace,
 					Metadata: map[string]interface{}{
-						"status":    string(exp.Status),
-						"exported":  true,
-						"serviceNa": exp.ServiceName,
+						"status":      string(exp.Status),
+						"exported":    true,
+						"serviceName": exp.ServiceName,
 					},
 					Health: health,
 				})

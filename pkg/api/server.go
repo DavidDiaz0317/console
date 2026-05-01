@@ -1021,6 +1021,7 @@ func (s *Server) setupRoutes() {
 	// Events (anonymous product feedback)
 	events := handlers.NewEventHandler(s.store)
 	api.Post("/events", events.RecordEvent)
+	api.Get("/events", events.GetEvents)
 
 	// RBAC and User Management routes
 	rbac := handlers.NewRBACHandler(s.store, s.k8sClient)

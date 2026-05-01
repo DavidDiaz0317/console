@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kubestellar/console/pkg/models"
@@ -27,6 +28,13 @@ func (s *eventsTestStore) RecordEvent(_ context.Context, event *models.UserEvent
 		event.ID = uuid.New()
 	}
 	return s.recordErr
+}
+
+func (s *eventsTestStore) GetRecentEvents(_ context.Context, userID uuid.UUID, since time.Duration, limit, offset int) ([]models.UserEvent, error) {
+	if s.recordErr != nil {
+		return nil, s.recordErr
+	}
+	return []models.UserEvent{{ID: uuid.New(), UserID: userID, EventType: models.EventTypePageView}}, nil
 }
 
 func TestEventRecordEvent_Success(t *testing.T) {
@@ -124,4 +132,25 @@ func TestEventRecordEvent_StoreError(t *testing.T) {
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
+func TestEventGetEvents_Success(t *testing.T) {
+	env := setupTestEnv(t)
+	store := &eventsTestStore{}
+	handler := NewEventHandler(store)
+	env.App.Get("/api/events", handler.GetEvents)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/events", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result struct {
+		Events []models.UserEvent `json:"events"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	require.NoError(t, err)
+	assert.Len(t, result.Events, 1)
+	assert.Equal(t, testAdminUserID, result.Events[0].UserID)
 }

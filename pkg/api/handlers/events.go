@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -60,4 +62,42 @@ func (h *EventHandler) RecordEvent(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "id": event.ID})
+}
+
+// GetEvents returns recent user events
+// GET /api/events
+func (h *EventHandler) GetEvents(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	since := 24 * time.Hour
+	if s := c.Query("since"); s != "" {
+		if d, err := time.ParseDuration(s); err == nil {
+			since = d
+		}
+	}
+
+	limit := 100
+	if l := c.Query("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 {
+			limit = v
+		}
+	}
+
+	offset := 0
+	if o := c.Query("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	events, err := h.store.GetRecentEvents(c.UserContext(), userID, since, limit, offset)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to retrieve events")
+	}
+
+	return c.JSON(fiber.Map{
+		"events": events,
+		"limit":  limit,
+		"offset": offset,
+	})
 }
