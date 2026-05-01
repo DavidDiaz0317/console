@@ -281,8 +281,11 @@ KC_AGENT_NEEDS_BUILD=false
 
 if [ -f "$SCRIPT_DIR/cmd/kc-agent/main.go" ] && command -v go &>/dev/null; then
     KC_AGENT_NEEDS_BUILD=true
-elif [ -f "$SCRIPT_DIR/bin/kc-agent" ]; then
+fi
+# Always check for an existing local binary — used as fallback if build fails or go is unavailable.
+if [ -f "$SCRIPT_DIR/bin/kc-agent" ]; then
     if [ -s "$SCRIPT_DIR/bin/kc-agent" ] && [ -x "$SCRIPT_DIR/bin/kc-agent" ]; then
+        # Will be overwritten by a fresh build below; kept here as fallback.
         KC_AGENT_BIN="$SCRIPT_DIR/bin/kc-agent"
     else
         echo -e "${YELLOW}Warning: $SCRIPT_DIR/bin/kc-agent is invalid (empty or not executable). Run 'make build' to rebuild.${NC}"
@@ -427,11 +430,12 @@ if [ "$USE_DEV_SERVER" = true ]; then
         AGENT_LDFLAGS="-X github.com/kubestellar/console/pkg/agent.CommitSHA=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
         AGENT_LDFLAGS="$AGENT_LDFLAGS -X github.com/kubestellar/console/pkg/agent.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         mkdir -p "$SCRIPT_DIR/bin"
-        if GOWORK=off go build -ldflags "$AGENT_LDFLAGS" -o "$SCRIPT_DIR/bin/kc-agent" ./cmd/kc-agent; then
+        if (cd "$SCRIPT_DIR" && GOWORK=off go build -ldflags "$AGENT_LDFLAGS" -o "$SCRIPT_DIR/bin/kc-agent" ./cmd/kc-agent); then
             KC_AGENT_BIN="$SCRIPT_DIR/bin/kc-agent"
             echo -e "${GREEN}kc-agent built ($(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo dev))${NC}"
         else
             echo -e "${YELLOW}Warning: kc-agent build failed. Falling back to existing binary or brew.${NC}"
+            KC_AGENT_BIN=""
         fi
     fi
 
@@ -498,11 +502,12 @@ else
         AGENT_LDFLAGS="-X github.com/kubestellar/console/pkg/agent.CommitSHA=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
         AGENT_LDFLAGS="$AGENT_LDFLAGS -X github.com/kubestellar/console/pkg/agent.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         mkdir -p "$SCRIPT_DIR/bin"
-        if GOWORK=off go build -ldflags "$AGENT_LDFLAGS" -o "$SCRIPT_DIR/bin/kc-agent" ./cmd/kc-agent; then
+        if (cd "$SCRIPT_DIR" && GOWORK=off go build -ldflags "$AGENT_LDFLAGS" -o "$SCRIPT_DIR/bin/kc-agent" ./cmd/kc-agent); then
             KC_AGENT_BIN="$SCRIPT_DIR/bin/kc-agent"
             echo -e "${GREEN}kc-agent built ($(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo dev))${NC}"
         else
             echo -e "${YELLOW}Warning: kc-agent build failed. Falling back to existing binary or brew.${NC}"
+            KC_AGENT_BIN=""
         fi
     fi
 
