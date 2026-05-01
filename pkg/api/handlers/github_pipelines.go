@@ -520,7 +520,10 @@ func (h *GitHubPipelinesHandler) serveCached(c *fiber.Ctx, key string, build fun
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "marshal failed"})
 	}
 	// Build merged JSON: { ...payload, "repos": [...] }
-	reposJSON, _ := json.Marshal(ghpRepos)
+	reposJSON, err := json.Marshal(ghpRepos)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "repos marshal failed"})
+	}
 	var body []byte
 	if len(inner) > 2 && inner[0] == '{' {
 		// Merge repos into existing object.
