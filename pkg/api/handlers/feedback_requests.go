@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -129,7 +130,10 @@ func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
 		go func(ctx context.Context, cancel context.CancelFunc, issue int, repo string, shots []string) {
 			defer func() {
 				if r := recover(); r != nil {
-					slog.Error("panic in async feedback handler", "error", r)
+					slog.Error("panic in async screenshot upload",
+						slog.String("operation", "uploadScreenshotCommentsAsync"),
+						slog.String("panic", fmt.Sprintf("%v", r)),
+						slog.String("stack", string(debug.Stack())))
 				}
 			}()
 			defer cancel()
@@ -988,7 +992,10 @@ func (h *FeedbackHandler) CloseRequest(c *fiber.Ctx) error {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					slog.Error("panic in async feedback handler", "error", r)
+					slog.Error("panic in async GitHub issue close",
+						slog.String("operation", "closeGitHubIssue"),
+						slog.String("panic", fmt.Sprintf("%v", r)),
+						slog.String("stack", string(debug.Stack())))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1025,7 +1032,10 @@ func (h *FeedbackHandler) RequestUpdate(c *fiber.Ctx) error {
 			go func() {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Error("panic in async feedback handler", "error", r)
+						slog.Error("panic in async GitHub issue comment",
+							slog.String("operation", "addIssueComment"),
+							slog.String("panic", fmt.Sprintf("%v", r)),
+							slog.String("stack", string(debug.Stack())))
 					}
 				}()
 				ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1068,7 +1078,10 @@ func (h *FeedbackHandler) RequestUpdate(c *fiber.Ctx) error {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					slog.Error("panic in async feedback handler", "error", r)
+					slog.Error("panic in async GitHub issue comment",
+						slog.String("operation", "addIssueComment"),
+						slog.String("panic", fmt.Sprintf("%v", r)),
+						slog.String("stack", string(debug.Stack())))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1272,7 +1285,10 @@ func (h *FeedbackHandler) SubmitFeedback(c *fiber.Ctx) error {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					slog.Error("panic in async feedback handler", "error", r)
+					slog.Error("panic in async GitHub PR comment",
+						slog.String("operation", "addPRComment"),
+						slog.String("panic", fmt.Sprintf("%v", r)),
+						slog.String("stack", string(debug.Stack())))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
