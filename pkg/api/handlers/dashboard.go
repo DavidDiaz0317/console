@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -334,7 +335,13 @@ func (h *DashboardHandler) ImportDashboard(c *fiber.Ctx) error {
 	for i, ce := range input.Cards {
 		if !isValidCardType(models.CardType(ce.CardType)) {
 			// Clean up the dashboard we just created before returning.
-			_ = h.store.DeleteDashboard(c.UserContext(), dashboard.ID)
+			if err := h.store.DeleteDashboard(c.UserContext(), dashboard.ID); err != nil {
+				slog.Error("Failed to rollback dashboard on invalid card type",
+					slog.String("dashboard_id", dashboard.ID.String()),
+					slog.Int("card_index", i),
+					slog.String("card_type", ce.CardType),
+					slog.String("error", err.Error()))
+			}
 			return fiber.NewError(fiber.StatusBadRequest,
 				fmt.Sprintf("card[%d]: unknown card_type %q", i, ce.CardType))
 		}
@@ -351,7 +358,12 @@ func (h *DashboardHandler) ImportDashboard(c *fiber.Ctx) error {
 		// regular AddCard path (closes TOCTOU against concurrent creates).
 		if err := h.store.CreateCardWithLimit(c.UserContext(), card, MaxCardsPerDashboard); err != nil {
 			// Rollback: delete the partially-created dashboard and any cards
-			_ = h.store.DeleteDashboard(c.UserContext(), dashboard.ID)
+			if rbErr := h.store.DeleteDashboard(c.UserContext(), dashboard.ID); rbErr != nil {
+				slog.Error("Failed to rollback dashboard on card creation failure",
+					slog.String("dashboard_id", dashboard.ID.String()),
+					slog.String("card_creation_error", err.Error()),
+					slog.String("rollback_error", rbErr.Error()))
+			}
 			if errors.Is(err, store.ErrDashboardCardLimitReached) {
 				return fiber.NewError(fiber.StatusRequestEntityTooLarge, "Card limit reached during import")
 			}
