@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { setupDashboardTest } from './helpers/setup'
+import { setupDashboardTest, mockApiFallback } from './helpers/setup'
 import { setupStrictDemoMode, API_RESPONSES } from './helpers/api-mocks'
 
 test.describe('Dashboard Page', () => {
