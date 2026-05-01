@@ -87,26 +87,32 @@ jobs:
             }
 
             if (isAI) {
-              // Ensure the label exists
+              // Attempt to add label — may fail if token lacks write access
               try {
-                await github.rest.issues.getLabel({ owner, repo, name: LABEL_NAME });
-              } catch {
-                await github.rest.issues.createLabel({
+                // Ensure the label exists
+                try {
+                  await github.rest.issues.getLabel({ owner, repo, name: LABEL_NAME });
+                } catch {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name: LABEL_NAME,
+                    color: '7B68EE',
+                    description: 'PR contains AI-generated changes',
+                  });
+                }
+
+                await github.rest.issues.addLabels({
                   owner,
                   repo,
-                  name: LABEL_NAME,
-                  color: '7B68EE',
-                  description: 'PR contains AI-generated changes',
+                  issue_number: prNumber,
+                  labels: [LABEL_NAME],
                 });
+                core.info(`Added '${LABEL_NAME}' label to PR #${prNumber}`);
+              } catch (labelErr) {
+                core.warning(`Could not add '${LABEL_NAME}' label (permissions issue): ${labelErr.message}`);
+                core.info('AI authorship detected but labeling skipped due to insufficient permissions.');
               }
-
-              await github.rest.issues.addLabels({
-                owner,
-                repo,
-                issue_number: prNumber,
-                labels: [LABEL_NAME],
-              });
-              core.info(`Added '${LABEL_NAME}' label to PR #${prNumber}`);
             } else {
               core.info(`No AI authorship signals detected in PR #${prNumber}`);
             }
