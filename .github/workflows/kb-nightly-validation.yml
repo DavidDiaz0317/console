@@ -28,8 +28,8 @@ jobs:
       - name: Check for regressions
         run: |
           # Fail if mission pass rate drops below 90%
-          if grep -q "pass rate" validation-results.txt; then
-            RATE=$(grep -oP '\d+%' validation-results.txt | head -1 | tr -d '%')
+          if grep -q "PASS_RATE=" validation-results.txt; then
+            RATE=$(grep -oP 'PASS_RATE=\K\d+' validation-results.txt | head -1)
             if [ "${RATE:-100}" -lt 90 ]; then
               echo "::error::Mission validation pass rate dropped below 90% (currently ${RATE}%)"
               exit 1

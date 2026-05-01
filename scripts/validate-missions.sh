@@ -348,8 +348,10 @@ echo -e "  Total missions validated:  ${BOLD}${total}${RESET}"
 if [[ $total -gt 0 ]]; then
   pass_pct=$((passed * 100 / total))
   echo -e "  Passed (no critical issues): ${GREEN}${passed}${RESET} (${pass_pct}%)"
+  echo "PASS_RATE=${pass_pct}%"
 else
   echo -e "  Passed: ${GREEN}0${RESET}"
+  echo "PASS_RATE=0%"
 fi
 
 echo -e "  Critical issues:           ${RED}${critical}${RESET}"
