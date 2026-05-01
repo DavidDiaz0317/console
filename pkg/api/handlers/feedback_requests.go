@@ -22,6 +22,9 @@ import (
 
 func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 
 	var input models.CreateFeatureRequestInput
 	if err := c.BodyParser(&input); err != nil {
@@ -178,6 +181,9 @@ func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
 // Only returns requests that have been triaged (to prevent abuse/profanity in UI)
 func (h *FeedbackHandler) ListFeatureRequests(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 
 	limit, offset, err := parsePageParams(c)
 	if err != nil {
@@ -297,6 +303,9 @@ type QueueItemCount struct {
 // and user-blurring logic the client doesn't consume.
 func (h *FeedbackHandler) ListAllFeatureRequests(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	countOnly := c.Query("count_only") == "true"
 
 	// Get current user's GitHub login for ownership comparison
@@ -882,6 +891,9 @@ func (h *FeedbackHandler) featureRequestsToQueueItems(requests []models.FeatureR
 // GetFeatureRequest returns a single feature request
 func (h *FeedbackHandler) GetFeatureRequest(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request ID")
@@ -947,6 +959,9 @@ func (h *FeedbackHandler) CloseRequest(c *fiber.Ctx) error {
 
 	// Handle local database items (UUID format)
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	requestID, err := uuid.Parse(idParam)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request ID")
@@ -1029,6 +1044,9 @@ func (h *FeedbackHandler) RequestUpdate(c *fiber.Ctx) error {
 
 	// Handle local database items (UUID format)
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	requestID, err := uuid.Parse(idParam)
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request ID")
@@ -1203,6 +1221,9 @@ func (h *FeedbackHandler) addIssueComment(ctx context.Context, issueNumber int, 
 // SubmitFeedback submits thumbs up/down feedback on a PR
 func (h *FeedbackHandler) SubmitFeedback(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	requestID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid request ID")
@@ -1266,6 +1287,9 @@ func (h *FeedbackHandler) SubmitFeedback(c *fiber.Ctx) error {
 // GetNotifications returns the user's notifications
 func (h *FeedbackHandler) GetNotifications(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 
 	limit := c.QueryInt("limit", 50)
 	if limit > 100 {
@@ -1295,6 +1319,9 @@ func (h *FeedbackHandler) GetNotifications(c *fiber.Ctx) error {
 // GetUnreadCount returns the count of unread notifications
 func (h *FeedbackHandler) GetUnreadCount(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 
 	count, err := h.store.GetUnreadNotificationCount(c.UserContext(), userID)
 	if err != nil {
@@ -1307,6 +1334,9 @@ func (h *FeedbackHandler) GetUnreadCount(c *fiber.Ctx) error {
 // MarkNotificationRead marks a notification as read
 func (h *FeedbackHandler) MarkNotificationRead(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 	notificationID, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid notification ID")
@@ -1328,6 +1358,9 @@ func (h *FeedbackHandler) MarkNotificationRead(c *fiber.Ctx) error {
 // MarkAllNotificationsRead marks all notifications as read
 func (h *FeedbackHandler) MarkAllNotificationsRead(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	if userID == uuid.Nil {
+		return fiber.NewError(fiber.StatusUnauthorized, "User authentication required")
+	}
 
 	if err := h.store.MarkAllNotificationsRead(c.UserContext(), userID); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to mark all notifications read")
