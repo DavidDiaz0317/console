@@ -70,7 +70,8 @@ func TestGitOpsArgo_ListArgoApplications(t *testing.T) {
 
 	env.App.Get("/api/gitops/argocd/applications", handler.ListArgoApplications)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/argocd/applications", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/argocd/applications", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -91,12 +92,15 @@ func TestGitOpsArgo_GetArgoHealthSummary(t *testing.T) {
 		v1alpha1.ArgoApplicationGVR: "ApplicationList",
 	}
 	dynClient := injectDynamicCluster(env, "test-cluster", gvrKinds)
-	_, _ = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
-	_, _ = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app2", "Degraded", "OutOfSync"), metav1.CreateOptions{})
+	_, err := dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
+	require.NoError(t, err)
+	_, err = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app2", "Degraded", "OutOfSync"), metav1.CreateOptions{})
+	require.NoError(t, err)
 
 	env.App.Get("/api/gitops/argocd/health", handler.GetArgoHealthSummary)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/argocd/health", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/argocd/health", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -117,12 +121,15 @@ func TestGitOpsArgo_GetArgoSyncSummary(t *testing.T) {
 		v1alpha1.ArgoApplicationGVR: "ApplicationList",
 	}
 	dynClient := injectDynamicCluster(env, "test-cluster", gvrKinds)
-	_, _ = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
-	_, _ = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app2", "Degraded", "OutOfSync"), metav1.CreateOptions{})
+	_, err := dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
+	require.NoError(t, err)
+	_, err = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app2", "Degraded", "OutOfSync"), metav1.CreateOptions{})
+	require.NoError(t, err)
 
 	env.App.Get("/api/gitops/argocd/sync", handler.GetArgoSyncSummary)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/argocd/sync", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/argocd/sync", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -148,7 +155,8 @@ func TestGitOpsArgo_ListArgoApplicationSets(t *testing.T) {
 
 	env.App.Get("/api/gitops/argocd/applicationsets", handler.ListArgoApplicationSets)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/argocd/applicationsets", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/argocd/applicationsets", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -170,11 +178,13 @@ func TestGitOpsArgo_GetArgoStatus(t *testing.T) {
 		v1alpha1.ArgoApplicationSetGVR: "ApplicationSetList",
 	}
 	dynClient := injectDynamicCluster(env, "test-cluster", gvrKinds)
-	_, _ = dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
+	_, err := dynClient.Resource(v1alpha1.ArgoApplicationGVR).Namespace("argocd").Create(context.Background(), createUnstructuredArgoApp("app1", "Healthy", "Synced"), metav1.CreateOptions{})
+	require.NoError(t, err)
 
 	env.App.Get("/api/gitops/argocd/status", handler.GetArgoStatus)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/argocd/status", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/argocd/status", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -196,13 +206,15 @@ func TestGitOpsArgo_GetHelmValues_Validation(t *testing.T) {
 	env.App.Get("/api/gitops/helm/values", handler.GetHelmValues)
 
 	// Missing release
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/helm/values", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/helm/values", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 
 	// Invalid cluster name
-	req, _ = http.NewRequest(http.MethodGet, "/api/gitops/helm/values?release=my-rel&cluster=bad;name", nil)
+	req, err = http.NewRequest(http.MethodGet, "/api/gitops/helm/values?release=my-rel&cluster=bad;name", nil)
+	require.NoError(t, err)
 	resp, err = env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)

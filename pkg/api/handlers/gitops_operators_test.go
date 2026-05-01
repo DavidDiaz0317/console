@@ -41,12 +41,10 @@ fi
 	env := setupTestEnv(t)
 	handler := NewGitOpsHandlers(nil, env.K8sClient, env.Store)
 
-	// We need to ensure StopOperatorCacheEvictor is called to prevent goroutine leaks
-	defer StopOperatorCacheEvictor()
-
 	env.App.Get("/api/gitops/operators", handler.ListOperators)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/operators?cluster=test-cluster", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/operators?cluster=test-cluster", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -83,7 +81,8 @@ fi
 
 	env.App.Get("/api/gitops/subscriptions", handler.ListOperatorSubscriptions)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/subscriptions?cluster=test-cluster", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/subscriptions?cluster=test-cluster", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -103,7 +102,8 @@ func TestGitOpsOperators_ListOperators_Validation(t *testing.T) {
 	env.App.Get("/api/gitops/operators", handler.ListOperators)
 
 	// Invalid cluster name
-	req, _ := http.NewRequest(http.MethodGet, "/api/gitops/operators?cluster=bad;name", nil)
+	req, err := http.NewRequest(http.MethodGet, "/api/gitops/operators?cluster=bad;name", nil)
+	require.NoError(t, err)
 	resp, err := env.App.Test(req)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
