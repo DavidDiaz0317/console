@@ -17,6 +17,10 @@ const isCI = Boolean(env.CI)
 export default defineConfig({
   testDir: './e2e',
 
+  // #11296 — Register the coverage teardown. It is a no-op unless
+  // VITE_COVERAGE=true, so registering it unconditionally is safe.
+  globalTeardown: './e2e/global-teardown.ts',
+
   // Skip flaky tests until they are stabilized
   // Re-enable these incrementally as they are fixed
   //
