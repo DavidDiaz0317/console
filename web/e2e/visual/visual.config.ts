@@ -21,6 +21,7 @@ const WEB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.
 const STORYBOOK_STATIC = path.join(WEB_DIR, 'storybook-static')
 
 export default defineConfig({
+  globalTeardown: '../global-teardown.ts',
   testDir: '.',
   timeout: IS_CI ? 120_000 : 60_000,
   expect: {

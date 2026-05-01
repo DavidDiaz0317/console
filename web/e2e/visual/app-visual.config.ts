@@ -23,6 +23,7 @@ const BASE_URL = process.env.APP_VISUAL_BASE_URL || 'http://localhost:8080'
 const WEB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
 export default defineConfig({
+  globalTeardown: '../global-teardown.ts',
   testDir: '.',
   testMatch: 'app-*.spec.ts',
   timeout: IS_CI ? 120_000 : 60_000,
