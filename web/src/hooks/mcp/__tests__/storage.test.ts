@@ -191,7 +191,7 @@ describe('usePVCs', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length
 
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore))
   })
@@ -298,7 +298,7 @@ describe('usePVs', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length
 
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore))
   })
@@ -374,7 +374,7 @@ describe('useResourceQuotas', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length
 
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore))
   })
@@ -455,7 +455,7 @@ describe('useLimitRanges', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length
 
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore))
   })
@@ -729,7 +729,7 @@ describe('usePVCs - consecutive failure tracking', () => {
 
     // Now succeed
     globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ pvcs: [{ name: 'pvc-ok', namespace: 'ns', status: 'Bound' }] }), { status: 200 })))
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect(result.current.consecutiveFailures).toBe(0))
     expect(result.current.isFailed).toBe(false)
@@ -1073,7 +1073,7 @@ describe('usePVCs — additional branches', () => {
     globalThis.fetch = vi.fn()
       .mockRejectedValueOnce(new Error('server error'))
       .mockImplementation(() => new Promise(() => {}))
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     // Should preserve cached data, not clear it
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1))
@@ -1126,7 +1126,7 @@ describe('usePVs — additional branches', () => {
 
     // Then: succeed
     globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ pvs: [{ name: 'pv', status: 'Available' }] }), { status: 200 })))
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
     await waitFor(() => expect(result.current.consecutiveFailures).toBe(0))
     expect(result.current.isFailed).toBe(false)
   })
@@ -1177,8 +1177,8 @@ describe('useResourceQuotas — additional branches', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     const callsBefore = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length
 
-    await act(async () => { result.current.refetch() })
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(callsBefore)
   })
@@ -1241,7 +1241,7 @@ describe('useResourceQuotas — isDemoFallback wiring (Issue 9356)', () => {
 
     mockIsDemoMode.mockReturnValue(false)
     globalThis.fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ resourceQuotas: [] }), { status: 200 })))
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     await waitFor(() => expect(result.current.isDemoFallback).toBe(false))
   })
