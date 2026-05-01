@@ -13,6 +13,10 @@ import (
 	"github.com/kubestellar/console/pkg/store"
 )
 
+// maxEventLimit mirrors the store layer's maxSQLLimit to keep the
+// response's "limit" field consistent with the rows actually returned.
+const maxEventLimit = 1000
+
 // EventHandler handles user event tracking
 type EventHandler struct {
 	store store.Store
@@ -81,6 +85,9 @@ func (h *EventHandler) GetEvents(c *fiber.Ctx) error {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 {
 			limit = v
 		}
+	}
+	if limit > maxEventLimit {
+		limit = maxEventLimit
 	}
 
 	offset := 0
