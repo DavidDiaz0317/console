@@ -554,10 +554,10 @@ export async function setupLiveMocks(page: Page, options?: LiveMockOptions): Pro
     'resource-limits': { limits: MOCK_DATA['resource-limits'].limits },
 
     // --- Compound path endpoints (kagent-crds, kagenti, prometheus, rbac, etc.) ---
-    'kagent-crds/agents': { agents: [{ name: 'weather-agent', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'Agent', apiVersion: 'kagent.dev/v1alpha1', spec: { description: 'Weather lookup agent', model: { provider: 'openai' }, tools: [] }, status: 'Ready' }] },
-    'kagent-crds/tools': { tools: [{ name: 'web-search', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'ToolServer', apiVersion: 'kagent.dev/v1alpha1', spec: { description: 'Web search tool', endpoint: 'http://tool:8080' }, status: 'Ready' }] },
-    'kagent-crds/models': { models: [{ name: 'gpt-4o', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'ModelConfig', apiVersion: 'kagent.dev/v1alpha1', spec: { provider: 'openai', model: 'gpt-4o' }, status: 'Ready' }] },
-    'kagent-crds/memories': { memories: [{ name: 'default-memory', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'Memory', apiVersion: 'kagent.dev/v1alpha1', spec: { type: 'chromadb' }, status: 'Ready' }] },
+    'kagent-crds/agents': { agents: [{ name: 'weather-agent', namespace: 'kagent', cluster: MOCK_CLUSTER, agentType: 'Declarative', runtime: 'googleadk', status: 'Ready', modelConfigRef: 'gpt-4o', toolCount: 2 }] },
+    'kagent-crds/tools': { tools: [{ name: 'web-search', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'ToolServer', url: 'http://tool:8080', config: '', discoveredTools: [{ name: 'search', description: 'Web search' }], status: 'Ready' }] },
+    'kagent-crds/models': { models: [{ name: 'gpt-4o', namespace: 'kagent', cluster: MOCK_CLUSTER, kind: 'ModelConfig', provider: 'openai', model: 'gpt-4o', status: 'Ready' }] },
+    'kagent-crds/memories': { memories: [{ name: 'default-memory', namespace: 'kagent', cluster: MOCK_CLUSTER, provider: 'chromadb', status: 'Ready' }] },
 
     'kagenti/agents': { agents: [{ name: 'code-assistant', namespace: 'kagenti', cluster: MOCK_CLUSTER, status: 'Running', model: 'gpt-4o', tools: 2, lastActive: '2026-01-15T10:00:00Z' }] },
     'kagenti/builds': { builds: [{ name: 'build-001', namespace: 'kagenti', cluster: MOCK_CLUSTER, status: 'Succeeded', startedAt: '2026-01-15T09:00:00Z', completedAt: '2026-01-15T09:05:00Z' }] },
@@ -590,7 +590,7 @@ export async function setupLiveMocks(page: Page, options?: LiveMockOptions): Pro
     'cilium-status': { status: 'ok', nodes: [] },
     'federation': { federations: [] },
     'gpu-health-cronjob': { cronjobs: [] },
-    'jaeger-status': { status: 'Healthy', version: '1.62.0', collectors: { count: 1, status: 'Healthy' }, query: { status: 'Healthy' }, metrics: { servicesCount: 5, tracesLastHour: 120, dependenciesCount: 3, avgLatencyMs: 12, p95LatencyMs: 45, p99LatencyMs: 90, spansDroppedLastHour: 0, avgQueueLength: 2 } },
+    'jaeger-status': { status: 'Healthy', version: '1.53.0', collectors: { count: 1, status: 'Healthy' }, query: { status: 'Healthy' }, metrics: { servicesCount: 3, tracesLastHour: 142, dependenciesCount: 7, avgLatencyMs: 12, p95LatencyMs: 45, p99LatencyMs: 89, spansDroppedLastHour: 0, avgQueueLength: 2 } },
     'insights': { insights: [] },
     'predictions': { predictions: [] },
     'providers': { providers: [] },

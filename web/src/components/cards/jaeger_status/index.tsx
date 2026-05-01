@@ -81,7 +81,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
         isLoading,
         isRefreshing,
         isDemoData,
-        hasAnyData: !!data.version || data.metrics.servicesCount > 0,
+        hasAnyData: !!data.version || (data.metrics?.servicesCount ?? 0) > 0,
         isFailed,
         consecutiveFailures,
         lastRefresh,
@@ -109,6 +109,11 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
     }
 
     const brandStatus = STATUS_CONFIG[data.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.Healthy
+    const metrics = data.metrics ?? {
+        servicesCount: 0, tracesLastHour: 0, dependenciesCount: 0,
+        avgLatencyMs: 0, p95LatencyMs: 0, p99LatencyMs: 0,
+        spansDroppedLastHour: 0, avgQueueLength: 0,
+    }
 
     return (
         <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-500">
@@ -138,16 +143,16 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                 {/* Critical Health KPIs (New based on research) */}
                 <div className="grid grid-cols-2 gap-2">
                     <KPIField
-                        icon={<AlertTriangle className={cn("w-3 h-3", data.metrics.spansDroppedLastHour > 0 ? "text-red-400" : "text-muted-foreground/40")} />}
+                        icon={<AlertTriangle className={cn("w-3 h-3", metrics.spansDroppedLastHour > 0 ? "text-red-400" : "text-muted-foreground/40")} />}
                         label={t('jaeger.dropped')}
-                        value={data.metrics.spansDroppedLastHour}
-                        alert={data.metrics.spansDroppedLastHour > 0}
+                        value={metrics.spansDroppedLastHour}
+                        alert={metrics.spansDroppedLastHour > 0}
                     />
                     <KPIField
-                        icon={<TrendingUp className={cn("w-3 h-3", data.metrics.avgQueueLength > QUEUE_DEPTH_WARNING_THRESHOLD ? "text-yellow-400" : "text-muted-foreground/40")} />}
+                        icon={<TrendingUp className={cn("w-3 h-3", metrics.avgQueueLength > QUEUE_DEPTH_WARNING_THRESHOLD ? "text-yellow-400" : "text-muted-foreground/40")} />}
                         label={t('jaeger.queueDepth')}
-                        value={data.metrics.avgQueueLength}
-                        alert={data.metrics.avgQueueLength > QUEUE_DEPTH_ALERT_THRESHOLD}
+                        value={metrics.avgQueueLength}
+                        alert={metrics.avgQueueLength > QUEUE_DEPTH_ALERT_THRESHOLD}
                     />
                 </div>
 
@@ -156,17 +161,17 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                     <MetricTile
                         icon={<Database className="w-3.5 h-3.5 text-orange-400" />}
                         label={t('jaeger.services')}
-                        value={data.metrics.servicesCount}
+                        value={metrics.servicesCount}
                     />
                     <MetricTile
                         icon={<Share2 className="w-3.5 h-3.5 text-purple-400" />}
                         label={t('jaeger.dependencies')}
-                        value={data.metrics.dependenciesCount}
+                        value={metrics.dependenciesCount}
                     />
                     <MetricTile
                         icon={<Activity className="w-3.5 h-3.5 text-blue-400" />}
                         label={t('jaeger.traces')}
-                        value={data.metrics.tracesLastHour}
+                        value={metrics.tracesLastHour}
                         compact
                     />
                 </div>
@@ -178,9 +183,9 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                         <span>{t('jaeger.latencyAnalysis')}</span>
                     </div>
                     <div className="grid grid-cols-2 @sm:grid-cols-3 gap-2 p-2 rounded-xl bg-secondary/10 border border-border/30">
-                        <LatencyInfo label={t('jaeger.avg')} value={data.metrics.avgLatencyMs} />
-                        <LatencyInfo label={t('jaeger.p95')} value={data.metrics.p95LatencyMs} isMiddle />
-                        <LatencyInfo label={t('jaeger.p99')} value={data.metrics.p99LatencyMs} />
+                        <LatencyInfo label={t('jaeger.avg')} value={metrics.avgLatencyMs} />
+                        <LatencyInfo label={t('jaeger.p95')} value={metrics.p95LatencyMs} isMiddle />
+                        <LatencyInfo label={t('jaeger.p99')} value={metrics.p99LatencyMs} />
                     </div>
                 </div>
 
