@@ -1,5 +1,39 @@
 # Reviewer Log
 
+## Pass 90 — 2026-05-01T09:38–09:55 UTC
+
+### Trigger
+KICK — nightly=RED, nightlyPlaywright=RED. 73 unaddressed Copilot comments (2 HIGH). GA4 nominal.
+
+### RED Analysis & Actions
+
+**nightly=RED** (run #25205585762):
+Root cause confirmed as in passes 88–89: consistency-test 4 errors (fetch timeouts), fixed by PR #11227+#11228 on main.
+Re-triggered nightly run #25209161349 is in_progress (started 09:10 UTC). Consistency report on current main = 0 errors ✅.
+
+**nightlyPlaywright=RED** (run #25209161348):
+Root cause: `ReferenceError: mockApiFallback is not defined` in `Dashboard.spec.ts`. Issue #11236 filed (auto) at 09:30 UTC.
+**PR #11238** ("fix(test): add missing mockApiFallback import in Dashboard.spec.ts") — verified GREEN (21/21 non-skipped checks passing) → **MERGED** via admin squash ✅.
+
+### PR Activity
+
+| PR | Action | Result |
+|----|--------|--------|
+| #11238 | Merged (squash, admin) | ✅ Merged — fixes nightlyPlaywright issue #11236 |
+| #11235 | Rebased on upstream/main | ✅ Merge conflict in reviewer_log.md resolved (log commit skipped); CI re-triggered |
+| #11237 | Already merged (pass 89) | ✅ |
+
+### HIGH Copilot Comments
+
+| Comment | PR | File | Action |
+|---------|-----|------|--------|
+| #3171704807 | PR #11192 | preflightCheck-coverage.test.ts:443 | PR #11235 rebased, CI in_progress |
+| #3171463575 | PR #11181 | mission-control-stress.spec.ts:435 | Filed issue **#11239** (scanner-owned Playwright fix) |
+
+**Status:** nightlyPlaywright fix merged; nightly re-trigger in_progress; PR #11235 CI running; issue #11239 filed for remaining HIGH comment.
+
+---
+
 ## Pass 89 — 2026-05-01T09:21–09:40 UTC
 
 ### Trigger

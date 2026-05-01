@@ -437,7 +437,7 @@ async function navigateTo(page: Page) {
   })
   await page.goto('/')
   await page.waitForLoadState('domcontentloaded', { timeout: DIALOG_TIMEOUT_MS })
-  await page.locator('#root').waitFor({ state: 'visible', timeout: DIALOG_TIMEOUT_MS })
+  await page.getByTestId('dashboard-page').waitFor({ state: 'visible', timeout: DIALOG_TIMEOUT_MS })
 }
 
 async function seedMCState(page: Page, overrides: Record<string, unknown> = {}) {
