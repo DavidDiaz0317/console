@@ -10,6 +10,7 @@ import (
 	"github.com/kubestellar/console/pkg/compliance/signing"
 	"github.com/kubestellar/console/pkg/compliance/slsa"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSupplyChainHandlers(t *testing.T) {
@@ -21,20 +22,22 @@ func TestSupplyChainHandlers(t *testing.T) {
 
 		t.Run("getSummary", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/sbom/summary", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var summary sbom.Summary
-			err := json.NewDecoder(resp.Body).Decode(&summary)
+			err = json.NewDecoder(resp.Body).Decode(&summary)
 			assert.NoError(t, err)
 			assert.Greater(t, summary.TotalWorkloads, 0)
 		})
 
 		t.Run("listDocuments", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/sbom/documents", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var documents []sbom.Document
-			err := json.NewDecoder(resp.Body).Decode(&documents)
+			err = json.NewDecoder(resp.Body).Decode(&documents)
 			assert.NoError(t, err)
 		})
 	})
@@ -45,28 +48,31 @@ func TestSupplyChainHandlers(t *testing.T) {
 
 		t.Run("getSummary", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/signing/summary", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var summary signing.Summary
-			err := json.NewDecoder(resp.Body).Decode(&summary)
+			err = json.NewDecoder(resp.Body).Decode(&summary)
 			assert.NoError(t, err)
 		})
 
 		t.Run("listImages", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/signing/images", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var images []signing.Image
-			err := json.NewDecoder(resp.Body).Decode(&images)
+			err = json.NewDecoder(resp.Body).Decode(&images)
 			assert.NoError(t, err)
 		})
 
 		t.Run("listPolicies", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/signing/policies", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var policies []signing.Policy
-			err := json.NewDecoder(resp.Body).Decode(&policies)
+			err = json.NewDecoder(resp.Body).Decode(&policies)
 			assert.NoError(t, err)
 		})
 	})
@@ -77,19 +83,21 @@ func TestSupplyChainHandlers(t *testing.T) {
 
 		t.Run("getSummary", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/slsa/summary", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var summary slsa.Summary
-			err := json.NewDecoder(resp.Body).Decode(&summary)
+			err = json.NewDecoder(resp.Body).Decode(&summary)
 			assert.NoError(t, err)
 		})
 
 		t.Run("listWorkloads", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/slsa/workloads", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var workloads []slsa.Workload
-			err := json.NewDecoder(resp.Body).Decode(&workloads)
+			err = json.NewDecoder(resp.Body).Decode(&workloads)
 			assert.NoError(t, err)
 		})
 	})
@@ -100,28 +108,31 @@ func TestSupplyChainHandlers(t *testing.T) {
 
 		t.Run("getSummary", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/licenses/summary", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var summary licenses.Summary
-			err := json.NewDecoder(resp.Body).Decode(&summary)
+			err = json.NewDecoder(resp.Body).Decode(&summary)
 			assert.NoError(t, err)
 		})
 
 		t.Run("listPackages", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/licenses/packages", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var pkgs []licenses.Package
-			err := json.NewDecoder(resp.Body).Decode(&pkgs)
+			err = json.NewDecoder(resp.Body).Decode(&pkgs)
 			assert.NoError(t, err)
 		})
 
 		t.Run("listCategories", func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/supply-chain/licenses/categories", nil)
-			resp, _ := env.App.Test(req)
+			resp, err := env.App.Test(req)
+			require.NoError(t, err)
 			assert.Equal(t, 200, resp.StatusCode)
 			var categories []licenses.Category
-			err := json.NewDecoder(resp.Body).Decode(&categories)
+			err = json.NewDecoder(resp.Body).Decode(&categories)
 			assert.NoError(t, err)
 		})
 	})

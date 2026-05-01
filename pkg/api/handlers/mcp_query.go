@@ -32,7 +32,7 @@ func queryAllClusters[T any](
 ) ([]T, *clusterErrorTracker) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	var results []T
+	results := make([]T, 0)
 	errTracker := &clusterErrorTracker{}
 
 	clusterCtx, clusterCancel := context.WithCancel(ctx)
