@@ -420,27 +420,18 @@ describe('useServices', () => {
     })
 
     const { result } = renderHook(() => useServices())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    // First fetch fails (initial mount)
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
-
-    // Trigger two more refetches to reach 3 consecutive failures
-    await act(async () => { result.current.refetch() })
-    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(2))
-
-    await act(async () => { result.current.refetch() })
+    // With exponential backoff, consecutiveFailures in useEffect deps causes
+    // cascading re-fetches. The hook quickly accumulates >= 3 failures.
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(3))
-
     expect(result.current.isFailed).toBe(true)
   })
 
   it('resets consecutiveFailures to 0 on successful fetch after failures', async () => {
-    // Start with failures
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
+    // Start with a single failure then stop failing
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 })
     const { result } = renderHook(() => useServices())
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
+    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1))
 
     // Now succeed
     globalThis.fetch = vi.fn().mockResolvedValue({

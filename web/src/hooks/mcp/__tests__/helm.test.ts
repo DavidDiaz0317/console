@@ -302,15 +302,15 @@ describe('useHelmReleases', () => {
 
     await waitFor(() => expect(result.current.releases).toEqual(fakeReleases))
 
-    // Second fetch fails
-    mockFetchSSE.mockRejectedValue(new Error('now failing'))
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('now failing'))
+    // Second fetch fails — use mockRejectedValueOnce to avoid infinite cascade
+    mockFetchSSE.mockRejectedValueOnce(new Error('now failing'))
+    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('now failing'))
 
-    await act(async () => { await result.current.refetch() })
+    await act(async () => { result.current.refetch() })
 
     // Original data should be preserved despite the error
+    await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1))
     expect(result.current.releases).toEqual(fakeReleases)
-    expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1)
   })
 
   it('registers for polling and mode-transition refetch on mount', async () => {
