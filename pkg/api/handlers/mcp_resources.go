@@ -38,34 +38,9 @@ func (h *MCPHandlers) GetConfigMaps(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allConfigMaps := make([]k8s.ConfigMap, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					configmaps, err := h.k8sClient.GetConfigMaps(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(configmaps) > 0 {
-						mu.Lock()
-						allConfigMaps = append(allConfigMaps, configmaps...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allConfigMaps, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.ConfigMap, error) {
+				return h.k8sClient.GetConfigMaps(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"configmaps": allConfigMaps, "source": "k8s"}))
 		}
 
@@ -106,34 +81,9 @@ func (h *MCPHandlers) GetSecrets(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allSecrets := make([]k8s.Secret, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					secrets, err := h.k8sClient.GetSecrets(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(secrets) > 0 {
-						mu.Lock()
-						allSecrets = append(allSecrets, secrets...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allSecrets, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.Secret, error) {
+				return h.k8sClient.GetSecrets(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"secrets": allSecrets, "source": "k8s"}))
 		}
 
@@ -174,34 +124,9 @@ func (h *MCPHandlers) GetServiceAccounts(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allServiceAccounts := make([]k8s.ServiceAccount, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					serviceAccounts, err := h.k8sClient.GetServiceAccounts(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(serviceAccounts) > 0 {
-						mu.Lock()
-						allServiceAccounts = append(allServiceAccounts, serviceAccounts...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allServiceAccounts, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.ServiceAccount, error) {
+				return h.k8sClient.GetServiceAccounts(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"serviceAccounts": allServiceAccounts, "source": "k8s"}))
 		}
 
@@ -242,34 +167,9 @@ func (h *MCPHandlers) GetPVCs(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allPVCs := make([]k8s.PVC, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					pvcs, err := h.k8sClient.GetPVCs(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(pvcs) > 0 {
-						mu.Lock()
-						allPVCs = append(allPVCs, pvcs...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allPVCs, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.PVC, error) {
+				return h.k8sClient.GetPVCs(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"pvcs": allPVCs, "source": "k8s"}))
 		}
 
@@ -308,34 +208,9 @@ func (h *MCPHandlers) GetPVs(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allPVs := make([]k8s.PV, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					pvs, err := h.k8sClient.GetPVs(ctx, clusterName)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(pvs) > 0 {
-						mu.Lock()
-						allPVs = append(allPVs, pvs...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allPVs, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.PV, error) {
+				return h.k8sClient.GetPVs(ctx, clusterName)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"pvs": allPVs, "source": "k8s"}))
 		}
 
@@ -376,34 +251,9 @@ func (h *MCPHandlers) GetResourceQuotas(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allQuotas := make([]k8s.ResourceQuota, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					quotas, err := h.k8sClient.GetResourceQuotas(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(quotas) > 0 {
-						mu.Lock()
-						allQuotas = append(allQuotas, quotas...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allQuotas, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.ResourceQuota, error) {
+				return h.k8sClient.GetResourceQuotas(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"resourceQuotas": allQuotas, "source": "k8s"}))
 		}
 
@@ -444,34 +294,9 @@ func (h *MCPHandlers) GetLimitRanges(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allRanges := make([]k8s.LimitRange, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					ranges, err := h.k8sClient.GetLimitRanges(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(ranges) > 0 {
-						mu.Lock()
-						allRanges = append(allRanges, ranges...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allRanges, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.LimitRange, error) {
+				return h.k8sClient.GetLimitRanges(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"limitRanges": allRanges, "source": "k8s"}))
 		}
 
@@ -847,33 +672,9 @@ func (h *MCPHandlers) GetFlatcarNodes(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allNodes := make([]k8s.FlatcarNodeInfo, 0)
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, mcpDefaultTimeout)
-					defer cancel()
-
-					nodes, err := h.k8sClient.GetFlatcarNodes(ctx, clusterName)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(nodes) > 0 {
-						mu.Lock()
-						allNodes = append(allNodes, nodes...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allNodes, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.FlatcarNodeInfo, error) {
+				return h.k8sClient.GetFlatcarNodes(ctx, clusterName)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"nodes": allNodes, "source": "k8s"}))
 		}
 
@@ -912,34 +713,9 @@ func (h *MCPHandlers) GetIngresses(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allItems := make([]k8s.Ingress, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					items, err := h.k8sClient.GetIngresses(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(items) > 0 {
-						mu.Lock()
-						allItems = append(allItems, items...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allItems, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.Ingress, error) {
+				return h.k8sClient.GetIngresses(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"ingresses": allItems, "source": "k8s"}))
 		}
 
@@ -980,34 +756,9 @@ func (h *MCPHandlers) GetNetworkPolicies(c *fiber.Ctx) error {
 				return handleK8sError(c, err)
 			}
 
-			var wg sync.WaitGroup
-			var mu sync.Mutex
-			allItems := make([]k8s.NetworkPolicy, 0)
-			clusterTimeout := mcpDefaultTimeout
-			var errTracker clusterErrorTracker
-
-			clusterCtx, clusterCancel := context.WithCancel(c.Context())
-			defer clusterCancel()
-
-			for _, cl := range clusters {
-				wg.Add(1)
-				go func(clusterName string) {
-					defer wg.Done()
-					ctx, cancel := context.WithTimeout(clusterCtx, clusterTimeout)
-					defer cancel()
-
-					items, err := h.k8sClient.GetNetworkPolicies(ctx, clusterName, namespace)
-					if err != nil {
-						errTracker.add(clusterName, err)
-					} else if len(items) > 0 {
-						mu.Lock()
-						allItems = append(allItems, items...)
-						mu.Unlock()
-					}
-				}(cl.Name)
-			}
-
-			waitWithDeadline(&wg, clusterCancel, maxResponseDeadline)
+			allItems, errTracker := queryAllClusters(c.Context(), clusters, func(ctx context.Context, clusterName string) ([]k8s.NetworkPolicy, error) {
+				return h.k8sClient.GetNetworkPolicies(ctx, clusterName, namespace)
+			})
 			return c.JSON(errTracker.annotate(fiber.Map{"networkpolicies": allItems, "source": "k8s"}))
 		}
 
