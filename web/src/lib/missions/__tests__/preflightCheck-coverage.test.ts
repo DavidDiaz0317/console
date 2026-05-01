@@ -437,16 +437,20 @@ describe('runPreflightCheck — catch branch coverage', () => {
 // ============================================================================
 
 describe('getRemediationActions — additional branches', () => {
-  it('shows cloud-provider snippets for MISSING_CREDENTIALS when any context is passed (context value not embedded in snippet)', () => {
+  it('shows cloud-provider snippets for MISSING_CREDENTIALS when context is provided', () => {
+    // When a context is provided, MISSING_CREDENTIALS returns cloud-provider login
+    // commands (GKE, EKS, AKS). This is a boolean switch on context presence — the
+    // context name itself is never interpolated into the snippet (unlike
+    // EXPIRED_CREDENTIALS, which embeds the context in `kubectl config use-context`).
     const error: PreflightError = {
       code: 'MISSING_CREDENTIALS',
       message: 'No kubeconfig',
     }
     const actions = getRemediationActions(error, 'prod-ctx')
     const copyActions = actions.filter(a => a.actionType === 'copy')
-    // Cloud-provider login commands appear when context is provided
+    // Provider-specific login commands should appear
     expect(copyActions.some(a => a.codeSnippet?.includes('GKE'))).toBe(true)
-    // Unlike EXPIRED_CREDENTIALS, the context value itself is NOT embedded in the snippet
+    // Context name must NOT be interpolated into any snippet
     expect(copyActions.every(a => !a.codeSnippet?.includes('prod-ctx'))).toBe(true)
   })
 
