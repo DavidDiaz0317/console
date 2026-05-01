@@ -20,6 +20,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
+import { LayoutDashboard } from 'lucide-react'
 import { api, BackendUnavailableError, UnauthenticatedError } from '../../lib/api'
 import { safeRevokeObjectURL } from '../../lib/download'
 import { emitCardAdded, emitCardRemoved, emitCardDragged, emitCardConfigured } from '../../lib/analytics'
@@ -981,6 +982,7 @@ export function Dashboard() {
       <DashboardHeader
         title={t('dashboard.title')}
         subtitle={t('dashboard.subtitle')}
+        icon={<LayoutDashboard className="w-6 h-6 text-purple-400" />}
         isFetching={isFetching}
         onRefresh={() => triggerRefresh()}
         autoRefresh={autoRefresh}
