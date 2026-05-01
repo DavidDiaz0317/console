@@ -608,6 +608,9 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 
 	res, err := h.fetchWithCache(c, cacheKey, url, "(browse)", "path", path)
 	if err != nil {
+		if res == nil {
+			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
 		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
 			return c.Status(res.StatusCode).JSON(fiber.Map{
 				"error":  err.Error(),
@@ -742,6 +745,9 @@ func (h *MissionsHandler) GetMissionFile(c *fiber.Ctx) error {
 
 	res, err := h.fetchWithCache(c, cacheKey, url, "(file)", "ref", ref, "path", path)
 	if err != nil {
+		if res == nil {
+			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+		}
 		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
 			return c.Status(res.StatusCode).JSON(fiber.Map{
 				"error":  err.Error(),
