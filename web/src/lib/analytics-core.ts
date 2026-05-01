@@ -635,8 +635,8 @@ const COMPONENT_NAME_MAX_LEN = 60
 // short (TypeError, RangeError, etc.), so 40 chars is plenty.
 const ERROR_TYPE_MAX_LEN = 40
 
-// Maximum length for the HTTP endpoint dimension. GA4 truncates event
-// parameter values at 100 chars, so cap here to match the actual limit.
+// Maximum length for the HTTP endpoint dimension.  GA4 hard-truncates
+// string parameter values at 100 chars, so cap here to avoid silent loss.
 const HTTP_ENDPOINT_MAX_LEN = 100
 
 /** Fallback when no error type can be inferred from the message or Error.name */
@@ -930,15 +930,15 @@ export function emitHttpError(
   endpoint: string,
   detail?: string,
 ) {
+  // Strip query string to avoid GA4 cardinality explosion and PII leakage.
+  const endpointPath = endpoint.split('?')[0]
   const page = window.location.pathname
-  // Strip query string to avoid GA4 cardinality explosion and use the
-  // path as part of the throttle key so different failing endpoints with
-  // the same status don't suppress each other.
-  const pathOnly = endpoint.split('?')[0]
-  if (isErrorThrottled(`http_${status}_${pathOnly}`, page)) return
+  // Throttle per (status, path, page) so different failing endpoints on the
+  // same page don't suppress each other.
+  if (isErrorThrottled(`http_${status}_${endpointPath}`, page)) return
   send('ksc_http_error', {
     http_status: String(status),
-    http_endpoint: pathOnly.slice(0, HTTP_ENDPOINT_MAX_LEN),
+    http_endpoint: endpointPath.slice(0, HTTP_ENDPOINT_MAX_LEN),
     error_detail: (detail || `HTTP ${status}`).slice(0, ERROR_DETAIL_MAX_LEN),
     error_page: page,
   })
