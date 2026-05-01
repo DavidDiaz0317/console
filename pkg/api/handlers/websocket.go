@@ -613,8 +613,10 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 				// from the writer goroutine (single-writer semantics) and exit.
 				if msg == nil {
 					client.writeMu.Lock()
-					_ = conn.WriteMessage(websocket.CloseMessage,
-						websocket.FormatCloseMessage(websocket.CloseNormalClosure, "session invalidated"))
+					if err := conn.WriteMessage(websocket.CloseMessage,
+						websocket.FormatCloseMessage(websocket.CloseNormalClosure, "session invalidated")); err != nil {
+						slog.Error("[WebSocket] close frame error", "error", err)
+					}
 					client.writeMu.Unlock()
 					return
 				}
