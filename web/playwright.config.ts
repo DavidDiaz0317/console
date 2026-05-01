@@ -29,13 +29,15 @@ export default defineConfig({
   // app-visual.config.ts) and must not run in the main chromium shards.
   //
   // Mission tests (deeplink, explorer-import) use Playwright's `page.request`
-  // (Node.js-level HTTP) to hit real backend endpoints — they cannot run in
-  // the regular CI which only starts the Vite preview server. They are gated
-  // to environments that also start the Go backend.
+  // (Node.js-level HTTP) to hit real backend endpoints — they cannot run when
+  // PLAYWRIGHT_BASE_URL points at a standalone Vite preview (CI default).
+  // When PLAYWRIGHT_BASE_URL is unset, Playwright starts the Go backend itself
+  // (see webServer config below), so mission tests can run locally.
   testIgnore: [
     '**/visual/**',
-    '**/nightly/mission-deeplink.spec.ts',
-    '**/nightly/mission-explorer-import.spec.ts',
+    ...(env.PLAYWRIGHT_BASE_URL
+      ? ['**/nightly/mission-deeplink.spec.ts', '**/nightly/mission-explorer-import.spec.ts']
+      : []),
   ],
 
   // Run tests in parallel

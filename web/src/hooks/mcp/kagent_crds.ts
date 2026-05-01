@@ -1,6 +1,7 @@
 import { mapSettledWithConcurrency } from '../../lib/utils/concurrency'
 import { isAgentUnavailable, reportAgentDataSuccess } from '../useLocalAgent'
-import { clusterCacheRef, LOCAL_AGENT_URL, agentFetch as sharedAgentFetch } from './shared'
+import { clusterCacheRef, agentFetch as sharedAgentFetch } from './shared'
+import { LOCAL_AGENT_HTTP_URL } from '../../lib/constants/network'
 import { deduplicateClustersByServer } from './dedup'
 import { useCache } from '../../lib/cache'
 import type {
@@ -61,7 +62,7 @@ function getDemoMemories(): KagentCRDMemory[] {
 const AGENT_TIMEOUT = 15000
 
 async function agentFetch<T>(path: string, cluster: string, namespace?: string): Promise<T | null> {
-  if (isAgentUnavailable()) return null
+  if (isAgentUnavailable() || !LOCAL_AGENT_HTTP_URL) return null
 
   const params = new URLSearchParams()
   params.append('cluster', cluster)
@@ -70,7 +71,7 @@ async function agentFetch<T>(path: string, cluster: string, namespace?: string):
   const ctrl = new AbortController()
   const tid = setTimeout(() => ctrl.abort(), AGENT_TIMEOUT)
   try {
-    const res = await sharedAgentFetch(`${LOCAL_AGENT_URL}${path}?${params}`, {
+    const res = await sharedAgentFetch(`${LOCAL_AGENT_HTTP_URL}${path}?${params}`, {
       signal: ctrl.signal,
       headers: { Accept: 'application/json' },
     })
