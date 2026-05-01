@@ -27,7 +27,16 @@ export default defineConfig({
   // Visual regression tests require Storybook to be built and served
   // separately. They have their own configs (visual.config.ts,
   // app-visual.config.ts) and must not run in the main chromium shards.
-  testIgnore: ['**/visual/**'],
+  //
+  // Mission tests (deeplink, explorer-import) use Playwright's `page.request`
+  // (Node.js-level HTTP) to hit real backend endpoints — they cannot run in
+  // the regular CI which only starts the Vite preview server. They are gated
+  // to environments that also start the Go backend.
+  testIgnore: [
+    '**/visual/**',
+    '**/nightly/mission-deeplink.spec.ts',
+    '**/nightly/mission-explorer-import.spec.ts',
+  ],
 
   // Run tests in parallel
   fullyParallel: true,

@@ -37,29 +37,20 @@ GITHUB_API="https://api.github.com"
 while [[ $# -gt 0 ]]; do
     case $1 in
         --version|-v)
-            if [[ -z "${2:-}" ]]; then echo "Error: --version requires a value"; exit 1; fi
+            if [[ -z "${2:-}" || "${2:-}" == -* ]]; then echo "Error: --version requires a value"; exit 1; fi
             VERSION="$2"; shift 2 ;;
         --channel|-c)
-            if [[ -z "${2:-}" ]]; then echo "Error: --channel requires a value"; exit 1; fi
+            if [[ -z "${2:-}" || "${2:-}" == -* ]]; then echo "Error: --channel requires a value"; exit 1; fi
             CHANNEL="$2"; shift 2 ;;
         --dir|-d)
-            if [[ -z "${2:-}" ]]; then echo "Error: --dir requires a value"; exit 1; fi
+            if [[ -z "${2:-}" || "${2:-}" == -* ]]; then echo "Error: --dir requires a value"; exit 1; fi
             INSTALL_DIR="$2"; shift 2 ;;
         --port|-p)
-            if [[ -z "${2:-}" ]]; then echo "Error: --port requires a value"; exit 1; fi
+            if [[ -z "${2:-}" || "${2:-}" == -* ]]; then echo "Error: --port requires a value"; exit 1; fi
             PORT="$2"; shift 2 ;;
         *) shift ;;
     esac
 done
-
-# --- Validate channel ---
-VALID_CHANNELS="stable unstable"
-if [ -n "$CHANNEL" ]; then
-    if ! echo "$VALID_CHANNELS" | grep -qw "$CHANNEL"; then
-        echo "Error: Invalid channel '$CHANNEL'. Allowed values: $VALID_CHANNELS"
-        exit 1
-    fi
-fi
 
 # --- Resolve update channel ---
 # Priority: CLI flag > persisted setting in ~/.kc/settings.json > default (stable)
@@ -84,6 +75,12 @@ resolve_channel() {
 }
 
 CHANNEL=$(resolve_channel)
+
+# --- Validate channel (after resolve so persisted values are checked too) ---
+case "$CHANNEL" in
+    stable|unstable) ;;
+    *) echo "Error: Invalid channel '$CHANNEL'. Allowed values: stable unstable"; exit 1 ;;
+esac
 
 # --- Detect platform ---
 detect_platform() {
