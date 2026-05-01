@@ -131,9 +131,9 @@ func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
 			defer func() {
 				if r := recover(); r != nil {
 					slog.Error("panic in async screenshot upload",
-						slog.String("operation", "uploadScreenshotCommentsAsync"),
-						slog.String("panic", fmt.Sprintf("%v", r)),
-						slog.String("stack", string(debug.Stack())))
+						"operation", "uploadScreenshotCommentsAsync",
+						"panic", r,
+						"stack", string(debug.Stack()))
 				}
 			}()
 			defer cancel()
@@ -993,9 +993,9 @@ func (h *FeedbackHandler) CloseRequest(c *fiber.Ctx) error {
 			defer func() {
 				if r := recover(); r != nil {
 					slog.Error("panic in async GitHub issue close",
-						slog.String("operation", "closeGitHubIssue"),
-						slog.String("panic", fmt.Sprintf("%v", r)),
-						slog.String("stack", string(debug.Stack())))
+						"operation", "closeGitHubIssue",
+						"panic", r,
+						"stack", string(debug.Stack()))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1033,9 +1033,9 @@ func (h *FeedbackHandler) RequestUpdate(c *fiber.Ctx) error {
 				defer func() {
 					if r := recover(); r != nil {
 						slog.Error("panic in async GitHub issue comment",
-							slog.String("operation", "addIssueComment"),
-							slog.String("panic", fmt.Sprintf("%v", r)),
-							slog.String("stack", string(debug.Stack())))
+							"operation", "addIssueComment",
+							"panic", r,
+							"stack", string(debug.Stack()))
 					}
 				}()
 				ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1079,9 +1079,9 @@ func (h *FeedbackHandler) RequestUpdate(c *fiber.Ctx) error {
 			defer func() {
 				if r := recover(); r != nil {
 					slog.Error("panic in async GitHub issue comment",
-						slog.String("operation", "addIssueComment"),
-						slog.String("panic", fmt.Sprintf("%v", r)),
-						slog.String("stack", string(debug.Stack())))
+						"operation", "addIssueComment",
+						"panic", r,
+						"stack", string(debug.Stack()))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)
@@ -1286,9 +1286,9 @@ func (h *FeedbackHandler) SubmitFeedback(c *fiber.Ctx) error {
 			defer func() {
 				if r := recover(); r != nil {
 					slog.Error("panic in async GitHub PR comment",
-						slog.String("operation", "addPRComment"),
-						slog.String("panic", fmt.Sprintf("%v", r)),
-						slog.String("stack", string(debug.Stack())))
+						"operation", "addPRComment",
+						"panic", r,
+						"stack", string(debug.Stack()))
 				}
 			}()
 			ctx, cancel := context.WithTimeout(context.Background(), backgroundGitHubOpTimeout)

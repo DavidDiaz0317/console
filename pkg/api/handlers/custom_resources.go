@@ -217,18 +217,18 @@ func parseCRItem(obj map[string]interface{}, clusterName string) CustomResourceI
 	if metadata, ok := obj["metadata"].(map[string]interface{}); ok {
 		if name, ok := metadata["name"].(string); ok {
 			item.Name = name
-		} else {
+		} else if metadata["name"] != nil {
 			slog.Warn("custom resource metadata.name is not a string",
-				slog.String("cluster", clusterName),
-				slog.String("actual_type", fmt.Sprintf("%T", metadata["name"])))
+				"cluster", clusterName,
+				"actual_type", fmt.Sprintf("%T", metadata["name"]))
 		}
 
 		if namespace, ok := metadata["namespace"].(string); ok {
 			item.Namespace = namespace
 		} else if metadata["namespace"] != nil {
 			slog.Warn("custom resource metadata.namespace is not a string",
-				slog.String("cluster", clusterName),
-				slog.String("actual_type", fmt.Sprintf("%T", metadata["namespace"])))
+				"cluster", clusterName,
+				"actual_type", fmt.Sprintf("%T", metadata["namespace"]))
 		}
 
 		if labels, ok := metadata["labels"].(map[string]interface{}); ok {
