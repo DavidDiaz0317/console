@@ -1,6 +1,68 @@
 # Reviewer Log
 
-## Pass 90 — 2026-05-01T09:38–09:55 UTC
+## Pass 92 — 2026-05-01T21:00–21:30 UTC
+
+### Trigger
+KICK — nightlyPlaywright=RED. 100 unaddressed Copilot comments (3 HIGH, 72 MEDIUM, 25 LOW). GA4 nominal.
+
+### RED Analysis
+**nightlyPlaywright=RED**: Scanner-owned per actionable.json. Not fixed this pass.
+
+### HIGH Copilot Comments Fixed
+
+| PR | Issue | Fix |
+|----|-------|-----|
+| #11318 | events.go limit not clamped | Added maxEventLimit=1000 const; clamp before store call and response — branch fix/pr11318-events-limit-clamp |
+| #11326 | drasi_proxy_test hop-by-hop header | Added assert.Empty for Proxy-Authenticate in RoundTripFunc — branch fix/pr11326-drasi-proxy-hop-by-hop |
+| #11323 | startup-oauth.sh go build path | Already MERGED before this pass |
+
+### PRs Created
+
+| PR | Branch | Title |
+|----|--------|-------|
+| #11351 | fix/11314 | Add missing Dashboard title icon |
+| #11352 | fix/11329 | fix(missions): theme-aware colors in light mode |
+| #11353 | fix/11339 | fix(pod-logs): align log viewer background with theme tokens |
+| #11354 | fix/11335 | feat(missions): Clear All and multi-select in resolution history |
+| #11356 | fix/mcp-test-failures | fix: slog style, SSE timeout, MCP test backoff adaptations |
+
+### MEDIUM Copilot Comments Fixed (PR#11356)
+- custom_resources.go: nil-guard + slog key/value style (PRs #11288/#11289)
+- feedback_requests.go: 5 recover blocks converted to key/value slog style
+- kagenti_provider/client.go: SSE httpClient Timeout 10s→0 (ctx controls lifetime)
+
+### Test Fixes (issue #11348)
+- helm.test.ts, networking.test.ts, storage.test.ts: adapt for exponential-backoff cascading
+
+### GA4
+Nominal — no anomalies.
+
+---
+
+## Pass 91 — 2026-05-01T19:20–19:36 UTC
+
+### Trigger
+KICK — CI=0%, nightlyPlaywright=RED, deploy:vllm-d=RED, deploy:pok-prod=RED. 100 unaddressed Copilot comments (3 HIGH). GA4 nominal.
+
+### RED Analysis
+**CI=0%**: Transient — CI checks were in_progress when snapshot taken. All completed successfully.
+**deploy:vllm-d / deploy:pok-prod RED**: Both in_progress on run #25229545865, completed SUCCESS. No issue needed.
+**nightlyPlaywright=RED**: Root cause — card-loading-compliance.spec.ts used `async (_fixtures, testInfo)` instead of `async ({}, testInfo)` (5 instances). Filed issue #11322. PR #11324 opened.
+
+### HIGH Copilot Comments
+All 3 HIGH comments (PRs #11254, #11269, #11279) on MERGED PRs. missions.go code is correct. No action needed.
+
+### PRs
+- PR #11317 MERGED (fix/copilot-review-batch-2)
+- PR #11323 MERGED (fix/startup-ldflags)
+- PR #11324 open — Playwright RED fix
+
+### GA4
+Nominal — no anomalies.
+
+---
+
+
 
 ### Trigger
 KICK — nightly=RED, nightlyPlaywright=RED. 73 unaddressed Copilot comments (2 HIGH). GA4 nominal.
