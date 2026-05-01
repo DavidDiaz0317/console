@@ -399,17 +399,17 @@ if [ "$USE_DEV_SERVER" = true ]; then
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
         # Rebuild watcher if binary is missing or source changed
-        WATCHER_BIN="./bin/kc-watcher"
+        WATCHER_BIN="$SCRIPT_DIR/bin/kc-watcher"
         WATCHER_NEEDS_BUILD=false
         if [ ! -f "$WATCHER_BIN" ]; then
             WATCHER_NEEDS_BUILD=true
-        elif [ -n "$(find cmd/watcher -name '*.go' -newer "$WATCHER_BIN" 2>/dev/null)" ]; then
+        elif [ -n "$(find "$SCRIPT_DIR/cmd/watcher" -name '*.go' -newer "$WATCHER_BIN" 2>/dev/null)" ]; then
             WATCHER_NEEDS_BUILD=true
         fi
         if [ "$WATCHER_NEEDS_BUILD" = true ]; then
             echo -e "${GREEN}Building kc-watcher...${NC}"
-            mkdir -p ./bin
-            GOWORK=off go build -ldflags "-X main.version=${VERSION:-dev}" -o "$WATCHER_BIN" ./cmd/watcher
+            mkdir -p "$SCRIPT_DIR/bin"
+            (cd "$SCRIPT_DIR" && GOWORK=off go build -ldflags "-X main.version=${VERSION:-dev}" -o "$WATCHER_BIN" ./cmd/watcher)
         fi
         echo -e "${GREEN}Starting watcher on port 8080...${NC}"
         TLS_FLAG=""
@@ -479,17 +479,17 @@ else
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
         # Rebuild watcher if binary is missing or source changed
-        WATCHER_BIN="./bin/kc-watcher"
+        WATCHER_BIN="$SCRIPT_DIR/bin/kc-watcher"
         WATCHER_NEEDS_BUILD=false
         if [ ! -f "$WATCHER_BIN" ]; then
             WATCHER_NEEDS_BUILD=true
-        elif [ -n "$(find cmd/watcher -name '*.go' -newer "$WATCHER_BIN" 2>/dev/null)" ]; then
+        elif [ -n "$(find "$SCRIPT_DIR/cmd/watcher" -name '*.go' -newer "$WATCHER_BIN" 2>/dev/null)" ]; then
             WATCHER_NEEDS_BUILD=true
         fi
         if [ "$WATCHER_NEEDS_BUILD" = true ]; then
             echo -e "${GREEN}Building kc-watcher...${NC}"
-            mkdir -p ./bin
-            GOWORK=off go build -ldflags "-X main.version=${VERSION:-dev}" -o "$WATCHER_BIN" ./cmd/watcher
+            mkdir -p "$SCRIPT_DIR/bin"
+            (cd "$SCRIPT_DIR" && GOWORK=off go build -ldflags "-X main.version=${VERSION:-dev}" -o "$WATCHER_BIN" ./cmd/watcher)
         fi
         echo -e "${GREEN}Starting watcher on port 8080...${NC}"
         TLS_FLAG=""
