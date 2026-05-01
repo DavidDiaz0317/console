@@ -57,6 +57,14 @@ import { usePodIssues } from '../mcp/workloads'
 import { useSecurityIssues } from '../mcp/security'
 
 describe('useClusterContext — additional coverage', () => {
+  beforeEach(() => {
+    vi.mocked(useClusters).mockReturnValue({ deduplicatedClusters: [], isLoading: false } as never)
+    vi.mocked(useOperators).mockReturnValue({ operators: [], isLoading: false } as never)
+    vi.mocked(useHelmReleases).mockReturnValue({ releases: [], isLoading: false } as never)
+    vi.mocked(usePodIssues).mockReturnValue({ issues: [], isLoading: false } as never)
+    vi.mocked(useSecurityIssues).mockReturnValue({ issues: [], isLoading: false } as never)
+  })
+
   it('extracts base name from operators with -operator suffix', () => {
     vi.mocked(useClusters).mockReturnValue({
       deduplicatedClusters: [

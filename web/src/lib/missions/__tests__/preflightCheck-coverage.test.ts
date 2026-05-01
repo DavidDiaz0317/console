@@ -276,10 +276,10 @@ describe('resolveRequiredTools', () => {
     expect(kubectlCount).toBe(EXPECTED_SINGLE_OCCURRENCE)
   })
 
-  it('returns explicit tools even if empty array', () => {
-    // Empty explicit array is falsy length, so falls through
+  it('falls through to type-based lookup when explicit tools array is empty', () => {
+    // Empty array has length 0 which is falsy, so resolveRequiredTools
+    // ignores it and falls back to the mission-type default tool list
     const result = resolveRequiredTools('deploy', [])
-    // Empty array has length 0, so it falls through to type-based lookup
     expect(result).toContain('helm')
   })
 })
@@ -392,7 +392,8 @@ describe('runPreflightCheck — catch branch coverage', () => {
 
     const result = await runPreflightCheck(exec)
     expect(result.ok).toBe(false)
-    // Falls through to String(err) path
+    // Falls through to String(err) path — yields UNKNOWN_EXECUTION_FAILURE
+    expect(result.error?.code).toBe('UNKNOWN_EXECUTION_FAILURE')
   })
 
   it('handles non-Error thrown value (string)', async () => {
@@ -400,6 +401,7 @@ describe('runPreflightCheck — catch branch coverage', () => {
 
     const result = await runPreflightCheck(exec)
     expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('UNKNOWN_EXECUTION_FAILURE')
   })
 
   it('handles null thrown value', async () => {
@@ -407,6 +409,7 @@ describe('runPreflightCheck — catch branch coverage', () => {
 
     const result = await runPreflightCheck(exec)
     expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe('UNKNOWN_EXECUTION_FAILURE')
   })
 
   it('handles "unavailable" in exception message as CLUSTER_UNREACHABLE', async () => {
@@ -431,14 +434,15 @@ describe('runPreflightCheck — catch branch coverage', () => {
 // ============================================================================
 
 describe('getRemediationActions — additional branches', () => {
-  it('includes context in MISSING_CREDENTIALS code snippet when provided', () => {
+  it('shows cloud-provider commands for MISSING_CREDENTIALS when context is provided', () => {
     const error: PreflightError = {
       code: 'MISSING_CREDENTIALS',
       message: 'No kubeconfig',
     }
     const actions = getRemediationActions(error, 'prod-ctx')
     const copyActions = actions.filter(a => a.actionType === 'copy')
-    // The second copy action should include cloud provider commands
+    // When context is truthy the snippet switches to cloud-provider commands;
+    // the context name itself is NOT embedded — only the provider examples are shown.
     expect(copyActions.some(a => a.codeSnippet?.includes('GKE'))).toBe(true)
   })
 
