@@ -53,6 +53,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
+const mockRefetch = vi.fn()
 const mockClusters = [
   { name: 'prod', healthy: true, podCount: 50, nodeCount: 3, namespaces: ['default', 'kube-system'] },
   { name: 'staging', healthy: false, podCount: 20, nodeCount: 1, namespaces: ['default'] },
@@ -63,7 +64,7 @@ vi.mock('../../../hooks/useMCP', () => ({
     clusters: mockClusters,
     isRefreshing: false,
     lastUpdated: new Date(),
-    refetch: vi.fn(),
+    refetch: (...args: unknown[]) => mockRefetch(...args),
     isLoading: false,
     error: null,
   }),
@@ -396,6 +397,43 @@ describe('Dashboard', () => {
       expect(capturedGetStatValue!('clusters').value).toBe(0)
       expect(capturedGetStatValue!('pods').value).toBe(0)
       expect(capturedGetStatValue!('nodes').value).toBe(0)
+    })
+  })
+
+  describe('auto-refresh interval timer behavior', () => {
+    it('calls refetch after 30s interval when autoRefresh is enabled', async () => {
+      render(<Dashboard />)
+      await vi.advanceTimersByTimeAsync(100)
+      mockRefetch.mockClear()
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(mockRefetch).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(mockRefetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not call refetch when autoRefresh is disabled via localStorage', async () => {
+      mockSafeGetItem.mockImplementation((key: string) =>
+        key === STORAGE_KEY_DASHBOARD_AUTO_REFRESH ? 'false' : null
+      )
+      render(<Dashboard />)
+      await vi.advanceTimersByTimeAsync(100)
+      mockRefetch.mockClear()
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(mockRefetch).not.toHaveBeenCalled()
+    })
+
+    it('clears the interval on unmount to prevent memory leaks', async () => {
+      const { unmount } = render(<Dashboard />)
+      await vi.advanceTimersByTimeAsync(100)
+      mockRefetch.mockClear()
+
+      unmount()
+
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(mockRefetch).not.toHaveBeenCalled()
     })
   })
 })
