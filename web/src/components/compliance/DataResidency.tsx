@@ -59,7 +59,7 @@ const SEVERITY_STYLES: Record<string, string> = {
   critical: 'bg-red-500/20 text-red-300 border-red-500/30',
   high:     'bg-orange-500/20 text-orange-300 border-orange-500/30',
   medium:   'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  low:      'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+  low:      'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
@@ -73,7 +73,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 const ENFORCEMENT_STYLES: Record<string, { icon: typeof ShieldAlert; color: string; label: string }> = {
   deny:  { icon: XCircle,       color: 'text-red-400',    label: 'Deny' },
   warn:  { icon: AlertTriangle, color: 'text-yellow-400', label: 'Warn' },
-  audit: { icon: CheckCircle2,  color: 'text-zinc-400',   label: 'Audit' },
+  audit: { icon: CheckCircle2,  color: 'text-muted-foreground',   label: 'Audit' },
 }
 
 const REGION_LABELS: Record<string, string> = {
@@ -137,7 +137,7 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -177,8 +177,8 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
       )}
 
       {/* Region Map */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6">
-        <h2 className="text-lg font-medium text-zinc-200 mb-4 flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card/50 p-6">
+        <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
           <MapPin className="w-5 h-5 text-blue-400" />
           Cluster Regions
         </h2>
@@ -186,12 +186,12 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
           {clusters.map(cr => {
             const hasViolations = violations.some(v => v.cluster === cr.cluster)
             return (
-              <div key={cr.cluster} className={`rounded-lg border p-3 ${hasViolations ? 'border-red-500/40 bg-red-500/5' : 'border-zinc-700/50 bg-zinc-900/30'}`}>
+              <div key={cr.cluster} className={`rounded-lg border p-3 ${hasViolations ? 'border-red-500/40 bg-red-500/5' : 'border-border bg-muted/30'}`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-zinc-200">{cr.cluster}</span>
+                  <span className="text-sm font-medium text-foreground">{cr.cluster}</span>
                   {hasViolations ? <XCircle className="w-4 h-4 text-red-400" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 </div>
-                <div className="text-xs text-zinc-400">
+                <div className="text-xs text-muted-foreground">
                   {REGION_LABELS[cr.region] ?? cr.region} · {cr.jurisdiction}
                 </div>
               </div>
@@ -201,8 +201,8 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
       </div>
 
       {/* Rules */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6">
-        <h2 className="text-lg font-medium text-zinc-200 mb-4 flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card/50 p-6">
+        <h2 className="text-lg font-medium text-foreground mb-4 flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-indigo-400" />
           Residency Rules ({rules.length})
         </h2>
@@ -211,21 +211,21 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
             const enforcement = ENFORCEMENT_STYLES[rule.enforcement] ?? ENFORCEMENT_STYLES.audit
             const EnfIcon = enforcement.icon
             return (
-              <div key={rule.id} className="rounded-lg border border-zinc-700/30 bg-zinc-900/30 p-3">
+              <div key={rule.id} className="rounded-lg border border-border/50 bg-muted/30 p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <code className="text-xs bg-zinc-700/50 px-1.5 py-0.5 rounded text-zinc-300">{rule.classification}</code>
+                    <code className="text-xs bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground">{rule.classification}</code>
                     <span className={`text-xs flex items-center gap-1 ${enforcement.color}`}>
                       <EnfIcon className="w-3 h-3" /> {enforcement.label}
                     </span>
                   </div>
                   <div className="flex gap-1">
                     {(rule.allowed_regions || []).map(r => (
-                      <span key={r} className="text-xs bg-zinc-700/30 px-1.5 py-0.5 rounded text-zinc-400">{REGION_LABELS[r] ?? r}</span>
+                      <span key={r} className="text-xs bg-muted/30 px-1.5 py-0.5 rounded text-muted-foreground">{REGION_LABELS[r] ?? r}</span>
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-zinc-500">{rule.description}</p>
+                <p className="text-xs text-muted-foreground">{rule.description}</p>
               </div>
             )
           })}
@@ -233,9 +233,9 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
       </div>
 
       {/* Violations */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6">
+      <div className="rounded-xl border border-border bg-card/50 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-zinc-200 flex items-center gap-2">
+          <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
             <XCircle className="w-5 h-5 text-red-400" />
             Violations ({filteredViolations.length})
           </h2>
@@ -251,20 +251,20 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
         </div>
 
         {filteredViolations.length === 0 ? (
-          <p className="text-zinc-500 text-sm text-center py-8">No violations found</p>
+          <p className="text-muted-foreground text-sm text-center py-8">No violations found</p>
         ) : (
           <div className="space-y-2">
             {filteredViolations.map(v => (
-              <div key={v.id} className="rounded-lg border border-zinc-700/30 bg-zinc-900/30 p-3">
+              <div key={v.id} className="rounded-lg border border-border/50 bg-muted/30 p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <SeverityBadge severity={v.severity} />
-                    <span className="text-sm font-medium text-zinc-200">{v.workload_kind}/{v.workload_name}</span>
+                    <span className="text-sm font-medium text-foreground">{v.workload_kind}/{v.workload_name}</span>
                   </div>
-                  <code className="text-xs text-zinc-500">{v.cluster} ({REGION_LABELS[v.cluster_region] ?? v.cluster_region})</code>
+                  <code className="text-xs text-muted-foreground">{v.cluster} ({REGION_LABELS[v.cluster_region] ?? v.cluster_region})</code>
                 </div>
-                <p className="text-xs text-zinc-400">{v.message}</p>
-                <div className="flex gap-2 mt-1.5 text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">{v.message}</p>
+                <div className="flex gap-2 mt-1.5 text-xs text-muted-foreground">
                   <span>Namespace: {v.namespace}</span>
                   <span>·</span>
                   <span>Allowed: {(v.allowed_regions || []).map(r => REGION_LABELS[r] ?? r).join(', ')}</span>
@@ -282,12 +282,12 @@ export const DataResidencyContent = memo(function DataResidencyContent() {
 
 function SummaryCard({ label, value, icon, accent }: { label: string; value: number; icon: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-4">
+    <div className="rounded-xl border border-border bg-card/50 p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="text-xs text-zinc-400">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${accent === 'red' ? 'text-red-400' : 'text-zinc-100'}`}>{value}</p>
+      <p className={`text-2xl font-bold ${accent === 'red' ? 'text-red-400' : 'text-foreground'}`}>{value}</p>
     </div>
   )
 }

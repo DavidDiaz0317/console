@@ -82,7 +82,7 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
   useEffect(() => { fetchData() }, [])
 
   const scoreColor = useMemo(() => {
-    if (!summary) return 'text-gray-400'
+    if (!summary) return 'text-muted-foreground'
     if (summary.overall_score >= 80) return 'text-emerald-400'
     if (summary.overall_score >= 60) return 'text-amber-400'
     return 'text-red-400'
@@ -91,7 +91,7 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-      <span className="ml-3 text-gray-400">Loading HIPAA compliance data…</span>
+      <span className="ml-3 text-muted-foreground">Loading HIPAA compliance data…</span>
     </div>
   )
 
@@ -119,29 +119,29 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Overall Score</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Overall Score</div>
             <div className={`text-3xl font-bold ${scoreColor}`}>{summary.overall_score}%</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {summary.safeguards_passed}/{summary.total_safeguards} safeguards passing
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">PHI Namespaces</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">PHI Namespaces</div>
             <div className="text-3xl font-bold text-blue-400">{summary.phi_namespaces}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {summary.compliant_namespaces} compliant
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Data Flows</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Data Flows</div>
             <div className="text-3xl font-bold text-purple-400">{summary.data_flows}</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {summary.encrypted_flows} encrypted
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Safeguards</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Safeguards</div>
             <div className="flex gap-3 mt-1">
               <span className="text-emerald-400 font-bold">{summary.safeguards_passed} ✓</span>
               <span className="text-amber-400 font-bold">{summary.safeguards_partial} ◐</span>
@@ -152,13 +152,13 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 bg-gray-800/30 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-muted/30 p-1 rounded-lg w-fit">
         {(['safeguards', 'phi', 'flows'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              activeTab === tab ? 'bg-blue-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
             }`}
           >
             {tab === 'safeguards' ? 'Technical Safeguards' : tab === 'phi' ? 'PHI Namespaces' : 'Data Flows'}
@@ -174,16 +174,16 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
             const StatusIcon = STATUS_ICONS[sg.status] || AlertTriangle
             const isExpanded = expandedSafeguard === sg.id
             return (
-              <div key={sg.id} className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+              <div key={sg.id} className="bg-card/50 border border-border rounded-xl overflow-hidden">
                 <button
                   onClick={() => setExpandedSafeguard(isExpanded ? null : sg.id)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-5 h-5 text-blue-400" />
                     <div className="text-left">
-                      <div className="text-white font-medium">{sg.section} — {sg.name}</div>
-                      <div className="text-sm text-gray-400">{sg.description}</div>
+                      <div className="text-foreground font-medium">{sg.section} — {sg.name}</div>
+                      <div className="text-sm text-muted-foreground">{sg.description}</div>
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium border ${STATUS_STYLES[sg.status] || ''}`}>
@@ -192,21 +192,21 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
                   </span>
                 </button>
                 {isExpanded && (
-                  <div className="border-t border-gray-700 p-4 space-y-2">
+                  <div className="border-t border-border p-4 space-y-2">
                     {sg.checks.map(check => {
                       const ChkIcon = STATUS_ICONS[check.status] || AlertTriangle
                       return (
-                        <div key={check.id} className="flex items-start gap-3 p-3 bg-gray-900/50 rounded-lg">
+                        <div key={check.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
                           <ChkIcon className={`w-4 h-4 mt-0.5 ${
                             check.status === 'pass' ? 'text-emerald-400' :
                             check.status === 'fail' ? 'text-red-400' : 'text-amber-400'
                           }`} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm text-white font-medium">{check.name}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">{check.description}</div>
+                            <div className="text-sm text-foreground font-medium">{check.name}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{check.description}</div>
                             {check.evidence && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                <span className="text-gray-400">Evidence:</span> {check.evidence}
+                              <div className="text-xs text-muted-foreground mt-1">
+                                <span className="text-muted-foreground">Evidence:</span> {check.evidence}
                               </div>
                             )}
                             {check.remediation && (
@@ -228,10 +228,10 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
 
       {/* PHI Namespaces Tab */}
       {activeTab === 'phi' && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="bg-card/50 border border-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-gray-400 text-left">
+              <tr className="border-b border-border text-muted-foreground text-left">
                 <th className="p-3">Namespace</th>
                 <th className="p-3">Cluster</th>
                 <th className="p-3">Encrypted</th>
@@ -242,11 +242,11 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
             </thead>
             <tbody>
               {phiNamespaces.map(ns => (
-                <tr key={`${ns.cluster}-${ns.name}`} className="border-b border-gray-700/50 hover:bg-white/5">
+                <tr key={`${ns.cluster}-${ns.name}`} className="border-b border-border/50 hover:bg-muted/50">
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <Server className="w-4 h-4 text-gray-500" />
-                      <span className="text-white font-medium">{ns.name}</span>
+                      <Server className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-foreground font-medium">{ns.name}</span>
                     </div>
                     <div className="flex gap-1 mt-1">
                       {ns.labels.map(l => (
@@ -256,7 +256,7 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
                       ))}
                     </div>
                   </td>
-                  <td className="p-3 text-gray-300">{ns.cluster}</td>
+                  <td className="p-3 text-muted-foreground">{ns.cluster}</td>
                   <td className="p-3">{ns.encrypted ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}</td>
                   <td className="p-3">{ns.audit_enabled ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}</td>
                   <td className="p-3">{ns.rbac_restricted ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-red-400" />}</td>
@@ -283,14 +283,14 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
             }`}>
               <div className="flex items-center gap-2 min-w-[140px]">
                 <Activity className="w-4 h-4 text-blue-400" />
-                <span className="text-white font-medium">{flow.source}</span>
+                <span className="text-foreground font-medium">{flow.source}</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-500" />
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
               <div className="flex items-center gap-2 min-w-[140px]">
                 <Activity className="w-4 h-4 text-purple-400" />
-                <span className="text-white font-medium">{flow.destination}</span>
+                <span className="text-foreground font-medium">{flow.destination}</span>
               </div>
-              <span className="px-2 py-1 bg-gray-700/50 rounded text-xs text-gray-300">{flow.protocol}</span>
+              <span className="px-2 py-1 bg-muted/50 rounded text-xs text-muted-foreground">{flow.protocol}</span>
               <div className="flex gap-2 ml-auto">
                 {flow.encrypted ? (
                   <span className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded text-xs">Encrypted</span>
@@ -310,7 +310,7 @@ export const HIPAADashboardContent = memo(function HIPAADashboardContent() {
 
       {/* Evaluated At */}
       {summary && (
-        <div className="text-xs text-gray-500 text-right">
+        <div className="text-xs text-muted-foreground text-right">
           Last evaluated: {new Date(summary.evaluated_at).toLocaleString()}
         </div>
       )}

@@ -75,7 +75,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-      <span className="ml-3 text-gray-400">Loading BAA data…</span>
+      <span className="ml-3 text-muted-foreground">Loading BAA data…</span>
     </div>
   )
 
@@ -103,32 +103,32 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Total BAAs</div>
-            <div className="text-3xl font-bold text-white">{summary.total_agreements}</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Total BAAs</div>
+            <div className="text-3xl font-bold text-foreground">{summary.total_agreements}</div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Active</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Active</div>
             <div className="text-3xl font-bold text-emerald-400">{summary.active_agreements}</div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Expiring Soon</div>
-            <div className={`text-3xl font-bold ${summary.expiring_soon > 0 ? 'text-amber-400' : 'text-gray-500'}`}>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Expiring Soon</div>
+            <div className={`text-3xl font-bold ${summary.expiring_soon > 0 ? 'text-amber-400' : 'text-muted-foreground'}`}>
               {summary.expiring_soon}
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Expired</div>
-            <div className={`text-3xl font-bold ${summary.expired > 0 ? 'text-red-400' : 'text-gray-500'}`}>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Expired</div>
+            <div className={`text-3xl font-bold ${summary.expired > 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
               {summary.expired}
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Cluster Coverage</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Cluster Coverage</div>
             <div className="text-xl font-bold text-blue-400">
               {summary.covered_clusters}/{summary.covered_clusters + summary.uncovered_clusters}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {summary.uncovered_clusters > 0 ? `${summary.uncovered_clusters} uncovered` : 'All covered'}
             </div>
           </div>
@@ -145,8 +145,8 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
           <div className="space-y-2">
             {alerts.map(a => (
               <div key={a.agreement_id} className="flex items-center gap-3 text-sm">
-                <span className="text-white font-medium">{a.provider}</span>
-                <span className="text-gray-400">expires {a.expiry_date}</span>
+                <span className="text-foreground font-medium">{a.provider}</span>
+                <span className="text-muted-foreground">expires {a.expiry_date}</span>
                 <span className={`px-2 py-0.5 rounded text-xs ${
                   a.days_left <= 0 ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'
                 }`}>
@@ -160,13 +160,13 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
 
       {/* Tabs + Filter */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-gray-800/30 p-1 rounded-lg">
+        <div className="flex gap-1 bg-muted/30 p-1 rounded-lg">
           {(['agreements', 'alerts'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                activeTab === tab ? 'bg-blue-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               {tab === 'agreements' ? 'Agreements' : `Alerts (${alerts.length})`}
@@ -180,7 +180,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
                 key={s}
                 onClick={() => setStatusFilter(s)}
                 className={`px-3 py-1 rounded-full text-xs transition-colors ${
-                  statusFilter === s ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:text-white'
+                  statusFilter === s ? 'bg-blue-600 text-foreground' : 'bg-muted/50 text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {s === 'all' ? 'All' : s.replace('_', ' ')}
@@ -196,22 +196,22 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
           {filtered.map(a => {
             const Icon = PROVIDER_ICONS[a.provider_type] || Building2
             return (
-              <div key={a.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+              <div key={a.id} className="bg-card/50 border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-700/50 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-semibold text-lg">{a.provider}</span>
+                        <span className="text-foreground font-semibold text-lg">{a.provider}</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs border ${STATUS_STYLES[a.status] || ''}`}>
                           {a.status.replace('_', ' ')}
                         </span>
-                        <span className="px-2 py-0.5 bg-gray-700/50 rounded text-xs text-gray-400">{a.provider_type.replace('_', ' ')}</span>
+                        <span className="px-2 py-0.5 bg-muted/50 rounded text-xs text-muted-foreground">{a.provider_type.replace('_', ' ')}</span>
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">{a.notes}</div>
-                      <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
+                      <div className="text-sm text-muted-foreground mt-1">{a.notes}</div>
+                      <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
                         {a.baa_signed_date && (
                           <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" />Signed: {a.baa_signed_date}</span>
                         )}
@@ -234,7 +234,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
             )
           })}
           {filtered.length === 0 && (
-            <div className="text-center text-gray-500 py-8">No agreements match the selected filter.</div>
+            <div className="text-center text-muted-foreground py-8">No agreements match the selected filter.</div>
           )}
         </div>
       )}
@@ -243,7 +243,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
       {activeTab === 'alerts' && (
         <div className="space-y-3">
           {alerts.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-muted-foreground py-8">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
               No BAA expiry alerts
             </div>
@@ -254,8 +254,8 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
               }`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-white font-semibold">{a.provider}</div>
-                    <div className="text-sm text-gray-400 mt-1">
+                    <div className="text-foreground font-semibold">{a.provider}</div>
+                    <div className="text-sm text-muted-foreground mt-1">
                       Expiry: {a.expiry_date} · Agreement: {a.agreement_id}
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export const BAADashboardContent = memo(function BAADashboardContent() {
       )}
 
       {summary && (
-        <div className="text-xs text-gray-500 text-right">
+        <div className="text-xs text-muted-foreground text-right">
           Last evaluated: {new Date(summary.evaluated_at).toLocaleString()}
         </div>
       )}

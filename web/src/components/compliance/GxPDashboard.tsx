@@ -95,7 +95,7 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-      <span className="ml-3 text-gray-400">Loading GxP validation data…</span>
+      <span className="ml-3 text-muted-foreground">Loading GxP validation data…</span>
     </div>
   )
 
@@ -123,32 +123,32 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">GxP Mode</div>
-            <div className={`text-xl font-bold ${summary.config?.enabled ? 'text-emerald-400' : 'text-gray-500'}`}>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">GxP Mode</div>
+            <div className={`text-xl font-bold ${summary.config?.enabled ? 'text-emerald-400' : 'text-muted-foreground'}`}>
               {summary.config?.enabled ? '● ENABLED' : '○ DISABLED'}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-muted-foreground mt-1">
               {summary.config?.append_only ? 'Append-only' : 'Standard'} mode
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Chain Integrity</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Chain Integrity</div>
             <div className={`text-xl font-bold flex items-center gap-2 ${summary.chain_integrity ? 'text-emerald-400' : 'text-red-400'}`}>
               {summary.chain_integrity ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
               {summary.chain_integrity ? 'VALID' : 'BROKEN'}
             </div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Audit Records</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Audit Records</div>
             <div className="text-3xl font-bold text-blue-400">{summary.total_records}</div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Signatures</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Signatures</div>
             <div className="text-3xl font-bold text-purple-400">{summary.total_signatures}</div>
           </div>
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-            <div className="text-sm text-gray-400 mb-1">Pending Signatures</div>
+          <div className="bg-card/50 border border-border rounded-xl p-4">
+            <div className="text-sm text-muted-foreground mb-1">Pending Signatures</div>
             <div className={`text-3xl font-bold ${summary.pending_signatures > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
               {summary.pending_signatures}
             </div>
@@ -166,7 +166,7 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
             <div className={`font-medium ${chainStatus.valid ? 'text-emerald-300' : 'text-red-300'}`}>
               {chainStatus.message}
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {chainStatus.verified_records}/{chainStatus.total_records} records verified
               {' · '}Algorithm: {summary?.config?.hash_algorithm || 'SHA-256'}
               {' · '}Verified: {new Date(chainStatus.verified_at).toLocaleString()}
@@ -176,13 +176,13 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800/30 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-muted/30 p-1 rounded-lg w-fit">
         {(['overview', 'audit', 'signatures'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              activeTab === tab ? 'bg-blue-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
             }`}
           >
             {tab === 'overview' ? 'Configuration' : tab === 'audit' ? 'Audit Trail' : 'Signatures'}
@@ -192,8 +192,8 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
 
       {/* Overview Tab */}
       {activeTab === 'overview' && summary && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+        <div className="bg-card/50 border border-border rounded-xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Lock className="w-5 h-5 text-blue-400" />
             GxP Configuration
           </h2>
@@ -206,9 +206,9 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
               { label: 'Require Signature', value: summary.config?.require_signature ? 'Yes' : 'No' },
               { label: 'Hash Algorithm', value: summary.config?.hash_algorithm ?? '—' },
             ].map(({ label, value }) => (
-              <div key={label} className="p-3 bg-gray-900/50 rounded-lg">
-                <div className="text-xs text-gray-400">{label}</div>
-                <div className="text-sm text-white font-medium mt-1">{value}</div>
+              <div key={label} className="p-3 bg-muted rounded-lg">
+                <div className="text-xs text-muted-foreground">{label}</div>
+                <div className="text-sm text-foreground font-medium mt-1">{value}</div>
               </div>
             ))}
           </div>
@@ -221,24 +221,24 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
           {records.map((r, i) => {
             const sigs = sigByRecord.get(r.id) || []
             return (
-              <div key={r.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+              <div key={r.id} className="bg-card/50 border border-border rounded-xl p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs text-gray-300 font-mono">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs text-muted-foreground font-mono">
                         {i + 1}
                       </div>
-                      {i < records.length - 1 && <div className="w-0.5 h-6 bg-gray-700 mt-1" />}
+                      {i < records.length - 1 && <div className="w-0.5 h-6 bg-muted mt-1" />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTION_STYLES[r.action] || 'bg-gray-500/20 text-gray-300'}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTION_STYLES[r.action] || 'bg-gray-500/20 text-muted-foreground'}`}>
                           {r.action}
                         </span>
-                        <span className="text-white font-medium">{r.resource}</span>
+                        <span className="text-foreground font-medium">{r.resource}</span>
                       </div>
-                      <div className="text-sm text-gray-400 mt-1">{r.detail}</div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <div className="text-sm text-muted-foreground mt-1">{r.detail}</div>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(r.timestamp).toLocaleString()}</span>
                         <span>{r.user_id}</span>
                         <span className="flex items-center gap-1 font-mono"><Hash className="w-3 h-3" />{r.record_hash.slice(0, 12)}…</span>
@@ -264,10 +264,10 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
 
       {/* Signatures Tab */}
       {activeTab === 'signatures' && (
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="bg-card/50 border border-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-gray-400 text-left">
+              <tr className="border-b border-border text-muted-foreground text-left">
                 <th className="p-3">ID</th>
                 <th className="p-3">Record</th>
                 <th className="p-3">Signer</th>
@@ -278,17 +278,17 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
             </thead>
             <tbody>
               {signatures.map(s => (
-                <tr key={s.id} className="border-b border-gray-700/50 hover:bg-white/5">
-                  <td className="p-3 font-mono text-xs text-gray-400">{s.id}</td>
-                  <td className="p-3 font-mono text-xs text-gray-300">{s.record_id}</td>
-                  <td className="p-3 text-white">{s.user_id}</td>
+                <tr key={s.id} className="border-b border-border/50 hover:bg-muted/50">
+                  <td className="p-3 font-mono text-xs text-muted-foreground">{s.id}</td>
+                  <td className="p-3 font-mono text-xs text-muted-foreground">{s.record_id}</td>
+                  <td className="p-3 text-foreground">{s.user_id}</td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded text-xs border ${MEANING_STYLES[s.meaning] || ''}`}>
                       {s.meaning}
                     </span>
                   </td>
-                  <td className="p-3 text-gray-300">{s.auth_method}</td>
-                  <td className="p-3 text-gray-400 text-xs">{new Date(s.timestamp).toLocaleString()}</td>
+                  <td className="p-3 text-muted-foreground">{s.auth_method}</td>
+                  <td className="p-3 text-muted-foreground text-xs">{new Date(s.timestamp).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -297,7 +297,7 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
       )}
 
       {summary && (
-        <div className="text-xs text-gray-500 text-right">
+        <div className="text-xs text-muted-foreground text-right">
           Last evaluated: {new Date(summary.evaluated_at).toLocaleString()}
         </div>
       )}

@@ -110,8 +110,8 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
       />
 
       {/* Generator Card */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6 space-y-5">
-        <h2 className="text-lg font-medium text-zinc-200 flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card/50 p-6 space-y-5">
+        <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
           <Shield className="w-5 h-5 text-indigo-400" />
           Generate Report
         </h2>
@@ -159,7 +159,7 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   format === 'pdf'
                     ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
-                    : 'border-zinc-600 bg-zinc-700/50 text-muted-foreground hover:text-zinc-200'
+                    : 'border-border bg-muted/50 text-muted-foreground hover:text-foreground'
                 }`}
               >
                 📄 PDF
@@ -169,7 +169,7 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   format === 'json'
                     ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
-                    : 'border-zinc-600 bg-zinc-700/50 text-muted-foreground hover:text-zinc-200'
+                    : 'border-border bg-muted/50 text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {'{ }'} JSON
@@ -180,11 +180,11 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
 
         {/* Framework Info */}
         {selectedFramework && (
-          <div className="rounded-lg bg-zinc-900/50 border border-zinc-700/30 p-4">
+          <div className="rounded-lg bg-muted border border-border/50 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-zinc-200">{selectedFramework.name}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{(selectedFramework as Framework & { description?: string }).description || 'Regulatory compliance framework'}</p>
+                <p className="text-sm font-medium text-foreground">{selectedFramework.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{(selectedFramework as Framework & { description?: string }).description || 'Regulatory compliance framework'}</p>
               </div>
               <div className="flex gap-4 text-xs text-muted-foreground">
                 <span>{(selectedFramework as Framework & { controls?: number }).controls ?? '—'} controls</span>
@@ -198,7 +198,7 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
         <button
           onClick={handleGenerate}
           disabled={generating || !selectedFw || !selectedCluster}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-foreground hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {generating ? (
             <>
@@ -227,15 +227,15 @@ export const ComplianceReportsContent = memo(function ComplianceReportsContent()
       </div>
 
       {/* Info Section */}
-      <div className="rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-6">
-        <h2 className="text-lg font-medium text-zinc-200 mb-3">About Compliance Reports</h2>
+      <div className="rounded-xl border border-border bg-card/50 p-6">
+        <h2 className="text-lg font-medium text-foreground mb-3">About Compliance Reports</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
           <div>
-            <h3 className="font-medium text-zinc-300 mb-1">PDF Reports</h3>
+            <h3 className="font-medium text-muted-foreground mb-1">PDF Reports</h3>
             <p>Audit-ready documents with cover page, executive summary, per-control findings, evidence, and remediation steps. Suitable for sharing with auditors and compliance teams.</p>
           </div>
           <div>
-            <h3 className="font-medium text-zinc-300 mb-1">JSON Reports</h3>
+            <h3 className="font-medium text-muted-foreground mb-1">JSON Reports</h3>
             <p>Machine-readable structured data following the KubeStellar compliance report schema (v1). Ideal for integration with GRC platforms, SIEM systems, and automated pipelines.</p>
           </div>
         </div>
