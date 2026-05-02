@@ -682,7 +682,7 @@ export const CardWrapper = memo(function CardWrapper({
             onMouseLeave={() => setShowSummary(false)}
           >
             {/* Header */}
-            <div data-tour="card-header" className="flex flex-wrap items-center justify-between gap-y-2 px-4 py-3 border-b border-border/50">
+            <div data-tour="card-header" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-b border-border/50">
               <div className="flex items-center gap-2 min-w-0">
                 {dragHandle}
                 {ResolvedIcon && <ResolvedIcon className={cn('w-4 h-4 shrink-0', resolvedIconColor)} />}
@@ -752,7 +752,7 @@ export const CardWrapper = memo(function CardWrapper({
                   )
                 })()}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0" role="toolbar" aria-label={t('cardWrapper.cardActions', { defaultValue: 'Card actions' })}>
                 {/* Collapse/expand button */}
                 <button
                   onClick={() => setCollapsed(!isCollapsed)}
