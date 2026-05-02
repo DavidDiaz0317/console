@@ -157,6 +157,7 @@ export interface UseTopologyResult {
   clusters: TopologyClusterSummary[]
   stats: TopologyResponse['stats'] | null
   isLoading: boolean
+  isRefreshing: boolean
   isFailed: boolean
   consecutiveFailures: number
   isDemoData: boolean
@@ -178,6 +179,7 @@ export function useTopology(): UseTopologyResult {
     cachedSnapshot?.data?.stats || null
   )
   const [isLoading, setIsLoading] = useState(!cachedSnapshot)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [consecutiveFailures, setConsecutiveFailures] = useState(0)
   const [isDemoData, setIsDemoData] = useState(!cachedSnapshot)
   const [lastRefresh, setLastRefresh] = useState<number | null>(
@@ -190,6 +192,9 @@ export function useTopology(): UseTopologyResult {
       if (!initialLoadDone.current) {
         setIsLoading(true)
       }
+    }
+    if (silent && initialLoadDone.current) {
+      setIsRefreshing(true)
     }
 
     try {
@@ -238,7 +243,8 @@ export function useTopology(): UseTopologyResult {
       if (isAuthError) { console.debug('[useTopology] Skipped — no auth') } else { console.error('[useTopology] Fetch error:', err) }
       setConsecutiveFailures(prev => prev + 1)
 
-      // If we have no data at all, fall back to demo
+      // Only fall back to demo data on initial load — keep stale data on refresh
+      // to prevent UI flickering between real and demo values
       if (!initialLoadDone.current) {
         setGraph(DEMO_RESPONSE.graph)
         setClusters(DEMO_RESPONSE.clusters)
@@ -248,6 +254,7 @@ export function useTopology(): UseTopologyResult {
       }
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }, [])
 
@@ -272,6 +279,7 @@ export function useTopology(): UseTopologyResult {
     clusters,
     stats,
     isLoading,
+    isRefreshing,
     isFailed: consecutiveFailures >= FAILURE_THRESHOLD,
     consecutiveFailures,
     isDemoData,

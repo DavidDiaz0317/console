@@ -1,4 +1,4 @@
-import { Globe, Server, ExternalLink, ChevronRight } from 'lucide-react'
+import { Globe, Server, ExternalLink, ChevronRight, AlertCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Service } from '../../hooks/useMCP'
 import { useCachedServices } from '../../hooks/useCachedData'
@@ -244,6 +244,23 @@ export function ServiceStatus() {
           <Skeleton variant="rounded" height={50} />
           <Skeleton variant="rounded" height={50} />
         </div>
+      </div>
+    )
+  }
+
+  if (showEmptyState && isFailed) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center min-h-card p-6">
+        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+        <p className="text-sm text-muted-foreground mb-2">{t('serviceStatus.fetchFailed', 'Failed to load services')}</p>
+        <p className="text-xs text-muted-foreground mb-4">{t('serviceStatus.fetchFailedHint', 'Check cluster connectivity and try again')}</p>
+        <button
+          onClick={() => refetch?.()}
+          className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm"
+          aria-label={t('common:retry', 'Retry')}
+        >
+          {t('common:retry', 'Retry')}
+        </button>
       </div>
     )
   }

@@ -3955,7 +3955,9 @@
   },
   "serviceStatus": {
     "emptyTitle": "No services found",
-    "emptyMessage": "Services will appear here once they are deployed to your clusters."
+    "emptyMessage": "Services will appear here once they are deployed to your clusters.",
+    "fetchFailed": "Failed to load services",
+    "fetchFailedHint": "Check cluster connectivity and try again"
   },
   "sortBy": {
     "status": "Status",

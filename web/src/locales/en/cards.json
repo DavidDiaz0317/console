@@ -1254,6 +1254,8 @@
     "loadingNetwork": "Loading network data...",
     "noNetworkServices": "No network services",
     "servicesWillAppear": "Services will appear when deployed",
+    "fetchFailed": "Failed to load network data",
+    "fetchFailedHint": "Check cluster connectivity and try again",
     "clusterHealth": "Cluster Health:",
     "healthy": "healthy",
     "degraded": "degraded",
@@ -1403,6 +1405,8 @@
   "clusterNetwork": {
     "noNetworkData": "No network data",
     "connectToSeeStatus": "Connect to clusters to see network status",
+    "fetchFailed": "Failed to load cluster network data",
+    "fetchFailedHint": "Check cluster connectivity and try again",
     "selectCluster": "Select cluster...",
     "selectClusterToView": "Select a cluster to view network info",
     "apiServer": "API Server",
@@ -4641,7 +4645,9 @@
   },
   "serviceStatus": {
     "emptyTitle": "No services found",
-    "emptyMessage": "Services will appear here once they are deployed to your clusters."
+    "emptyMessage": "Services will appear here once they are deployed to your clusters.",
+    "fetchFailed": "Failed to load services",
+    "fetchFailedHint": "Check cluster connectivity and try again"
   },
   "podLogs": {
     "refreshLogsAria": "Refresh logs"

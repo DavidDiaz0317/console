@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Server, Globe, Shield, ExternalLink } from 'lucide-react'
+import { Server, Globe, Shield, ExternalLink, AlertCircle } from 'lucide-react'
 import { useClusters } from '../../hooks/useMCP'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { Skeleton } from '../ui/Skeleton'
@@ -15,7 +15,7 @@ interface ClusterNetworkProps {
 
 export function ClusterNetwork({ config }: ClusterNetworkProps) {
   const { t } = useTranslation(['cards', 'common'])
-  const { deduplicatedClusters: allClusters, isLoading, isRefreshing, isFailed, consecutiveFailures } = useClusters()
+  const { deduplicatedClusters: allClusters, isLoading, isRefreshing, isFailed, consecutiveFailures, refetch } = useClusters()
   const [selectedCluster, setSelectedCluster] = useState<string>(config?.cluster || '')
   const { isDemoMode } = useDemoMode()
 
@@ -83,6 +83,23 @@ export function ClusterNetwork({ config }: ClusterNetworkProps) {
         </div>
         <Skeleton variant="rounded" height={80} className="mb-3" />
         <Skeleton variant="rounded" height={60} />
+      </div>
+    )
+  }
+
+  if (showEmptyState && isFailed) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center min-h-card p-6">
+        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+        <p className="text-sm text-muted-foreground mb-2">{t('cards:clusterNetwork.fetchFailed')}</p>
+        <p className="text-xs text-muted-foreground mb-4">{t('cards:clusterNetwork.fetchFailedHint')}</p>
+        <button
+          onClick={() => refetch()}
+          className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-sm"
+          aria-label={t('common:common.retry')}
+        >
+          {t('common:common.retry')}
+        </button>
       </div>
     )
   }

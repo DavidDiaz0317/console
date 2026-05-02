@@ -144,6 +144,7 @@ export interface UseServiceImportsCardResult {
   imports: ServiceImport[]
   isDemoData: boolean
   isLoading: boolean
+  isRefreshing: boolean
   isFailed: boolean
   consecutiveFailures: number
   lastRefresh: number | null
@@ -159,6 +160,7 @@ export function useServiceImportsCard(): UseServiceImportsCardResult {
   const [imports, setImports] = useState<ServiceImport[]>(cachedSnapshot?.data || [])
   const [isDemoData, setIsDemoData] = useState(cachedSnapshot?.isDemoData ?? true)
   const [isLoading, setIsLoading] = useState(!cachedSnapshot)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [consecutiveFailures, setConsecutiveFailures] = useState(0)
   const [lastRefresh, setLastRefresh] = useState<number | null>(
     cachedSnapshot?.timestamp || null
@@ -168,6 +170,9 @@ export function useServiceImportsCard(): UseServiceImportsCardResult {
   const refetch = useCallback(async (silent = false) => {
     if (!silent && !initialLoadDone.current) {
       setIsLoading(true)
+    }
+    if (silent && initialLoadDone.current) {
+      setIsRefreshing(true)
     }
 
     try {
@@ -196,17 +201,21 @@ export function useServiceImportsCard(): UseServiceImportsCardResult {
       initialLoadDone.current = true
       saveToCache(items, false)
     } catch {
-      // API failed — fall back to demo data
-      const clusterNames = (clusters || []).filter(c => c.reachable !== false).map(c => c.name)
-      const demoImports = getDemoServiceImports(clusterNames)
-      setImports(demoImports)
-      setIsDemoData(true)
+      // Only fall back to demo data if we have no existing data yet.
+      // When refreshing with existing data, keep stale data to prevent flickering.
+      if (!initialLoadDone.current) {
+        const clusterNames = (clusters || []).filter(c => c.reachable !== false).map(c => c.name)
+        const demoImports = getDemoServiceImports(clusterNames)
+        setImports(demoImports)
+        setIsDemoData(true)
+        setLastRefresh(Date.now())
+        initialLoadDone.current = true
+        saveToCache(demoImports, true)
+      }
       setConsecutiveFailures(prev => prev + 1)
-      setLastRefresh(Date.now())
-      initialLoadDone.current = true
-      saveToCache(demoImports, true)
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }, [clusters])
 
@@ -232,6 +241,7 @@ export function useServiceImportsCard(): UseServiceImportsCardResult {
     imports,
     isDemoData,
     isLoading: isLoading || clustersLoading,
+    isRefreshing,
     isFailed: consecutiveFailures >= FAILURE_THRESHOLD,
     consecutiveFailures,
     lastRefresh,
