@@ -389,6 +389,28 @@ launch_kc_agent() {
 # Start kc-agent with auto-restart on crash
 launch_kc_agent
 
+# If the watcher source has changed since the binary was built, kill the old
+# watchdog so it gets rebuilt below — even if WATCHDOG_RUNNING=true.
+# This prevents a stale watchdog (missing new stage strings like parallel_build)
+# from serving the loading page after a git pull.
+WATCHER_BIN="$SCRIPT_DIR/bin/kc-watcher"
+if [ "$WATCHDOG_RUNNING" = true ]; then
+    WATCHER_NEEDS_REBUILD=false
+    if [ ! -f "$WATCHER_BIN" ]; then
+        WATCHER_NEEDS_REBUILD=true
+    elif [ -n "$(find "$SCRIPT_DIR/cmd/watcher" -name '*.go' -newer "$WATCHER_BIN" 2>/dev/null)" ]; then
+        WATCHER_NEEDS_REBUILD=true
+    fi
+    if [ "$WATCHER_NEEDS_REBUILD" = true ]; then
+        echo -e "${YELLOW}Watcher source changed — killing stale watchdog (pid $WD_PID) and rebuilding...${NC}"
+        kill "$WD_PID" 2>/dev/null || true
+        rm -f "$WATCHDOG_PID_FILE"
+        WATCHDOG_RUNNING=false
+        # Free port 8080 for the new watcher
+        kill_project_port "8080" "TCP:LISTEN"
+    fi
+fi
+
 if [ "$USE_DEV_SERVER" = true ]; then
     # Dev mode: Vite dev server with HMR (slower initial load, live reload on code changes)
     # NOTE: Do NOT pass --dev to the backend — that bypasses OAuth and creates "dev-user".
@@ -399,7 +421,6 @@ if [ "$USE_DEV_SERVER" = true ]; then
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
         # Rebuild watcher if binary is missing or source changed
-        WATCHER_BIN="$SCRIPT_DIR/bin/kc-watcher"
         WATCHER_NEEDS_BUILD=false
         if [ ! -f "$WATCHER_BIN" ]; then
             WATCHER_NEEDS_BUILD=true
@@ -510,7 +531,6 @@ else
     if [ "$WATCHDOG_RUNNING" = false ]; then
         write_stage "watchdog"
         # Rebuild watcher if binary is missing or source changed
-        WATCHER_BIN="$SCRIPT_DIR/bin/kc-watcher"
         WATCHER_NEEDS_BUILD=false
         if [ ! -f "$WATCHER_BIN" ]; then
             WATCHER_NEEDS_BUILD=true
