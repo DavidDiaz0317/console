@@ -35,13 +35,13 @@ const TYPE_LABELS: Record<MarketplaceItemType, { label: string; icon: typeof Lay
   theme: { label: 'Themes', icon: Palette } }
 
 const DIFFICULTY_CONFIG = {
-  beginner: { label: 'Beginner', color: 'text-green-400 bg-green-500/10', stars: 1 },
-  intermediate: { label: 'Intermediate', color: 'text-yellow-400 bg-yellow-500/10', stars: 2 },
-  advanced: { label: 'Advanced', color: 'text-red-400 bg-red-500/10', stars: 3 } } as const
+  beginner: { label: 'Beginner', color: 'text-green-400 bg-green-950', stars: 1 },
+  intermediate: { label: 'Intermediate', color: 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10', stars: 2 },
+  advanced: { label: 'Advanced', color: 'text-red-400 bg-red-950', stars: 3 } } as const
 
 const MATURITY_CONFIG = {
-  graduated: { label: 'Graduated', color: 'text-green-400 bg-green-500/10 border-green-500/30' },
-  incubating: { label: 'Incubating', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' } } as const
+  graduated: { label: 'Graduated', color: 'text-green-400 bg-green-950 border-green-800' },
+  incubating: { label: 'Incubating', color: 'text-blue-400 bg-blue-950 border-blue-800' } } as const
 
 // --- CNCF Progress Banner ---
 function CNCFProgressBanner({ stats }: { stats: CNCFStats }) {
@@ -127,7 +127,7 @@ function CNCFProgressBanner({ stats }: { stats: CNCFStats }) {
               href={ISSUES_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-950 hover:bg-yellow-900 text-yellow-400 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-md transition-colors"
             >
               <HandHelping className="w-3 h-3" />
               Browse Issues
@@ -207,7 +207,7 @@ function MarketplaceCard({ item, onInstall, onRemove, isInstalled }: {
         )}
         {/* Help Wanted badge */}
         {isHelpWanted && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 text-2xs font-semibold bg-yellow-950 text-yellow-300 border border-yellow-800 rounded-md">
+          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 text-2xs font-semibold bg-yellow-500/10 text-yellow-600 dark:text-yellow-300 border border-yellow-500/20 rounded-md">
             <HandHelping className="w-3 h-3" />
             Help Wanted
           </div>
@@ -297,7 +297,7 @@ function MarketplaceCard({ item, onInstall, onRemove, isInstalled }: {
               href={item.issueUrl || ISSUES_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-950 hover:bg-yellow-900 text-yellow-400 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-md transition-colors"
             >
               <Sparkles className="w-3 h-3" />
               Contribute
@@ -490,7 +490,7 @@ function MarketplaceRow({ item, onInstall, onRemove, isInstalled }: {
             </span>
           )}
           {isHelpWanted && (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 bg-yellow-950 text-yellow-300 border border-yellow-800 rounded">
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-300 border border-yellow-500/20 rounded">
               Help Wanted
             </span>
           )}
@@ -524,7 +524,7 @@ function MarketplaceRow({ item, onInstall, onRemove, isInstalled }: {
             href={item.issueUrl || ISSUES_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-yellow-950 hover:bg-yellow-900 text-yellow-400 rounded transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded transition-colors"
           >
             <Sparkles className="w-3 h-3" />
             Contribute
@@ -969,7 +969,7 @@ export function Marketplace() {
               href={ISSUES_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-950 hover:bg-yellow-900 text-yellow-400 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-md transition-colors"
             >
               <HandHelping className="w-3 h-3" />
               Browse Issues

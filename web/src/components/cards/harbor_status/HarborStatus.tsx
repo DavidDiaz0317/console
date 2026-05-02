@@ -372,8 +372,27 @@ export function HarborStatus() {
         />
       </div>
 
-      <div className="flex gap-4 mb-3 border-b border-border/40 shrink-0 px-1" role="tablist">
+      <div
+        className="flex gap-4 mb-3 border-b border-border/40 shrink-0 px-1"
+        role="tablist"
+        aria-label={t('harbor.tablistLabel', 'Harbor views')}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault()
+            const nextTab = activeTab === PROJECTS_TAB ? REPOSITORIES_TAB : PROJECTS_TAB
+            setActiveTab(nextTab)
+            setSearchTerm('')
+            const nextBtn = e.currentTarget.querySelector(`[data-tab="${nextTab}"]`) as HTMLElement | null
+            nextBtn?.focus()
+          }
+        }}
+      >
         <button
+          role="tab"
+          data-tab={PROJECTS_TAB}
+          aria-selected={activeTab === PROJECTS_TAB}
+          tabIndex={activeTab === PROJECTS_TAB ? 0 : -1}
+          aria-label={t('harbor.projectsTabLabel', 'Projects ({{count}})', { count: totalProjects })}
           className={`pb-2 text-sm font-medium transition-colors relative whitespace-nowrap ${
             activeTab === PROJECTS_TAB ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'
           }`}
@@ -381,9 +400,6 @@ export function HarborStatus() {
             setActiveTab(PROJECTS_TAB)
             setSearchTerm('')
           }}
-          aria-label={t('harbor.projectsTab', 'Projects')}
-          aria-selected={activeTab === PROJECTS_TAB}
-          role="tab"
         >
           {t('harbor.projectsTab', 'Projects')}
           <span className="ml-1.5 text-xs bg-secondary px-1.5 rounded-full text-muted-foreground">
@@ -394,6 +410,11 @@ export function HarborStatus() {
           )}
         </button>
         <button
+          role="tab"
+          data-tab={REPOSITORIES_TAB}
+          aria-selected={activeTab === REPOSITORIES_TAB}
+          tabIndex={activeTab === REPOSITORIES_TAB ? 0 : -1}
+          aria-label={t('harbor.repositoriesTabLabel', 'Repositories ({{count}})', { count: totalRepos })}
           className={`pb-2 text-sm font-medium transition-colors relative whitespace-nowrap ${
             activeTab === REPOSITORIES_TAB ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/80'
           }`}
@@ -401,9 +422,6 @@ export function HarborStatus() {
             setActiveTab(REPOSITORIES_TAB)
             setSearchTerm('')
           }}
-          aria-label={t('harbor.repositoriesTab', 'Repositories')}
-          aria-selected={activeTab === REPOSITORIES_TAB}
-          role="tab"
         >
           {t('harbor.repositoriesTab', 'Repositories')}
           <span className="ml-1.5 text-xs bg-secondary px-1.5 rounded-full text-muted-foreground">
