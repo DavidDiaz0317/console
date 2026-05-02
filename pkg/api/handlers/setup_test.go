@@ -120,12 +120,14 @@ func setupTestEnv(t *testing.T) *testEnv {
 }
 
 // gvrKindsToGVR is a helper to find the GVR for a given list kind
-func gvrKindsToGVR(gvrKinds map[schema.GroupVersionResource]string, listKind string) schema.GroupVersionResource {
+func gvrKindsToGVR(t testing.TB, gvrKinds map[schema.GroupVersionResource]string, listKind string) schema.GroupVersionResource {
+	t.Helper()
 	for gvr, kind := range gvrKinds {
 		if kind == listKind {
 			return gvr
 		}
 	}
+	t.Fatalf("gvrKindsToGVR: no GVR registered for listKind %q — did you forget to add it to the gvrKinds map?", listKind)
 	return schema.GroupVersionResource{}
 }
 

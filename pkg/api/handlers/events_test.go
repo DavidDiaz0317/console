@@ -18,8 +18,11 @@ import (
 
 type eventsTestStore struct {
 	test.MockStore
-	recordedEvent *models.UserEvent
-	recordErr     error
+	recordedEvent  *models.UserEvent
+	recordErr      error
+	capturedSince  time.Duration
+	capturedLimit  int
+	capturedOffset int
 }
 
 func (s *eventsTestStore) RecordEvent(_ context.Context, event *models.UserEvent) error {
@@ -31,6 +34,9 @@ func (s *eventsTestStore) RecordEvent(_ context.Context, event *models.UserEvent
 }
 
 func (s *eventsTestStore) GetRecentEvents(_ context.Context, userID uuid.UUID, since time.Duration, limit, offset int) ([]models.UserEvent, error) {
+	s.capturedSince = since
+	s.capturedLimit = limit
+	s.capturedOffset = offset
 	if s.recordErr != nil {
 		return nil, s.recordErr
 	}
@@ -153,4 +159,65 @@ func TestEventGetEvents_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, result.Events, 1)
 	assert.Equal(t, testAdminUserID, result.Events[0].UserID)
+}
+
+func TestEventGetEvents_QueryParams(t *testing.T) {
+	env := setupTestEnv(t)
+	store := &eventsTestStore{}
+	handler := NewEventHandler(store)
+	env.App.Get("/api/events", handler.GetEvents)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/events?since=1h&limit=50&offset=10", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	assert.Equal(t, 50, result.Limit)
+	assert.Equal(t, 10, result.Offset)
+	assert.Equal(t, time.Hour, store.capturedSince)
+	assert.Equal(t, 50, store.capturedLimit)
+	assert.Equal(t, 10, store.capturedOffset)
+}
+
+func TestEventGetEvents_LimitClamped(t *testing.T) {
+	env := setupTestEnv(t)
+	store := &eventsTestStore{}
+	handler := NewEventHandler(store)
+	env.App.Get("/api/events", handler.GetEvents)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/events?limit=999999", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var result struct {
+		Limit int `json:"limit"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&result))
+	// The response must reflect the clamped value, not the raw caller-supplied one.
+	assert.Equal(t, maxEventLimit, result.Limit, "limit in response must be clamped to maxEventLimit")
+	assert.Equal(t, maxEventLimit, store.capturedLimit, "store must receive the clamped limit")
+}
+
+func TestEventGetEvents_StoreError(t *testing.T) {
+	env := setupTestEnv(t)
+	store := &eventsTestStore{recordErr: errors.New("read failed")}
+	handler := NewEventHandler(store)
+	env.App.Get("/api/events", handler.GetEvents)
+
+	req, err := http.NewRequest(http.MethodGet, "/api/events", nil)
+	require.NoError(t, err)
+
+	resp, err := env.App.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
