@@ -987,7 +987,7 @@ export function LLMdFlow() {
           )}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{t('llmd.throughput')}:</span>
-            <span className="text-white font-mono font-medium">{totalThroughput} <Acronym term="RPS" /></span>
+            <span className="text-foreground font-mono font-medium">{totalThroughput} <Acronym term="RPS" /></span>
           </div>
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{t('llmd.avgLoad')}:</span>
@@ -1102,7 +1102,7 @@ export function LLMdFlow() {
             className="absolute top-10 left-3 w-56 bg-background/95 backdrop-blur-xs rounded-xl p-4 border border-border shadow-xl"
           >
             <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
-              <h4 className="text-white font-semibold text-sm">
+              <h4 className="text-foreground font-semibold text-sm">
                 {selectedMetrics.name}
               </h4>
               <span className={`px-2 py-0.5 rounded-full text-2xs font-medium ${
@@ -1122,7 +1122,7 @@ export function LLMdFlow() {
                   onClick={() => toggleMetric(metric)}
                   className={`flex-1 px-2 py-1.5 rounded text-2xs font-medium transition-all ${
                     selectedMetricTypes.includes(metric)
-                      ? 'bg-secondary text-white ring-1 ring-border'
+                      ? 'bg-secondary text-foreground ring-1 ring-border'
                       : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                   }`}
                 >

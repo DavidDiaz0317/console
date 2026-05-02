@@ -543,7 +543,7 @@ export function Login() {
               onClick={() => { if (!isHostedDemoLogin) { emitLogin('github'); login() } }}
               disabled={isHostedDemoLogin}
               title={isHostedDemoLogin ? 'Not available in the hosted demo — self-host to enable GitHub OAuth' : undefined}
-              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-gray-800 disabled:hover:shadow-none"
+              className="w-full flex items-center justify-center gap-3 bg-card text-foreground font-medium py-3 px-4 rounded-lg hover:bg-secondary transition-all duration-200 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:shadow-none"
             >
               <Github className="w-5 h-5" />
               {t('login.continueWithGitHub')}
@@ -569,7 +569,7 @@ export function Login() {
               <button
                 data-testid="github-setup-button"
                 onClick={() => { window.location.href = '/auth/manifest/setup' }}
-                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-medium py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:shadow-lg"
+                className="w-full flex items-center justify-center gap-3 bg-card text-foreground font-medium py-3 px-4 rounded-lg hover:bg-secondary transition-all duration-200 hover:shadow-lg"
               >
                 <Github className="w-5 h-5" />
                 {t('login.setupGitHubSignIn')}

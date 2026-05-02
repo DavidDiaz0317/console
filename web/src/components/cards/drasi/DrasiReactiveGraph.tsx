@@ -775,7 +775,7 @@ export function DrasiReactiveGraph() {
         <select
           value={activeConnection?.id ?? ''}
           onChange={e => setActive(e.target.value)}
-          className="min-w-[160px] max-w-[260px] px-2 py-1 text-[11px] bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+          className="min-w-[160px] max-w-[260px] px-2 py-1 text-[11px] bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
           aria-label={t('drasi.connectionsTitle')}
         >
           <option value="">{t('drasi.noActiveConnection')}</option>
@@ -789,7 +789,7 @@ export function DrasiReactiveGraph() {
         <button
           type="button"
           onClick={() => openConnectionsModal()}
-          className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-muted-foreground hover:text-cyan-300"
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-secondary hover:bg-secondary/80 border border-border text-muted-foreground hover:text-cyan-400"
           aria-label={t('drasi.manageConnections')}
           title={t('drasi.manageConnections')}
         >
@@ -804,7 +804,7 @@ export function DrasiReactiveGraph() {
             <select
               value={selectedFlowId}
               onChange={e => setSelectedFlowId(e.target.value)}
-              className="shrink-0 min-w-[140px] max-w-[220px] px-2 py-1 text-[11px] bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+              className="shrink-0 min-w-[140px] max-w-[220px] px-2 py-1 text-[11px] bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
               aria-label={t('drasi.flowLabel')}
             >
               <option value={FLOW_ID_ALL}>{t('drasi.flowAllResources')}</option>
@@ -820,7 +820,7 @@ export function DrasiReactiveGraph() {
         <button
           type="button"
           onClick={() => openStreamSamples()}
-          className="shrink-0 ml-auto px-2 py-1 text-[10px] rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-muted-foreground hover:text-cyan-300 flex items-center gap-1.5"
+          className="shrink-0 ml-auto px-2 py-1 text-[10px] rounded bg-secondary hover:bg-secondary/80 border border-border text-muted-foreground hover:text-cyan-400 flex items-center gap-1.5"
           aria-label={t('drasi.consumeStreamTitle')}
           title={t('drasi.consumeStreamTitle')}
         >
@@ -914,7 +914,7 @@ export function DrasiReactiveGraph() {
             <button
               type="button"
               onClick={() => setConfiguringSource('new')}
-              className="w-4 h-4 flex items-center justify-center rounded bg-slate-700/40 hover:bg-emerald-500/30 border border-slate-600/40 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-300 transition-colors"
+              className="w-4 h-4 flex items-center justify-center rounded bg-secondary hover:bg-emerald-500/30 border border-border hover:border-emerald-500/50 text-muted-foreground hover:text-emerald-300 transition-colors"
               aria-label={t('drasi.addSource')}
               title={t('drasi.addSource')}
             >
@@ -926,7 +926,7 @@ export function DrasiReactiveGraph() {
             <button
               type="button"
               onClick={() => setConfiguringQuery('new')}
-              className="w-4 h-4 flex items-center justify-center rounded bg-slate-700/40 hover:bg-cyan-500/30 border border-slate-600/40 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-300 transition-colors"
+              className="w-4 h-4 flex items-center justify-center rounded bg-secondary hover:bg-cyan-500/30 border border-border hover:border-cyan-500/50 text-muted-foreground hover:text-cyan-400 transition-colors"
               aria-label={t('drasi.addQuery')}
               title={t('drasi.addQuery')}
             >
@@ -938,7 +938,7 @@ export function DrasiReactiveGraph() {
             <button
               type="button"
               onClick={createDefaultReaction}
-              className="w-4 h-4 flex items-center justify-center rounded bg-slate-700/40 hover:bg-emerald-500/30 border border-slate-600/40 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-300 transition-colors"
+              className="w-4 h-4 flex items-center justify-center rounded bg-secondary hover:bg-emerald-500/30 border border-border hover:border-emerald-500/50 text-muted-foreground hover:text-emerald-300 transition-colors"
               aria-label={t('drasi.addReaction')}
               title={t('drasi.addReaction')}
             >
@@ -1035,7 +1035,7 @@ export function DrasiReactiveGraph() {
                           <button
                             type="button"
                             onClick={e => { e.stopPropagation(); openStreamSamples() }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-muted-foreground hover:text-cyan-300 flex items-center gap-1"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-secondary hover:bg-secondary/80 border border-border text-muted-foreground hover:text-cyan-400 flex items-center gap-1"
                             title={t('drasi.consumeStreamTitle')}
                           >
                             <Code2 className="w-2.5 h-2.5" />

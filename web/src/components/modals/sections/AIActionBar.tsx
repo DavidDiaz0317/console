@@ -40,7 +40,7 @@ const ACTION_STYLES = {
   },
   custom: {
     base: 'bg-gray-500/20 text-muted-foreground dark:bg-gray-400/20',
-    hover: 'hover:bg-gray-500/30 dark:hover:bg-gray-400/30',
+    hover: 'hover:bg-secondary/80',
     badge: 'bg-gray-500/30 dark:bg-gray-400/30',
   },
 }

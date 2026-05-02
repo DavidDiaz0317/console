@@ -57,7 +57,7 @@ export function ModalShell({
 
   return (
     <motion.div
-      className="absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-xs flex items-center justify-center p-6"
+      className="absolute inset-0 z-30 bg-background/85 backdrop-blur-xs flex items-center justify-center p-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -99,15 +99,15 @@ export function RowDetailDrawer({ row, onClose }: { row: LiveResultRow | null; o
   const json = JSON.stringify(row, null, 2)
   return (
     <motion.div
-      className="absolute top-0 right-0 bottom-0 z-40 w-80 bg-slate-950 border-l border-slate-700 shadow-2xl flex flex-col"
+      className="absolute top-0 right-0 bottom-0 z-40 w-80 bg-card border-l border-border shadow-2xl flex flex-col"
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'tween', duration: 0.2 }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-y-2 px-3 py-2 border-b border-slate-700/60">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 px-3 py-2 border-b border-border/60">
         <span className="text-xs font-semibold text-cyan-300 uppercase tracking-wider">{t('drasi.rowDetailTitle')}</span>
-        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400" aria-label={t('actions.close')}>
+        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground" aria-label={t('actions.close')}>
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -141,16 +141,16 @@ export function ExpandModal({ node, onClose }: { node: ExpandedNodeDetails | nul
     <ModalShell
       labelledBy={titleId}
       onClose={onClose}
-      panelClassName="bg-slate-900 border border-slate-600/50 rounded-lg max-w-md w-full p-4"
+      panelClassName="bg-card border border-border rounded-lg max-w-md w-full p-4"
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div id={titleId} className="text-white font-semibold text-sm">{node.name}</div>
+          <div id={titleId} className="text-foreground font-semibold text-sm">{node.name}</div>
           <div className="text-muted-foreground text-xs uppercase tracking-wider mt-0.5">
             {node.type} · {node.kind}
           </div>
         </div>
-        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400" aria-label={t('actions.close')}>
+        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground" aria-label={t('actions.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -200,16 +200,16 @@ export function SourceConfigModal({
     <ModalShell
       labelledBy={titleId}
       onClose={onClose}
-      panelClassName="bg-slate-900 border border-slate-600/50 rounded-lg max-w-md w-full p-4"
+      panelClassName="bg-card border border-border rounded-lg max-w-md w-full p-4"
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div id={titleId} className="text-white font-semibold text-sm">{isCreate ? t('drasi.createSource') : t('drasi.configureSource')}</div>
+          <div id={titleId} className="text-foreground font-semibold text-sm">{isCreate ? t('drasi.createSource') : t('drasi.configureSource')}</div>
           <div className="text-muted-foreground text-xs uppercase tracking-wider mt-0.5">
             {isCreate ? t('drasi.newSourceSubtitle') : t('drasi.sourceKindLabel', { kind: source!.kind })}
           </div>
         </div>
-        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400" aria-label={t('actions.close')}>
+        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground" aria-label={t('actions.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -220,7 +220,7 @@ export function SourceConfigModal({
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+            className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
           />
         </div>
         <div>
@@ -228,7 +228,7 @@ export function SourceConfigModal({
           <select
             value={kind}
             onChange={e => setKind(e.target.value as SourceKind)}
-            className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+            className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
           >
             {SOURCE_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
           </select>
@@ -239,19 +239,19 @@ export function SourceConfigModal({
           <button
             type="button"
             onClick={handleDownloadYaml}
-            className="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-muted-foreground border border-slate-700 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs rounded bg-secondary hover:bg-secondary/80 text-muted-foreground border border-border flex items-center gap-1.5"
           >
             <Download className="w-3 h-3" />
             {t('drasi.downloadYaml')}
           </button>
         ) : <div />}
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-muted-foreground border border-slate-700">{t('actions.cancel')}</button>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-secondary hover:bg-secondary/80 text-muted-foreground border border-border">{t('actions.cancel')}</button>
           <button
             type="button"
             disabled={!name.trim()}
             onClick={() => { onSave({ name: name.trim(), kind }); onClose() }}
-            className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 text-white"
+            className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 disabled:bg-secondary disabled:text-muted-foreground text-white"
           >
             {t('actions.save')}
           </button>
@@ -301,16 +301,16 @@ export function QueryConfigModal({
     <ModalShell
       labelledBy={titleId}
       onClose={onClose}
-      panelClassName="bg-slate-900 border border-slate-600/50 rounded-lg max-w-lg w-full p-4"
+      panelClassName="bg-card border border-border rounded-lg max-w-lg w-full p-4"
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div id={titleId} className="text-white font-semibold text-sm">{isCreate ? t('drasi.createContinuousQuery') : t('drasi.configureContinuousQuery')}</div>
+          <div id={titleId} className="text-foreground font-semibold text-sm">{isCreate ? t('drasi.createContinuousQuery') : t('drasi.configureContinuousQuery')}</div>
           <div className="text-muted-foreground text-xs uppercase tracking-wider mt-0.5">
             {isCreate ? t('drasi.newQuerySubtitle') : t('drasi.queryLanguageLabel', { language: query!.language })}
           </div>
         </div>
-        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400" aria-label={t('actions.close')}>
+        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground" aria-label={t('actions.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -321,7 +321,7 @@ export function QueryConfigModal({
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+            className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
           />
         </div>
         <div>
@@ -329,14 +329,14 @@ export function QueryConfigModal({
           <select
             value={language}
             onChange={e => setLanguage(e.target.value)}
-            className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+            className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
           >
             {QUERY_LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{t('drasi.queryLabel')}</label>
-          <div className="rounded border border-slate-700 overflow-hidden text-xs">
+          <div className="rounded border border-border overflow-hidden text-xs">
             <CodeMirror
               value={queryText}
               onChange={setQueryText}
@@ -359,19 +359,19 @@ export function QueryConfigModal({
           <button
             type="button"
             onClick={handleDownloadYaml}
-            className="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-muted-foreground border border-slate-700 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs rounded bg-secondary hover:bg-secondary/80 text-muted-foreground border border-border flex items-center gap-1.5"
           >
             <Download className="w-3 h-3" />
             {t('drasi.downloadYaml')}
           </button>
         ) : <div />}
         <div className="flex gap-2">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-muted-foreground border border-slate-700">{t('actions.cancel')}</button>
+          <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-secondary hover:bg-secondary/80 text-muted-foreground border border-border">{t('actions.cancel')}</button>
           <button
             type="button"
             disabled={!name.trim()}
             onClick={() => { onSave({ name: name.trim(), language, queryText }); onClose() }}
-            className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:text-slate-500 text-white"
+            className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 disabled:bg-secondary disabled:text-muted-foreground text-white"
           >
             {t('actions.save')}
           </button>
@@ -441,14 +441,14 @@ export function ConnectionsModal({
     <ModalShell
       labelledBy="drasi-connections-title"
       onClose={onClose}
-      panelClassName="bg-slate-900 border border-slate-600/50 rounded-lg max-w-lg w-full p-4"
+      panelClassName="bg-card border border-border rounded-lg max-w-lg w-full p-4"
     >
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div id="drasi-connections-title" className="text-white font-semibold text-sm">{t('drasi.connectionsTitle')}</div>
+          <div id="drasi-connections-title" className="text-foreground font-semibold text-sm">{t('drasi.connectionsTitle')}</div>
           <div className="text-muted-foreground text-xs uppercase tracking-wider mt-0.5">{t('drasi.connectionsSubtitle')}</div>
         </div>
-        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400" aria-label={t('actions.close')}>
+        <button type="button" onClick={onClose} className="min-w-11 min-h-11 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground" aria-label={t('actions.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -463,7 +463,7 @@ export function ConnectionsModal({
               <div
                 key={conn.id}
                 className={`flex items-center gap-2 p-2 rounded border ${
-                  conn.id === activeId ? 'border-cyan-500/60 bg-cyan-500/10' : 'border-slate-700/40 bg-slate-950/60'
+                  conn.id === activeId ? 'border-cyan-500/60 bg-cyan-500/10' : 'border-border/40 bg-background/60'
                 }`}
               >
                 <button
@@ -474,7 +474,7 @@ export function ConnectionsModal({
                 >
                   <div className="flex items-center gap-1.5">
                     {conn.id === activeId && <Check className="w-3 h-3 text-cyan-400 shrink-0" />}
-                    <span className="text-xs font-semibold text-white truncate">{conn.name}</span>
+                    <span className="text-xs font-semibold text-foreground truncate">{conn.name}</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground font-mono truncate">
                     {conn.mode === 'server' ? conn.url : `${t('drasi.clusterLabel')}: ${conn.cluster}`}
@@ -483,7 +483,7 @@ export function ConnectionsModal({
                 <button
                   type="button"
                   onClick={() => beginEdit(conn)}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-secondary text-muted-foreground hover:text-cyan-400"
                   aria-label={t('actions.edit')}
                   title={t('actions.edit')}
                 >
@@ -492,7 +492,7 @@ export function ConnectionsModal({
                 <button
                   type="button"
                   onClick={() => onRequestRemove(conn.id, conn.name)}
-                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-500/20 text-slate-400 hover:text-red-300"
+                  className="w-6 h-6 flex items-center justify-center rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-300"
                   aria-label={t('actions.delete')}
                   title={t('actions.delete')}
                 >
@@ -521,7 +521,7 @@ export function ConnectionsModal({
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('drasi.connectionNamePlaceholder')}
-              className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+              className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
             />
           </div>
           <div>
@@ -529,7 +529,7 @@ export function ConnectionsModal({
             <select
               value={mode}
               onChange={e => setMode(e.target.value as 'server' | 'platform')}
-              className="w-full px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+              className="w-full px-2 py-1.5 text-xs bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
             >
               <option value="server">drasi-server (REST)</option>
               <option value="platform">drasi-platform (Kubernetes)</option>
@@ -543,7 +543,7 @@ export function ConnectionsModal({
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 placeholder="http://localhost:8090"
-                className="w-full px-2 py-1.5 text-xs font-mono bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+                className="w-full px-2 py-1.5 text-xs font-mono bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
               />
             </div>
           ) : (
@@ -554,12 +554,12 @@ export function ConnectionsModal({
                 value={cluster}
                 onChange={e => setCluster(e.target.value)}
                 placeholder="prow"
-                className="w-full px-2 py-1.5 text-xs font-mono bg-slate-950 border border-slate-700 rounded text-white focus:border-cyan-500 focus:outline-hidden"
+                className="w-full px-2 py-1.5 text-xs font-mono bg-card border border-border rounded text-foreground focus:border-cyan-500 focus:outline-hidden"
               />
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(null)} className="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700 text-muted-foreground border border-slate-700">{t('actions.cancel')}</button>
+            <button type="button" onClick={() => setEditing(null)} className="px-3 py-1.5 text-xs rounded bg-secondary hover:bg-secondary/80 text-muted-foreground border border-border">{t('actions.cancel')}</button>
             <button
               type="button"
               onClick={saveEdit}

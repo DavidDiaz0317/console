@@ -152,7 +152,7 @@ function PremiumGauge({ value, maxValue, label, sublabel, size = 140 }: PremiumG
         </svg>
       </div>
 
-      <span className="text-sm text-white font-medium truncate w-full text-center mt-1">{label}</span>
+      <span className="text-sm text-foreground font-medium truncate w-full text-center mt-1">{label}</span>
       {sublabel && (
         <span className="text-xs text-muted-foreground truncate w-full text-center">{sublabel}</span>
       )}
@@ -196,7 +196,7 @@ function HeatCell({ stat, delay }: HeatCellProps) {
     >
       {/* Tooltip */}
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-background/95 backdrop-blur-xs rounded-lg text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 border border-border shadow-xl">
-        <div className="text-white font-medium">{stat.podName}</div>
+        <div className="text-foreground font-medium">{stat.podName}</div>
         <div className="text-muted-foreground">{stat.utilizationPercent}% used</div>
         <div className="text-cyan-400 text-2xs">{stat.usedGB}/{stat.totalCapacityGB} GB</div>
       </div>
@@ -559,7 +559,7 @@ export function KVCacheMonitor() {
           <div className="p-1.5 rounded-lg bg-cyan-500/20">
             <Database size={16} className="text-cyan-400" />
           </div>
-          <span className="font-medium text-white">{t('llmd.kvCacheMonitor')}</span>
+          <span className="font-medium text-foreground">{t('llmd.kvCacheMonitor')}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -584,7 +584,7 @@ export function KVCacheMonitor() {
               className={`px-2 py-1 text-xs rounded transition-all ${
                 aggregationMode === 'aggregated'
                   ? 'bg-purple-500/30 text-purple-400 shadow-lg shadow-purple-500/20'
-                  : 'text-muted-foreground hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               title={t('llmd.showOnePerRole')}
             >
@@ -595,7 +595,7 @@ export function KVCacheMonitor() {
               className={`px-2 py-1 text-xs rounded transition-all ${
                 aggregationMode === 'disaggregated'
                   ? 'bg-purple-500/30 text-purple-400 shadow-lg shadow-purple-500/20'
-                  : 'text-muted-foreground hover:text-white'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               title={t('llmd.showOnePerReplica')}
             >
@@ -639,7 +639,7 @@ export function KVCacheMonitor() {
       {/* Summary stats with glow */}
       <div className={`grid grid-cols-2 @md:grid-cols-4 mb-4 ${isExpanded ? 'gap-4' : 'gap-2'}`}>
         <div className="bg-secondary/60 backdrop-blur-xs rounded-lg p-2 text-center border border-border/50">
-          <div className="text-lg font-bold text-white flex items-center justify-center gap-1">
+          <div className="text-lg font-bold text-foreground flex items-center justify-center gap-1">
             {aggregateMetrics.avgUtil}%
             {trend > 2 && <TrendingUp size={14} className="text-red-400" />}
             {trend < -2 && <TrendingDown size={14} className="text-green-400" />}
@@ -647,7 +647,7 @@ export function KVCacheMonitor() {
           <div className="text-xs text-muted-foreground">{t('llmd.avgUtil')}</div>
         </div>
         <div className="bg-secondary/60 backdrop-blur-xs rounded-lg p-2 text-center border border-border/50">
-          <div className="text-lg font-bold text-white">
+          <div className="text-lg font-bold text-foreground">
             {aggregateMetrics.totalUsed.toFixed(0)}
             <span className="text-xs text-muted-foreground">/{aggregateMetrics.totalCapacity}GB</span>
           </div>
@@ -689,10 +689,10 @@ export function KVCacheMonitor() {
                   return (
                     <>
                       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-2">
-                        <span className="text-white font-medium text-sm">{stat.podName.replace('vllm-', '').slice(0, 14)}</span>
+                        <span className="text-foreground font-medium text-sm">{stat.podName.replace('vllm-', '').slice(0, 14)}</span>
                         <button
                           onClick={() => { setSelectedPod(null); setPanelPosition(null) }}
-                          className="text-muted-foreground hover:text-white text-xs p-1"
+                          className="text-muted-foreground hover:text-foreground text-xs p-1"
                         >
                           ✕
                         </button>

@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom'
 const SCORE_GOOD = 'rgb(34,197,94)'
 const SCORE_WARN = 'rgb(234,179,8)'
 const SCORE_BAD = 'rgb(239,68,68)'
-const RING_BG = 'rgb(55,65,81)'
+const RING_BG = 'hsl(var(--muted))'
 
 function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r = (size - 8) / 2
@@ -27,7 +27,7 @@ function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6}
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
         transform={`rotate(-90 ${size/2} ${size/2})`} />
-      <text x="50%" y="50%" textAnchor="middle" dy=".35em" fill="white" fontSize={size/4} fontWeight="bold">
+      <text x="50%" y="50%" textAnchor="middle" dy=".35em" fill="currentColor" className="text-foreground" fontSize={size/4} fontWeight="bold">
         {score}%
       </text>
     </svg>
@@ -39,22 +39,22 @@ function CardShell({ title, icon: Icon, children, onClick }: {
 }) {
   return (
     <div
-      className={`h-full flex flex-col ${onClick ? 'cursor-pointer hover:bg-gray-700/30 transition-colors min-h-11' : ''}`}
+      className={`h-full flex flex-col ${onClick ? 'cursor-pointer hover:bg-secondary transition-colors min-h-11' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 mb-3">
         <Icon className="w-4 h-4 text-blue-400 shrink-0" />
-        <span className="text-sm font-medium text-white truncate">{title}</span>
+        <span className="text-sm font-medium text-foreground truncate">{title}</span>
       </div>
       <div className="flex-1 min-h-0">{children}</div>
     </div>
   )
 }
 
-function MiniStat({ label, value, color = 'text-white' }: { label: string; value: string | number; color?: string }) {
+function MiniStat({ label, value, color = 'text-foreground' }: { label: string; value: string | number; color?: string }) {
   return (
     <div>
-      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
     </div>
   )

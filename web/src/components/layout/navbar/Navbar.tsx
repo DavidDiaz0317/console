@@ -63,7 +63,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
         {/* Hamburger menu - mobile only */}
         <button
           onClick={toggleMobileSidebar}
-          className="p-2 min-w-[44px] min-h-[44px] flex md:hidden items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+          className="p-2 min-w-[44px] min-h-[44px] flex md:hidden items-center justify-center rounded-lg transition-colors hover:bg-secondary/80 cursor-pointer"
           aria-label={config.isMobileOpen ? t('navbar.closeMenu') : t('navbar.openMenu')}
         >
           {config.isMobileOpen ? (

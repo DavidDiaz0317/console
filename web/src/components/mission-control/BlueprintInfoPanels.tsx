@@ -149,7 +149,7 @@ export function ProjectInfoPanel({ info, edges }: { info: ProjectHoverInfo; edge
               'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
               info.priority === 'required' ? 'bg-red-500/10 text-red-400' :
               info.priority === 'recommended' ? 'bg-blue-500/10 text-blue-400' :
-              'bg-gray-500/10 text-gray-400 dark:text-gray-500'
+              'bg-secondary text-muted-foreground'
             )}>
               {info.priority}
             </span>
@@ -554,7 +554,7 @@ export function DeployModeInfoPanel({ mode, phases, projects, onShowProject, ins
                             'text-[9px] ml-1.5 px-1 py-0.5 rounded',
                             proj.priority === 'required' ? 'bg-red-500/10 text-red-400' :
                             proj.priority === 'recommended' ? 'bg-blue-500/10 text-blue-400' :
-                            'bg-gray-500/10 text-gray-400 dark:text-gray-500'
+                            'bg-secondary text-muted-foreground'
                           )}>
                             {proj.priority}
                           </span>

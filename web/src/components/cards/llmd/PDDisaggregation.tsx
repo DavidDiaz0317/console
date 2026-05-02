@@ -120,7 +120,7 @@ function ServerCard({ server, isHighlighted }: ServerCardProps) {
       whileHover={{ scale: 1.02 }}
     >
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-2">
-        <span className="font-medium text-white text-sm">{server.name}</span>
+        <span className="font-medium text-foreground text-sm">{server.name}</span>
         <div
           className="w-2 h-2 rounded-full"
           style={{ backgroundColor: server.load > 70 ? '#f59e0b' : color }}
@@ -139,23 +139,23 @@ function ServerCard({ server, isHighlighted }: ServerCardProps) {
                 animate={{ width: `${server.load}%` }}
               />
             </div>
-            <span className="text-white font-mono w-8">{server.load}%</span>
+            <span className="text-foreground font-mono w-8">{server.load}%</span>
           </div>
         </div>
 
         <div>
           <span className="text-muted-foreground">{t('llmd.queue')}</span>
-          <div className="text-white font-mono mt-0.5">{server.queueDepth}</div>
+          <div className="text-foreground font-mono mt-0.5">{server.queueDepth}</div>
         </div>
 
         <div>
           <span className="text-muted-foreground">{t('llmd.throughput')}</span>
-          <div className="text-white font-mono mt-0.5">{server.throughput} {t('llmd.rps').toLowerCase()}</div>
+          <div className="text-foreground font-mono mt-0.5">{server.throughput} {t('llmd.rps').toLowerCase()}</div>
         </div>
 
         <div>
           <span className="text-muted-foreground">{isPrefill ? <Acronym term="TTFT" /> : <Acronym term="TPOT" />}</span>
-          <div className="text-white font-mono mt-0.5">{server.latencyMs}ms</div>
+          <div className="text-foreground font-mono mt-0.5">{server.latencyMs}ms</div>
         </div>
       </div>
 
@@ -163,7 +163,7 @@ function ServerCard({ server, isHighlighted }: ServerCardProps) {
       <div className="mt-2">
         <div className="flex justify-between text-xs mb-0.5">
           <span className="text-muted-foreground"><Acronym term="GPU" /> Mem</span>
-          <span className="text-white font-mono">{server.gpuMemory}%</span>
+          <span className="text-foreground font-mono">{server.gpuMemory}%</span>
         </div>
         <div className="h-1 bg-border rounded-full overflow-hidden">
           <motion.div
@@ -341,7 +341,7 @@ export function PDDisaggregation() {
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
         <div className="flex items-center gap-2">
           <Split size={18} className="text-cyan-400" />
-          <span className="font-medium text-white">{t('llmd.pdDisaggregation')}</span>
+          <span className="font-medium text-foreground">{t('llmd.pdDisaggregation')}</span>
         </div>
         <div className="flex items-center gap-2">
           {selectedStack && (
@@ -392,7 +392,7 @@ export function PDDisaggregation() {
                 <Cpu size={12} />
                 <span className="text-xs">{t('llmd.prefill')}</span>
               </div>
-              <div className="text-white font-mono text-sm">{metrics.prefillThroughput}</div>
+              <div className="text-foreground font-mono text-sm">{metrics.prefillThroughput}</div>
               <div className="text-xs text-muted-foreground">{t('llmd.rps').toLowerCase()}</div>
             </div>
 
@@ -401,7 +401,7 @@ export function PDDisaggregation() {
                 <Clock size={12} />
                 <span className="text-xs"><Acronym term="TTFT" /></span>
               </div>
-              <div className="text-white font-mono text-sm">{metrics.prefillAvgTTFT}</div>
+              <div className="text-foreground font-mono text-sm">{metrics.prefillAvgTTFT}</div>
               <div className="text-xs text-muted-foreground">{t('llmd.ms')}</div>
             </div>
 
@@ -410,7 +410,7 @@ export function PDDisaggregation() {
                 <Zap size={12} />
                 <span className="text-xs">{t('llmd.transfer')}</span>
               </div>
-              <div className="text-white font-mono text-sm">{metrics.kvTransferRate}</div>
+              <div className="text-foreground font-mono text-sm">{metrics.kvTransferRate}</div>
               <div className="text-xs text-muted-foreground">{t('llmd.kbps')}</div>
             </div>
 
@@ -419,7 +419,7 @@ export function PDDisaggregation() {
             <Activity size={12} />
             <span className="text-xs">{t('llmd.decode')}</span>
           </div>
-          <div className="text-white font-mono text-sm">{metrics.decodeThroughput}</div>
+          <div className="text-foreground font-mono text-sm">{metrics.decodeThroughput}</div>
           <div className="text-xs text-muted-foreground">rps</div>
         </div>
 
@@ -428,7 +428,7 @@ export function PDDisaggregation() {
             <Clock size={12} />
             <span className="text-xs"><Acronym term="TPOT" /></span>
           </div>
-          <div className="text-white font-mono text-sm">{metrics.decodeAvgTPOT}</div>
+          <div className="text-foreground font-mono text-sm">{metrics.decodeAvgTPOT}</div>
           <div className="text-xs text-muted-foreground">ms</div>
         </div>
           </div>
@@ -467,7 +467,7 @@ export function PDDisaggregation() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0 }}
                   >
-                    <ArrowRight size={10} className="text-white" />
+                    <ArrowRight size={10} className="text-foreground" />
                   </motion.div>
                 ))}
               </AnimatePresence>

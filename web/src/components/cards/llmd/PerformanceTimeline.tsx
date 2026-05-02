@@ -133,14 +133,14 @@ export function PerformanceTimeline() {
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
         <div className="flex items-center gap-2">
           <LayoutGrid size={14} className="text-purple-400" />
-          <span className="text-sm font-medium text-white">Sequence Length Impact</span>
+          <span className="text-sm font-medium text-foreground">Sequence Length Impact</span>
           <span className="text-2xs text-muted-foreground">ISL × OSL → {modeInfo.label}</span>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            className="bg-secondary border border-border rounded px-2 py-1 text-[11px] text-white"
+            className="bg-secondary border border-border rounded px-2 py-1 text-[11px] text-foreground"
           >
             <option value="all">{t('selectors.allCategories')}</option>
             {filterOpts.categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -148,7 +148,7 @@ export function PerformanceTimeline() {
           <select
             value={qpsFilter}
             onChange={e => setQpsFilter(Number(e.target.value))}
-            className="bg-secondary border border-border rounded px-2 py-1 text-[11px] text-white"
+            className="bg-secondary border border-border rounded px-2 py-1 text-[11px] text-foreground"
           >
             <option value={0}>All QPS</option>
             {qpsValues.map(q => <option key={q} value={q}>QPS {q}</option>)}
@@ -163,7 +163,7 @@ export function PerformanceTimeline() {
             key={m.key}
             onClick={() => setMode(m.key)}
             className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-              mode === m.key ? 'bg-purple-500/20 text-purple-400' : 'text-muted-foreground hover:text-white'
+              mode === m.key ? 'bg-purple-500/20 text-purple-400' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {m.label}
@@ -219,10 +219,10 @@ export function PerformanceTimeline() {
                         onMouseEnter={() => setHoveredCell(cell)}
                         onMouseLeave={() => setHoveredCell(null)}
                       >
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-foreground">
                           {cell.value >= 1000 ? `${(cell.value / 1000).toFixed(1)}k` : cell.value.toFixed(cell.value < 10 ? 2 : 0)}
                         </span>
-                        <span className="text-[9px] text-white/60">{modeInfo.unit}</span>
+                        <span className="text-[9px] text-muted-foreground">{modeInfo.unit}</span>
                       </div>
                     )
                   })}
@@ -233,8 +233,8 @@ export function PerformanceTimeline() {
             {/* Hover detail */}
             {hoveredCell && (
               <div className="absolute -right-4 top-0 translate-x-full bg-background border border-border rounded-lg p-3 shadow-xl text-xs min-w-[160px] z-20">
-                <div className="text-white font-medium mb-1">ISL {hoveredCell.isl} × OSL {hoveredCell.osl}</div>
-                <div className="text-foreground">{modeInfo.label}: <span className="font-mono text-white">{hoveredCell.value.toFixed(1)} {modeInfo.unit}</span></div>
+                <div className="text-foreground font-medium mb-1">ISL {hoveredCell.isl} × OSL {hoveredCell.osl}</div>
+                <div className="text-foreground">{modeInfo.label}: <span className="font-mono text-foreground">{hoveredCell.value.toFixed(1)} {modeInfo.unit}</span></div>
                 <div className="text-muted-foreground mt-1">{hoveredCell.count} reports averaged</div>
               </div>
             )}

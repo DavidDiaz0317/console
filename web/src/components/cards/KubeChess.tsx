@@ -890,7 +890,7 @@ function KubeChessInternal() {
             onClick={() => handleSquareClick(row, col)}
             className={`
               flex items-center justify-center cursor-pointer relative
-              ${isLight ? 'bg-yellow-100 dark:bg-yellow-200' : 'bg-yellow-700 dark:bg-yellow-800'}
+              ${isLight ? 'bg-yellow-100 bg-yellow-100' : 'bg-yellow-700 dark:bg-yellow-800'}
               ${isSelected ? 'ring-2 ring-blue-500 ring-inset z-10' : ''}
               ${isLastMove ? 'bg-yellow-300/50 dark:bg-yellow-400/30' : ''}
               ${isInCheckSquare ? 'bg-red-500/50' : ''}
@@ -912,7 +912,7 @@ function KubeChessInternal() {
             {piece && (
               <span
                 className={`text-${isExpanded ? '4xl' : '2xl'} select-none ${
-                  piece.color === 'white' ? 'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]' : 'text-gray-900 dark:text-gray-950'
+                  piece.color === 'white' ? 'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]' : 'text-foreground'
                 }`}
                 style={{ fontSize: cellSize * 0.7 }}
               >
@@ -937,7 +937,7 @@ function KubeChessInternal() {
         {/* Status */}
         <div className="flex flex-wrap items-center justify-between gap-y-2 w-full max-w-xs">
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${gameState.turn === 'white' ? 'bg-white border border-gray-300 dark:border-gray-600' : 'bg-gray-800 dark:bg-gray-900'}`} />
+            <div className={`w-3 h-3 rounded-full ${gameState.turn === 'white' ? 'bg-white border border-border' : 'bg-secondary'}`} />
             <span className="text-sm font-medium">
               {isThinking ? 'AI thinking...' : (
                 gameResult !== 'ongoing' ? (
@@ -964,14 +964,14 @@ function KubeChessInternal() {
           {/* Promotion dialog */}
           {promotionPending && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-xl">
+              <div className="bg-card rounded-lg p-4 shadow-xl">
                 <p className="text-sm font-medium mb-3 text-center">Promote to:</p>
                 <div className="flex gap-2">
                   {(['Q', 'R', 'B', 'N'] as PieceType[]).map(type => (
                     <button
                       key={type}
                       onClick={() => handlePromotion(type)}
-                      className="w-12 h-12 flex items-center justify-center bg-yellow-100 dark:bg-yellow-200 rounded hover:bg-yellow-200 dark:hover:bg-yellow-300 transition-colors"
+                      className="w-12 h-12 flex items-center justify-center bg-yellow-100 bg-yellow-100 rounded hover:bg-yellow-200 hover:bg-yellow-200 transition-colors"
                     >
                       <span className="text-3xl">
                         {PIECE_SYMBOLS[playerColor][type]}
@@ -986,7 +986,7 @@ function KubeChessInternal() {
           {/* Game over overlay */}
           {gameResult !== 'ongoing' && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-xl text-center">
+              <div className="bg-card rounded-lg p-4 shadow-xl text-center">
                 <Crown className={`w-12 h-12 mx-auto mb-2 ${
                   // Draws (stalemate/repetition) get the neutral yellow;
                   // checkmate is colored by who won (#7894).

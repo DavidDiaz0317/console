@@ -159,7 +159,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         variant="ghost"
         size="sm"
         onClick={onRemove}
-        className="p-1 hover:bg-black/10 dark:hover:bg-white/10"
+        className="p-1 hover:bg-secondary/80"
         aria-label="Dismiss notification"
         icon={<X className="w-3 h-3" aria-hidden="true" />}
       />

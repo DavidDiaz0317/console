@@ -354,7 +354,7 @@ function DraggableWorkloadItem({ workload, isSelected, onSelect, onScaled }: Dra
       data-dnd-workload="true"
       className={cn(
         'p-3 transition-colors cursor-grab active:cursor-grabbing',
-        !isDragging && 'hover:bg-gray-50 dark:hover:bg-secondary/50',
+        !isDragging && 'hover:bg-secondary',
         isSelected && !isDragging && 'bg-blue-50 dark:bg-blue-900/20'
       )}
     >

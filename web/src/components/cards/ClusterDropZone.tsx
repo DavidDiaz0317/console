@@ -127,7 +127,7 @@ export function ClusterDropZone({
           </div>
         )}
 
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-border">
+        <div className="mt-3 pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
             {isDemo ? 'Connect clusters to enable real deployments' : 'Drop workload on a cluster to deploy'}
           </p>
@@ -169,7 +169,7 @@ function DroppableCluster({ cluster, workload, onDeploy }: DroppableClusterProps
         'flex items-start gap-3 px-3 py-3 rounded-lg border transition-all cursor-pointer',
         isOver
           ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 scale-[1.02] shadow-lg'
-          : 'bg-gray-50 dark:bg-secondary/50 border-gray-200 dark:border-border hover:border-blue-300 dark:hover:border-blue-600'
+          : 'bg-secondary border-border hover:border-blue-500'
       )}
       onClick={handleClick}
       onKeyDown={(e) => {

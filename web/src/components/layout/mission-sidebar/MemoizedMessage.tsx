@@ -47,7 +47,7 @@ export const MemoizedMessage = memo(function MemoizedMessage({ msg, missionAgent
       if (!safeHref) {
         return <span className="text-muted-foreground">{children}</span>
       }
-      return <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300">{children}</a>
+      return <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-600">{children}</a>
     },
   }), [fontSize])
 

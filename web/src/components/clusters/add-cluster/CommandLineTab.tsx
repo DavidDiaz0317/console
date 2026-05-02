@@ -82,7 +82,7 @@ export function CommandLineTab({ cloudCLIs }: CommandLineTabProps) {
               )
             })}
           </div>
-          <div className="border-t border-border dark:border-white/10" />
+          <div className="border-t border-border REMOVE_THIS" />
         </div>
       )}
 
@@ -102,7 +102,7 @@ export function CommandLineTab({ cloudCLIs }: CommandLineTabProps) {
         </div>
       ))}
 
-      <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3 border border-border/30 dark:border-white/5">
+      <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3 border border-border/30 border-border/30">
         {t('cluster.addClusterAutoDetect')}
       </p>
     </div>

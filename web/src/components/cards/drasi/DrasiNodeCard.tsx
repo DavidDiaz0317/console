@@ -45,7 +45,7 @@ export function NodeControls({
         onClick={handle(onStop)}
         className={`w-5 h-5 flex items-center justify-center rounded border transition-colors ${
           isStopped
-            ? 'bg-slate-700/60 border-slate-500/50 text-muted-foreground'
+            ? 'bg-secondary border-border text-muted-foreground'
             : 'bg-red-500/20 hover:bg-red-500/40 border-red-500/40 text-red-400'
         }`}
         aria-label={isStopped ? 'Start' : 'Stop'}
@@ -56,7 +56,7 @@ export function NodeControls({
       <button
         type="button"
         onClick={handle(onExpand)}
-        className="w-5 h-5 flex items-center justify-center rounded bg-slate-700/40 hover:bg-cyan-500/30 border border-slate-600/40 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-300 transition-colors"
+        className="w-5 h-5 flex items-center justify-center rounded bg-secondary hover:bg-cyan-500/30 border border-border hover:border-cyan-500/50 text-muted-foreground hover:text-cyan-400 transition-colors"
         aria-label="Expand"
         title="Expand details"
       >
@@ -69,7 +69,7 @@ export function NodeControls({
           className={`w-5 h-5 flex items-center justify-center rounded border transition-colors ${
             isPinned
               ? 'bg-amber-500/30 border-amber-500/60 text-amber-300'
-              : 'bg-slate-700/40 hover:bg-slate-700/60 border-slate-600/40 text-slate-400'
+              : 'bg-secondary hover:bg-secondary/80 border-border text-muted-foreground'
           }`}
           aria-label={isPinned ? 'Unpin' : 'Pin'}
           title={isPinned ? 'Unpin' : 'Pin'}
@@ -81,7 +81,7 @@ export function NodeControls({
         <button
           type="button"
           onClick={handle(onConfigure)}
-          className="w-5 h-5 flex items-center justify-center rounded bg-slate-700/40 hover:bg-cyan-500/30 border border-slate-600/40 hover:border-cyan-500/50 text-slate-400 hover:text-cyan-300 transition-colors"
+          className="w-5 h-5 flex items-center justify-center rounded bg-secondary hover:bg-cyan-500/30 border border-border hover:border-cyan-500/50 text-muted-foreground hover:text-cyan-400 transition-colors"
           aria-label="Configure"
           title="Configure"
         >
@@ -92,7 +92,7 @@ export function NodeControls({
         <button
           type="button"
           onClick={handle(onDelete)}
-          className="w-5 h-5 flex items-center justify-center rounded bg-slate-700/40 hover:bg-red-500/40 border border-slate-600/40 hover:border-red-500/60 text-slate-400 hover:text-red-300 transition-colors"
+          className="w-5 h-5 flex items-center justify-center rounded bg-secondary hover:bg-red-500/40 border border-border hover:border-red-500/60 text-muted-foreground hover:text-red-300 transition-colors"
           aria-label={t('actions.delete')}
           title={t('actions.delete')}
         >

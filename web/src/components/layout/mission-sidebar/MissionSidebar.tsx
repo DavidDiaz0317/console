@@ -658,7 +658,7 @@ export function MissionSidebar() {
       )}>
         <button
           onClick={expandSidebar}
-          className="p-2 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/10 mb-4"
+          className="p-2 rounded transition-colors hover:bg-secondary/80 mb-4"
           title={t('missionSidebar.expandSidebar')}
         >
           <PanelRightOpen className="w-5 h-5 text-muted-foreground" />
@@ -850,7 +850,7 @@ export function MissionSidebar() {
             {!isMobile && (isFullScreen ? (
               <button
                 onClick={() => setFullScreen(false)}
-                className="p-1 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                className="p-1 rounded transition-colors hover:bg-secondary/80"
                 aria-label={t('missionSidebar.exitFullScreen')}
                 title={t('missionSidebar.exitFullScreen')}
               >
@@ -860,7 +860,7 @@ export function MissionSidebar() {
               <>
                 <button
                   onClick={() => setFullScreen(true)}
-                  className="p-1 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                  className="p-1 rounded transition-colors hover:bg-secondary/80"
                   aria-label={t('missionSidebar.fullScreen')}
                   title={t('missionSidebar.fullScreen')}
                 >
@@ -868,7 +868,7 @@ export function MissionSidebar() {
                 </button>
                 <button
                   onClick={minimizeSidebar}
-                  className="p-1 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                  className="p-1 rounded transition-colors hover:bg-secondary/80"
                   aria-label={t('missionSidebar.minimizeSidebar')}
                   title={t('missionSidebar.minimizeSidebar')}
                 >
@@ -878,7 +878,7 @@ export function MissionSidebar() {
             ))}
             <button
               onClick={closeSidebar}
-              className="min-w-[44px] min-h-[44px] p-2 rounded transition-colors hover:bg-black/5 dark:hover:bg-white/10 flex items-center justify-center"
+              className="min-w-[44px] min-h-[44px] p-2 rounded transition-colors hover:bg-secondary/80 flex items-center justify-center"
               aria-label={t('missionSidebar.closeSidebar')}
               title={t('missionSidebar.closeSidebar')}
             >

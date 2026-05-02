@@ -877,7 +877,7 @@ function EPPRoutingInternal() {
           <div className="p-1.5 rounded-lg bg-yellow-500/20">
             <Zap size={14} className="text-yellow-400" />
           </div>
-          <span className="font-medium text-white text-sm"><Acronym term="EPP" /> Routing</span>
+          <span className="font-medium text-foreground text-sm"><Acronym term="EPP" /> Routing</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -923,7 +923,7 @@ function EPPRoutingInternal() {
       <div className="flex items-center gap-4 mb-3 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="text-muted-foreground">{t('common:common.total')}:</span>
-          <span className="text-white font-mono">{metrics.totalRps} <Acronym term="RPS" /></span>
+          <span className="text-foreground font-mono">{metrics.totalRps} <Acronym term="RPS" /></span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-purple-500" style={{ boxShadow: '0 0 6px #9333ea' }} />
@@ -1061,10 +1061,10 @@ function EPPRoutingInternal() {
                 return (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-y-2 mb-2">
-                      <span className="text-white font-medium text-sm">{node.label}</span>
+                      <span className="text-foreground font-medium text-sm">{node.label}</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setSelectedNode(null) }}
-                        className="text-muted-foreground hover:text-white text-xs"
+                        className="text-muted-foreground hover:text-foreground text-xs"
                       >
                         ✕
                       </button>
@@ -1170,13 +1170,13 @@ function EPPRoutingInternal() {
             return (
               <div className="flex flex-wrap items-center justify-between gap-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-white capitalize font-medium">{link.source.replace('-', ' ')}</span>
+                  <span className="text-foreground capitalize font-medium">{link.source.replace('-', ' ')}</span>
                   <ArrowRight size={12} className="text-muted-foreground" />
-                  <span className="text-white capitalize font-medium">{link.target.replace('-', ' ')}</span>
+                  <span className="text-foreground capitalize font-medium">{link.target.replace('-', ' ')}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-muted-foreground">
-                    <span className="text-white font-mono">{link.value}</span> {t('llmd.rps').toLowerCase()}
+                    <span className="text-foreground font-mono">{link.value}</span> {t('llmd.rps').toLowerCase()}
                   </span>
                   <span className={`font-mono font-medium ${
                     link.type === 'prefill' ? 'text-purple-400' : 'text-green-400'

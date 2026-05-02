@@ -255,8 +255,8 @@ export function MobileBrowser() {
 
             {/* Status Bar */}
             <div className={`absolute top-0 left-0 right-0 z-10 flex justify-between items-center text-xs ${isIPad ? 'px-8 pt-3' : 'px-6 pt-2'}`}>
-              <span className="font-semibold text-black dark:text-white">{formattedTime}</span>
-              <div className="flex items-center gap-1 text-black dark:text-white">
+              <span className="font-semibold text-foreground">{formattedTime}</span>
+              <div className="flex items-center gap-1 text-foreground">
                 <Signal className="w-3 h-3" />
                 <Wifi className="w-3 h-3" />
                 <Battery className="w-4 h-3" />
@@ -275,7 +275,7 @@ export function MobileBrowser() {
                   onChange={(e) => setUrlInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Search or enter website name"
-                  className="flex-1 bg-transparent text-xs text-center text-gray-700 dark:text-foreground focus:outline-hidden min-w-0"
+                  className="flex-1 bg-transparent text-xs text-center text-foreground focus:outline-hidden min-w-0"
                 />
                 {urlInput && (
                   <button
@@ -322,7 +322,7 @@ export function MobileBrowser() {
                           <button
                             key={i}
                             onClick={() => navigateTo(bookmark.url)}
-                            className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-secondary transition-colors"
+                            className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100hover:bg-secondary transition-colors"
                           >
                             <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-lg">
                               {bookmark.title.charAt(0).toUpperCase()}
@@ -344,7 +344,7 @@ export function MobileBrowser() {
                         <button
                           key={link.url}
                           onClick={() => navigateTo(link.url)}
-                          className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-secondary transition-colors"
+                          className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-100hover:bg-secondary transition-colors"
                         >
                           <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-secondary flex items-center justify-center text-xl">
                             {link.icon}
@@ -364,7 +364,7 @@ export function MobileBrowser() {
             {showTabs && (
               <div className="absolute inset-0 bg-gray-100 dark:bg-background z-30 p-4 overflow-auto">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm font-semibold text-gray-700 dark:text-foreground">
+                  <span className="text-sm font-semibold text-foreground">
                     {tabs.length} Tab{tabs.length !== 1 ? 's' : ''}
                   </span>
                   <button
@@ -390,7 +390,7 @@ export function MobileBrowser() {
                     >
                       <div className="bg-white dark:bg-secondary p-3">
                         <div className="flex flex-wrap items-center justify-between gap-y-2">
-                          <span className="text-xs font-medium text-gray-700 dark:text-foreground truncate">
+                          <span className="text-xs font-medium text-foreground truncate">
                             {tab.title || 'New Tab'}
                           </span>
                           <button
@@ -411,7 +411,7 @@ export function MobileBrowser() {
                 </div>
                 <button
                   onClick={newTab}
-                  className="mt-4 w-full py-2 bg-gray-200 dark:bg-secondary rounded-lg text-sm text-gray-700 dark:text-foreground flex items-center justify-center gap-2"
+                  className="mt-4 w-full py-2 bg-secondary rounded-lg text-sm text-foreground flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   New Tab
@@ -423,7 +423,7 @@ export function MobileBrowser() {
             {showSettings && (
               <div className="absolute inset-0 bg-gray-100 dark:bg-background z-30 p-4 overflow-auto">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm font-semibold text-gray-700 dark:text-foreground">
+                  <span className="text-sm font-semibold text-foreground">
                     Bookmarks
                   </span>
                   <button
@@ -455,7 +455,7 @@ export function MobileBrowser() {
                             }}
                             className="text-left"
                           >
-                            <span className="text-xs font-medium text-gray-700 dark:text-foreground block truncate">
+                            <span className="text-xs font-medium text-foreground block truncate">
                               {bookmark.title}
                             </span>
                             <span className="text-2xs text-muted-foreground truncate block">
@@ -481,14 +481,14 @@ export function MobileBrowser() {
               <button
                 onClick={goBack}
                 disabled={historyIndex <= 0}
-                className={`p-2 ${historyIndex <= 0 ? 'text-gray-300 dark:text-gray-700' : 'text-blue-500'}`}
+                className={`p-2 ${historyIndex <= 0 ? 'text-muted-foreground' : 'text-blue-500'}`}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={goForward}
                 disabled={historyIndex >= history.length - 1}
-                className={`p-2 ${historyIndex >= history.length - 1 ? 'text-gray-300 dark:text-gray-700' : 'text-blue-500'}`}
+                className={`p-2 ${historyIndex >= history.length - 1 ? 'text-muted-foreground' : 'text-blue-500'}`}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -501,7 +501,7 @@ export function MobileBrowser() {
               <button
                 onClick={addBookmark}
                 disabled={!activeTab.url}
-                className={`p-2 ${!activeTab.url ? 'text-gray-300 dark:text-gray-700' : isBookmarked ? 'text-yellow-500' : 'text-blue-500'}`}
+                className={`p-2 ${!activeTab.url ? 'text-muted-foreground' : isBookmarked ? 'text-yellow-500' : 'text-blue-500'}`}
               >
                 <Star className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
               </button>

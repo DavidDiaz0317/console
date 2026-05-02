@@ -54,7 +54,7 @@ export function compareCells(a: LiveResultRow[string], b: LiveResultRow[string])
 export function KPIBox({ label, value, accent }: { label: string; value: number; accent: 'emerald' | 'cyan' }) {
   const accentClass = accent === 'cyan' ? 'text-cyan-400' : 'text-emerald-400'
   return (
-    <div className="bg-slate-900/80 border border-slate-700/40 rounded px-3 py-1.5 flex flex-wrap items-center justify-between gap-y-2">
+    <div className="bg-card border border-border/40 rounded px-3 py-1.5 flex flex-wrap items-center justify-between gap-y-2">
       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
       <span className={`text-sm font-mono font-semibold ${accentClass}`}>{value}</span>
     </div>
@@ -111,8 +111,8 @@ export function ResultsTable({ results, isDemo, onRowClick, headerAction }: Resu
   }
 
   return (
-    <div className="mt-2 bg-slate-950/80 border border-slate-700/40 rounded overflow-hidden">
-      <div className="px-2 py-1 border-b border-slate-700/50 flex flex-wrap items-center justify-between gap-y-2">
+    <div className="mt-2 bg-card border border-border/40 rounded overflow-hidden">
+      <div className="px-2 py-1 border-b border-border/50 flex flex-wrap items-center justify-between gap-y-2">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-medium text-cyan-400 uppercase tracking-wider">{label}</span>
           <motion.div
@@ -159,7 +159,7 @@ export function ResultsTable({ results, isDemo, onRowClick, headerAction }: Resu
               <tr
                 key={idx}
                 onClick={e => { e.stopPropagation(); onRowClick?.(row) }}
-                className={`border-b border-slate-800/30 hover:bg-slate-800/30 ${onRowClick ? 'cursor-pointer' : ''}`}
+                className={`border-b border-border/30 hover:bg-secondary/30 ${onRowClick ? 'cursor-pointer' : ''}`}
               >
                 {columns.map(col => {
                   const value = row[col]
@@ -188,8 +188,8 @@ export function ResultsTable({ results, isDemo, onRowClick, headerAction }: Resu
                       key={col}
                       className={`px-2 py-1 ${
                         isNumeric
-                          ? 'text-white font-mono text-right'
-                          : 'text-white truncate max-w-[160px]'
+                          ? 'text-foreground font-mono text-right'
+                          : 'text-foreground truncate max-w-[160px]'
                       }`}
                     >
                       {formatCell(value)}
