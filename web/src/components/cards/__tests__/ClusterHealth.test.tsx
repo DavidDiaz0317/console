@@ -63,6 +63,14 @@ vi.mock('../../../lib/cards/cardHooks', async (importOriginal) => {
   }
 })
 
+vi.mock('../../../hooks/useFederation', () => ({
+  useFederationAwareness: () => ({ hubs: [], clusters: [], groups: [], pendingJoins: [], errors: [], isDemoFallback: false }),
+  getProviderLabel: (p: string) => p,
+  getStateLabel: (s: string) => s,
+  getStateColorClasses: () => '',
+  getFederationProviderLabel: (p: string) => p,
+}))
+
 vi.mock('../../clusters/utils', () => ({
   isClusterUnreachable: (c: ClusterInfo) => c.reachable === false,
   isClusterTokenExpired: (c: ClusterInfo) => c.errorMessage?.includes('token') ?? false,
