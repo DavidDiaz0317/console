@@ -201,11 +201,14 @@ export function KServeStatus() {
 
   if (error && showEmptyState) {
     return (
-      <div className="h-full flex flex-col items-center justify-center min-h-card text-muted-foreground gap-2">
+      <div className="h-full flex flex-col items-center justify-center min-h-card text-muted-foreground gap-3 p-4">
         <AlertTriangle className="w-6 h-6 text-red-400" />
-        <p className="text-sm text-red-400">
-          {t('kserveStatus.fetchError', 'Unable to fetch KServe status')}
-        </p>
+        <div className="text-center space-y-2">
+          <p className="text-sm text-red-400 font-medium">
+            {t('kserveStatus.fetchError', 'Unable to fetch KServe status')}
+          </p>
+
+        </div>
       </div>
     )
   }

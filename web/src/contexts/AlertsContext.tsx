@@ -150,7 +150,15 @@ function applyMutations(
         const key = alertDedupKey(mut.alert.ruleId, condType, mut.alert.cluster, mut.alert.resource, mut.alert.namespace)
         const existingIdx = dedupIndex.get(key)
         if (existingIdx !== undefined) {
-          // Alert already exists — skip (dedup handled by update mutations)
+          // Alert already exists with same dedup key - update it instead of creating duplicate
+          const existing = result[existingIdx]
+          // Only update if the new alert has a more recent firedAt time
+          if (new Date(mut.alert.firedAt) >= new Date(existing.firedAt)) {
+            result[existingIdx] = {
+              ...mut.alert,
+              id: existing.id, // Keep existing ID to maintain references
+            }
+          }
           break
         }
         result = [mut.alert, ...result]

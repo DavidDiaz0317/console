@@ -103,6 +103,63 @@ export function useDiagnoseRepairLoop(options: UseDiagnoseRepairLoopOptions): Us
     }
   }, [missions, state.phase, repairable])
 
+  // Safety timeout for diagnosing phase to prevent getting stuck
+  useEffect(() => {
+    if (state.phase !== 'diagnosing') return
+    
+    const DIAGNOSING_TIMEOUT_MS = 30_000 // 30 seconds safety timeout
+    const handle = setTimeout(() => {
+      setState(prev => {
+        if (prev.phase !== 'diagnosing') return prev
+        console.warn('Diagnosing phase timed out, transitioning to complete')
+        return {
+          ...prev,
+          phase: repairable ? 'proposing-repair' : 'complete',
+          proposedRepairs: repairable
+            ? prev.issuesFound.map((issue, idx) => ({
+                id: `repair-${idx}-${Date.now()}`,
+                issueId: issue.id,
+                action: getDefaultRepairAction(issue),
+                description: getDefaultRepairDescription(issue),
+                risk: getDefaultRepairRisk(issue),
+                approved: false }))
+            : []
+        }
+      })
+    }, DIAGNOSING_TIMEOUT_MS)
+    
+    activeTimers.current.add(handle)
+    return () => {
+      activeTimers.current.delete(handle)
+      clearTimeout(handle)
+    }
+  }, [state.phase, repairable])
+
+  // Listen for repair mission completion to transition from repairing to verifying
+  useEffect(() => {
+    if (!missionIdRef.current || state.phase !== 'repairing') return
+    const mission = missions.find(m => m.id === missionIdRef.current)
+    if (!mission) return
+    
+    // Transition when repair mission completes
+    if (mission.status === 'completed' || mission.status === 'failed' || mission.status === 'cancelled') {
+      setState(prev => {
+        if (prev.phase !== 'repairing') return prev
+        const approvedRepairs = prev.proposedRepairs.filter(r => r.approved)
+        const completed = approvedRepairs.map(r => r.id)
+        const newState = {
+          ...prev,
+          completedRepairs: [...prev.completedRepairs, ...completed],
+          phase: 'verifying' as DiagnoseRepairPhase
+        }
+        if (prev.loopCount >= prev.maxLoops - 1) {
+          newState.phase = 'complete'
+        }
+        return newState
+      })
+    }
+  }, [missions, state.phase])
+
   const setPhase = (phase: DiagnoseRepairPhase) => {
     setState(prev => ({ ...prev, phase }))
   }
