@@ -34,11 +34,11 @@ interface AuditSummary {
 }
 
 const APPROVAL_STYLES: Record<string, { bg: string; label: string }> = {
-  approved:   { bg: 'bg-emerald-500/20 border-emerald-500/30', label: 'Approved' },
-  pending:    { bg: 'bg-yellow-500/20 border-yellow-500/30',  label: 'Pending' },
-  rejected:   { bg: 'bg-red-500/20 border-red-500/30',        label: 'Rejected' },
-  emergency:  { bg: 'bg-orange-500/20 border-orange-500/30',  label: 'Emergency' },
-  unapproved: { bg: 'bg-red-500/20 border-red-500/30',        label: 'Unapproved' },
+  approved:   { bg: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30', label: 'Approved' },
+  pending:    { bg: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',  label: 'Pending' },
+  rejected:   { bg: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',        label: 'Rejected' },
+  emergency:  { bg: 'bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30',  label: 'Emergency' },
+  unapproved: { bg: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',        label: 'Unapproved' },
 }
 
 const SEVERITY_STYLES: Record<string, string> = {
