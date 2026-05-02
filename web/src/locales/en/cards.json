@@ -690,6 +690,7 @@
     "loadingTimedOutMessage": "This card took too long to load data. This may be due to a network issue or the data source being unavailable.",
     "loadingTimedOutRetry": "Retry",
     "refreshData": "Refresh data",
+    "cardControls": "Controls for {{title}}",
     "expandFullScreen": "Expand card to full screen",
     "reportIssue": "Report issue for this card",
     "cardMenuTooltip": "Card menu - configure, replace, or remove",

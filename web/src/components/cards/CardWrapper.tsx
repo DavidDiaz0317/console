@@ -759,7 +759,7 @@ export const CardWrapper = memo(function CardWrapper({
                   )
                 })()}
               </div>
-              <div className="flex items-center gap-1.5 shrink-0" role="toolbar" aria-label={t('cardWrapper.cardActions', { defaultValue: 'Card actions' })}>
+              <div className="flex items-center gap-1.5 shrink-0" role="toolbar" aria-label={t('cardWrapper.cardControls', { title })}>
                 {/* Collapse/expand button */}
                 <button
                   onClick={() => setCollapsed(!isCollapsed)}

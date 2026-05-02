@@ -509,7 +509,6 @@ export function SidebarShell({
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeItem(item.id) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removeItem(item.id) } }}
                     className="p-1 rounded hover:bg-red-500/20 hover:text-red-400 text-muted-foreground/50 transition-colors"
                     title={t('sidebar.removeFromSidebar')}
                     aria-label={t('sidebar.removeFromSidebar')}

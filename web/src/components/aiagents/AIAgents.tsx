@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useKagentiSummary } from '../../hooks/mcp/kagenti'
 import { StatBlockValue } from '../ui/StatsOverview'
 import { DashboardPage } from '../../lib/dashboards'
@@ -79,8 +79,8 @@ export function AIAgents() {
   const tabBar = tabs.length > 0 ? (
     <div className="flex items-center gap-1 mb-6 border-b border-border" role="tablist">
       {tabs.map(tab => (
+        <React.Fragment key={tab.id}>
         <Button
-          key={tab.id}
           variant="ghost"
           size="md"
           onClick={() => !tab.disabled && setActiveTab(tab.id)}
@@ -100,19 +100,18 @@ export function AIAgents() {
         >
           {tab.icon && <AgentIcon provider={tab.icon} className="w-4 h-4" />}
           {tab.label}
-          {tab.disabled && tab.installUrl && (
-            <a
-              href={tab.installUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground ml-1"
-              aria-label={`Install ${tab.label}`}
-            >
-              Install <ExternalLink className="w-2.5 h-2.5" />
-            </a>
-          )}
         </Button>
+        {tab.disabled && tab.installUrl && (
+          <a
+            href={tab.installUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground ml-1"
+          >
+            Install <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        )}
+        </React.Fragment>
       ))}
     </div>
   ) : null
