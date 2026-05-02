@@ -479,7 +479,13 @@ layer(base);
 /* Enhanced scrollbar for panels, sidebars, and dropdowns —
    slim and subtle, only visible on hover/scroll */
 .scroll-enhanced {
-  scrollbar-gutter: stable;
+  /* scrollbar-gutter: stable is only applied in browsers that support it
+     (Chrome 94+, Edge 94+, Firefox 97+). Classic-scrollbar environments
+     (Windows, most Linux distros) without the property don't reserve space,
+     preventing the unwanted ~15-17px permanent right-padding. */
+  @supports (scrollbar-gutter: stable) {
+    scrollbar-gutter: stable;
+  }
 }
 .scroll-enhanced::-webkit-scrollbar {
   width: 6px;
