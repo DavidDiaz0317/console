@@ -1004,3 +1004,52 @@ Nominal — no anomalies.
 ### Outstanding
 - PR #11365: CI running — merge when green (only Storybook Visual Regression may fail as known flaky)
 - nightlyPlaywright RED: scanner owns — Issue #11348 open
+
+---
+
+## Pass 94 — 2026-05-02T01:11–01:20 UTC
+
+### Trigger
+KICK — nightlyPlaywright=RED. 46 unaddressed Copilot comments (3 HIGH). GA4 nominal.
+
+### RED Analysis
+
+**nightlyPlaywright=RED**: Scanner owns. Issue #11348 already filed (pass 93). No code fix required.
+
+### Upstream Sync
+
+Since Pass 93, upstream/main advanced by 2 commits:
+- `cd5a38c2f` — fix(e2e): stabilize Playwright tests for cross-browser and mobile (#11375)
+- `89ff5bb59` — fix(startup-oauth.sh): track agent build PID, launch agent after build completes (#11376)
+
+Local branch reset to `upstream/main` (cd5a38c2f).
+
+### HIGH Copilot Comments — Disposition
+
+All 3 HIGH comments were already addressed in Pass 93:
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11318 | events.go:103 | `limit` echoed without clamping | ✅ Fixed — PR #11362 merged |
+| #11326 | drasi_proxy_test.go:25 | Hop-by-hop header not asserted stripped | ✅ Fixed — PR #11363 merged |
+| #11355 | FeedbackModal.tsx:234 | `page_url` leaks OAuth params | ✅ Fixed — PR #11364 merged |
+
+Pre-computed comment list is stale (generated before those merges). No new HIGH comments require action.
+
+### Merge Activity
+
+| PR | Action | Result |
+|----|--------|--------|
+| #11375 | Merged upstream (scanner) | fix(e2e): stabilize Playwright tests |
+| #11376 | Merged upstream | fix(startup-oauth.sh): track agent build PID |
+| #11365 | Merged upstream | fix(tests): await refetch() in MCP hook tests |
+| #11366 | Merged upstream | fix: wire diagnostics and failed API calls |
+| #11372 | Merged upstream | Address Copilot review findings #11326, #11355, #11366 |
+| #11373 | Merged upstream | ci: upgrade docker/setup-buildx-action to v4 |
+
+### GA4
+Nominal — no anomalies.
+
+### Outstanding
+- nightlyPlaywright RED: scanner owns — Issue #11348 open
+- 43 remaining MEDIUM/LOW Copilot comments across merged PRs — no action required (PRs already merged)
