@@ -1,5 +1,58 @@
 # Reviewer Log
 
+## Pass 97 — 2026-05-02T02:51–03:00 UTC
+
+### Trigger
+KICK — full reviewer pass: coverage, CI health, release freshness, post-merge diff, CodeQL, GA4.
+
+### RED Status
+**nightlyPlaywright=RED**: ✅ **CLEARED** — Issue #11348 (`[Auto-QA] 15 test failure(s) in Coverage Suite`) is now **closed**. No open test-failure issues remain.
+
+### Post-Merge Diff (since Pass 96)
+**PR #11382** merged to main (`0b418ec9b`):
+- `startup-oauth.sh` +22/-2 lines — fix: restart stale watchdog when watcher source changes (HIGH Copilot #11380)
+
+### HIGH Copilot Comments — All Resolved
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11318 | events.go:103 | `limit` echoed without clamping | ✅ Fixed PR #11362 (merged) |
+| #11326 | drasi_proxy_test.go:25 | Hop-by-hop header not asserted stripped | ✅ Fixed PR #11363 (merged) |
+| #11355 | FeedbackModal.tsx:234 | `page_url` leaks OAuth params | ✅ Fixed PR #11364 (merged) |
+| #11380 | startup-oauth.sh:570 | Stale watchdog on `git pull` | ✅ Fixed PR #11382 (merged this pass) |
+
+### CI Workflow Health
+
+| Workflow | Latest Run | Status |
+|----------|-----------|--------|
+| Coverage Gate | #2665 (sha d11b2dfa) | ✅ success |
+| Coverage Suite | #1933 (sha e807eb68) | ✅ success |
+| Nightly Test Suite | #141 | ✅ success |
+| Playwright E2E | #6832 | cancelled (new commits arriving faster than run completes — not a failure) |
+| Build and Deploy KC | #11894 (sha 0b418ec9) | in_progress |
+
+### Coverage
+91% — meeting target ✅
+
+### CodeQL
+0 open security alerts ✅
+
+### Release Freshness
+- Latest stable: **v0.3.23** (2026-04-26) ✅
+- Latest nightly: **v0.3.24-nightly.20260501** ✅
+- Helm chart: `version: 0.0.0 / appVersion: latest` (CI placeholder — intentional) ✅
+- Brew formula: fresh (reviewer.json brewFresh=1) ✅
+
+### Outreach
+- 0 open outreach PRs, 0 one-per-org violations ✅
+- 4 recently merged (llm-d/llm-d x3, awesome-mcp-servers x1)
+
+### GA4
+Nominal — no anomalies ✅
+
+### Outstanding
+- 57 MEDIUM/LOW Copilot comments across already-merged PRs — historical artifact, no action required
+
 ## Pass 96 — 2026-05-02T02:31–02:45 UTC
 
 ### Trigger
