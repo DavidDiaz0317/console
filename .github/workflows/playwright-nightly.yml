@@ -84,7 +84,7 @@ jobs:
       - name: Start preview server
         run: |
           npm run preview &
-          npx wait-on http://localhost:4173 --timeout 60000
+          npx wait-on http://localhost:4173 --timeout 120000
 
       - name: Run Playwright tests (${{ matrix.browser }})
         run: |
@@ -157,7 +157,7 @@ jobs:
       - name: Start preview server
         run: |
           npm run preview &
-          npx wait-on http://localhost:4173 --timeout 60000
+          npx wait-on http://localhost:4173 --timeout 120000
 
       - name: Run mobile tests
         run: |

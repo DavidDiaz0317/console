@@ -97,12 +97,12 @@ jobs:
       - name: Start preview server
         run: |
           npm run preview &
-          npx wait-on http://localhost:4173 --timeout 60000
+          npx wait-on http://localhost:4173 --timeout 120000
 
       - name: Run Playwright tests
         run: |
           if [ -n "${{ inputs.spec_filter }}" ]; then
-            npx playwright test --project=chromium --timeout=75000 --retries=2 "${{ inputs.spec_filter }}"
+            npx playwright test --project=chromium --timeout=75000 --retries=2 --shard=${{ matrix.shard }}/4 "${{ inputs.spec_filter }}"
           else
             npx playwright test --project=chromium --timeout=75000 --retries=1 --shard=${{ matrix.shard }}/4
           fi
@@ -283,7 +283,7 @@ jobs:
       - name: Start preview server
         run: |
           npm run preview &
-          npx wait-on http://localhost:4173 --timeout 60000
+          npx wait-on http://localhost:4173 --timeout 120000
 
       - name: Run mobile tests
         run: |
@@ -337,7 +337,7 @@ jobs:
       - name: Start preview server
         run: |
           npm run preview &
-          npx wait-on http://localhost:4173 --timeout 60000
+          npx wait-on http://localhost:4173 --timeout 120000
 
       - name: Run accessibility tests
         run: |
