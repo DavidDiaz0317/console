@@ -1,5 +1,53 @@
 # Reviewer Log
 
+## Pass 105 — 2026-05-02T04:52 UTC
+
+### Trigger
+Urgent kick: nightlyPlaywright=RED. Copilot HIGH comments (54 unaddressed). git pull /tmp/hive.
+
+### RED Indicators
+- **nightlyPlaywright=RED**: Scanner owns — Issue #11348 open. No source-file changes needed.
+
+### Hive Pull
+Fetched `/tmp/hive` remote. `hive/main` at `05f3672fb` — already matches local `merge-fixes`. Up to date.
+
+### HIGH Copilot Comments — Verification
+All 3 HIGH issues confirmed resolved in HEAD:
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11380 | startup-oauth.sh:570 | Stale watchdog + `parallel_build` stage | ✅ Fixed by `0b418ec9b` (#11382) — WATCHER_NEEDS_REBUILD check kills stale binary |
+| #11326 | drasi_proxy_test.go:25 | Missing hop-by-hop assertion | ✅ `assert.Empty(Proxy-Authenticate)` present in HEAD |
+| #11355 | FeedbackModal.tsx:234 | OAuth param leak via `window.location.href` | ✅ Uses `origin+pathname` in HEAD |
+
+### MEDIUM Source Code Issues — Verification
+Key MEDIUM issues also confirmed resolved in HEAD:
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11366 | SubmitTab.tsx:321 | page_url OAuth leak | ✅ Uses `origin+pathname` |
+| #11379 | startup-oauth.sh | BACKEND_BUILD_PID not in cleanup() | ✅ cleanup() kills BACKEND_BUILD_PID |
+| #11379 | startup-oauth.sh | set-e race before error handler | ✅ `wait ... || true` + BACKEND_BUILD_EXIT capture |
+| #11355 | analytics-core.ts:867 | failedApiCalls not in _resetAnalyticsState | ✅ failedApiCalls.length=0 in _resetAnalyticsState |
+| #11355 | analytics-core.ts:854 | status stored as number\|string | ✅ String(status) coerces before storage |
+| #11355 | feedback.go:144 | FailedApiCall.Status type mismatch | ✅ Backend `string`, frontend stores as string |
+| #11326 | drasi_proxy_test.go:62 | Missing URL path assertion | ✅ assert.Equal for r.URL.Path present |
+| #11326 | service_exports_test.go:20 | Wrong route in test | ✅ Uses `/api/k8s/service-exports` (hyphen) |
+
+### GA4
+Nominal — 0 anomalies.
+
+### Merge-eligible PRs
+0 merge-eligible PRs identified (GitHub auth unavailable for direct merge).
+
+### Playwright RED (scanner lane)
+PR #11375 Copilot comments about `waitForTimeout`/`waitForLoadState` in E2E tests — scanner owns.
+
+### Actionable Items
+None. All file-level HIGH and MEDIUM issues confirmed resolved. Playwright RED is scanner-owned.
+
+---
+
 ## Pass 104 — 2026-05-02T04:49 UTC
 
 ### Trigger
