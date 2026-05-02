@@ -69,6 +69,8 @@ export const EXPECTED_ERROR_PATTERNS = [
   /Connection refused.*(:8585|:8080|127\.0\.0\.1|localhost)/i, // Backend/agent connection only (#11294)
   /502.*Bad Gateway/i, // Reverse proxy errors when backend not running
   /Failed to load resource.*(:8585|:8080|\/api\/)/i, // Backend API resource failures only (#11294)
+  /the server responded with a status of 50[0-9]/i, // 5xx status errors in demo/CI mode (#11520)
+  /console\.kubestellar\.io/i, // External origin fetch failures when hosted site is unavailable from CI (#11520)
   // SQLite WASM cache worker — webkit/Safari can't streaming-compile the
   // sqlite3 wasm, and the worker has a documented IndexedDB fallback path
   // (see lib/cache/worker.ts). These errors emit from the sqlite-wasm loader
@@ -222,6 +224,19 @@ export async function mockApiFallback(page: Page) {
       status: 503,
       contentType: 'application/json',
       body: JSON.stringify({ error: 'Service unavailable (test mock)' }),
+    })
+  )
+
+  // Mock external console.kubestellar.io API requests (#11520). Hooks like
+  // useGitHubRewards and useMediumBlog fetch from https://console.kubestellar.io
+  // which is a different origin — not caught by the same-origin **/api/** pattern.
+  // In CI (vite preview on localhost:4173), these requests escape route mocking
+  // and hit the real server, which may return 503, generating console errors.
+  await page.route('https://console.kubestellar.io/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({}),
     })
   )
 }

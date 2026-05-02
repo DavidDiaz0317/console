@@ -60,7 +60,10 @@ async function clickSidebarRoute(page: Page, href: string) {
     await expect(link).toBeVisible({ timeout: ROUTE_LOAD_TIMEOUT_MS })
   }
   await link.scrollIntoViewIfNeeded()
-  await link.click()
+  // Use force:true to bypass Playwright's stability check — sidebar CSS
+  // transitions can cause the element to appear "in motion" even when visually
+  // settled (see #11521).
+  await link.click({ force: true })
   await assertRouteLoaded(page, href)
 }
 

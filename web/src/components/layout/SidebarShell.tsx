@@ -434,7 +434,7 @@ export function SidebarShell({
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, item.id, sectionId)}
         className={cn(
-          'group relative transition-all duration-150 w-full',
+          'group relative transition-opacity duration-150 w-full',
           dragOverItem === item.id && dragSection === sectionId && 'before:absolute before:inset-x-0 before:-top-0.5 before:h-0.5 before:bg-purple-500 before:rounded-full',
           draggedItem === item.id && 'opacity-50'
         )}
@@ -470,7 +470,7 @@ export function SidebarShell({
             onDoubleClick={(e) => handleDoubleClick(item, e)}
             onMouseEnter={() => prefetchDashboard(item.href)}
             className={({ isActive }) => cn(
-              'flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200',
+              'flex items-center gap-3 rounded-lg text-sm font-medium transition-colors duration-200',
               isActive
                 ? 'bg-purple-500/15 text-purple-400 border-l-[3px] border-purple-500 shadow-[inset_0_0_12px_rgba(168,85,247,0.08)]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50 border-l-[3px] border-transparent',
@@ -594,7 +594,7 @@ export function SidebarShell({
         className={cn(
           'fixed left-0 top-16 bottom-0 glass border-r border-border/50 overflow-y-auto scroll-enhanced',
           isMobile ? 'z-modal touch-manipulation' : 'z-sidebar',
-          !isResizing && 'transition-all duration-300',
+          !isResizing && 'transition-[width,transform,padding] duration-300',
           !isMobile && (config.collapsed ? 'p-3' : 'p-4'),
           isMobile && 'p-4',
           isMobile && !config.isMobileOpen && '-translate-x-full hidden md:flex',
