@@ -323,6 +323,7 @@ if [ -z "$FAST_MODE" ]; then
           ["ui-compliance-test"]=600
           ["cache-test"]=600
           ["benchmark-test"]=600
+          ["deploy-test"]=600
           ["ai-ml-test"]=900
           ["nav-test"]=900
           ["perf-test"]=1200
