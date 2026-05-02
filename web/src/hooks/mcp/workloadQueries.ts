@@ -1387,6 +1387,31 @@ export function useJobs(cluster?: string, namespace?: string): UseJobsResult {
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to fetch jobs'
+
+      // Fallback: if SSE endpoint returns 404 (agent lacks /jobs/stream),
+      // try the standard /jobs endpoint (#11543)
+      if (message.includes('404')) {
+        try {
+          const params = new URLSearchParams()
+          if (cluster) params.append('cluster', cluster)
+          if (namespace) params.append('namespace', namespace)
+          const response = await fetchWithRetry(`${LOCAL_AGENT_HTTP_URL}/jobs?${params}`, {
+            headers: { 'Accept': 'application/json' },
+            timeoutMs: MCP_HOOK_TIMEOUT_MS,
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setJobs(data.jobs || [])
+            setError(null)
+            setConsecutiveFailures(0)
+            setIsLoading(false)
+            return
+          }
+        } catch (fallbackErr: unknown) {
+          console.debug('[useJobs] Fallback fetch also failed:', fallbackErr)
+        }
+      }
+
       console.warn('[useJobs] Fetch failed:', message)
       setError(message)
       setConsecutiveFailures(prev => prev + 1)

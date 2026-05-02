@@ -250,6 +250,9 @@ export function Storage() {
 
   const getStatValue = getDashboardStatValue
 
+  // Detect "all cluster fetches failed" — show unified error instead of empty cards
+  const isAllClustersFailed = !isLoading && !!error && error.includes('All cluster fetches failed')
+
   return (
     <>
       <DashboardPage
@@ -265,13 +268,34 @@ export function Storage() {
         isLoading={isLoading}
         isRefreshing={dataRefreshing}
         lastUpdated={lastUpdated}
-        hasData={hasDataToShow}
+        hasData={hasDataToShow && !isAllClustersFailed}
         emptyState={{
           title: 'Storage Dashboard',
           description: 'Add cards to monitor PVCs, StorageClasses, and storage utilization across your clusters.' }}
       >
-        {/* Error Display */}
-        {error && (
+        {/* Unified error state when all cluster fetches fail */}
+        {isAllClustersFailed && (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {t('common.unableToLoadData', 'Unable to Load Storage Data')}
+            </h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
+              {t('common.allClustersFetchFailed', 'All cluster fetches failed. This may indicate a network issue, expired credentials, or that clusters are temporarily unreachable.')}
+            </p>
+            <button
+              onClick={refetch}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              {t('actions.retry', 'Retry')}
+            </button>
+          </div>
+        )}
+
+        {/* Error Display for partial failures (not all-clusters-failed) */}
+        {error && !isAllClustersFailed && (
           <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div className="flex-1">

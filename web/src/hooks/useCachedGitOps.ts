@@ -67,7 +67,7 @@ function createGitOpsSseHook<T extends object>(config: GitOpsSseConfig<T>) {
       demoData: getDemoData(),
       fetcher: async () => {
         const data = await fetchGitOpsAPI<Record<string, T[]>>(apiEndpoint, cluster ? { cluster } : undefined)
-        return (data[responseKey] as T[]) || []
+        return ((data && data[responseKey]) as T[]) || []
       },
       progressiveFetcher: cluster ? undefined : async (onProgress) => {
         return await fetchViaGitOpsSSE<T>(apiEndpoint, responseKey, {}, onProgress)
@@ -84,7 +84,8 @@ function createGitOpsSseHook<T extends object>(config: GitOpsSseConfig<T>) {
       isFailed: result.isFailed,
       consecutiveFailures: result.consecutiveFailures,
       lastRefresh: result.lastRefresh,
-      refetch: result.refetch, retryFetch: result.retryFetch,
+      refetch: result.refetch,
+      retryFetch: result.retryFetch,
     } as CachedHookResult<T[]> & Record<string, T[]>
   }
 }
@@ -126,7 +127,7 @@ function createRbacHook<T extends object>(config: RbacConfig<T>) {
       demoData: getDemoData(),
       fetcher: async () => {
         const data = await fetchRbacAPI<Record<string, T[]>>(apiEndpoint, fetchParams)
-        return (data[responseKey] as T[]) || []
+        return ((data && data[responseKey]) as T[]) || []
       },
     })
 
@@ -140,7 +141,8 @@ function createRbacHook<T extends object>(config: RbacConfig<T>) {
       isFailed: result.isFailed,
       consecutiveFailures: result.consecutiveFailures,
       lastRefresh: result.lastRefresh,
-      refetch: result.refetch, retryFetch: result.retryFetch,
+      refetch: result.refetch,
+      retryFetch: result.retryFetch,
     } as CachedHookResult<T[]> & Record<string, T[]>
   }
 }

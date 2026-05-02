@@ -50,8 +50,7 @@
     "dismiss": "Dismiss",
     "viewNamespaceCostAria": "View cost details for namespace {{namespace}}",
     "viewOperatorAria": "View operator {{name}}",
-    "toggleGPUNodeAria": "Toggle details for GPU node {{node}}",
-    "selectItem": "Select {{title}}"
+    "toggleGPUNodeAria": "Toggle details for GPU node {{node}}"
   },
   "buttons": {
     "addCard": "Add Card",
@@ -3079,7 +3078,9 @@
     "patching": "Patching",
     "restartConsole": "Restart the console",
     "health": "Health",
-    "loadingMore": "Loading more..."
+    "loadingMore": "Loading more...",
+    "unableToLoadData": "Unable to Load Storage Data",
+    "allClustersFetchFailed": "All cluster fetches failed. This may indicate a network issue, expired credentials, or that clusters are temporarily unreachable."
   },
   "namespaces": {
     "createNamespace": "Create Namespace",
