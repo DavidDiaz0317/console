@@ -1,5 +1,53 @@
 # Reviewer Log
 
+## Pass 101 — 2026-05-02T03:51 UTC
+
+### Trigger
+KICK — nightlyPlaywright=RED. 54 unaddressed Copilot comments (3 HIGH). GA4 nominal.
+
+### RED Analysis
+
+**nightlyPlaywright=RED**: Scanner owns — Issue #11348 open. No code fix required.
+
+### Copilot Comments — Disposition
+
+All 54 pre-fetched comments are stale: they were filed on PRs already merged to `upstream/main`.
+
+| PR | Severity | File | Issue | Status |
+|----|----------|------|-------|--------|
+| #11326 | HIGH | drasi_proxy_test.go:25 | Hop-by-hop header not asserted stripped | ✅ Fixed — PR #11363 (merged) |
+| #11355 | HIGH | FeedbackModal.tsx:234 | `page_url` leaks OAuth params | ✅ Fixed — PR #11364 (merged) |
+| #11380 | HIGH | startup-oauth.sh:570 | Stale watchdog with `parallel_build` stage | ✅ Fixed — PR #11382 (merged) |
+| #11379 | MEDIUM | startup-oauth.sh:459/475/604 | `BACKEND_BUILD_PID` not in cleanup; `set -e` race | ✅ Fixed — `e56f90f3b` |
+| #11380 | MEDIUM | startup-oauth.sh:570/605 | Backend spinner / stage ordering | ✅ PRs merged |
+| #11382 | MEDIUM | startup-oauth.sh:410 | Port 8080 exclusion after WATCHDOG_RUNNING=false | ✅ `kill_project_port` called explicitly before new watcher start |
+| #11355 | MEDIUM | analytics-core.ts:867 | `failedApiCalls` not in `_resetAnalyticsState` | ✅ Fixed — `failedApiCalls.length = 0` at line 909 |
+| #11355 | MEDIUM | analytics-core.ts:854 | status stored as `number\|string` | ✅ Fixed — `String(status)` coercion in `pushFailedApiCall` |
+| #11355 | MEDIUM | feedback.go:144 | `FailedApiCall.Status` type mismatch | ✅ Fixed — Go struct uses `string`, frontend coerces |
+| #11356 | MEDIUM | storage/networking/helm tests | `mockRejectedValueOnce` without fallback | ✅ Fixed — fallback `mockImplementation` added |
+| #11347 | MEDIUM | index.css:483 | `scrollbar-gutter: stable` layout shift | ✅ Fixed — wrapped in `@supports` |
+| #11349 | MEDIUM | FeedbackModal/SubmitTab | Video upload frontend-only, no backend parity | ✅ PR merged (accepted scope) |
+| #11375 | MEDIUM | e2e tests | `waitForTimeout`, `networkidle` anti-patterns | Scanner owns Playwright |
+| #1554 | MEDIUM | docs site | Hive sitemap/links | Different repo — out of scope |
+| #11355 | LOW | feedback_github.go:647 | `call.Detail` markdown injection | ✅ Fixed — `strings.NewReplacer` sanitization |
+
+### Verified in HEAD
+
+- `startup-oauth.sh`: `BACKEND_BUILD_PID` killed in `cleanup()` (line 273) ✅
+- `startup-oauth.sh`: `wait "$BACKEND_BUILD_PID" || true` + explicit exit code capture ✅
+- `analytics-core.ts`: `_resetAnalyticsState()` resets `failedApiCalls` (line 909) ✅
+- `FeedbackModal.tsx`: `page_url` uses `origin + pathname` (no query/hash) ✅
+- `feedback_github.go`: backtick/newline sanitization on `call.Detail` ✅
+- `index.css`: `scrollbar-gutter: stable` inside `@supports` block ✅
+
+### GA4
+Nominal — no anomalies.
+
+### Outstanding
+- nightlyPlaywright RED: scanner owns — Issue #11348 open
+
+---
+
 ## Pass 98 — 2026-05-02T02:52–03:05 UTC
 
 ### Trigger
