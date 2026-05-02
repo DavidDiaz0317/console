@@ -311,7 +311,7 @@ describe('useHelmReleases', () => {
       .mockRejectedValueOnce(new Error('now failing'))
       .mockImplementation(() => new Promise(() => {}))
 
-    await act(async () => { result.current.refetch() })
+    await act(async () => { await result.current.refetch() })
 
     // Original data should be preserved despite the error
     await waitFor(() => expect(result.current.consecutiveFailures).toBeGreaterThanOrEqual(1))
