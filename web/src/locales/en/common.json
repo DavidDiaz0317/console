@@ -1957,7 +1957,8 @@
     "viewHistory": "View {{count}} previous missions",
     "viewHistory_one": "View {{count}} previous mission",
     "viewHistory_other": "View {{count}} previous missions",
-    "missionHistory": "Mission History"
+    "missionHistory": "Mission History",
+    "headerActions": "Mission sidebar actions"
   },
   "feedback": {
     "share": "Share",
@@ -3792,7 +3793,8 @@
       "autoRefreshTitle": "Auto-refresh every 30s",
       "auto": "Auto",
       "clickToRetry": "Click to retry",
-      "updated": "Updated {{time}}"
+      "updated": "Updated {{time}}",
+      "toolbarLabel": "Dashboard toolbar"
     },
     "issueItem": {
       "issues": "Issues",

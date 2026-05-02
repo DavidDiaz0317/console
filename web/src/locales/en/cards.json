@@ -728,7 +728,8 @@
     "keepThisTooltip": "Cancel the swap and keep this card",
     "cardInfo": "Card information",
     "noDataTitle": "No data available",
-    "noDataMessage": "This card has no data to display. Data may become available when the data source is connected."
+    "noDataMessage": "This card has no data to display. Data may become available when the data source is connected.",
+    "cardActions": "Card actions"
   },
   "github": {
     "pullRequests": "Pull Requests",
