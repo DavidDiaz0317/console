@@ -1398,7 +1398,7 @@ Please:
                     <span className="text-sm text-muted-foreground">{t('drilldown.status.fetchingPodStatus')}</span>
                   </div>
                 ) : podStatusOutput ? (
-                  <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono">
+                  <pre className="p-3 rounded-lg bg-muted border border-border overflow-x-auto text-xs text-foreground font-mono">
                     <code className="text-muted-foreground"># kubectl get pod {podName} -n {namespace} -o wide</code>
                     {'\n'}
                     {podStatusOutput}
@@ -1464,7 +1464,7 @@ Please:
                     View all
                   </button>
                 </div>
-                <pre className="p-3 rounded-lg bg-black/50 border border-border overflow-x-auto text-xs text-foreground font-mono max-h-32 overflow-y-auto">
+                <pre className="p-3 rounded-lg bg-muted border border-border overflow-x-auto text-xs text-foreground font-mono max-h-32 overflow-y-auto">
                   {eventsOutput.includes('No resources found')
                     ? `No events found for pod ${podName}`
                     : eventsOutput.split('\n').slice(0, 6).join('\n')}
@@ -1626,7 +1626,7 @@ Please:
 
       {/* AI Actions Footer - Always visible */}
       {agentConnected && issues.length > 0 && (
-        <div className="border-t border-border bg-card/30">
+        <div className="border-t border-border bg-card">
           <PodAiAnalysis
             aiAnalysis={aiAnalysis}
             aiAnalysisLoading={aiAnalysisLoading}

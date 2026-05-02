@@ -35,13 +35,13 @@ const TYPE_LABELS: Record<MarketplaceItemType, { label: string; icon: typeof Lay
   theme: { label: 'Themes', icon: Palette } }
 
 const DIFFICULTY_CONFIG = {
-  beginner: { label: 'Beginner', color: 'text-green-400 bg-green-950', stars: 1 },
-  intermediate: { label: 'Intermediate', color: 'text-yellow-400 bg-yellow-950', stars: 2 },
-  advanced: { label: 'Advanced', color: 'text-red-400 bg-red-950', stars: 3 } } as const
+  beginner: { label: 'Beginner', color: 'text-green-400 bg-green-500/10', stars: 1 },
+  intermediate: { label: 'Intermediate', color: 'text-yellow-400 bg-yellow-500/10', stars: 2 },
+  advanced: { label: 'Advanced', color: 'text-red-400 bg-red-500/10', stars: 3 } } as const
 
 const MATURITY_CONFIG = {
-  graduated: { label: 'Graduated', color: 'text-green-400 bg-green-950 border-green-800' },
-  incubating: { label: 'Incubating', color: 'text-blue-400 bg-blue-950 border-blue-800' } } as const
+  graduated: { label: 'Graduated', color: 'text-green-400 bg-green-500/10 border-green-500/30' },
+  incubating: { label: 'Incubating', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' } } as const
 
 // --- CNCF Progress Banner ---
 function CNCFProgressBanner({ stats }: { stats: CNCFStats }) {
