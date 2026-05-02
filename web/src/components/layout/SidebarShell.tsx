@@ -486,7 +486,10 @@ export function SidebarShell({
                     <Satellite className="w-3.5 h-3.5 text-purple-400 shrink-0" aria-label="Ground Control dashboard" />
                   )}
                   {count != null && (
-                    <span className="text-[10px] text-muted-foreground/40 tabular-nums ml-0.5 shrink-0">{count}</span>
+                    <span
+                      className="text-[10px] text-muted-foreground/40 tabular-nums ml-0.5 shrink-0"
+                      title={t('sidebar.cardCount', { count })}
+                    >{count}</span>
                   )}
                 </span>
               )
@@ -621,7 +624,7 @@ export function SidebarShell({
                   className="w-full flex items-center gap-3 px-3 py-1.5 mt-1 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-secondary/30 rounded-lg transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>{t('sidebar.addMore', 'Add more...')}</span>
+                  <span>{t('sidebar.addMore', 'Add dashboard cards…')}</span>
                 </button>
               )}
             </Fragment>
@@ -671,7 +674,10 @@ export function SidebarShell({
                   <CheckCircle2 className="w-3.5 h-3.5 text-green-400" aria-hidden="true" />
                   {t('labels.healthy')}
                 </span>
-                <span className="text-sm font-medium text-green-400">{healthyClusters}</span>
+                <span
+                  className="text-sm font-medium text-green-400"
+                  title={t('sidebar.healthyClusters', { count: healthyClusters })}
+                >{healthyClusters}</span>
               </button>
               <button
                 onClick={() => handleClusterStatusClick('unhealthy')}
@@ -681,7 +687,10 @@ export function SidebarShell({
                   <AlertTriangle className="w-3.5 h-3.5 text-red-400" aria-hidden="true" />
                   {t('labels.unhealthy')}
                 </span>
-                <span className="text-sm font-medium text-red-400">{unhealthyClusters}</span>
+                <span
+                  className="text-sm font-medium text-red-400"
+                  title={t('sidebar.unhealthyClusters', { count: unhealthyClusters })}
+                >{unhealthyClusters}</span>
               </button>
               <button
                 onClick={() => handleClusterStatusClick('unreachable')}
@@ -691,7 +700,10 @@ export function SidebarShell({
                   <WifiOff className="w-3.5 h-3.5 text-yellow-400" aria-hidden="true" />
                   {t('labels.offline')}
                 </span>
-                <span className="text-sm font-medium text-yellow-400">{unreachableClusters}</span>
+                <span
+                  className="text-sm font-medium text-yellow-400"
+                  title={t('sidebar.unreachableClusters', { count: unreachableClusters })}
+                >{unreachableClusters}</span>
               </button>
             </div>
           </div>
