@@ -1092,3 +1092,46 @@ Nominal — no anomalies.
 ### Outstanding
 - nightlyPlaywright RED: scanner owns — Issue #11348 open
 - 43 remaining MEDIUM/LOW Copilot comments across merged PRs — no action required (PRs already merged)
+
+---
+
+## Pass 95 — 2026-05-02T02:11–02:20 UTC
+
+### Trigger
+KICK — nightlyPlaywright=RED. 49 unaddressed Copilot comments (3 HIGH). GA4 nominal.
+
+### RED Analysis
+
+**nightlyPlaywright=RED**: Scanner owns — Issue #11348 already filed. No code fix required.
+
+### Upstream Sync
+
+Rebased onto upstream/main (e4ab6ed71) before push.
+
+### HIGH Copilot Comments — Disposition
+
+All 3 HIGH comments are stale (already fixed in Pass 93):
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11318 | events.go:103 | `limit` echoed without clamping | ✅ Fixed — PR #11362 (merged) |
+| #11326 | drasi_proxy_test.go:25 | Hop-by-hop header not asserted stripped | ✅ Fixed — PR #11363 (merged) |
+| #11355 | FeedbackModal.tsx:234 | `page_url` leaks OAuth params | ✅ Fixed — PR #11364 (merged) |
+
+### Issue Fix
+
+**Issue #11381** — `[Auto-QA] INVENTORY.md references missing component files`
+- `strimzi_status/index.ts` and `kubevela_status/index.ts` listed in INVENTORY.md but actual files are `index.tsx`
+- Fixed: updated INVENTORY.md to reference correct `.tsx` extensions
+- Committed and pushed directly to main
+
+### PR Status
+
+**PR #11380** — "ui: show parallel build progress for frontend and backend": CI pending, not merge-eligible yet.
+
+### GA4
+Nominal — no anomalies.
+
+### Outstanding
+- nightlyPlaywright RED: scanner owns — Issue #11348 open
+- PR #11380: awaiting CI pass
