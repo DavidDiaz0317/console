@@ -135,14 +135,20 @@ export function useDiagnoseRepairLoop(options: UseDiagnoseRepairLoopOptions): Us
     }
   }, [state.phase, repairable])
 
-  // Listen for repair mission completion to transition from repairing to verifying
+  // Listen for repair mission completion to transition from repairing to verifying.
+  // Intentionally omits state.phase from deps: we only want to react to missions
+  // updates (e.g. repair mission status change), NOT to the phase transition itself.
+  // Including state.phase would cause an immediate false trigger when entering
+  // 'repairing' if the diagnosis mission is still in a terminal state. The
+  // setState updater guard (prev.phase !== 'repairing') ensures correctness.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!missionIdRef.current || state.phase !== 'repairing') return
     const mission = missions.find(m => m.id === missionIdRef.current)
     if (!mission) return
-    
-    // Transition when repair mission completes
-    if (mission.status === 'completed' || mission.status === 'failed' || mission.status === 'cancelled') {
+
+    // Only transition on successful completion; treat failed/cancelled as errors
+    if (mission.status === 'completed') {
       setState(prev => {
         if (prev.phase !== 'repairing') return prev
         const approvedRepairs = prev.proposedRepairs.filter(r => r.approved)
@@ -157,8 +163,20 @@ export function useDiagnoseRepairLoop(options: UseDiagnoseRepairLoopOptions): Us
         }
         return newState
       })
+    } else if (mission.status === 'failed' || mission.status === 'cancelled') {
+      setState(prev => {
+        if (prev.phase !== 'repairing') return prev
+        const stepContext = mission.currentStep ? ` at step: ${mission.currentStep}` : ''
+        return {
+          ...prev,
+          phase: 'failed',
+          error: mission.status === 'failed'
+            ? `Repair failed${stepContext}`
+            : `Repair cancelled${stepContext}`
+        }
+      })
     }
-  }, [missions, state.phase])
+  }, [missions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPhase = (phase: DiagnoseRepairPhase) => {
     setState(prev => ({ ...prev, phase }))
