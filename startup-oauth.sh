@@ -356,6 +356,9 @@ launch_kc_agent() {
     [ -z "$KC_AGENT_BIN" ] && { echo -e "${YELLOW}Warning: kc-agent not found. Run 'make build' or install via brew.${NC}"; return; }
     [ -n "$AGENT_LOOP_PID" ] && return  # already running
     echo -e "${GREEN}Starting kc-agent ($KC_AGENT_BIN)...${NC}"
+    # Pidfile written by the restart loop so the parent shell can target the
+    # exact kc-agent process instead of whoever happens to be on port 8585.
+    # Fixes #8127 — an unrelated process listening on :8585 was killed on Ctrl+C.
     : > "$AGENT_PID_FILE"
     (
         KC_AGENT_ARGS=()

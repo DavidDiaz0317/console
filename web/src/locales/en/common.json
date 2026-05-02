@@ -28,6 +28,7 @@
     "deleteSelected": "Delete Selected",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
+    "selectItem": "Select {{title}}",
     "refresh": "Refresh",
     "configure": "Configure",
     "replace": "Replace",
