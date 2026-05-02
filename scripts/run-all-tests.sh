@@ -151,10 +151,11 @@ for script in "${ALL_SCRIPTS[@]}"; do
   echo -e "  ${BOLD}▶ ${SUITE_NAME}${NC}"
 
   # Run the script and capture output + exit code + duration
+  # Use timeout to prevent any script from running longer than 10 minutes
   SUITE_START=$(date +%s)
   SUITE_OUTPUT="/tmp/suite-${SUITE_NAME}.log"
   SUITE_EXIT=0
-  bash "$script" > "$SUITE_OUTPUT" 2>&1 || SUITE_EXIT=$?
+  timeout 600s bash "$script" > "$SUITE_OUTPUT" 2>&1 || SUITE_EXIT=$?
   SUITE_END=$(date +%s)
   SUITE_DURATION=$((SUITE_END - SUITE_START))
 
@@ -163,6 +164,12 @@ for script in "${ALL_SCRIPTS[@]}"; do
     PASSED_SUITES=$((PASSED_SUITES + 1))
     SUITE_STATUS["$SUITE_NAME"]="pass"
     RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"pass\",\"duration\":${SUITE_DURATION}},"
+  elif [ "$SUITE_EXIT" -eq 124 ]; then
+    echo -e "    ${YELLOW}⏰ TIMEOUT${NC}  (${SUITE_DURATION}s) — 10 minute limit exceeded"
+    FAILED_SUITES=$((FAILED_SUITES + 1))
+    FAILED_NAMES+=("$SUITE_NAME")
+    SUITE_STATUS["$SUITE_NAME"]="fail"
+    RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"fail\",\"duration\":${SUITE_DURATION},\"failure_reason\":\"Test timed out after 10 minutes\"},"
   else
     echo -e "    ${RED}❌ FAIL${NC}  (${SUITE_DURATION}s)"
     # Show last few lines of output for failed suites

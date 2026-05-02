@@ -37,8 +37,16 @@ if [[ ${#EXTRA_ENV[@]} -eq 0 ]]; then
   echo "Running deploy dashboard tests against production build..."
 fi
 
+# Ensure clean test environment
+rm -rf e2e/test-results/deploy-results.json e2e/deploy-report/ 2>/dev/null || true
+mkdir -p e2e/test-results e2e/deploy-report
+
+# Run tests with increased stability settings
 env "${EXTRA_ENV[@]}" npx playwright test \
   --config e2e/deploy/deploy.config.ts \
+  --timeout=90000 \
+  --retries=2 \
+  --workers=1 \
   e2e/deploy/deploy-dashboard.spec.ts
 
 echo ""

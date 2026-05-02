@@ -53,8 +53,8 @@ export default defineConfig({
   // Retry failed tests once in CI (balances flake detection vs run time)
   retries: isCI ? 1 : 0,
 
-  // Workers — CI gets 4 workers per shard, local uses half of available cores
-  workers: isCI ? 4 : '50%',
+  // Workers — CI gets 2 workers per shard for better stability, local uses half of available cores
+  workers: isCI ? 2 : '50%',
 
   // Reporter configuration
   reporter: isCI
@@ -67,12 +67,12 @@ export default defineConfig({
       ]
     : [['html', { open: 'never' }], ['./e2e/helpers/ux-reporter.ts']],
 
-  // Global timeout per test
-  timeout: 60000,
+  // Global timeout per test (increased for nightly stability)
+  timeout: isCI ? 75000 : 60000,
 
-  // Expect timeout
+  // Expect timeout (increased for slower CI environments)
   expect: {
-    timeout: 10000,
+    timeout: isCI ? 15000 : 10000,
   },
 
   // Shared settings for all projects

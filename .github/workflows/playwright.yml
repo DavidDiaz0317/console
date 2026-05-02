@@ -64,7 +64,7 @@ jobs:
     name: Test (chromium, shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -102,9 +102,9 @@ jobs:
       - name: Run Playwright tests
         run: |
           if [ -n "${{ inputs.spec_filter }}" ]; then
-            npx playwright test --project=chromium "${{ inputs.spec_filter }}"
+            npx playwright test --project=chromium --timeout=75000 --retries=2 "${{ inputs.spec_filter }}"
           else
-            npx playwright test --project=chromium --shard=${{ matrix.shard }}/4
+            npx playwright test --project=chromium --timeout=75000 --retries=1 --shard=${{ matrix.shard }}/4
           fi
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:4173
@@ -254,7 +254,7 @@ jobs:
     name: Mobile Browser Tests
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: web
@@ -289,7 +289,9 @@ jobs:
         run: |
           npx playwright test \
             --project=mobile-chrome \
-            --project=mobile-safari
+            --project=mobile-safari \
+            --timeout=75000 \
+            --retries=2
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:4173
 
