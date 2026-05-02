@@ -1113,3 +1113,259 @@ describe('useKagentiSummary — edge cases', () => {
     expect(result.current.summary!.frameworks).toEqual({ ag2: 3 })
   })
 })
+
+// ===========================================================================
+// Error handling — auth failures, network errors, malformed responses (#11383)
+// ===========================================================================
+
+describe('useKagentiAgents — error handling', () => {
+  it('fetcher throws classified error on 401 Unauthorized', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    })
+
+    renderHook(() => useKagentiAgents())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/Authentication failed \(401\)/)
+
+    globalThis.fetch = originalFetch
+  })
+
+  it('fetcher throws classified error on 403 Forbidden', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+    })
+
+    renderHook(() => useKagentiAgents())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/Authentication failed \(403\)/)
+
+    globalThis.fetch = originalFetch
+  })
+
+  it('fetcher throws classified error on TypeError (network down)', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+
+    renderHook(() => useKagentiAgents())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/not connected|Failed to fetch/i)
+
+    globalThis.fetch = originalFetch
+  })
+
+  it('fetcher handles 404 Not Found with classified error', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    })
+
+    renderHook(() => useKagentiAgents())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/not found/i)
+
+    globalThis.fetch = originalFetch
+  })
+})
+
+describe('useKagentiBuilds — error handling', () => {
+  it('fetcher throws classified error on 401 Unauthorized', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    })
+
+    renderHook(() => useKagentiBuilds())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/Authentication failed \(401\)/)
+
+    globalThis.fetch = originalFetch
+  })
+
+  it('fetcher throws on network TypeError', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('NetworkError when attempting to fetch resource'))
+
+    renderHook(() => useKagentiBuilds())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/not connected|NetworkError/i)
+
+    globalThis.fetch = originalFetch
+  })
+})
+
+describe('useKagentiTools — error handling', () => {
+  it('fetcher throws classified error on 403 Forbidden', async () => {
+    mockIsAgentUnavailable.mockReturnValue(false)
+    mockClusterCacheRef.clusters = [
+      { name: 'prod', context: 'prod-ctx', reachable: true },
+    ]
+
+    let capturedFetcher: (() => Promise<unknown>) | null = null
+    mockUseCache.mockImplementation((opts: { fetcher: () => Promise<unknown> }) => {
+      capturedFetcher = opts.fetcher
+      return {
+        data: [], isLoading: false, isRefreshing: false, error: null,
+        refetch: vi.fn(), isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: 0, isFailed: false, lastRefresh: null,
+      }
+    })
+
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+    })
+
+    renderHook(() => useKagentiTools())
+    expect(capturedFetcher).not.toBeNull()
+
+    await expect(capturedFetcher!()).rejects.toThrow(/Authentication failed \(403\)/)
+
+    globalThis.fetch = originalFetch
+  })
+})
+
+describe('useKagentiSummary — error propagation', () => {
+  it('propagates auth error from agents hook', () => {
+    let callCount = 0
+    mockUseCache.mockImplementation(() => {
+      callCount++
+      return {
+        data: [],
+        isLoading: false, isRefreshing: false,
+        error: callCount === 1 ? 'Authentication failed (401) for /kagenti/agents' : null,
+        refetch: vi.fn(),
+        isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: callCount === 1 ? 3 : 0,
+        isFailed: callCount === 1,
+        lastRefresh: new Date(),
+      }
+    })
+
+    const { result } = renderHook(() => useKagentiSummary())
+    expect(result.current.error).toContain('Authentication failed (401)')
+  })
+
+  it('propagates network error from agents hook', () => {
+    let callCount = 0
+    mockUseCache.mockImplementation(() => {
+      callCount++
+      return {
+        data: [],
+        isLoading: false, isRefreshing: false,
+        error: callCount === 1 ? 'Kagenti agent not connected' : null,
+        refetch: vi.fn(),
+        isDemoData: false, isDemoFallback: false,
+        consecutiveFailures: callCount === 1 ? 3 : 0,
+        isFailed: callCount === 1,
+        lastRefresh: new Date(),
+      }
+    })
+
+    const { result } = renderHook(() => useKagentiSummary())
+    expect(result.current.error).toContain('Kagenti agent not connected')
+  })
+})
