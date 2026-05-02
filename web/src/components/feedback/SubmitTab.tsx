@@ -30,6 +30,7 @@ import {
   MAX_TITLE_LENGTH,
   MAX_VIDEO_SIZE_BYTES,
   ACCEPTED_MEDIA_TYPES,
+  ACCEPTED_VIDEO_MIME_TYPES,
 } from './FeatureRequestTypes'
 
 // ── Success View (shown after successful submission) ──
@@ -202,10 +203,10 @@ export function SubmitForm({
   const handleScreenshotFiles = (files: FileList | null) => {
     if (!files) return
     const mediaFiles = Array.from(files).filter(f =>
-      f.type.startsWith('image/') || f.type.startsWith('video/')
+      f.type.startsWith('image/') || ACCEPTED_VIDEO_MIME_TYPES.has(f.type)
     )
     mediaFiles.forEach(file => {
-      const isVideo = file.type.startsWith('video/')
+      const isVideo = ACCEPTED_VIDEO_MIME_TYPES.has(file.type)
       if (isVideo && file.size > MAX_VIDEO_SIZE_BYTES) {
         showToast(`Video "${file.name}" exceeds 10 MB limit. Please use a shorter or lower-resolution recording.`, 'error')
         return

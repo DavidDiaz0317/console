@@ -27,7 +27,7 @@ import { compressScreenshot } from '../../lib/imageCompression'
 import { useFeatureRequests, DiagnosticInfo } from '../../hooks/useFeatureRequests'
 import { useLocalAgent } from '../../hooks/useLocalAgent'
 import { useAuth } from '../../lib/auth'
-import { MAX_VIDEO_SIZE_BYTES, ACCEPTED_MEDIA_TYPES } from './FeatureRequestTypes'
+import { MAX_VIDEO_SIZE_BYTES, ACCEPTED_MEDIA_TYPES, ACCEPTED_VIDEO_MIME_TYPES } from './FeatureRequestTypes'
 
 type FeedbackType = 'bug' | 'feature'
 
@@ -69,10 +69,10 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
   const handleScreenshotFiles = (files: FileList | null) => {
     if (!files) return
     const allFiles = Array.from(files)
-    const mediaFiles = allFiles.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'))
+    const mediaFiles = allFiles.filter(f => f.type.startsWith('image/') || ACCEPTED_VIDEO_MIME_TYPES.has(f.type))
     if (mediaFiles.length === 0) return
     mediaFiles.forEach(file => {
-      const isVideo = file.type.startsWith('video/')
+      const isVideo = ACCEPTED_VIDEO_MIME_TYPES.has(file.type)
       if (isVideo && file.size > MAX_VIDEO_SIZE_BYTES) {
         showToast(`Video "${file.name}" exceeds 10 MB limit. Please use a shorter or lower-resolution recording.`, 'error')
         return
@@ -98,7 +98,7 @@ export function FeedbackModal({ isOpen, onClose, initialType = 'feature' }: Feed
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    const mediaCount = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/')).length
+    const mediaCount = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || ACCEPTED_VIDEO_MIME_TYPES.has(f.type)).length
     if (mediaCount > 0) emitScreenshotAttached('drop', mediaCount)
     handleScreenshotFiles(e.dataTransfer.files)
   }
