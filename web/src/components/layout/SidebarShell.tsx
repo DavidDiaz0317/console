@@ -666,32 +666,35 @@ export function SidebarShell({
               <button
                 onClick={() => handleClusterStatusClick('healthy')}
                 className="w-full flex items-center justify-between hover:bg-secondary/50 rounded px-1 py-0.5 transition-colors"
+                aria-label={`${t('labels.healthy')}: ${healthyClusters}`}
               >
                 <span className="flex items-center gap-1.5 text-sm text-foreground">
                   <CheckCircle2 className="w-3.5 h-3.5 text-green-400" aria-hidden="true" />
                   {t('labels.healthy')}
                 </span>
-                <span className="text-sm font-medium text-green-400">{healthyClusters}</span>
+                <span className="text-sm font-medium text-green-400" aria-hidden="true">{healthyClusters}</span>
               </button>
               <button
                 onClick={() => handleClusterStatusClick('unhealthy')}
                 className="w-full flex items-center justify-between hover:bg-secondary/50 rounded px-1 py-0.5 transition-colors"
+                aria-label={`${t('labels.unhealthy')}: ${unhealthyClusters}`}
               >
                 <span className="flex items-center gap-1.5 text-sm text-foreground">
                   <AlertTriangle className="w-3.5 h-3.5 text-red-400" aria-hidden="true" />
                   {t('labels.unhealthy')}
                 </span>
-                <span className="text-sm font-medium text-red-400">{unhealthyClusters}</span>
+                <span className="text-sm font-medium text-red-400" aria-hidden="true">{unhealthyClusters}</span>
               </button>
               <button
                 onClick={() => handleClusterStatusClick('unreachable')}
                 className="w-full flex items-center justify-between hover:bg-secondary/50 rounded px-1 py-0.5 transition-colors"
+                aria-label={`${t('labels.offline')}: ${unreachableClusters}`}
               >
                 <span className="flex items-center gap-1.5 text-sm text-foreground">
                   <WifiOff className="w-3.5 h-3.5 text-yellow-400" aria-hidden="true" />
                   {t('labels.offline')}
                 </span>
-                <span className="text-sm font-medium text-yellow-400">{unreachableClusters}</span>
+                <span className="text-sm font-medium text-yellow-400" aria-hidden="true">{unreachableClusters}</span>
               </button>
             </div>
           </div>
@@ -699,7 +702,7 @@ export function SidebarShell({
 
         {/* Viewer count + commit hash */}
         {features.activeUsers && !isCollapsed && (
-          <div className="mt-auto pt-4 flex flex-col items-center gap-1">
+          <div className="mt-auto pt-4 border-t border-border/30 flex flex-col items-center gap-1">
             <div className="flex items-center justify-center gap-2">
               <div
                 className="flex items-center gap-1 px-2 text-muted-foreground/60"
@@ -711,7 +714,7 @@ export function SidebarShell({
                 </span>
               </div>
               <span className="text-2xs text-muted-foreground/40 font-mono" title={`Commit: ${__COMMIT_HASH__}`}>
-                {__COMMIT_HASH__.substring(0, 7)}
+                {`v${__COMMIT_HASH__.substring(0, 7)}`}
               </span>
             </div>
             {/* Developer mode: warn when running an older commit, or show upgrade progress */}

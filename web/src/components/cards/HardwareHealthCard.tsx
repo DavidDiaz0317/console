@@ -890,7 +890,7 @@ export function HardwareHealthCard() {
                           <StatusBadge color="green" size="xs">GPU Driver</StatusBadge>
                         )}
                         {getTotalDevices(node.devices) === 0 && (
-                          <span className="text-2xs text-muted-foreground italic">{t('hardwareHealth.noDevicesDetected')}</span>
+                          <span className="text-2xs text-muted-foreground italic" title="This node has no GPU, NIC, NVMe, or InfiniBand devices reported by the kubelet">{t('hardwareHealth.noDevicesDetected')}</span>
                         )}
                       </div>
                     </div>
@@ -904,10 +904,16 @@ export function HardwareHealthCard() {
             {sortedInventory.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground py-8">
                 <Server className="w-6 h-6 mb-2 text-muted-foreground/50" />
-                {search || localClusterFilter.length > 0
-                  ? 'No matching nodes'
-                  : 'No nodes tracked yet'}
-                <span className="text-xs mt-1">Waiting for device scan...</span>
+                <span>
+                  {search || localClusterFilter.length > 0
+                    ? 'No matching nodes'
+                    : 'No nodes tracked yet'}
+                </span>
+                <span className="text-xs mt-1 text-center max-w-[240px]">
+                  {search || localClusterFilter.length > 0
+                    ? 'Try adjusting your search or cluster filter'
+                    : 'Hardware device scanning requires the kc-agent to be connected and clusters with GPU, NIC, or NVMe devices'}
+                </span>
               </div>
             )}
           </>

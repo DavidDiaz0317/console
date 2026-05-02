@@ -369,8 +369,11 @@ export function ActiveAlerts() {
         placeholder={t('activeAlerts.searchAlerts')}
       />
 
-      {/* Stats Row */}
-      <AlertStatsRow critical={stats.critical} warning={stats.warning} acknowledged={stats.acknowledged} />
+      {/* Stats Row — only show when there are alerts to display, otherwise
+           the counts conflict with the "no active alerts" empty state (#11404) */}
+      {displayedAlerts.length > 0 && (
+        <AlertStatsRow critical={stats.critical} warning={stats.warning} acknowledged={stats.acknowledged} />
+      )}
 
       {/* Alerts List */}
       <div ref={containerRef} className="flex-1 overflow-y-auto space-y-2" style={containerStyle}>
@@ -378,7 +381,11 @@ export function ActiveAlerts() {
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
             <CheckCircle className="w-8 h-8 mb-2 text-green-400" />
             <span>{t('activeAlerts.noActiveAlerts')}</span>
-            <span className="text-xs">{t('activeAlerts.allSystemsOperational')}</span>
+            <span className="text-xs">
+              {severityFilteredAlerts.length > 0
+                ? t('activeAlerts.adjustFilters', 'Alerts exist but are hidden by current filters')
+                : t('activeAlerts.allSystemsOperational')}
+            </span>
           </div>
         ) : (
           displayedAlerts.map((alert: Alert) => (
