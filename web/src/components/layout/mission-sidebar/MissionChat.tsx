@@ -447,7 +447,7 @@ export function MissionChat({ mission, isFullScreen = false, fontSize = 'base' a
               <h3 className="font-semibold text-foreground flex-1 truncate">{mission.title}</h3>
               <button
                 onClick={startEditingTitle}
-                className="p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100 hover:bg-secondary"
+                className="p-0.5 rounded transition-colors text-muted-foreground hover:bg-secondary"
                 title={t('missionChat.renameTitle', { defaultValue: 'Rename mission' })}
                 data-testid="mission-title-edit-btn"
               >
