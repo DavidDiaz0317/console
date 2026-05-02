@@ -48,7 +48,7 @@ interface EventStreamConfig {
 }
 
 function EventStreamInternal({ config }: { config?: EventStreamConfig }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'cards'])
   const { isDemoMode } = useDemoMode()
   const userLimit =
     typeof config?.limit === 'number' && config.limit > 0 ? config.limit : null
@@ -201,8 +201,8 @@ function EventStreamInternal({ config }: { config?: EventStreamConfig }) {
     return (
       <CardEmptyState
         icon={Radio}
-        title="No events"
-        message="Cluster events will appear here when activity is detected."
+        title={t('cards:eventStream.noEvents')}
+        message={t('cards:eventStream.noEventsHint')}
       />
     )
   }
@@ -259,7 +259,7 @@ function EventStreamInternal({ config }: { config?: EventStreamConfig }) {
       <div ref={containerRef} className="flex-1 space-y-1.5 overflow-y-auto min-h-card-content" style={containerStyle}>
         {events.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No recent events
+            {t('cards:eventStream.noMatchingEvents')}
           </div>
         ) : (
           events.map((event, idx) => {

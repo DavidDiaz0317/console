@@ -1060,7 +1060,14 @@
     "repairSuggestion": "Repair Suggestion",
     "applyRepair": "Apply Repair",
     "watchedWorkloads": "Watched Workloads",
-    "matchLabels": "Match Labels"
+    "matchLabels": "Match Labels",
+    "diagnoseRequiresCluster": "Diagnose requires a connected cluster or AI API key",
+    "diagnoseNoResults": "No issues found — all monitored resources appear healthy",
+    "repairComplete": "Repair actions completed successfully",
+    "repairFailed": "Repair actions failed",
+    "diagnoseComplete": "Diagnosis complete",
+    "diagnoseFailed": "Diagnosis failed",
+    "close": "Close"
   },
   "llmd": {
     "inference": "Inference",
@@ -2554,8 +2561,8 @@
     "unknown": "Unknown issue detected"
   },
   "eventsTimeline": {
-    "noEvents": "No events",
-    "noEventsHint": "Cluster events will appear here",
+    "noEvents": "No timeline data",
+    "noEventsHint": "Event frequency trends and patterns will be charted here over time.",
     "range15m": "15m",
     "range1h": "1h",
     "range6h": "6h",
@@ -4654,5 +4661,10 @@
     "updated": "Updated",
     "skipped": "Skipped",
     "failed": "Failed"
+  },
+  "eventStream": {
+    "noEvents": "No events detected",
+    "noEventsHint": "Live cluster events will stream here as they occur. Connect a cluster to begin.",
+    "noMatchingEvents": "No events match current filters"
   }
 }
