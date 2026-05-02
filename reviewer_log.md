@@ -1,5 +1,41 @@
 # Reviewer Log
 
+## Pass 98 — 2026-05-02T02:52–03:05 UTC
+
+### Trigger
+KICK — nightlyPlaywright=RED. 57 unaddressed Copilot comments. GA4 nominal.
+
+### RED Analysis
+
+**nightlyPlaywright=RED**: Scanner owns — Issue #11348 already filed per Pass 95/96/97. No new code fix required.
+
+### Green PRs Merged
+
+**PR #11382** already merged to main by scanner (`0b418ec9b`). No additional merge-eligible PRs.
+
+### HIGH Copilot Comments — All Resolved (stale, all PRs merged)
+
+| PR | File | Issue | Status |
+|----|------|-------|--------|
+| #11318 | events.go:103 | `limit` echoed without clamping | ✅ Fixed PR #11362 |
+| #11326 | drasi_proxy_test.go:25 | Hop-by-hop header not asserted stripped | ✅ Fixed PR #11363 |
+| #11355 | FeedbackModal.tsx:234 | `page_url` leaks OAuth params | ✅ Fixed PR #11364 |
+| #11380 | startup-oauth.sh:570 | Stale watchdog on stage string changes | ✅ Fixed PR #11382 |
+
+### Bug Fix Applied
+
+**`web/src/hooks/mcp/__tests__/helm.test.ts:314`** — Missing `await` on `result.current.refetch()` inside `act(async () => {...})`. This was the only remaining actionable MEDIUM issue not previously addressed. The same fix had already been applied to `storage.test.ts` in PR #11365 but was missed in helm.test.ts.
+
+Committed: `aebb6c4c0` — `🐛 fix(tests): await refetch() inside act() in helm.test.ts`
+Pushed directly to main.
+
+### GA4
+Nominal — no anomalies ✅
+
+### Outstanding
+- nightlyPlaywright RED: scanner owns — Issue #11348 open
+- 56 remaining MEDIUM/LOW Copilot comments across merged PRs — historical artifact, no action required
+
 ## Pass 97 — 2026-05-02T02:51–03:00 UTC
 
 ### Trigger
