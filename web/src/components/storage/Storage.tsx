@@ -127,6 +127,7 @@ export function Storage() {
   const { pvcs, error: pvcsError } = useCachedPVCs()
   const error = clustersError || pvcsError
   const { drillToResources } = useDrillDownActions()
+  const { t } = useTranslation()
 
   // PVC List Modal state
   const { isOpen: showPVCModal, open: openPVCModal, close: closePVCModal } = useModalState()
