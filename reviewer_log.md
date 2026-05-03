@@ -1083,3 +1083,64 @@ All 6 HIGH source-file comments remain addressed from passes 78–81:
 - nightlyPlaywright: waiting for next nightly run post-source-fixes
 
 **Status:** Source fixes committed; PR #11210 in CI. Monitoring nightlyRel completion.
+
+---
+
+## Reviewer Pass — 2026-05-03T08:30Z
+
+### Coverage
+- **Current**: Lines=89.54% (badge shows 90%), Statements=88.18%, Branches=78.77%, Functions=86.04%
+- **Target**: 91% lines — gap is ~1.5pp
+- PR #11676 (fix/coverage-tests) merged at 08:02 UTC; Coverage Suite run 25273723308 confirms 89.54% post-merge
+- Badge guard triggered: badge not updated because `round(89.54)=90` == previous 90%; hive `coverage-last.txt` still shows `90`
+- **Action needed**: ~1.5pp additional coverage required; follow-up PR needed targeting uncovered modules
+
+### CI Workflow Health
+| Workflow | Status | Notes |
+|---|---|---|
+| Nightly Test Suite | ✅ GREEN | 32/32 pass today (run 25272298112); yesterday FAILURE fixed by PR #11666 |
+| Playwright Cross-Browser (Nightly) | 🔴 RED | Failure 3/3 recent runs (25272866690, 25246507690, 25209161348); issue #11675 filed; scanner owns fix |
+| Nightly UX Journey Tests | 🔴 RED | Failure 2/2 recent runs (25271523968, 25245155005); issue #11678 filed today; Playwright — scanner owns |
+| Release | 🟡 YELLOW | 3 runs cancelled on May 3 (01:00, 06:01, 06:03 UTC); arm64 docker-build cancelled in all 3; all ran before PR #11669 timeout fix (merged 06:53 UTC); next nightly run should pass |
+| Coverage Suite | ✅ GREEN | Last 3 runs success (25273940347 in-progress, 25273723308 ✓, 25272437269 ✓) |
+| Build and Deploy KC | ✅ GREEN | Last 5 builds all succeeded; deploy jobs on PR branches correctly skipped |
+| Post-Merge Playwright Verification | ✅ GREEN | 25273940336 success |
+| Go Tests | ✅ GREEN | 25273940337 success |
+
+### Release Freshness
+- **Nightly**: `v0.3.24-nightly.20260503` published 2026-05-03T01:18 (~7h ago) — ✅ within 36h window
+  - Note: release GitHub tag/notes created; arm64 docker image absent (arm64 build was cancelled pre-fix)
+- **Weekly/Stable**: No stable release; release.yml cron collision on Sundays (both `0 5 * * *` + `0 5 * * 0`) — two concurrent runs both failing; no impact this week (Saturday)
+- **Previous nightlies**: v0.3.20-nightly.20260408 was last prior (25 days gap); cadence irregular
+
+### Build and Deploy KC — Last 5 Runs
+| Run ID | Branch | Build | deploy-vllm-d | deploy-pok-prod |
+|---|---|---|---|---|
+| 25273940324 | main | ✅ | in_progress | in_progress |
+| 25273723303 | main | ✅ | ✅ success | ✅ success |
+| 25273612073 | fix/arch-mcp-nullsafety | ✅ | skipped (PR) | skipped (PR) |
+| 25273452015 | fix/coverage-tests | ✅ | skipped (PR) | skipped (PR) |
+| 25273077493 | main | ✅ | ✅ success | ✅ success |
+
+vllm-d and pok-prod01 deploy correctly on all main-branch pushes; skipped on PR branch runs as expected.
+
+### Helm Chart
+- `deploy/helm/kubestellar-console/Chart.yaml`: `version: 0.0.0`, `appVersion: "latest"` — static placeholder, never bumped with releases
+- Last `helm-release.yml` run: 2026-04-23 (10 days ago, success)
+- Helm chart version not synchronized with nightly release tags — **known gap, not blocking**
+
+### Brew Formula
+- `brewFresh=1` per hive metrics → ✅ fresh
+- No `.rb` formula in console repo (formula lives in tap repo)
+
+### Actions Taken This Pass
+- PR #11676 merged (fix/coverage-tests — clusterUtils truthy-check + coverage tests)
+- Issue #11678 filed (Nightly UX Journey Tests: sidebar ci-cd→acmm nav failure)
+- Issue #11679 filed (Release arm64 timeout, pre-fix; resolved by PR #11669)
+- docs #1574 confirmed merged
+
+### Open Items
+- Coverage 89.54% vs 91% target — follow-up coverage PR needed
+- nightlyPlaywright RED — issue #11675 (scanner owns)
+- nightlyRel: next nightly run (tomorrow 05:00 UTC) expected to pass with PR #11669 arm64 timeout fix
+- Helm chart version frozen at 0.0.0 — not linked to release tags
