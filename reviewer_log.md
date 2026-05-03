@@ -1193,3 +1193,56 @@ vllm-d and pok-prod01 deploy correctly on all main-branch pushes; skipped on PR 
 - useIsTablet tests expected to close ~0.3pp; remaining gap ~1.2pp
 - Uncovered modules: `useMissions.provider.tsx` (21.8%), `DashboardPage.tsx` (63.5%), `DashboardGrid.tsx` (75.5%), `UnifiedDashboard.tsx` (75.7%)
 - Follow-up coverage PRs needed for these larger components (complex React rendering)
+
+---
+
+## Reviewer Pass — 2026-05-03T10:00Z
+
+### Hive Pull
+- `git pull /tmp/hive` — diverged; rebased onto upstream/main (3a4232403)
+- New upstream commits: `3a4232403` (helm exec → K8s API for release listing), `33ea1cb53` (WebSocket isInClusterMode guard)
+
+### GA4
+- Nominal — no anomalies
+
+### RED Indicators
+| Indicator | Status | Action |
+|---|---|---|
+| nightlyPlaywright | 🔴 RED | Scanner owns; issue #11675 filed |
+| nightlyRel | 🔴 RED | PR #11669 (arm64 timeout fix) merged; next nightly run expected to pass |
+| weeklyRel | 🔴 RED | Same root cause as nightlyRel; will resolve with next run |
+| coverage | � 90% (target 91%) | 9 new coverage tests added this pass (below) |
+
+### HIGH Copilot Comments Fixed This Pass
+
+**Data race in provider_openai_compat_test.go (PR#11625, PR#11633)**
+- Commit `c39d3206d` had accidentally *reverted* the correct fix by removing the local `auth` variable
+- Restored: `auth := capturedAuth` before `mu.Unlock()` so the 401 check reads the local copy, not the shared variable — eliminates race under `go test -race`
+
+**alertStorage.ts spurious re-exports (PR#11559)**
+- Removed `export { FETCH_DEFAULT_TIMEOUT_MS, STORAGE_KEY_AUTH_TOKEN }` from `alertStorage.ts`
+- Neither constant belongs to the storage layer; no consumers import them via this module
+- Import line trimmed to only `STORAGE_KEY_NOTIFIED_ALERT_KEYS` (which IS used in the file body)
+
+### Coverage: 9 New Tests Added
+
+**DashboardGrid coverage tests (+4 tests)**
+- Legacy `card_type` field (branch: `placement.cardType || placement.card_type`)
+- Narrow viewport clamping: w=4 → span 6 when innerWidth < 1024
+- Wide card no-clamp: w=8 stays span 8 on narrow viewport
+- DragOverlay element present when drag-drop enabled
+
+**DashboardPage handler coverage (+5 tests, new file)**
+- `handleRemoveCard` → calls `removeCard(cardId)`
+- `handleConfigureCard` → calls `openConfigureCard(cardId)`
+- `handleWidthChange` → calls `updateCardWidth(cardId, newWidth)`
+- `handleHeightChange` → calls `updateCardHeight(cardId, newHeight)`
+- `handleSaveCardConfig` → calls `configureCard(cardId, config)` and `setConfiguringCard(null)`
+
+### Commits Pushed
+- `66feb6c3f` — 🐛 Fix HIGH Copilot comments: data race in openai_compat_test, alertStorage re-exports; add coverage tests
+
+### Remaining Items
+- Coverage: still ~90%, need +1pp to reach 91%. Key gap: `useMissions.provider.tsx` (21.8%, 3162 lines — complex React/WS component, requires heavy mock infrastructure to improve)
+- nightlyPlaywright RED — scanner owns
+- nightlyRel/weeklyRel RED — PR #11669 arm64 fix should resolve on next nightly run
