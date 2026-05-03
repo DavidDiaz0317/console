@@ -73,7 +73,7 @@ vi.mock('../../contexts/alertStorage', () => ({
   loadFromStorage: vi.fn(() => []),
   saveToStorage: vi.fn(),
   saveAlerts: vi.fn(),
-  STORAGE_KEY_AUTH_TOKEN: 'kc-token',
+  STORAGE_KEY_AUTH_TOKEN: 'auth_token',
   FETCH_DEFAULT_TIMEOUT_MS: 10_000,
   DEFAULT_TEMPERATURE_THRESHOLD_F: 100,
   DEFAULT_WIND_SPEED_THRESHOLD_MPH: 40,

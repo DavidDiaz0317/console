@@ -258,7 +258,7 @@ describe('agentFetchers failure paths', () => {
       loadFromStorage: vi.fn(() => []),
       saveToStorage: vi.fn(),
       saveAlerts: vi.fn(),
-      STORAGE_KEY_AUTH_TOKEN: 'kc-token',
+      STORAGE_KEY_AUTH_TOKEN: 'auth_token',
       FETCH_DEFAULT_TIMEOUT_MS: 10_000,
       DEFAULT_TEMPERATURE_THRESHOLD_F: 100,
       DEFAULT_WIND_SPEED_THRESHOLD_MPH: 40,
@@ -461,7 +461,7 @@ describe('agentFetchers failure paths', () => {
 
     it('returns null when no auth token', async () => {
       mockIsAgentUnavailable.mockReturnValue(false)
-      localStorage.removeItem('kc-token')
+      localStorage.removeItem('auth_token')
       const { fetchCiliumStatus } = await import('../../hooks/useCachedData/agentFetchers')
       const result = await fetchCiliumStatus()
       expect(result).toBeNull()
@@ -469,7 +469,7 @@ describe('agentFetchers failure paths', () => {
 
     it('returns null when token is demo-token', async () => {
       mockIsAgentUnavailable.mockReturnValue(false)
-      localStorage.setItem('kc-token', 'demo-token')
+      localStorage.setItem('auth_token', 'demo-token')
       const { fetchCiliumStatus } = await import('../../hooks/useCachedData/agentFetchers')
       const result = await fetchCiliumStatus()
       expect(result).toBeNull()
@@ -477,7 +477,7 @@ describe('agentFetchers failure paths', () => {
 
     it('returns null on fetch error (suppresses console noise)', async () => {
       mockIsAgentUnavailable.mockReturnValue(false)
-      localStorage.setItem('kc-token', 'real-token-123')
+      localStorage.setItem('auth_token', 'real-token-123')
       mockAgentFetch.mockRejectedValue(new Error('Connection refused'))
 
       const { fetchCiliumStatus } = await import('../../hooks/useCachedData/agentFetchers')
@@ -487,7 +487,7 @@ describe('agentFetchers failure paths', () => {
 
     it('returns null on non-ok HTTP response', async () => {
       mockIsAgentUnavailable.mockReturnValue(false)
-      localStorage.setItem('kc-token', 'real-token-123')
+      localStorage.setItem('auth_token', 'real-token-123')
       mockAgentFetch.mockResolvedValue({ ok: false, status: 404 })
 
       const { fetchCiliumStatus } = await import('../../hooks/useCachedData/agentFetchers')
