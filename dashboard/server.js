@@ -1115,21 +1115,64 @@ function parseEnvFile(filePath) {
   return vars;
 }
 
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function shellQuote(str) {
+  return "'" + str.replace(/'/g, "'\\''") + "'";
+}
+
+const AGENT_NAME_RE = /^[a-z][a-z0-9_-]{0,30}$/;
+
+function validateAgentName(name) {
+  if (!AGENT_NAME_RE.test(name)) return false;
+  if (!ENABLED_AGENTS.includes(name)) return false;
+  return true;
+}
+
 function writeEnvVar(filePath, key, value) {
-  const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
-  const regex = new RegExp(`^${key}=.*$`, 'm');
-  let updated;
-  if (regex.test(content)) {
-    updated = content.replace(regex, `${key}=${value}`);
-  } else {
-    updated = content.trimEnd() + `\n${key}=${value}\n`;
+  const lockFile = filePath + '.lock';
+  const tmpFile = filePath + '.tmp.' + process.pid;
+  const escapedKey = escapeRegExp(key);
+  const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
+  try {
+    // flock serializes concurrent access; read under lock
+    const content = execSync(
+      `flock -x ${shellQuote(lockFile)} cat ${shellQuote(filePath)} 2>/dev/null || true`,
+      { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
+    );
+    let updated;
+    if (regex.test(content)) {
+      updated = content.replace(regex, `${key}=${value}`);
+    } else {
+      updated = content.trimEnd() + `\n${key}=${value}\n`;
+    }
+    fs.writeFileSync(tmpFile, updated, { mode: 0o644 });
+    // atomic rename under same advisory lock
+    execSync(`flock -x ${shellQuote(lockFile)} sudo mv ${shellQuote(tmpFile)} ${shellQuote(filePath)}`);
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
   }
-  execSync(`echo '${updated.replace(/'/g, "'\\''")}' | sudo tee ${filePath} > /dev/null`);
 }
 
 function removeEnvVar(filePath, key) {
   if (!fs.existsSync(filePath)) return;
-  execSync(`sudo sed -i '/^${key}=/d' ${filePath}`);
+  const lockFile = filePath + '.lock';
+  const tmpFile = filePath + '.tmp.' + process.pid;
+  const escapedKey = escapeRegExp(key);
+  const regex = new RegExp(`^${escapedKey}=.*\n?`, 'gm');
+  try {
+    const content = execSync(
+      `flock -x ${shellQuote(lockFile)} cat ${shellQuote(filePath)}`,
+      { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
+    );
+    const updated = content.replace(regex, '');
+    fs.writeFileSync(tmpFile, updated, { mode: 0o644 });
+    execSync(`flock -x ${shellQuote(lockFile)} sudo mv ${shellQuote(tmpFile)} ${shellQuote(filePath)}`);
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
 }
 
 function deriveCli(launchCmd) {
@@ -1218,6 +1261,7 @@ app.get('/api/config/agent/:name', (req, res) => {
 
 app.put('/api/config/agent/:name/general', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const envFile = `${ENV_DIR}/${name}.env`;
   try {
     const { launchCmd, cliPinned, cliPinValue, staleTimeout, restartStrategy, model } = req.body;
@@ -1241,6 +1285,7 @@ app.put('/api/config/agent/:name/general', (req, res) => {
 
 app.put('/api/config/agent/:name/cadences', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const upper = name.toUpperCase();
   try {
     const { surge, busy, quiet, idle } = req.body;
@@ -1256,6 +1301,7 @@ app.put('/api/config/agent/:name/cadences', (req, res) => {
 
 app.put('/api/config/agent/:name/models', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const upper = name.toUpperCase();
   try {
     const { surge, busy, quiet, idle } = req.body;
@@ -1271,6 +1317,7 @@ app.put('/api/config/agent/:name/models', (req, res) => {
 
 app.put('/api/config/agent/:name/pipeline', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const envFile = `${ENV_DIR}/${name}.env`;
   try {
     for (const [stage, enabled] of Object.entries(req.body)) {
@@ -1289,6 +1336,7 @@ app.put('/api/config/agent/:name/pipeline', (req, res) => {
 
 app.put('/api/config/agent/:name/hooks', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const envFile = `${ENV_DIR}/${name}.env`;
   try {
     const { preKick, postIdle } = req.body;
@@ -1302,6 +1350,7 @@ app.put('/api/config/agent/:name/hooks', (req, res) => {
 
 app.put('/api/config/agent/:name/restrictions', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   const envFile = `${ENV_DIR}/${name}.env`;
   try {
     const list = req.body.list || [];
@@ -1455,10 +1504,11 @@ app.post('/api/config/governor/agents', (req, res) => {
 
 app.delete('/api/config/governor/agents/:name', (req, res) => {
   const { name } = req.params;
+  if (!validateAgentName(name)) return res.status(400).json({ error: 'invalid agent name' });
   try {
     const envFile = `${ENV_DIR}/${name}.env`;
     if (fs.existsSync(envFile)) {
-      execSync(`sudo rm ${envFile}`);
+      execSync(`sudo rm ${shellQuote(envFile)}`);
     }
     res.json({ ok: true });
   } catch (err) {
