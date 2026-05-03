@@ -26,6 +26,10 @@ export const MAX_RESOLVED_ALERTS_AFTER_PRUNE = 50
  *  must survive across sessions until the cluster recovers; 24 h was too short. */
 export const NOTIFICATION_DEDUP_MAX_AGE_MS = 30 * 24 * MS_PER_HOUR // 30 days
 
+/** Hard cap on stored dedup keys to prevent unbounded localStorage growth.
+ *  When exceeded, the oldest entries (by timestamp) are evicted first. */
+export const MAX_DEDUP_KEYS = 500
+
 /** Default temperature threshold for extreme-heat weather alerts (°F). */
 export const DEFAULT_TEMPERATURE_THRESHOLD_F = 100
 /** Default wind-speed threshold for high-wind weather alerts (mph). */
@@ -43,15 +47,19 @@ export const NOTIFICATION_COOLDOWN_BY_SEVERITY: Record<string, number> = {
 export const DEFAULT_NOTIFICATION_COOLDOWN_MS = 30 * MS_PER_MINUTE // 30 min
 
 /** Load persisted notification dedup map from localStorage (key → timestamp).
- *  Prunes stale entries (older than NOTIFICATION_DEDUP_MAX_AGE_MS) on load
- *  and persists the cleaned map back to localStorage. */
+ *  Prunes stale entries (older than NOTIFICATION_DEDUP_MAX_AGE_MS) and enforces
+ *  the MAX_DEDUP_KEYS hard cap on load, persisting the cleaned map back. */
 export function loadNotifiedAlertKeys(): Map<string, number> {
   try {
     const stored = safeGet(STORAGE_KEY_NOTIFIED_ALERT_KEYS)
     if (stored) {
       const entries = JSON.parse(stored) as [string, number][]
       const now = Date.now()
-      const fresh = entries.filter(([, ts]) => now - ts <= NOTIFICATION_DEDUP_MAX_AGE_MS)
+      let fresh = entries.filter(([, ts]) => now - ts <= NOTIFICATION_DEDUP_MAX_AGE_MS)
+      // Enforce hard cap: keep only the most recent MAX_DEDUP_KEYS entries
+      if (fresh.length > MAX_DEDUP_KEYS) {
+        fresh = fresh.sort((a, b) => b[1] - a[1]).slice(0, MAX_DEDUP_KEYS) // newest first
+      }
       if (fresh.length < entries.length) {
         safeSet(STORAGE_KEY_NOTIFIED_ALERT_KEYS, JSON.stringify(fresh))
       }
@@ -63,7 +71,8 @@ export function loadNotifiedAlertKeys(): Map<string, number> {
   return new Map()
 }
 
-/** Persist notification dedup map to localStorage, pruning entries older than NOTIFICATION_DEDUP_MAX_AGE_MS */
+/** Persist notification dedup map to localStorage, pruning stale entries
+ *  and enforcing the MAX_DEDUP_KEYS hard cap (oldest-first eviction). */
 export function saveNotifiedAlertKeys(keys: Map<string, number>): void {
   try {
     const now = Date.now()
@@ -73,6 +82,14 @@ export function saveNotifiedAlertKeys(keys: Map<string, number>): void {
       if (now - ts > NOTIFICATION_DEDUP_MAX_AGE_MS) staleKeys.push(key)
     }
     for (const key of staleKeys) keys.delete(key)
+
+    // Enforce hard cap: evict oldest entries when exceeding MAX_DEDUP_KEYS
+    if (keys.size > MAX_DEDUP_KEYS) {
+      const sorted = [...keys.entries()].sort((a, b) => a[1] - b[1]) // oldest first
+      const toEvict = sorted.slice(0, keys.size - MAX_DEDUP_KEYS)
+      for (const [key] of toEvict) keys.delete(key)
+    }
+
     safeSet(STORAGE_KEY_NOTIFIED_ALERT_KEYS, JSON.stringify([...keys.entries()]))
   } catch {
     // localStorage full or unavailable
