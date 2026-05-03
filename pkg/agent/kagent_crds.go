@@ -596,6 +596,8 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	const numCRDQueries = 6
+
 	var agentCount, toolServerCount, remoteMCPServerCount int
 	var modelConfigCount, modelProviderConfigCount, memoryCount int
 	var mu sync.Mutex
@@ -603,7 +605,6 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	var warnings = make([]string, 0, numCRDQueries)
 
 	var wg sync.WaitGroup
-	const numCRDQueries = 6
 	wg.Add(numCRDQueries)
 
 	// Count agents
