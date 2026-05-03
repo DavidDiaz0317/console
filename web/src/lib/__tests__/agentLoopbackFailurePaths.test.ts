@@ -483,7 +483,7 @@ describe('agentFetchers failure paths', () => {
 describe('WebSocket exponential backoff', () => {
   it('getWsBackoffDelay returns base delay for attempt 0', async () => {
     const { getWsBackoffDelay, WS_RECONNECT_BASE_DELAY_MS, WS_BACKOFF_JITTER_MAX_MS } =
-      await import('../constants/network')
+      await vi.importActual<typeof import('../constants/network')>('../constants/network')
 
     // Run multiple times to account for jitter
     const delays: number[] = []
@@ -500,7 +500,7 @@ describe('WebSocket exponential backoff', () => {
 
   it('getWsBackoffDelay doubles with each attempt', async () => {
     const { getWsBackoffDelay, WS_RECONNECT_BASE_DELAY_MS, WS_BACKOFF_JITTER_MAX_MS } =
-      await import('../constants/network')
+      await vi.importActual<typeof import('../constants/network')>('../constants/network')
 
     // Use minimum possible (subtract jitter) to verify doubling
     const minDelay0 = WS_RECONNECT_BASE_DELAY_MS
@@ -524,7 +524,7 @@ describe('WebSocket exponential backoff', () => {
 
   it('getWsBackoffDelay is capped at max delay', async () => {
     const { getWsBackoffDelay, WS_RECONNECT_MAX_DELAY_MS, WS_BACKOFF_JITTER_MAX_MS } =
-      await import('../constants/network')
+      await vi.importActual<typeof import('../constants/network')>('../constants/network')
 
     // Very high attempt number
     for (let i = 0; i < 20; i++) {
@@ -534,7 +534,7 @@ describe('WebSocket exponential backoff', () => {
   })
 
   it('getWsBackoffDelay adds random jitter (not deterministic)', async () => {
-    const { getWsBackoffDelay } = await import('../constants/network')
+    const { getWsBackoffDelay } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
 
     const delays = new Set<number>()
     for (let i = 0; i < 50; i++) {
@@ -546,7 +546,7 @@ describe('WebSocket exponential backoff', () => {
   })
 
   it('MAX_WS_RECONNECT_ATTEMPTS is a reasonable limit', async () => {
-    const { MAX_WS_RECONNECT_ATTEMPTS } = await import('../constants/network')
+    const { MAX_WS_RECONNECT_ATTEMPTS } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
 
     expect(MAX_WS_RECONNECT_ATTEMPTS).toBeGreaterThanOrEqual(3)
     expect(MAX_WS_RECONNECT_ATTEMPTS).toBeLessThanOrEqual(20)
@@ -559,30 +559,30 @@ describe('WebSocket exponential backoff', () => {
 
 describe('network constants for agent connectivity', () => {
   it('WS_CONNECT_TIMEOUT_MS is between 1s and 10s', async () => {
-    const { WS_CONNECT_TIMEOUT_MS } = await import('../constants/network')
+    const { WS_CONNECT_TIMEOUT_MS } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(WS_CONNECT_TIMEOUT_MS).toBeGreaterThanOrEqual(1_000)
     expect(WS_CONNECT_TIMEOUT_MS).toBeLessThanOrEqual(10_000)
   })
 
   it('WS_CONNECTION_COOLDOWN_MS is positive and reasonable', async () => {
-    const { WS_CONNECTION_COOLDOWN_MS } = await import('../constants/network')
+    const { WS_CONNECTION_COOLDOWN_MS } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(WS_CONNECTION_COOLDOWN_MS).toBeGreaterThan(0)
     expect(WS_CONNECTION_COOLDOWN_MS).toBeLessThanOrEqual(60_000)
   })
 
   it('WS_RECONNECT_BASE_DELAY_MS < WS_RECONNECT_MAX_DELAY_MS', async () => {
     const { WS_RECONNECT_BASE_DELAY_MS, WS_RECONNECT_MAX_DELAY_MS } =
-      await import('../constants/network')
+      await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(WS_RECONNECT_BASE_DELAY_MS).toBeLessThan(WS_RECONNECT_MAX_DELAY_MS)
   })
 
   it('FETCH_DEFAULT_TIMEOUT_MS is a positive number', async () => {
-    const { FETCH_DEFAULT_TIMEOUT_MS } = await import('../constants/network')
+    const { FETCH_DEFAULT_TIMEOUT_MS } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(FETCH_DEFAULT_TIMEOUT_MS).toBeGreaterThan(0)
   })
 
   it('agent suppression helpers exist and are callable', async () => {
-    const { suppressLocalAgent, isLocalAgentSuppressed } = await import('../constants/network')
+    const { suppressLocalAgent, isLocalAgentSuppressed } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(typeof suppressLocalAgent).toBe('function')
     expect(typeof isLocalAgentSuppressed).toBe('function')
   })
@@ -602,14 +602,14 @@ describe('agent URL suppression', () => {
   })
 
   it('LOCAL_AGENT_WS_URL points to 127.0.0.1:8585 by default', async () => {
-    const { LOCAL_AGENT_WS_URL } = await import('../constants/network')
+    const { LOCAL_AGENT_WS_URL } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     // In test env (not Netlify), should be the real URL
     expect(LOCAL_AGENT_WS_URL).toContain('127.0.0.1')
     expect(LOCAL_AGENT_WS_URL).toContain('8585')
   })
 
   it('LOCAL_AGENT_HTTP_URL points to 127.0.0.1:8585 by default', async () => {
-    const { LOCAL_AGENT_HTTP_URL } = await import('../constants/network')
+    const { LOCAL_AGENT_HTTP_URL } = await vi.importActual<typeof import('../constants/network')>('../constants/network')
     expect(LOCAL_AGENT_HTTP_URL).toContain('127.0.0.1')
     expect(LOCAL_AGENT_HTTP_URL).toContain('8585')
   })
