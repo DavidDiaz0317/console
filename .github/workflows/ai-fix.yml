@@ -21,6 +21,6 @@ jobs:
   ai-fix:
     uses: kubestellar/infra/.github/workflows/reusable-ai-fix.yml@main
     with:
-      issue_number: ${{ github.event.inputs.issue_number || '' }}
+      issue_number: ${{ github.event.inputs.issue_number || github.event.issue.number || '' }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
