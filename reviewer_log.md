@@ -1,6 +1,43 @@
 # Reviewer Log
 
-## Pass 103 — 2026-05-04 20:45 UTC
+## Pass 105 — 2026-05-03 23:39 UTC
+
+### Trigger
+KICK — Full reviewer pass + community PR reviews: #11739, #11753, #11754, #11755.
+
+### CI Health
+8/9 workflows — Playwright E2E Tests failing (skip per standing instructions). All other checks green including Coverage Suite, Go Tests, Build and Deploy KC, CodeQL.
+
+### Coverage
+89.42% (from Coverage Suite run 25291014305, SHA 63595365, 2026-05-03T21:15). Still below 91% target. New tests from pass #103 (+5) already merged; next coverage run should show uptick.
+
+### Release Freshness
+- **Release**: v0.3.24 ✓
+- **Brew**: v0.3.24 ✓ (updated in pass #104)
+- **Helm**: appVersion "latest" (intentional)
+
+### GA4
+Nominal — no anomalies.
+
+### Community PR Reviews
+
+| PR | Author | Title | Decision | Reason |
+|----|--------|-------|----------|--------|
+| #11739 | lightyagami2109 | test: add unit tests for Gitops and Helm validators | ✅ **/lgtm /approve** | Clean table-driven tests, no global state, proper isolation. Minor: `reflect` import not in alpha order (non-blocker). |
+| #11753 | ayushshukla1807 | refactor: eliminate hardcoded route strings | ✅ **/lgtm /approve** | Clean mechanical refactor. All 7 files have ROUTES import (verified at HEAD d50f56b). CI green. |
+| #11754 | lightyagami2109 | test(agent): add coverage for helm validation and config concurrency | ❌ **REQUEST_CHANGES** | (1) gofmt regression — all tabs stripped from both test files; (2) `TestConfigManager_ConcurrentAccess` has no assertions (discards all return values). |
+| #11755 | lightyagami2109 | test: implement security boundary tests for helm handlers | ❌ **REQUEST_CHANGES** | (1) gofmt regression — all tabs stripped; (2) new `TestHandleHelmUpgrade_SecurityBoundary` missing exec mock (could invoke real helm); (3) adds `TestValidateHelmK8sName/ChartArg/ChartVersion` which duplicate #11739 → compilation failure if both merge. |
+
+### Open PRs from Prior Passes
+- PR #11758 (workflow event context fixes): CI pending → merge when green
+- PR #11757: Already merged ✓
+
+### Copilot Comments Status
+- 33 unaddressed (28 MEDIUM, 5 LOW) — most are in kubestellar/docs (#1554, #1556, #1570) or already addressed in main (#11552, #11712, #11713, #11628)
+
+---
+
+## Pass 104 — 2026-05-03 23:00 UTC
 
 ### Trigger
 KICK — CI=80% (transient: Playwright E2E in_progress at snapshot time). Coverage=89.38%<91% target. 33 unaddressed Copilot comments (0 HIGH, 28 MEDIUM, 5 LOW). GA4 nominal.
