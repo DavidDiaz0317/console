@@ -9,6 +9,81 @@ import (
 	"testing"
 )
 
+func TestValidateHelmK8sName(t *testing.T) {
+	tests := []struct {
+		name    string
+		val     string
+		field   string
+		wantErr bool
+	}{
+		{"empty", "", "cluster", false},
+		{"valid simple", "my-cluster", "cluster", false},
+		{"starts with dash", "-cluster", "cluster", true},
+		{"invalid char", "cluster@1", "cluster", true},
+		{"too long", string(make([]byte, 254)), "cluster", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			val := tt.val
+			if tt.name == "too long" {
+				b := make([]byte, 254)
+				for i := range b {
+					b[i] = 'a'
+				}
+				val = string(b)
+			}
+			err := validateHelmK8sName(val, tt.field)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateHelmK8sName() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateHelmChartArg(t *testing.T) {
+	tests := []struct {
+		name    string
+		chart   string
+		wantErr bool
+	}{
+		{"empty", "", true},
+		{"valid standard", "bitnami/nginx", false},
+		{"valid oci", "oci://registry-1.docker.io/bitnamicharts/nginx", false},
+		{"starts with dash", "-chart", true},
+		{"invalid char", "chart;rm", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateHelmChartArg(tt.chart)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateHelmChartArg() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateHelmChartVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{"empty", "", false},
+		{"valid standard", "1.2.3", false},
+		{"valid with meta", "1.2.3+meta-data", false},
+		{"starts with dash", "-1.2.3", true},
+		{"invalid char", "1.2.3;", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateHelmChartVersion(tt.version)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateHelmChartVersion() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestServer_HandleHelmRollback(t *testing.T) {
 	defer func() { execCommand = exec.Command; execCommandContext = exec.CommandContext }()
 	execCommand = fakeExecCommand
@@ -156,5 +231,6 @@ func TestServer_HandleHelmUpgrade(t *testing.T) {
 	server.handleHelmUpgrade(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Expected 400, got %d", w.Code)
+
 	}
 }
