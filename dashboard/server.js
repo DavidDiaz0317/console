@@ -1115,21 +1115,60 @@ function parseEnvFile(filePath) {
   return vars;
 }
 
+// Per-file write counter for unique temp file names (avoids collisions).
+let _envWriteSeq = 0;
+
+/**
+ * Shell-quote a string for safe interpolation into sh commands.
+ */
+function shellQuote(s) {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+/**
+ * Write an env variable to a file using flock for advisory locking and
+ * atomic rename to prevent corruption from concurrent requests.
+ *
+ * Node.js single-threaded event loop + synchronous I/O means in-process
+ * requests are already serialized. The flock protects against multi-process
+ * races (e.g. multiple dashboard instances or admin scripts).
+ */
 function writeEnvVar(filePath, key, value) {
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error(`invalid env key: ${key}`);
+  const lockFile = filePath + '.lock';
+  const tmp = filePath + '.tmp.' + process.pid + '.' + (++_envWriteSeq);
+
   const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
-  const regex = new RegExp(`^${key}=.*$`, 'm');
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
   let updated;
   if (regex.test(content)) {
     updated = content.replace(regex, `${key}=${value}`);
   } else {
     updated = content.trimEnd() + `\n${key}=${value}\n`;
   }
-  execSync(`echo '${updated.replace(/'/g, "'\\''")}' | sudo tee ${filePath} > /dev/null`);
+  fs.writeFileSync(tmp, updated, { mode: 0o644 });
+  // Atomic rename under exclusive advisory lock
+  execSync(
+    `flock -x ${shellQuote(lockFile)} sudo mv ${shellQuote(tmp)} ${shellQuote(filePath)}`,
+    { stdio: 'pipe' }
+  );
 }
 
 function removeEnvVar(filePath, key) {
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) throw new Error(`invalid env key: ${key}`);
   if (!fs.existsSync(filePath)) return;
-  execSync(`sudo sed -i '/^${key}=/d' ${filePath}`);
+  const lockFile = filePath + '.lock';
+  const tmp = filePath + '.tmp.' + process.pid + '.' + (++_envWriteSeq);
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const updated = content.replace(new RegExp(`^${escapedKey}=.*\n?`, 'gm'), '');
+  fs.writeFileSync(tmp, updated, { mode: 0o644 });
+  execSync(
+    `flock -x ${shellQuote(lockFile)} sudo mv ${shellQuote(tmp)} ${shellQuote(filePath)}`,
+    { stdio: 'pipe' }
+  );
 }
 
 function deriveCli(launchCmd) {

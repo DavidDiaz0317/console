@@ -15,7 +15,16 @@ REAL_GH="/usr/bin/gh"
 # agent's persistent env (Copilot CLI never calls this wrapper).
 GH_APP_TOKEN_CACHE="/var/run/hive-metrics/gh-app-token.cache"
 if [[ -f "$GH_APP_TOKEN_CACHE" ]]; then
-  export GH_TOKEN="$(cat "$GH_APP_TOKEN_CACHE")"
+  _cached_token="$(cat "$GH_APP_TOKEN_CACHE")"
+  # Validate token length — a valid GitHub App installation token is at least
+  # 40 characters.  A short/empty value indicates a partial write (race with
+  # the token refresh script); fall through to the env var fallback.
+  if [[ ${#_cached_token} -ge 40 ]]; then
+    export GH_TOKEN="$_cached_token"
+  elif [[ -n "${HIVE_GITHUB_TOKEN:-}" ]]; then
+    export GH_TOKEN="$HIVE_GITHUB_TOKEN"
+  fi
+  unset _cached_token
 elif [[ -n "${HIVE_GITHUB_TOKEN:-}" ]]; then
   # Fallback: session env var if cache file is missing
   export GH_TOKEN="$HIVE_GITHUB_TOKEN"
