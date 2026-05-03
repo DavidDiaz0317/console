@@ -1028,3 +1028,67 @@ All 6 HIGH source-file comments remain addressed from passes 78–81:
 - nightlyPlaywright: waiting for next nightly run post-source-fixes
 
 **Status:** Source fixes committed; PR #11210 in CI. Monitoring nightlyRel completion.
+
+---
+REVIEW_START_ET: 2026-05-03T00:34 ET (04:34 UTC)
+REVIEW_END_ET:   2026-05-03T00:52 ET (04:52 UTC)
+NEXT_REVIEW_ET:  (waiting for work order or 45-min idle trigger)
+
+### A. Coverage
+Current: 88.1% statements (from Coverage Suite run #25269651545, shard merge, 2026-05-03T04:23Z)
+Coverage Suite: FAILING — shard 3 fails on agentLoopbackFailurePaths.test.ts sections 3-5
+Root cause: `LOCAL_AGENT_WS_URL` is a `let` mutated by `suppressLocalAgent()`; sections 3-5 use `vi.importActual` without prior `vi.resetModules()`, so suppressed state from earlier tests bleeds through.
+PR #11651 fixed sections 1-2 only. Bead reviewer-2ty filed.
+
+### B. OAuth
+Login.tsx: OAuth GitHub buttons present ✓
+self_upgrade.go: self-upgrade code present ✓
+
+### C. Update
+Latest nightly: v0.3.24-nightly.20260503 created 2026-05-03T01:18Z (3h ago) ✓
+Release workflow: 2 consecutive cancellations (May 2, May 3) — docker-build (linux/arm64) times out after 22min on `npm run build` under QEMU. linux/amd64 succeeds (6 min). Last full success: 2026-05-01T06:05Z.
+Status: ~46.5h since last complete arm64 build — approaching P1 threshold. Bead reviewer-on7 filed (P1).
+Nightly tag itself was created (release step ran) — tag is valid, amd64 image pushed, arm64 missing.
+
+### D. GA4 errors
+CodeQL API: 403 (no token access) — skipped.
+GA4: no direct API access this iteration — skipped.
+
+### E. UI legibility
+E.1 small-text hits (<12px): 0 (clean)
+E.2 hardcoded colors: 1 file — `web/src/components/mission-control/BlueprintReport.ts` (pre-existing, unchanged)
+E.3 Aria: no ratchet script present — skipped.
+Gap: responsive overflow requires Playwright — not checked.
+
+### F. Post-merge delta
+6 merges since May 1 (#11647–#11652). Diff scan:
+- No TODO/FIXME added to production code
+- No disabled tests introduced
+- No untyped `any` in diff
+- #11651 partially fixed agentLoopbackFailurePaths but sections 3-5 still failing (see A)
+- #11652 (alertStorage pruning) clean — only alertStorage.ts touched
+
+### G. Scanner supervision
+G.1 Stuck open beads: 5 beads >15m, 3 >2h (scanner-beads-11028=3941min, -11027=3941min, -11300=2117min)
+  → urgent ntfy sent, P0 meta bead reviewer-tan filed
+G.2 Untracked issues (last 30m): 0 new issues in any of 5 repos
+G.3 Heartbeat: cron_scan_log.md mtime 2026-04-29T15:32Z — **85h stale** (threshold: 30min)
+  → urgent ntfy sent, P0 meta bead reviewer-bmn filed
+G.4 Lane-transfer unclaimed: 0
+
+### Beads opened this pass
+- reviewer-bmn P0: Scanner heartbeat stale 85h
+- reviewer-tan P0: Scanner backlog 5 beads >15m
+- reviewer-on7 P1: Release arm64 docker build cancelled 2x
+- reviewer-2ty P2: Coverage Suite sections 3-5 failing (suppressLocalAgent pollution)
+
+### Beads updated
+- reviewer-1po: reset from in_progress → open (stale, no linked PR in >20min per policy)
+
+### ntfy sent
+- P0 urgent: scanner heartbeat stale (reviewer-bmn)
+- P0 urgent: scanner backlog (reviewer-tan)
+- P1 high: release arm64 failure (reviewer-on7)
+
+### Takeaway
+Two P0 scanner-health alarms (scanner stalled 85h) + P1 nightly release arm64 broken + Coverage Suite persistently failing. Site is operational (amd64 image live, OAuth present), but arm64 builds need a native runner fix (PR #11529 pattern).
