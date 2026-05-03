@@ -208,6 +208,7 @@ type Server struct {
 	rewardsHandler      *handlers.RewardsHandler   // for eviction goroutine shutdown
 	done                chan struct{}              // closed on Shutdown to stop background goroutines
 	shutdownOnce        sync.Once                  // ensures Shutdown is idempotent (#6478)
+	failureTracker      *middleware.FailureTracker // per-IP auth failure counting (#8676)
 }
 
 // NewServer creates a new API server. It starts a temporary loading page
