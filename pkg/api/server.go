@@ -664,6 +664,7 @@ func (s *Server) setupRoutes() {
 	// FailureTracker for per-user/IP auth failure counting (#8676 Phase 1).
 	// Exposed via c.Locals for use in auth handlers in future phases.
 	failureTracker := middleware.NewFailureTracker()
+s.failureTracker = failureTracker
 
 	// Rate limit auth endpoints — stricter to prevent brute-force.
 	// Uses composite key (userID:IP when authenticated, IP alone pre-auth)

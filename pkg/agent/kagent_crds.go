@@ -600,7 +600,7 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	var modelConfigCount, modelProviderConfigCount, memoryCount int
 	var mu sync.Mutex
 	byProvider := map[string]int{}
-	var warnings []string
+	var warnings = make([]string, 0, numCRDQueries)
 
 	var wg sync.WaitGroup
 	const numCRDQueries = 6
