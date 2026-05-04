@@ -227,9 +227,8 @@ func (h *GitOpsHandlers) syncViaMCP(ctx context.Context, req SyncRequest) (*Sync
 	if len(result.Content) > 0 {
 		text := result.Content[0].Text
 		response.Message = text
-		response.Success = true
 
-		// Try to parse as JSON
+		// Try to parse as JSON first
 		var parsed map[string]interface{}
 		if err := json.Unmarshal([]byte(text), &parsed); err == nil {
 			if success, ok := parsed["success"].(bool); ok {
@@ -237,6 +236,21 @@ func (h *GitOpsHandlers) syncViaMCP(ctx context.Context, req SyncRequest) (*Sync
 			}
 			if message, ok := parsed["message"].(string); ok {
 				response.Message = message
+			}
+		} else {
+			// MCP servers often return kubectl errors as plain text without setting
+			// isError. Scan for well-known error keywords to detect failures.
+			lower := strings.ToLower(text)
+			errorKeywords := []string{"error:", "forbidden", "no matches for kind", "denied", "exit code"}
+			for _, kw := range errorKeywords {
+				if strings.Contains(lower, kw) {
+					response.Success = false
+					response.Errors = append(response.Errors, text)
+					break
+				}
+			}
+			if len(response.Errors) == 0 {
+				response.Success = true
 			}
 		}
 	}
