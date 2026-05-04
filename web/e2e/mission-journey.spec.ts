@@ -367,10 +367,9 @@ async function openMissionSidebar(page: Page) {
     await expect(btn).toBeVisible({ timeout: 5000 })
     await btn.click({ force: true })
   }
-  // Wait for sidebar to appear
-  await expect(
-    page.locator('[class*="mission"], [class*="sidebar"], [class*="chat"]').first()
-  ).toBeVisible({ timeout: UI_ANIMATION_SETTLE_MS + UI_SETTLE_MS })
+  // Wait for the mission sidebar specifically — avoid `aside` which matches the always-present app sidebar
+  await page.locator('[data-testid="mission-sidebar"], [class*="mission-sidebar"]')
+    .first().waitFor({ state: 'visible', timeout: UI_ANIMATION_SETTLE_MS }).catch(() => {})
 }
 
 async function getMissionStatus(page: Page, missionId?: string): Promise<string | null> {
@@ -533,9 +532,9 @@ test.describe('Mission Control Journey Tests', () => {
         await chatInput.fill('Check pod health in production namespace')
         await chatInput.press('Enter')
 
-        // Wait for mission messages to appear (streaming content)
-        const messageArea = page.locator('[class*="mission"], [class*="sidebar"], [class*="chat"]')
-        await expect(messageArea.first()).toBeVisible({ timeout: MISSION_ROUNDTRIP_MS + UI_SETTLE_MS })
+        // Verify mission messages appear (streaming content)
+        const messageArea = page.locator('[data-testid="mission-sidebar"], [class*="mission-chat"], [class*="mission-message"]')
+        await expect(messageArea.first()).toBeVisible({ timeout: MISSION_ROUNDTRIP_MS })
       }
 
       // Take screenshot for visual verification
