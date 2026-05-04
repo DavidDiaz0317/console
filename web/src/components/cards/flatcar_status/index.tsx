@@ -1,18 +1,14 @@
-import { CheckCircle, AlertTriangle, RefreshCw, Server } from 'lucide-react'
-import { cn } from '../../../lib/cn'
+import { CheckCircle, AlertTriangle, Server } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '../../ui/Skeleton'
 import { MetricTile } from '../../../lib/cards/CardComponents'
 import { useFlatcarStatus } from './useFlatcarStatus'
 import { compareFlatcarVersions } from './versionUtils'
-import { createCardSyncFormatter } from '../../../lib/formatters'
-
 
 
 export function FlatcarStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'flatcar')
-  const { data, error, isRefreshing, showSkeleton, showEmptyState } = useFlatcarStatus()
+  const { data, error, showSkeleton, showEmptyState } = useFlatcarStatus()
 
   if (showSkeleton) {
     return (
@@ -65,11 +61,6 @@ export function FlatcarStatus() {
             <AlertTriangle className="w-4 h-4" />
           )}
           {isHealthy ? t('flatcar.healthy') : t('flatcar.degraded')}
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={cn('w-3 h-3', isRefreshing && 'animate-spin')} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 

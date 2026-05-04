@@ -19,7 +19,7 @@ import { useKubevirtStatus } from './useKubevirtStatus'
 import { KUBEVIRT_INSTALL_PROMPT } from '../shared'
 import { loadMissionPrompt } from '../missionLoader'
 import { KubevirtDetailModal } from './KubevirtDetailModal'
-import { createCardSyncFormatter } from '../../../../lib/formatters'
+
 
 // ============================================================================
 // Constants
@@ -59,8 +59,7 @@ function vmStateColorClass(state: string): string {
 
 export function KubevirtStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'kubevirtStatus')
-  const { data, error, showSkeleton, showEmptyState, isRefreshing, isDemoData } = useKubevirtStatus()
+  const { data, error, showSkeleton, showEmptyState, isDemoData } = useKubevirtStatus()
   const { startMission } = useMissions()
   const { showKeyPrompt, checkKeyAndRun, goToSettings, dismissPrompt } = useApiKeyCheck()
   const { isOpen: isDetailModalOpen, open: openDetailModal, close: closeDetailModal } = useModalState()
@@ -173,11 +172,6 @@ export function KubevirtStatus() {
             <AlertTriangle className="w-4 h-4" />
           )}
           {isHealthy ? t('kubevirtStatus.healthy') : t('kubevirtStatus.degraded')}
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 

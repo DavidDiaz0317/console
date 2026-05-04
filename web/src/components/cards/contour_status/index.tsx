@@ -1,10 +1,10 @@
-import { AlertTriangle, CheckCircle, Globe, RefreshCw, Server, Shield } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Globe, Server, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { MetricTile } from '../../../lib/cards/CardComponents'
 import { Skeleton, SkeletonList, SkeletonStats } from '../../ui/Skeleton'
 import { useContourStatus } from './useContourStatus'
 import type { ContourProxyStatus } from './demoData'
-import { createCardSyncFormatter } from '../../../lib/formatters'
+
 
 
 function ProxySection({
@@ -70,8 +70,7 @@ function ProxySection({
 
 export function ContourStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'contourStatus')
-  const { data, isRefreshing, error, showSkeleton, showEmptyState } = useContourStatus()
+  const { data, error, showSkeleton, showEmptyState } = useContourStatus()
 
   const isHealthy = data.health === 'healthy'
 
@@ -119,11 +118,6 @@ export function ContourStatus() {
         >
           {isHealthy ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           {isHealthy ? t('contourStatus.healthy') : t('contourStatus.degraded')}
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 

@@ -17,7 +17,7 @@ import { Skeleton, SkeletonStats, SkeletonList } from '../../ui/Skeleton'
 import { CardSearchInput } from '../../../lib/cards/CardComponents'
 import { useOpenYurtStatus } from './useOpenYurtStatus'
 import type { OpenYurtNodePool, NodePoolStatus, NodePoolType, OpenYurtGateway, GatewayStatus } from './demoData'
-import { createCardSyncFormatter } from '../../../lib/formatters'
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -167,8 +167,7 @@ function GatewayRow({ gw }: { gw: OpenYurtGateway }) {
 
 export function OpenYurtStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'openyurt')
-  const { data, isRefreshing, error, showSkeleton, showEmptyState } = useOpenYurtStatus()
+  const { data, error, showSkeleton, showEmptyState } = useOpenYurtStatus()
   const [search, setSearch] = useState('')
 
   // Guard against undefined nested data
@@ -270,10 +269,6 @@ export function OpenYurtStatus() {
             {controllerPods.ready}/{controllerPods.total}{' '}
             {t('openyurt.controllerPods', 'pods')}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 

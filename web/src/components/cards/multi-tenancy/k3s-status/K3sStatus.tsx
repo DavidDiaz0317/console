@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react'
-import { AlertTriangle, Box, CheckCircle, RefreshCw, Server, XCircle } from 'lucide-react'
+import { AlertTriangle, Box, CheckCircle, Server, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Skeleton } from '../../../ui/Skeleton'
 import { MetricTile } from '../../../../lib/cards/CardComponents'
@@ -19,7 +19,7 @@ import { useK3sStatus } from './useK3sStatus'
 import { K3S_INSTALL_PROMPT } from '../shared'
 import { loadMissionPrompt } from '../missionLoader'
 import { K3sDetailModal } from './K3sDetailModal'
-import { createCardSyncFormatter } from '../../../../lib/formatters'
+
 
 // ============================================================================
 // Constants
@@ -42,8 +42,7 @@ const SKELETON_POD_ROWS = 3
 
 export function K3sStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'k3sStatus')
-  const { data, error, showSkeleton, showEmptyState, isRefreshing, isDemoData } = useK3sStatus()
+  const { data, error, showSkeleton, showEmptyState, isDemoData } = useK3sStatus()
   const { startMission } = useMissions()
   const { showKeyPrompt, checkKeyAndRun, goToSettings, dismissPrompt } = useApiKeyCheck()
   const { isOpen: isDetailModalOpen, open: openDetailModal, close: closeDetailModal } = useModalState()
@@ -146,11 +145,6 @@ export function K3sStatus() {
             <AlertTriangle className="w-4 h-4" />
           )}
           {isHealthy ? t('k3sStatus.healthy') : t('k3sStatus.degraded')}
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 

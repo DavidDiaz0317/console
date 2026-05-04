@@ -3,7 +3,6 @@ import { StatTile } from '../shared/StatTile'
 import {
   CheckCircle,
   AlertTriangle,
-  RefreshCw,
   Shield,
   XCircle,
   Loader2,
@@ -21,7 +20,7 @@ import {
 import { useCardData } from '../../../lib/cards/cardHooks'
 import { useKeycloakStatus } from './useKeycloakStatus'
 import type { KeycloakRealm, KeycloakRealmStatus } from './demoData'
-import { createCardSyncFormatter } from '../../../lib/formatters'
+
 
 // Default page size for the paginated realm list. Named constant per
 // CLAUDE.md "No magic numbers" rule.
@@ -120,8 +119,7 @@ function RealmRow({ realm }: { realm: KeycloakRealm }) {
 
 export function KeycloakStatus() {
   const { t } = useTranslation('cards')
-  const formatRelativeTime = createCardSyncFormatter(t, 'keycloak')
-  const { data, isRefreshing, isFailed, showSkeleton, showEmptyState } =
+  const { data, isFailed, showSkeleton, showEmptyState } =
     useKeycloakStatus()
 
   const realms = data.realms || []
@@ -253,10 +251,6 @@ export function KeycloakStatus() {
             {operatorPods.ready}/{operatorPods.total}{' '}
             {t('keycloak.pods')}
           </span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-          <span>{formatRelativeTime(data.lastCheckTime)}</span>
         </div>
       </div>
 
