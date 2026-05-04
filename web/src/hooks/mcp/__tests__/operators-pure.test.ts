@@ -72,6 +72,11 @@ describe('loadOperatorsCacheFromStorage', () => {
     expect(loadOperatorsCacheFromStorage('operators:all')).toBeNull()
   })
 
+  it('returns null when data is not an array', () => {
+    localStorage.setItem(OPERATORS_CACHE_KEY, JSON.stringify({ data: 'corrupted', timestamp: 1000, key: 'operators:all' }))
+    expect(loadOperatorsCacheFromStorage('operators:all')).toBeNull()
+  })
+
   it('uses Date.now() fallback when timestamp missing', () => {
     const before = Date.now()
     localStorage.setItem(OPERATORS_CACHE_KEY, JSON.stringify({ data: [{ name: 'op' }], key: 'operators:all' }))
@@ -129,6 +134,11 @@ describe('loadSubscriptionsCacheFromStorage', () => {
 
   it('returns null for corrupted JSON', () => {
     localStorage.setItem(SUBSCRIPTIONS_CACHE_KEY, 'broken')
+    expect(loadSubscriptionsCacheFromStorage('subs:all')).toBeNull()
+  })
+
+  it('returns null when data is not an array', () => {
+    localStorage.setItem(SUBSCRIPTIONS_CACHE_KEY, JSON.stringify({ data: 'corrupted', timestamp: 1000, key: 'subs:all' }))
     expect(loadSubscriptionsCacheFromStorage('subs:all')).toBeNull()
   })
 })

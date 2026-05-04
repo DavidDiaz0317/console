@@ -53,7 +53,7 @@ function loadServicesCacheFromStorage(cacheKey: string): { data: Service[], time
     const stored = localStorage.getItem(SERVICES_CACHE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed.key === cacheKey && parsed.data && parsed.data.length > 0) {
+      if (parsed.key === cacheKey && Array.isArray(parsed.data) && parsed.data.length > 0) {
         const timestamp = parsed.timestamp ? new Date(parsed.timestamp) : new Date()
         // Enforce cache TTL — discard stale entries so stale data is never
         // served after a fetch failure (#7125)

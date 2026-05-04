@@ -53,7 +53,7 @@ function loadPVCsCacheFromStorage(cacheKey: string): { data: PVC[], timestamp: D
     const stored = localStorage.getItem(PVCS_CACHE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed.key === cacheKey && parsed.data && parsed.data.length > 0) {
+      if (parsed.key === cacheKey && Array.isArray(parsed.data) && parsed.data.length > 0) {
         const timestamp = parsed.timestamp ? new Date(parsed.timestamp) : new Date()
         pvcsCache = { data: parsed.data, timestamp, key: cacheKey }
         return { data: parsed.data, timestamp }

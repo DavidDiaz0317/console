@@ -34,7 +34,7 @@ function loadOperatorsCacheFromStorage(cacheKey: string): { data: Operator[], ti
     const stored = localStorage.getItem(OPERATORS_CACHE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed.key === cacheKey && parsed.data && parsed.data.length > 0) {
+      if (parsed.key === cacheKey && Array.isArray(parsed.data) && parsed.data.length > 0) {
         return { data: parsed.data, timestamp: parsed.timestamp || Date.now() }
       }
     }
@@ -56,7 +56,7 @@ function loadSubscriptionsCacheFromStorage(cacheKey: string): { data: OperatorSu
     const stored = localStorage.getItem(SUBSCRIPTIONS_CACHE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (parsed.key === cacheKey && parsed.data && parsed.data.length > 0) {
+      if (parsed.key === cacheKey && Array.isArray(parsed.data) && parsed.data.length > 0) {
         return { data: parsed.data, timestamp: parsed.timestamp || Date.now() }
       }
     }

@@ -875,6 +875,18 @@ describe('loadGPUCacheFromStorage — via module reload', () => {
     updateGPUNodeCache({ isLoading: true })
     expect(gpuNodeCache.isLoading).toBe(true)
   })
+
+  it('returns default empty cache when localStorage nodes is not an array', async () => {
+    const { __computeTestables } = await import('../compute')
+    const { loadGPUCacheFromStorage, GPU_CACHE_KEY } = __computeTestables
+    localStorage.setItem(GPU_CACHE_KEY, JSON.stringify({
+      nodes: 'corrupted-string',
+      lastUpdated: new Date().toISOString(),
+    }))
+    const result = loadGPUCacheFromStorage()
+    expect(Array.isArray(result.nodes)).toBe(true)
+    expect(result.nodes).toHaveLength(0)
+  })
 })
 
 describe('saveGPUCacheToStorage — edge cases', () => {

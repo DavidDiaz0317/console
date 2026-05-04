@@ -123,6 +123,11 @@ describe('loadPVCsCacheFromStorage', () => {
     localStorage.setItem(PVCS_CACHE_KEY, JSON.stringify({ key: 'k', data: [] }))
     expect(loadPVCsCacheFromStorage('k')).toBeNull()
   })
+
+  it('returns null when data is not an array', () => {
+    localStorage.setItem(PVCS_CACHE_KEY, JSON.stringify({ key: 'k', data: 'corrupted', timestamp: new Date().toISOString() }))
+    expect(loadPVCsCacheFromStorage('k')).toBeNull()
+  })
 })
 
 describe('savePVCsCacheToStorage', () => {

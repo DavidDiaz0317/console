@@ -83,6 +83,15 @@ describe('loadServicesCacheFromStorage', () => {
     expect(loadServicesCacheFromStorage('services:all')).toBeNull()
   })
 
+  it('returns null when data is not an array', () => {
+    localStorage.setItem('kubestellar-services-cache', JSON.stringify({
+      data: 'corrupted',
+      key: 'services:all',
+      timestamp: new Date().toISOString(),
+    }))
+    expect(loadServicesCacheFromStorage('services:all')).toBeNull()
+  })
+
   it('returns cached data when key matches and not stale', () => {
     const data = [{ name: 'kubernetes', namespace: 'default', cluster: 'c1', type: 'ClusterIP' }]
     localStorage.setItem('kubestellar-services-cache', JSON.stringify({
