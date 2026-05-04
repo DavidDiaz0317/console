@@ -314,7 +314,7 @@ const GPUUtilization = memo(function GPUUtilization() {
             isRefreshing={isRefreshing}
             lastUpdated={typeof gpuLastRefresh === 'number' ? new Date(gpuLastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

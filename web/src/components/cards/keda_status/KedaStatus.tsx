@@ -293,7 +293,7 @@ export function KedaStatus() {
           isRefreshing={isRefreshing}
           lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
         />
       </div>
 

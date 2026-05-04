@@ -71,7 +71,7 @@ export function DNSHealth() {
           isRefreshing={isRefreshing}
           lastUpdated={typeof podsLastRefresh === 'number' ? new Date(podsLastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
           staleThresholdMinutes={5}
         />
       </div>

@@ -100,7 +100,7 @@ export function ClusterChangelog() {
           isRefreshing={isRefreshing}
           lastUpdated={typeof eventsLastRefresh === 'number' ? new Date(eventsLastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
           staleThresholdMinutes={5}
         />
       </div>

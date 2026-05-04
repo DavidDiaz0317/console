@@ -364,7 +364,7 @@ export function FleetComplianceHeatmap({ config: _config }: CardConfig) {
           </div>
         )}
         <div className="ml-auto">
-          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={kyvernoLastRefresh} size="xs" />
+          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={kyvernoLastRefresh} size="xs" showLabel={false} />
         </div>
       </div>
 

@@ -157,7 +157,7 @@ function ClusterComparisonInternal({ config }: ClusterComparisonProps) {
           isRefreshing={isRefreshing}
           lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
         />
       </div>
 

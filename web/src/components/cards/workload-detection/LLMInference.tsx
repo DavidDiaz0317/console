@@ -169,7 +169,7 @@ export function LLMInference({ config: _config }: LLMInferenceProps) {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
           {filters.localClusterFilter.length > 0 && (

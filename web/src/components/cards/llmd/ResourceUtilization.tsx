@@ -185,7 +185,7 @@ export function ResourceUtilization() {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="xs"
-            showLabel={true}
+            showLabel={false}
           />
           {bestVariant && (
             <StatusBadge color="green" size="xs" rounded="full">

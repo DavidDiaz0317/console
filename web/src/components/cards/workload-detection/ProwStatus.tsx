@@ -46,7 +46,7 @@ export function ProwStatus({ config: _config }: ProwStatusProps) {
           isRefreshing={isRefreshing}
           lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
         />
       </div>
 

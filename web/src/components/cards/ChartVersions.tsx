@@ -133,7 +133,7 @@ export function ChartVersions({ config: _config }: ChartVersionsProps) {
           isRefreshing={isRefreshing}
           lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
           size="sm"
-          showLabel={true}
+          showLabel={false}
         />
         <CardControlsRow
           clusterIndicator={{

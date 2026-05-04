@@ -231,7 +231,7 @@ Please proceed step by step. Start with verifying prerequisites (Python 3.9+, ku
     <div className="space-y-3 h-full flex flex-col" style={{ minHeight: MIN_CONTENT_HEIGHT_PX }}>
       {/* Refresh / streaming progress indicator */}
       {isRefreshing && lastRefresh && (
-        <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} />
+        <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} showLabel={false} />
       )}
       {!allChecked && totalClusters > 0 && !isRefreshing && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

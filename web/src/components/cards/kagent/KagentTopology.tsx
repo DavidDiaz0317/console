@@ -215,7 +215,7 @@ function KagentTopologyInternal({ config }: { config?: Record<string, unknown> }
             isRefreshing={isRefreshing}
             lastUpdated={lastUpdatedDate}
             size="xs"
-            showLabel={true}
+            showLabel={false}
           />
         </div>
       </div>

@@ -318,7 +318,7 @@ export function HarborStatus() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden relative">
-      {isRefreshing && <RefreshIndicator isRefreshing={isRefreshing} />}
+      {isRefreshing && <RefreshIndicator isRefreshing={isRefreshing} showLabel={false} />}
 
       <div className="flex flex-wrap items-center justify-between mb-4 shrink-0 px-1 gap-2">
         <div className="flex items-center gap-2">

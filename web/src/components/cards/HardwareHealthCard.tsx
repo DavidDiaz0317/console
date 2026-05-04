@@ -954,7 +954,7 @@ export function HardwareHealthCard() {
           isRefreshing={isRefreshing}
           lastUpdated={isDemoFallback ? null : lastUpdate}
           size="sm"
-          showLabel={true}
+          showLabel={false}
           staleThresholdMinutes={5}
         />
       </div>

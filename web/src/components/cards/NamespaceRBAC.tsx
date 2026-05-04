@@ -222,6 +222,7 @@ function NamespaceRBACInternal({ config }: NamespaceRBACProps) {
           <RefreshIndicator
             isRefreshing={isRefreshing}
             size="sm"
+            showLabel={false}
           />
         </div>
         <CardControlsRow

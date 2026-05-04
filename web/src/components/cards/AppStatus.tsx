@@ -208,7 +208,7 @@ export function AppStatus(_props: AppStatusProps) {
           onSortDirectionChange: setSortDirection }}
       />
 
-      <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh ? new Date(lastRefresh) : null} size="xs" />
+      <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh ? new Date(lastRefresh) : null} size="xs" showLabel={false} />
 
       {/* Search */}
       <CardSearchInput

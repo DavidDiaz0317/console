@@ -1,0 +1,75 @@
+{
+  "name": "vite-plugin-istanbul",
+  "version": "8.0.0",
+  "author": "iFaxity (christian@faxity.se)",
+  "license": "MIT",
+  "files": [
+    "dist/*"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": null
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prettier": "prettier --check .",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
+  },
+  "homepage": "https://github.com/iFaxity/vite-plugin-istanbul",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iFaxity/vite-plugin-istanbul"
+  },
+  "bugs": {
+    "url": "https://github.com/iFaxity/vite-plugin-istanbul/issues"
+  },
+  "keywords": [
+    "vite",
+    "babel",
+    "plugin",
+    "istanbul",
+    "nyc"
+  ],
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.29.1",
+    "@istanbuljs/load-nyc-config": "^1.1.0",
+    "@types/babel__generator": "7.27.0",
+    "espree": "^11.2.0",
+    "istanbul-lib-instrument": "^6.0.3",
+    "picocolors": "^1.1.1",
+    "source-map": "^0.7.6",
+    "test-exclude": "^8.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=4"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "20.4.3",
+    "@commitlint/config-conventional": "20.4.3",
+    "@ianvs/prettier-plugin-sort-imports": "4.7.1",
+    "@semantic-release/changelog": "6.0.3",
+    "@semantic-release/git": "10.0.1",
+    "@types/node": "25.3.5",
+    "@types/ws": "8.18.1",
+    "husky": "9.1.7",
+    "lint-staged": "16.3.2",
+    "prettier": "3.8.1",
+    "rollup": "4.59.0",
+    "typescript": "5.9.3",
+    "unbuild": "3.6.1"
+  },
+  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+}

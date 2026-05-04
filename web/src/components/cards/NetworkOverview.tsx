@@ -185,7 +185,7 @@ export function NetworkOverview() {
             return null
           })()}
           size="sm"
-          showLabel={true}
+          showLabel={false}
           staleThresholdMinutes={5}
         />
         <div className="flex items-center gap-2">

@@ -132,6 +132,7 @@ export const JaegerStatus: React.FC<CardComponentProps> = () => {
                                 isRefreshing={isRefreshing}
                                 lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
                                 size="xs"
+                                showLabel={false}
                             />
                         </div>
                     </div>

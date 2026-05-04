@@ -227,7 +227,7 @@ export function DeploymentProgress({ config }: DeploymentProgressProps) {
             isRefreshing={isRefreshing}
             lastUpdated={isDemoFallback || typeof deploymentsLastRefresh !== 'number' ? null : new Date(deploymentsLastRefresh)}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

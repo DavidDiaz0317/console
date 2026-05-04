@@ -168,7 +168,7 @@ Please proceed step by step.`,
     <div className="h-full flex flex-col min-h-card">
       {/* Controls */}
       <div className="flex items-center justify-end gap-1 mb-3">
-        <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" />
+        <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" showLabel={false} />
         <a
           href="https://kyverno.io/"
           target="_blank"

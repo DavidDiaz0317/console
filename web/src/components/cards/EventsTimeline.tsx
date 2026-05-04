@@ -276,7 +276,7 @@ function EventsTimelineInternal() {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
           {localClusterFilter.length > 0 && (

@@ -105,7 +105,7 @@ export function LLMModels({ config: _config }: LLMModelsProps) {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
           <StatusBadge color="cyan">

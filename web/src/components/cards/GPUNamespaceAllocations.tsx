@@ -179,7 +179,7 @@ function GPUNamespaceAllocationsInternal({ config: _config }: GPUNamespaceAlloca
               return null
             })()}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

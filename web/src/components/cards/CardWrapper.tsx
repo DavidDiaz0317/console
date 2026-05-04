@@ -746,8 +746,8 @@ export const CardWrapper = memo(function CardWrapper({
                     return null
                   }
                   const title = effectiveIsFailed
-                    ? `${effectiveLastUpdated.toLocaleString()} (stale — refresh failing)`
-                    : effectiveLastUpdated.toLocaleString()
+                    ? `Last refreshed: ${effectiveLastUpdated.toLocaleString()} (stale — refresh failing)`
+                    : `Last refreshed: ${effectiveLastUpdated.toLocaleString()}`
                   const className = effectiveIsFailed
                     ? 'text-2xs text-orange-400'
                     : 'text-2xs text-muted-foreground'

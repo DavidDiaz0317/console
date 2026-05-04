@@ -215,7 +215,7 @@ function CrossClusterPolicyComparisonInternal({ config: _config }: CardConfig) {
           </div>
         )}
         <div className="ml-auto">
-          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" />
+          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" showLabel={false} />
         </div>
       </div>
 

@@ -216,7 +216,7 @@ function EventStreamInternal({ config }: { config?: EventStreamConfig }) {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

@@ -210,7 +210,7 @@ Please proceed step by step.`,
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
         <div className="flex items-center gap-1">
-          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" />
+          <RefreshIndicator isRefreshing={isRefreshing} lastUpdated={lastRefresh} size="xs" showLabel={false} />
           {isDemoData && (
             <StatusBadge color="purple" size="xs">
               Demo

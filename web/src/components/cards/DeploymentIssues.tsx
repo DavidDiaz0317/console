@@ -190,7 +190,7 @@ function DeploymentIssuesInternal({ config }: DeploymentIssuesProps) {
             isRefreshing={isRefreshing}
             lastUpdated={typeof issuesLastRefresh === 'number' ? new Date(issuesLastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

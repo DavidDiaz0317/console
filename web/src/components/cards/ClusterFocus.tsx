@@ -151,7 +151,7 @@ export function ClusterFocus({ config }: ClusterFocusProps) {
               return ts.length > 0 ? new Date(Math.min(...ts)) : null
             })()}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

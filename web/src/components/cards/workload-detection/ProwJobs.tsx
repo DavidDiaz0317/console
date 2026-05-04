@@ -129,7 +129,7 @@ export function ProwJobs({ config: _config }: ProwJobsProps) {
             isRefreshing={isRefreshing}
             lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
           <StatusBadge color="orange">

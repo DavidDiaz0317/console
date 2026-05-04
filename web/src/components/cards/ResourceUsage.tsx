@@ -187,7 +187,7 @@ function ResourceUsageInternal() {
               return null
             })()}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

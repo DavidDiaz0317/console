@@ -221,7 +221,7 @@ export function GitOpsDrift({ config }: GitOpsDriftProps) {
             isRefreshing={isRefreshing}
             lastUpdated={isDemoData || typeof driftLastRefresh !== 'number' ? null : new Date(driftLastRefresh)}
             size="sm"
-            showLabel={true}
+            showLabel={false}
             staleThresholdMinutes={5}
           />
         </div>

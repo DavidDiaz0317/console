@@ -736,7 +736,7 @@ export function Weather({ config }: { config?: WeatherConfig }) {
           isRefreshing={isRefreshing}
           lastUpdated={lastRefresh ? new Date(lastRefresh) : null}
           size="xs"
-          showLabel={true}
+          showLabel={false}
         />
       </div>
     </div>
