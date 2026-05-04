@@ -101,6 +101,7 @@ export function SuccessView({ success, screenshots, onViewUpdates }: SuccessView
   )
 }
 
+type SubmitTabT = ReturnType<typeof useTranslation>['t']
 type SubmitErrorAction = 'reauthenticate' | 'setup' | null
 
 interface SubmitErrorDetails {
@@ -132,7 +133,7 @@ function buildDirectIssueUrl(targetRepo: TargetRepo, description: string): strin
 function getSubmitErrorDetails(
   error: string,
   canPerformActions: boolean,
-  t: (key: string, fallback?: string) => string,
+  t: SubmitTabT,
 ): SubmitErrorDetails {
   const normalized = error.toLowerCase()
   const needsGitHubReauth =
