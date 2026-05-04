@@ -53,14 +53,21 @@ export function loadNotifiedAlertKeys(): Map<string, number> {
   try {
     const stored = safeGet(STORAGE_KEY_NOTIFIED_ALERT_KEYS)
     if (stored) {
-      const entries = JSON.parse(stored) as [string, number][]
+      const parsed: unknown = JSON.parse(stored)
+      if (!Array.isArray(parsed)) return new Map()
+      // Filter out entries that are not [string, number] tuples so corrupted
+      // elements cannot crash entries.filter or new Map() downstream.
+      const entries = parsed.filter((e): e is [string, number] =>
+        Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && typeof e[1] === 'number'
+      )
       const now = Date.now()
       let fresh = entries.filter(([, ts]) => now - ts <= NOTIFICATION_DEDUP_MAX_AGE_MS)
       // Enforce hard cap: keep only the most recent MAX_DEDUP_KEYS entries
       if (fresh.length > MAX_DEDUP_KEYS) {
         fresh = fresh.sort((a, b) => b[1] - a[1]).slice(0, MAX_DEDUP_KEYS) // newest first
       }
-      if (fresh.length < entries.length) {
+      // Persist cleaned map back if anything was dropped (stale OR invalid)
+      if (fresh.length < parsed.length) {
         safeSet(STORAGE_KEY_NOTIFIED_ALERT_KEYS, JSON.stringify(fresh))
       }
       return new Map(fresh)

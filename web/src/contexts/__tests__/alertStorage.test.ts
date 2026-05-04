@@ -174,6 +174,41 @@ describe('loadNotifiedAlertKeys', () => {
     const result = loadNotifiedAlertKeys()
     expect(result.size).toBe(0)
   })
+
+  it('returns empty Map when stored value is not an array', () => {
+    mockSafeGet.mockReturnValue(JSON.stringify({ corrupted: true }))
+    const result = loadNotifiedAlertKeys()
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty Map when stored value is a json string', () => {
+    mockSafeGet.mockReturnValue(JSON.stringify('a-string'))
+    const result = loadNotifiedAlertKeys()
+    expect(result.size).toBe(0)
+  })
+
+  it('skips entries that are not [string, number] tuples', () => {
+    mockSafeGet.mockReturnValue(JSON.stringify([{}, 123, 'string', null]))
+    const result = loadNotifiedAlertKeys()
+    expect(result.size).toBe(0)
+  })
+
+  it('keeps valid entries while skipping invalid ones in the same array', () => {
+    const now = Date.now()
+    mockSafeGet.mockReturnValue(JSON.stringify([
+      ['valid-1', now - 100],
+      {},
+      ['valid-2', now - 200],
+      'corrupted',
+      [42, now],
+      ['no-timestamp', 'not-a-number'],
+    ]))
+    const result = loadNotifiedAlertKeys()
+    expect(result.size).toBe(2)
+    expect(result.has('valid-1')).toBe(true)
+    expect(result.has('valid-2')).toBe(true)
+    expect(mockSafeSet).toHaveBeenCalledOnce()
+  })
 })
 
 // =============================================================================
