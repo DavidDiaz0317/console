@@ -11,10 +11,10 @@ import { useNavigate } from 'react-router-dom'
 
 // ── Shared helpers ──────────────────────────────────────────────────────
 
-const SCORE_GOOD = 'rgb(34,197,94)'
-const SCORE_WARN = 'rgb(234,179,8)'
-const SCORE_BAD = 'rgb(239,68,68)'
-const RING_BG = 'rgb(55,65,81)'
+const SCORE_GOOD = 'var(--color-success)'
+const SCORE_WARN = 'var(--color-warning)'
+const SCORE_BAD = 'var(--color-error)'
+const RING_BG = 'var(--color-neutral)'
 
 function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r = (size - 8) / 2
