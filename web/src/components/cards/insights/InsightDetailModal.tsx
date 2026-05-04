@@ -178,14 +178,14 @@ function OverviewTab({ insight }: { insight: MultiClusterInsight }) {
     <div className="space-y-4">
       {/* Description */}
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-1">Description</h4>
+        <h3 className="text-xs font-medium text-muted-foreground mb-1">Description</h3>
         <p className="text-sm text-foreground">{insight.description}</p>
       </div>
 
       {/* Severity & source */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-1">Severity</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-1">Severity</h3>
           <StatusBadge
             color={SEVERITY_COLORS[insight.severity].badge}
             size="md"
@@ -194,14 +194,14 @@ function OverviewTab({ insight }: { insight: MultiClusterInsight }) {
           </StatusBadge>
         </div>
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-1">Source</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-1">Source</h3>
           <InsightSourceBadge source={insight.source} confidence={insight.confidence} />
         </div>
       </div>
 
       {/* Detection time */}
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-1">Detected</h4>
+        <h3 className="text-xs font-medium text-muted-foreground mb-1">Detected</h3>
         <p className="text-sm text-foreground">
           {new Date(insight.detectedAt).toLocaleString()}
         </p>
@@ -209,7 +209,7 @@ function OverviewTab({ insight }: { insight: MultiClusterInsight }) {
 
       {/* Affected clusters */}
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-2">Affected Clusters</h4>
+        <h3 className="text-xs font-medium text-muted-foreground mb-2">Affected Clusters</h3>
         <div className="flex flex-wrap gap-1.5">
           {(insight.affectedClusters || []).map(cluster => (
             <StatusBadge key={cluster} color="purple" size="sm">{cluster}</StatusBadge>
@@ -220,7 +220,7 @@ function OverviewTab({ insight }: { insight: MultiClusterInsight }) {
       {/* Related resources */}
       {insight.relatedResources && insight.relatedResources.length > 0 && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Related Resources</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Related Resources</h3>
           <div className="flex flex-wrap gap-1.5">
             {(insight.relatedResources || []).map(resource => (
               <StatusBadge key={String(resource)} color="gray" size="sm">{String(resource)}</StatusBadge>
@@ -252,7 +252,7 @@ function EvidenceTab({ insight }: { insight: MultiClusterInsight }) {
       {/* Cascade chain */}
       {hasCascade && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Cascade Timeline</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Cascade Timeline</h3>
           <div className="space-y-2">
             {(insight.chain || []).map((link: CascadeLink, i: number) => (
               <div key={`${link.cluster}-${i}`} className="flex items-center gap-2">
@@ -281,7 +281,7 @@ function EvidenceTab({ insight }: { insight: MultiClusterInsight }) {
       {/* Cluster deltas */}
       {hasDeltas && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Cluster Differences</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Cluster Differences</h3>
           <div className="rounded-lg border border-border overflow-hidden">
             <table className="w-full text-xs">
               <thead>
@@ -323,7 +323,7 @@ function EvidenceTab({ insight }: { insight: MultiClusterInsight }) {
       {/* Resource metrics */}
       {hasMetrics && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Resource Metrics</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Resource Metrics</h3>
           <div className="space-y-2">
             {Object.entries(insight.metrics || {}).map(([name, value]) => (
               <div key={name} className="flex items-center gap-2">

@@ -590,10 +590,10 @@ export function NetworkUtils() {
         {activeTab === 'info' && (
           <div className="flex-1 overflow-y-auto space-y-3">
             <div className="p-3 rounded-lg bg-secondary/20 border border-border/50">
-              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <Wifi className="w-4 h-4" />
                 {t('networkUtils.connectionInfo')}
-              </h4>
+              </h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t('common.status')}</span>
@@ -623,10 +623,10 @@ export function NetworkUtils() {
             </div>
 
             <div className="p-3 rounded-lg bg-secondary/20 border border-border/50">
-              <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <Globe className="w-4 h-4" />
                 {t('networkUtils.browserInfo')}
-              </h4>
+              </h3>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t('networkUtils.userAgent')}</span>

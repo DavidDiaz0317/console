@@ -210,7 +210,7 @@ function OverviewTab({ score, breakdown, scoreCtx, kubescapeData, kyvernoData }:
        */}
       {hasKubescapeChecks && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Kubescape checks</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Kubescape checks</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <StatBox label="Total Checks" value={kubescapeTotal} />
             <StatBox label="Passing" value={kubescapePassed} color="text-green-400" />
@@ -220,7 +220,7 @@ function OverviewTab({ score, breakdown, scoreCtx, kubescapeData, kyvernoData }:
       )}
       {hasKyvernoPolicies && (
         <div>
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">Kyverno policies</h4>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Kyverno policies</h3>
           <div className="grid grid-cols-2 gap-3">
             <StatBox label="Policies" value={kyvernoTotalPolicies} />
             <StatBox label="Violations" value={kyvernoTotalViolations} color="text-red-400" />
@@ -235,7 +235,7 @@ function OverviewTab({ score, breakdown, scoreCtx, kubescapeData, kyvernoData }:
       {/* Per-tool bars */}
       {breakdown && breakdown.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-xs font-medium text-muted-foreground">By tool</h4>
+          <h3 className="text-xs font-medium text-muted-foreground">By tool</h3>
           {breakdown.map(item => (
             <div key={item.name} className="space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-y-2">
@@ -278,7 +278,7 @@ function KubescapeTab({ data }: { data: NonNullable<ComplianceScoreBreakdownModa
 
       {/* Framework scores */}
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-2">Framework Scores</h4>
+        <h3 className="text-xs font-medium text-muted-foreground mb-2">Framework Scores</h3>
         <div className="space-y-2">
           {(data.frameworks || []).slice(0, MAX_TOP_FAILING).map((fw, i) => (
             <div key={i} className="flex items-center gap-3">

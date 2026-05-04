@@ -295,9 +295,9 @@ export function BackstageStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('backstageStatus.sectionCatalog', 'Catalog')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('backstageStatus.lastSync', 'synced')}:{' '}
               <span className="text-foreground">{formatRelative(data.lastCatalogSync, t)}</span>
@@ -324,9 +324,9 @@ export function BackstageStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-green-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('backstageStatus.sectionPlugins', 'Plugins')}
-            </h4>
+            </h3>
           </div>
           {plugins.length === 0 ? (
             <div className="rounded-md bg-secondary/20 border border-border/40 px-3 py-2 text-xs text-muted-foreground">
@@ -351,9 +351,9 @@ export function BackstageStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-purple-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('backstageStatus.sectionTemplates', 'Scaffolder templates')}
-            </h4>
+            </h3>
           </div>
           {templates.length === 0 ? (
             <div className="rounded-md bg-secondary/20 border border-border/40 px-3 py-2 text-xs text-muted-foreground">

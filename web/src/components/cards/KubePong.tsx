@@ -334,7 +334,7 @@ export function KubePong() {
           {/* Overlays */}
           {gameState === 'idle' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded">
-              <h4 className="text-2xl font-bold text-blue-400 mb-2">Kube Pong</h4>
+              <h3 className="text-2xl font-bold text-blue-400 mb-2">Kube Pong</h3>
               <p className="text-sm text-muted-foreground mb-4">Arrow keys or W/S to move paddle</p>
 
               {/* Difficulty selector */}

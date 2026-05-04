@@ -22,7 +22,7 @@ function ProxySection({
     <section className="space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       </div>
 
       {items.length === 0 ? (

@@ -288,9 +288,9 @@ export function DaprStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-blue-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('daprStatus.sectionControlPlane', 'Control plane')}
-            </h4>
+            </h3>
           </div>
 
           {data.controlPlane.length === 0 ? (
@@ -309,9 +309,9 @@ export function DaprStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-purple-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('daprStatus.sectionComponents', 'Components')}
-            </h4>
+            </h3>
           </div>
 
           {data.components.length === 0 ? (

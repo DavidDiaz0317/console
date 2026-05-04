@@ -281,9 +281,9 @@ export function WasmcloudStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Box className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('wasmcloudStatus.sectionLattice', 'Lattice')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('wasmcloudStatus.version', 'version')}:{' '}
               <span className="text-foreground">{data.stats.latticeVersion}</span>
@@ -297,9 +297,9 @@ export function WasmcloudStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('wasmcloudStatus.sectionHosts', 'Hosts')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {hosts.length}
             </span>
@@ -321,9 +321,9 @@ export function WasmcloudStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('wasmcloudStatus.sectionProviders', 'Capability providers')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {providers.length}
             </span>
@@ -348,9 +348,9 @@ export function WasmcloudStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Link2 className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('wasmcloudStatus.sectionLinks', 'Link definitions')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {links.length}
             </span>

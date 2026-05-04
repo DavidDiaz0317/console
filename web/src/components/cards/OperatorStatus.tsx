@@ -266,7 +266,7 @@ function OperatorStatusInternal({ config: _config }: OperatorStatusProps) {
           </div>
 
           {/* Operators list */}
-          <div ref={containerRef} className="flex-1 space-y-2 overflow-y-auto" style={containerStyle} role="list">
+          <div ref={containerRef} className="flex-1 space-y-2 overflow-y-auto" style={containerStyle} role="group" aria-label="Operators">
             {operators.map((op, idx) => {
               const StatusIcon = getStatusIcon(op.status)
               const color = getStatusColor(op.status)

@@ -192,9 +192,9 @@ export function CniStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Network className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('cniStatus.sectionPodCidr', 'Pod network CIDR')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('cniStatus.version', 'version')}:{' '}
               <span className="text-foreground">{data.summary.pluginVersion}</span>
@@ -208,9 +208,9 @@ export function CniStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('cniStatus.sectionNodes', 'Nodes')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {nodes.length}
             </span>

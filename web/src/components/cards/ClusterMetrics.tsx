@@ -337,7 +337,7 @@ export const ClusterMetrics = memo(function ClusterMetrics() {
       {/* Header with metric value and selector — @container responsive */}
       <div className="flex flex-wrap @lg:flex-nowrap items-center justify-between gap-y-2 mb-2">
         <div>
-          <h4 className="text-sm font-medium text-foreground">{config.label}</h4>
+          <h3 className="text-sm font-medium text-foreground">{config.label}</h3>
           <p className="text-2xl font-bold text-foreground">
             {selectedMetric === 'memory' ? realValues.memory.toFixed(1) : Math.round(currentValue)}<span className="text-sm text-muted-foreground">{config.unit}</span>
           </p>

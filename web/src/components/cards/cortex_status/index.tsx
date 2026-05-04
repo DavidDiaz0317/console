@@ -304,9 +304,9 @@ export function CortexStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-blue-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('cortexStatus.sectionComponents', 'Microservices')}
-            </h4>
+            </h3>
           </div>
 
           {components.length === 0 ? (

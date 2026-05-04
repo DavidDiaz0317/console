@@ -278,9 +278,9 @@ export function TufStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('tufStatus.sectionRoles', 'Top-level roles')}
-            </h4>
+            </h3>
             {data.repository ? (
               <span className="text-[11px] text-muted-foreground ml-auto truncate max-w-[50%]">
                 {data.repository}

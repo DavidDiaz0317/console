@@ -57,7 +57,7 @@ function InsightCard({ insight, isExpanded, onToggle }: InsightCardProps) {
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-y-2">
-              <h4 className={`font-medium text-sm ${colors.text}`}>{insight.title}</h4>
+              <h3 className={`font-medium text-sm ${colors.text}`}>{insight.title}</h3>
               <motion.div
                 animate={{ rotate: isExpanded ? 90 : 0 }}
                 transition={{ duration: 0.2 }}

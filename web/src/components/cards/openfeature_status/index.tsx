@@ -311,9 +311,9 @@ export function OpenFeatureStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openFeature.providerStatus', 'Provider Status')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {providers.length}
             </span>
@@ -335,9 +335,9 @@ export function OpenFeatureStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Flag className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openFeature.sectionFlags', 'Feature flags')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {flags.length}
             </span>

@@ -212,9 +212,9 @@ export function EnvoyStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Network className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('envoyStatus.sectionListeners', 'Listeners')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('envoyStatus.http5xx', '5xx rate')}:{' '}
               <span className={data.stats.http5xxRate > 0 ? 'text-yellow-400' : 'text-green-400'}>
@@ -242,9 +242,9 @@ export function EnvoyStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-blue-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('envoyStatus.sectionClusters', 'Upstream clusters')}
-            </h4>
+            </h3>
           </div>
 
           {data.clusters.length === 0 ? (

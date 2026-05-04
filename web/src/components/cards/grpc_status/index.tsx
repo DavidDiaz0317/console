@@ -211,9 +211,9 @@ export function GrpcStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-blue-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('grpcStatus.sectionServices', 'gRPC services')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('grpcStatus.avgErrorRate', 'avg err')}:{' '}
               <span className={errorColor(data.stats.avgErrorRatePct)}>
