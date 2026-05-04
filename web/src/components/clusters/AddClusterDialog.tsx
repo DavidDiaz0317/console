@@ -88,6 +88,11 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const getResponseError = async (res: Response): Promise<string> => {
+    const body = await res.json().catch(() => ({ error: res.statusText, message: res.statusText }))
+    return body.error || body.message || res.statusText
+  }
+
   const handlePreview = async () => {
     setImportState('previewing')
     setErrorMessage('')
@@ -98,8 +103,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
         body: JSON.stringify({ kubeconfig: kubeconfigYaml }),
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(body.error || res.statusText)
+        throw new Error(await getResponseError(res))
       }
       const data = await res.json()
       setPreviewContexts(data.contexts || [])
@@ -120,8 +124,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
         body: JSON.stringify({ kubeconfig: kubeconfigYaml }),
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(body.error || res.statusText)
+        throw new Error(await getResponseError(res))
       }
       const data = await res.json()
       const count = data.importedCount ?? previewContexts.filter((c) => c.isNew).length
@@ -155,6 +158,9 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
           caData: caData ? btoa(caData) : undefined,
           skipTlsVerify: skipTls }),
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+      if (!res.ok) {
+        throw new Error(await getResponseError(res))
+      }
       const data = await res.json()
       setTestResult(data)
       setConnectState('tested')
@@ -184,8 +190,7 @@ export function AddClusterDialog({ open, onClose }: AddClusterDialogProps) {
           namespace: namespace || undefined }),
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }))
-        throw new Error(body.error || res.statusText)
+        throw new Error(await getResponseError(res))
       }
       setConnectState('done')
       emitClusterCreated(clusterName, authType)

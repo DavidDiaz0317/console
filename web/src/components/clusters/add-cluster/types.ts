@@ -8,8 +8,10 @@ export interface PreviewContext {
   context: string
   cluster: string
   server: string
+  user?: string
   authMethod?: string
   isNew: boolean
+  isCurrent?: boolean
 }
 
 export type CloudProvider = 'eks' | 'gke' | 'aks' | 'openshift'

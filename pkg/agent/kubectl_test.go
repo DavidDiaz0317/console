@@ -422,20 +422,26 @@ current-context: new-ctx
 	}
 
 	for _, e := range entries {
-		switch e.ContextName {
+		switch e.Context {
 		case "new-ctx":
 			if !e.IsNew {
 				t.Error("new-ctx should be marked as new")
 			}
-			if e.ServerURL != "https://new.example.com" {
-				t.Errorf("ServerURL = %q, want https://new.example.com", e.ServerURL)
+			if !e.IsCurrent {
+				t.Error("new-ctx should be marked as current")
+			}
+			if e.Server != "https://new.example.com" {
+				t.Errorf("Server = %q, want https://new.example.com", e.Server)
 			}
 		case "existing-ctx":
 			if e.IsNew {
 				t.Error("existing-ctx should not be marked as new")
 			}
+			if e.IsCurrent {
+				t.Error("existing-ctx should not be marked as current")
+			}
 		default:
-			t.Errorf("Unexpected context: %s", e.ContextName)
+			t.Errorf("Unexpected context: %s", e.Context)
 		}
 	}
 

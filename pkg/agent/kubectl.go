@@ -447,12 +447,13 @@ func (k *KubectlProxy) RenameContext(oldName, newName string) error {
 
 // KubeconfigPreviewEntry describes a context found in an imported kubeconfig.
 type KubeconfigPreviewEntry struct {
-	ContextName string `json:"contextName"`
-	ClusterName string `json:"clusterName"`
-	ServerURL   string `json:"serverUrl"`
-	UserName    string `json:"userName"`
-	AuthMethod  string `json:"authMethod,omitempty"` // exec, token, certificate, auth-provider, unknown
-	IsNew       bool   `json:"isNew"`
+	Context    string `json:"context"`
+	Cluster    string `json:"cluster"`
+	Server     string `json:"server"`
+	User       string `json:"user,omitempty"`
+	AuthMethod string `json:"authMethod,omitempty"` // exec, token, certificate, auth-provider, unknown
+	IsNew      bool   `json:"isNew"`
+	IsCurrent  bool   `json:"isCurrent,omitempty"`
 }
 
 // PreviewKubeconfig parses a kubeconfig YAML and returns the contexts it contains
@@ -473,13 +474,14 @@ func (k *KubectlProxy) PreviewKubeconfig(yamlContent string) ([]KubeconfigPrevie
 	var entries []KubeconfigPreviewEntry
 	for name, ctx := range incoming.Contexts {
 		entry := KubeconfigPreviewEntry{
-			ContextName: name,
-			ClusterName: ctx.Cluster,
-			UserName:    ctx.AuthInfo,
-			AuthMethod:  detectAuthMethod(incoming.AuthInfos[ctx.AuthInfo]),
+			Context:    name,
+			Cluster:    ctx.Cluster,
+			User:       ctx.AuthInfo,
+			AuthMethod: detectAuthMethod(incoming.AuthInfos[ctx.AuthInfo]),
+			IsCurrent:  name == incoming.CurrentContext,
 		}
 		if cluster, ok := incoming.Clusters[ctx.Cluster]; ok {
-			entry.ServerURL = cluster.Server
+			entry.Server = cluster.Server
 		}
 		_, exists := k.config.Contexts[name]
 		entry.IsNew = !exists

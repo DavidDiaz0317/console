@@ -4,9 +4,32 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/kubestellar/console/pkg/agent/protocol"
 )
+
+func writeKubeconfigUnauthorized(w http.ResponseWriter, operation, reason string) {
+	slog.Warn("kubeconfig auth rejected", "operation", operation, "reason", reason)
+	w.WriteHeader(http.StatusUnauthorized)
+	writeJSON(w, protocol.ErrorPayload{
+		Code:    "unauthorized",
+		Message: "Invalid or missing agent token. Refresh the page and try again.",
+	})
+}
+
+func kubeconfigImportStatus(err error) int {
+	if err == nil {
+		return http.StatusOK
+	}
+	errText := strings.ToLower(err.Error())
+	if strings.Contains(errText, "invalid kubeconfig") ||
+		strings.Contains(errText, "contains no contexts") ||
+		strings.Contains(errText, "exec-based auth") {
+		return http.StatusBadRequest
+	}
+	return http.StatusInternalServerError
+}
 
 // handleRenameContextHTTP renames a kubeconfig context
 func (s *Server) handleRenameContextHTTP(w http.ResponseWriter, r *http.Request) {
@@ -19,8 +42,8 @@ func (s *Server) handleRenameContextHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	// SECURITY: Validate token for mutation endpoints
-	if !s.validateToken(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "rename_context", reason)
 		return
 	}
 
@@ -61,10 +84,11 @@ type kubeconfigImportRequest struct {
 
 // kubeconfigImportResponse is the response from kubeconfig import
 type kubeconfigImportResponse struct {
-	Success bool     `json:"success"`
-	Added   []string `json:"added"`
-	Skipped []string `json:"skipped"`
-	Error   string   `json:"error,omitempty"`
+	Success       bool     `json:"success"`
+	Added         []string `json:"added"`
+	Skipped       []string `json:"skipped"`
+	ImportedCount int      `json:"importedCount,omitempty"`
+	Error         string   `json:"error,omitempty"`
 }
 
 // kubeconfigPreviewResponse is the response from kubeconfig preview
@@ -82,8 +106,8 @@ func (s *Server) handleKubeconfigPreviewHTTP(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if !s.validateToken(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "preview", reason)
 		return
 	}
 
@@ -127,8 +151,8 @@ func (s *Server) handleKubeconfigImportHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !s.validateToken(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "import", reason)
 		return
 	}
 
@@ -154,13 +178,13 @@ func (s *Server) handleKubeconfigImportHTTP(w http.ResponseWriter, r *http.Reque
 	added, skipped, err := s.kubectl.ImportKubeconfig(req.Kubeconfig)
 	if err != nil {
 		slog.Error("kubeconfig import error", "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		writeJSON(w, kubeconfigImportResponse{Success: false, Error: "failed to import kubeconfig"})
+		w.WriteHeader(kubeconfigImportStatus(err))
+		writeJSON(w, kubeconfigImportResponse{Success: false, Error: err.Error()})
 		return
 	}
 
 	slog.Info("kubeconfig import complete", "added", len(added), "skipped", len(skipped))
-	writeJSON(w, kubeconfigImportResponse{Success: true, Added: added, Skipped: skipped})
+	writeJSON(w, kubeconfigImportResponse{Success: true, Added: added, Skipped: skipped, ImportedCount: len(added)})
 }
 
 // kubeconfigAddResponse is the response from the add cluster endpoint
@@ -180,9 +204,8 @@ func (s *Server) handleKubeconfigRemoveHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if !s.validateToken(r) {
-		w.WriteHeader(http.StatusUnauthorized)
-		writeJSON(w, map[string]string{"error": "Unauthorized"})
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "remove", reason)
 		return
 	}
 
@@ -227,8 +250,8 @@ func (s *Server) handleKubeconfigAddHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if !s.validateToken(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "add", reason)
 		return
 	}
 
@@ -266,8 +289,8 @@ func (s *Server) handleKubeconfigTestHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if !s.validateToken(r) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	if reason := s.tokenValidationFailure(r); reason != "" {
+		writeKubeconfigUnauthorized(w, "test", reason)
 		return
 	}
 
@@ -288,7 +311,7 @@ func (s *Server) handleKubeconfigTestHTTP(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		slog.Error("test connection error", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, TestConnectionResult{Reachable: false, Error: "connection test failed"})
+		writeJSON(w, TestConnectionResult{Reachable: false, Error: err.Error()})
 		return
 	}
 

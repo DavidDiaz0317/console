@@ -384,18 +384,28 @@ func (s *Server) checkOrigin(r *http.Request) bool {
 // fallback (#4264), we verify all three headers that browsers always send for
 // real WebSocket handshakes: Upgrade, Connection, and Sec-WebSocket-Key.
 func (s *Server) validateToken(r *http.Request) bool {
-	// If no token configured, skip token validation
+	return s.tokenValidationFailure(r) == ""
+}
+
+// tokenValidationFailure returns an empty string when the request is
+// authorized, otherwise a short reason explaining why authentication failed.
+func (s *Server) tokenValidationFailure(r *http.Request) string {
+	// If no token configured, skip token validation.
 	if s.agentToken == "" {
-		return true
+		return ""
 	}
 
-	// Check Authorization header (preferred for all requests)
+	// Check Authorization header (preferred for all requests).
 	authHeader := r.Header.Get("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == s.agentToken {
-			return true
+			return ""
 		}
+		return "bearer token mismatch"
+	}
+	if authHeader != "" {
+		return "authorization header must use Bearer token"
 	}
 
 	// When KC_AGENT_TOKEN was NOT explicitly set (auto-generated), allow
@@ -406,7 +416,7 @@ func (s *Server) validateToken(r *http.Request) bool {
 	if !s.tokenExplicit {
 		origin := r.Header.Get("Origin")
 		if origin != "" && s.isAllowedOrigin(origin) {
-			return true
+			return ""
 		}
 	}
 
@@ -415,11 +425,15 @@ func (s *Server) validateToken(r *http.Request) bool {
 	// the Upgrade header will be missing Connection and/or Sec-WebSocket-Key.
 	if isRealWebSocketUpgrade(r) {
 		if queryToken := r.URL.Query().Get("token"); queryToken != "" {
-			return queryToken == s.agentToken
+			if queryToken == s.agentToken {
+				return ""
+			}
+			return "websocket query token mismatch"
 		}
+		return "missing websocket query token"
 	}
 
-	return false
+	return "missing bearer token"
 }
 
 // isRealWebSocketUpgrade returns true only when the request carries all

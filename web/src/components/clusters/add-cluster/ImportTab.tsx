@@ -133,9 +133,14 @@ export function ImportTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-3 shrink-0">
+                      {ctx.isCurrent && (
+                        <span className="text-2xs px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400" title="Current context from the imported kubeconfig">
+                          current-context
+                        </span>
+                      )}
                       {ctx.authMethod && ctx.authMethod !== 'unknown' && (
                         <span className={`text-2xs px-1.5 py-0.5 rounded ${
-                          ctx.authMethod === 'exec' ? 'bg-blue-500/20 text-blue-400' :
+                          ctx.authMethod === 'exec' || ctx.authMethod === 'auth-provider' ? 'bg-blue-500/20 text-blue-400' :
                           ctx.authMethod === 'token' ? 'bg-yellow-500/20 text-yellow-400' :
                           ctx.authMethod === 'certificate' ? 'bg-green-500/20 text-green-400' :
                           'bg-blue-500/20 text-blue-400'
