@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { mapSettledWithConcurrency } from '../../lib/utils/concurrency'
 import { isAgentUnavailable, reportAgentDataSuccess } from '../useLocalAgent'
-import { clusterCacheRef, LOCAL_AGENT_URL, agentFetch as sharedAgentFetch } from './shared'
+import { clusterCacheRef, getLocalAgentURL, agentFetch as sharedAgentFetch } from './shared'
 import { deduplicateClustersByServer } from './dedup'
 import { useCache } from '../../lib/cache'
 
@@ -148,7 +148,7 @@ async function agentFetch<T>(path: string, cluster: string, namespace?: string):
   const ctrl = new AbortController()
   const tid = setTimeout(() => ctrl.abort(), AGENT_TIMEOUT)
   try {
-    const res = await sharedAgentFetch(`${LOCAL_AGENT_URL}${path}?${params}`, {
+    const res = await sharedAgentFetch(`${getLocalAgentURL()}${path}?${params}`, {
       signal: ctrl.signal,
       headers: { Accept: 'application/json' } })
     clearTimeout(tid)

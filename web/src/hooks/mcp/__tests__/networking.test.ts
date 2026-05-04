@@ -76,7 +76,7 @@ vi.mock('../shared', () => ({
     const multiplier = Math.pow(2, Math.min(consecutiveFailures, 5))
     return Math.min(ms * multiplier, 600_000)
   },
-  LOCAL_AGENT_URL: 'http://localhost:8585',
+  getLocalAgentURL: () => 'http://localhost:8585',
   agentFetch: (...args: unknown[]) => fetch(...(args as Parameters<typeof fetch>)),
   clusterCacheRef: mockClusterCacheRef,
 }))

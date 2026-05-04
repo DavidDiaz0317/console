@@ -94,7 +94,7 @@ import {
   GPU_POLL_INTERVAL_MS,
   CACHE_TTL_MS,
   MIN_REFRESH_INDICATOR_MS,
-  LOCAL_AGENT_URL,
+  getLocalAgentURL,
   // Pure functions
   getEffectiveInterval,
   shareMetricsBetweenSameServerClusters,

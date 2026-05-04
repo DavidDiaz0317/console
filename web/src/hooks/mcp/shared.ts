@@ -18,7 +18,7 @@ import {
 import { STORAGE_KEY_TOKEN } from '../../lib/constants/storage'
 import { MCP_PROBE_TIMEOUT_MS, FOCUS_DELAY_MS, KUBECTL_MAX_TIMEOUT_MS } from '../../lib/constants/network'
 import type { ClusterInfo, ClusterHealth } from './types'
-import { LOCAL_AGENT_URL, agentFetch, AGENT_TOKEN_STORAGE_KEY } from './agentFetch'
+import { getLocalAgentURL, agentFetch, AGENT_TOKEN_STORAGE_KEY } from './agentFetch'
 import { shareMetricsBetweenSameServerClusters, deduplicateClustersByServer, detectDistributionFromNamespaces, detectDistributionFromServer } from './clusterUtils'
 
 // Re-export canonical constant under the name used by MCP hooks
@@ -49,7 +49,7 @@ const CLUSTER_NOTIFY_DEBOUNCE_MS = 50
 export const MIN_REFRESH_INDICATOR_MS = 500
 
 // agentFetch — extracted to ./agentFetch (auth-injecting fetch wrapper)
-export { LOCAL_AGENT_URL, agentFetch, _resetAgentTokenState } from './agentFetch'
+export { getLocalAgentURL, agentFetch, _resetAgentTokenState } from './agentFetch'
 
 // ============================================================================
 // Shared Cluster State - ensures all useClusters() consumers see the same data
@@ -801,7 +801,7 @@ async function fetchClusterListFromAgent(): Promise<ClusterInfo[] | null> {
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), MCP_PROBE_TIMEOUT_MS)
-    const response = await agentFetch(`${LOCAL_AGENT_URL}/clusters`, {
+    const response = await agentFetch(`${getLocalAgentURL()}/clusters`, {
       signal: controller.signal,
     })
     clearTimeout(timeoutId)
@@ -873,7 +873,7 @@ export async function fetchSingleClusterHealth(clusterName: string, kubectlConte
       const context = kubectlContext || clusterName
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), MCP_HOOK_TIMEOUT_MS)
-      const response = await agentFetch(`${LOCAL_AGENT_URL}/cluster-health?cluster=${encodeURIComponent(context)}`, {
+      const response = await agentFetch(`${getLocalAgentURL()}/cluster-health?cluster=${encodeURIComponent(context)}`, {
         signal: controller.signal,
         headers: { 'Accept': 'application/json' },
       })

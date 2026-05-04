@@ -85,7 +85,7 @@ vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
   getEffectiveInterval: (ms: number) => ms,
-  LOCAL_AGENT_URL: 'http://localhost:8585',
+  getLocalAgentURL: () => 'http://localhost:8585',
   clusterCacheRef: mockClusterCacheRef,
   agentFetch: vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({}), { status: 200 }))),
   fetchWithRetry: (url: string, opts: Record<string, unknown> = {}) => {

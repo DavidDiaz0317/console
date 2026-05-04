@@ -29,7 +29,7 @@ vi.mock('../shared', () => ({
   REFRESH_INTERVAL_MS: 120_000,
   MIN_REFRESH_INDICATOR_MS: 500,
   getEffectiveInterval: (base: number) => base,
-  LOCAL_AGENT_URL: 'http://127.0.0.1:8585/mcp',
+  getLocalAgentURL: () => 'http://127.0.0.1:8585/mcp',
   agentFetch: vi.fn(),
   clusterCacheRef: { current: new Map() },
 }))

@@ -94,7 +94,7 @@ import {
   GPU_POLL_INTERVAL_MS,
   CACHE_TTL_MS,
   MIN_REFRESH_INDICATOR_MS,
-  LOCAL_AGENT_URL,
+  getLocalAgentURL,
   // Pure functions
   getEffectiveInterval,
   shareMetricsBetweenSameServerClusters,
@@ -178,8 +178,9 @@ describe('shared.ts - Exported constants', () => {
     expect(MIN_REFRESH_INDICATOR_MS).toBe(HALF_SECOND_MS)
   })
 
-  it('LOCAL_AGENT_URL is re-exported from constants', () => {
-    expect(typeof LOCAL_AGENT_URL).toBe('string')
+  it('getLocalAgentURL is re-exported as a function', () => {
+    expect(typeof getLocalAgentURL).toBe('function')
+    expect(typeof getLocalAgentURL()).toBe('string')
   })
 })
 

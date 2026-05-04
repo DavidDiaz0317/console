@@ -51,7 +51,7 @@ vi.mock('../shared', async () => {
     CLUSTER_POLL_INTERVAL_MS: m.CLUSTER_POLL_INTERVAL_MS,
     MIN_REFRESH_INDICATOR_MS: m.MIN_REFRESH_INDICATOR_MS,
     CACHE_TTL_MS: m.CACHE_TTL_MS,
-    LOCAL_AGENT_URL: m.LOCAL_AGENT_URL,
+    getLocalAgentURL: m.getLocalAgentURL,
     // Forwarded real implementations
     getEffectiveInterval: m.getEffectiveInterval,
     notifyClusterSubscribers: m.notifyClusterSubscribers,

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { reportAgentDataSuccess, isAgentUnavailable } from '../useLocalAgent'
 import { kubectlProxy } from '../../lib/kubectlProxy'
 import { isDemoMode } from '../../lib/demoMode'
-import { LOCAL_AGENT_URL, agentFetch, clusterCacheRef } from './shared'
+import { getLocalAgentURL, agentFetch, clusterCacheRef } from './shared'
 import type { PodInfo, NamespaceStats } from './types'
 import { LOCAL_AGENT_HTTP_URL } from '../../lib/constants/network'
 
@@ -83,7 +83,7 @@ export function useNamespaces(cluster?: string, forceLive = false) {
       try {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), NAMESPACE_FETCH_TIMEOUT_MS)
-        const response = await agentFetch(`${LOCAL_AGENT_URL}/namespaces?cluster=${encodeURIComponent(cluster)}`, {
+        const response = await agentFetch(`${getLocalAgentURL()}/namespaces?cluster=${encodeURIComponent(cluster)}`, {
           signal: controller.signal,
           headers: { 'Accept': 'application/json' },
         })

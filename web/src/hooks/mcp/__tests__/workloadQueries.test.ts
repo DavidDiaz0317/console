@@ -100,7 +100,7 @@ vi.mock('../shared', () => ({
   clusterCacheRef: { clusters: [] },
   agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
   fetchWithRetry: (...args: unknown[]) => mockFetchWithRetry(...args),
-  LOCAL_AGENT_URL: 'http://127.0.0.1:8585',
+  getLocalAgentURL: () => 'http://127.0.0.1:8585',
 }))
 
 vi.mock('../../../lib/constants/network', () => ({

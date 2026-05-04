@@ -6,8 +6,13 @@ import {
 } from '../../lib/constants'
 import { isLocalAgentSuppressed } from '../../lib/constants/network'
 
-// Re-export for backward compatibility
-export const LOCAL_AGENT_URL = LOCAL_AGENT_HTTP_URL
+// Re-export as a live getter. LOCAL_AGENT_HTTP_URL is a mutable `let` that
+// gets set to '' by suppressLocalAgent() (in-cluster deployments). A `const`
+// snapshot would freeze the initial 'http://127.0.0.1:8585' value, causing
+// mixed-content errors on Safari when accessing the deployed console.
+export function getLocalAgentURL(): string {
+  return LOCAL_AGENT_HTTP_URL
+}
 
 export const AGENT_TOKEN_STORAGE_KEY = 'kc-agent-token'
 const AGENT_TOKEN_FETCH_TIMEOUT_MS = 5000

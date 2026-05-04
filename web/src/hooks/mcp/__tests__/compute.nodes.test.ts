@@ -76,7 +76,7 @@ vi.mock('../shared', () => ({
   GPU_POLL_INTERVAL_MS: 30_000,
   MIN_REFRESH_INDICATOR_MS: 500,
   getEffectiveInterval: (ms: number) => ms,
-  LOCAL_AGENT_URL: 'http://localhost:8585',
+  getLocalAgentURL: () => 'http://localhost:8585',
   agentFetch: (...args: unknown[]) => fetch(...(args as Parameters<typeof fetch>)),
   clusterCacheRef: mockClusterCacheRef,
 }))
