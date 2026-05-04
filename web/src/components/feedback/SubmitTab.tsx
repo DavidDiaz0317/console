@@ -132,7 +132,7 @@ function buildDirectIssueUrl(targetRepo: TargetRepo, description: string): strin
 function getSubmitErrorDetails(
   error: string,
   canPerformActions: boolean,
-  t: (key: string, fallback?: string) => string,
+  t: ReturnType<typeof useTranslation>['t'],
 ): SubmitErrorDetails {
   const normalized = error.toLowerCase()
   const needsGitHubReauth =
