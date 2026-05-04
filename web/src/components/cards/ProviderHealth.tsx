@@ -129,9 +129,9 @@ export function ProviderHealth() {
       {/* AI Providers */}
       {aiProviders.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             {t('providerHealth.aiProviders')}
-          </h4>
+          </h3>
           <div className="space-y-0.5">
             {aiProviders.map(p => (
               <ProviderRow key={p.id} provider={p} onConfigure={goToSettings} />
@@ -143,9 +143,9 @@ export function ProviderHealth() {
       {/* Cloud Providers */}
       {cloudProviders.length > 0 && (
         <div>
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             {t('providerHealth.cloudProviders')}
-          </h4>
+          </h3>
           <div className="space-y-0.5">
             {cloudProviders.map(p => (
               <ProviderRow key={p.id} provider={p} />

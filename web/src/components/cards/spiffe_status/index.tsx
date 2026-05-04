@@ -228,9 +228,9 @@ export function SpiffeStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('spiffeStatus.sectionTrustDomain', 'Trust domain')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('spiffeStatus.server', 'server')}:{' '}
               <span className="text-foreground">{data.stats.serverVersion}</span>
@@ -244,9 +244,9 @@ export function SpiffeStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Fingerprint className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('spiffeStatus.sectionEntries', 'Registration entries')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {entries.length}
             </span>
@@ -271,9 +271,9 @@ export function SpiffeStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('spiffeStatus.sectionFederated', 'Federated trust domains')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {federatedDomains.length}
             </span>

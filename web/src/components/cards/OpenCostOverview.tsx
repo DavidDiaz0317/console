@@ -175,7 +175,7 @@ function OpenCostOverviewInternal({ config: _config }: OpenCostOverviewProps) {
         */}
       <div ref={containerRef} className="flex-1 overflow-y-auto space-y-2" style={containerStyle}>
         <p className="text-xs text-muted-foreground font-medium mb-2">Cost by Namespace</p>
-        <div role="list" className="space-y-2">
+        <div role="group" aria-label="Namespace costs" className="space-y-2">
         {filteredCosts.map((ns, idx, arr) => {
           const activate = () => drillToCost('all', {
             namespace: ns.namespace,

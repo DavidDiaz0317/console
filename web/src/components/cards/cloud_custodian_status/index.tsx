@@ -327,9 +327,9 @@ export function CloudCustodianStatus() {
       <section className="rounded-md bg-secondary/20 border border-border/40 px-3 py-2">
         <div className="flex items-center gap-2 mb-1.5">
           <ShieldAlert className="w-4 h-4 text-orange-400" />
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {t('cloudCustodianStatus.sectionViolations', 'Violations by severity')}
-          </h4>
+          </h3>
         </div>
         <div className="grid grid-cols-2 @md:grid-cols-4 gap-2 text-xs">
           <div>
@@ -372,9 +372,9 @@ export function CloudCustodianStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('cloudCustodianStatus.sectionPolicies', 'Policies')}
-            </h4>
+            </h3>
           </div>
           {policies.length === 0 ? (
             <div className="rounded-md bg-secondary/20 border border-border/40 px-3 py-2 text-xs text-muted-foreground">
@@ -394,9 +394,9 @@ export function CloudCustodianStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('cloudCustodianStatus.sectionTopResources', 'Top resources acted on')}
-            </h4>
+            </h3>
           </div>
           {topResources.length === 0 ? (
             <div className="rounded-md bg-secondary/20 border border-border/40 px-3 py-2 text-xs text-muted-foreground">

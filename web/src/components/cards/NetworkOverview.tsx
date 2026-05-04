@@ -355,7 +355,7 @@ export function NetworkOverview() {
           <div className="text-xs text-muted-foreground mb-2">{t('cards:networkOverview.topNamespaces')}</div>
           {/* Issue 8883: Top Namespaces is a roving-tabindex list; arrow keys
               traverse siblings, Home/End jump to ends, Enter/Space activate. */}
-          <div className="space-y-1.5" role="list">
+          <div className="space-y-1.5" role="group" aria-label="Top namespaces">
             {stats.namespaces.slice(0, 5).map(([name, count], idx, arr) => {
               const svc = filteredServices.find(s => s.namespace === name)
               const isInteractive = !!(svc?.cluster && svc?.namespace)
@@ -392,7 +392,7 @@ export function NetworkOverview() {
                   className={`flex flex-wrap items-center justify-between gap-y-2 gap-2 p-2 rounded bg-secondary/30 ${isInteractive ? 'cursor-pointer hover:bg-secondary/50' : 'cursor-default'} transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-400`}
                   onClick={activate}
                   onKeyDown={handleKeyDown}
-                  {...(isInteractive ? { role: 'button' as const, tabIndex: 0 } : { role: 'listitem' as const })}
+                  {...(isInteractive ? { role: 'button' as const, tabIndex: 0 } : {})}
                   title={`${count} service${count !== 1 ? 's' : ''} in namespace ${name}${isInteractive ? ' - Click or press Enter to view' : ''}`}
                 >
                   <span className="text-sm text-foreground truncate min-w-0 flex-1">{name}</span>

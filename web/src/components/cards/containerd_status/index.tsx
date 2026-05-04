@@ -175,9 +175,9 @@ export function ContainerdStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('containerdStatus.containers', 'Containers')}
-            </h4>
+            </h3>
           </div>
 
           {data.containers.length === 0 ? (

@@ -654,13 +654,13 @@ function ProactiveGPUNodeHealthMonitorInternal() {
         * toggles expand; ArrowUp/Down move focus between sibling rows;
         * Home/End jump to ends. Container gets role="list".
         */}
-      <div role="list" className="flex-1 overflow-auto space-y-1">
+      <div role="group" aria-label="GPU nodes" className="flex-1 overflow-auto space-y-1">
         {paginatedNodes.map((node, idx, arr) => {
           const isExpanded = expandedNode === `${node.cluster}/${node.nodeName}`
           const nodeKey = `${node.cluster}/${node.nodeName}`
           const toggleExpand = () => setExpandedNode(isExpanded ? null : nodeKey)
           const handleRowKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-            const list = e.currentTarget.closest('[role="list"]')
+            const list = e.currentTarget.closest('[role="group"]')
             const items = list ? Array.from(list.querySelectorAll<HTMLDivElement>('[data-keynav-item="gpu-node"]')) : []
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()

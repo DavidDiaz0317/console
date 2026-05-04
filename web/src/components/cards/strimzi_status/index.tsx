@@ -276,9 +276,9 @@ export function StrimziStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('strimziStatus.sectionClusters', 'Kafka clusters')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('strimziStatus.operator', 'operator')}:{' '}
               <span className="text-foreground">{data.stats.operatorVersion}</span>

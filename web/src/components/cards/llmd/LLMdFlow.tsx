@@ -1102,9 +1102,9 @@ export function LLMdFlow() {
             className="absolute top-10 left-3 w-56 bg-background/95 backdrop-blur-xs rounded-xl p-4 border border-border shadow-xl"
           >
             <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
-              <h4 className="text-white font-semibold text-sm">
+              <h3 className="text-white font-semibold text-sm">
                 {selectedMetrics.name}
-              </h4>
+              </h3>
               <span className={`px-2 py-0.5 rounded-full text-2xs font-medium ${
                 selectedMetrics.status === 'healthy' ? 'bg-green-500/20 text-green-400' :
                 selectedMetrics.status === 'degraded' ? 'bg-yellow-500/20 text-yellow-400' :

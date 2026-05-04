@@ -251,9 +251,9 @@ export function SpireStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('spireStatus.sectionServer', 'SPIRE Server')}
-            </h4>
+            </h3>
             {data.trustDomain ? (
               <span className="text-[11px] text-muted-foreground ml-auto truncate max-w-[50%] font-mono">
                 {data.trustDomain}
@@ -284,9 +284,9 @@ export function SpireStatus() {
           <section className="space-y-2">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-cyan-400" />
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {t('spireStatus.sectionAgent', 'Agent DaemonSet')}
-              </h4>
+              </h3>
             </div>
             <div className="rounded-md bg-secondary/30 px-3 py-2 space-y-1">
               <div className="flex flex-wrap items-center justify-between gap-2">

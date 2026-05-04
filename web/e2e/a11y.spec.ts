@@ -40,11 +40,7 @@ test.describe('Accessibility Audits', () => {
           .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
           .disableRules([
             'color-contrast',
-            'button-name',
-            'select-name',
             'nested-interactive',
-            'aria-required-children',
-            'aria-required-parent',
           ])
           .exclude('[data-testid="chart"]') // Charts may have known issues
           .exclude('.recharts-wrapper') // Chart library exclusion
@@ -224,14 +220,11 @@ test.describe('Accessibility Audits', () => {
         .withRules(['heading-order'])
         .analyze()
 
-      // Dashboard cards use h3/h4 inside a layout with no h2, causing heading
-      // order violations. Track the count so new violations are caught while
-      // existing ones are gradually fixed.
-      const MAX_KNOWN_HEADING_VIOLATIONS = 10
+      // Heading order violations should be zero after fixing card heading hierarchy.
       expect(
         results.violations.length,
-        `Heading order violations exceeded threshold (${MAX_KNOWN_HEADING_VIOLATIONS}):\n${JSON.stringify(results.violations, null, 2)}`
-      ).toBeLessThanOrEqual(MAX_KNOWN_HEADING_VIOLATIONS)
+        `Heading order violations found:\n${JSON.stringify(results.violations, null, 2)}`
+      ).toEqual(0)
     })
   })
 

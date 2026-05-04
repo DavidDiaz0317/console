@@ -247,9 +247,9 @@ export function OpenfgaStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openfgaStatus.sectionEndpoint', 'Endpoint')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {t('openfgaStatus.server', 'server')}:{' '}
               <span className="text-foreground">{data.stats.serverVersion}</span>
@@ -263,9 +263,9 @@ export function OpenfgaStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Gauge className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openfgaStatus.sectionLatency', 'Latency (ms)')}
-            </h4>
+            </h3>
           </div>
           <div className="grid grid-cols-2 @sm:grid-cols-3 gap-2">
             <div className="rounded-md bg-secondary/30 px-3 py-2 flex flex-col items-center">
@@ -292,9 +292,9 @@ export function OpenfgaStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <Database className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openfgaStatus.sectionStores', 'Stores')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {stores.length}
             </span>
@@ -316,9 +316,9 @@ export function OpenfgaStatus() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <FileCode className="w-4 h-4 text-cyan-400" />
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {t('openfgaStatus.sectionModels', 'Authorization models')}
-            </h4>
+            </h3>
             <span className="text-[11px] text-muted-foreground ml-auto">
               {models.length}
             </span>

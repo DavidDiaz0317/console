@@ -695,7 +695,7 @@ export const CardWrapper = memo(function CardWrapper({
               <div className="flex items-center gap-2 min-w-0">
                 {dragHandle}
                 {ResolvedIcon && <ResolvedIcon className={cn('w-4 h-4 shrink-0', resolvedIconColor)} />}
-                <h3 className="text-sm font-medium text-foreground truncate">{title}</h3>
+                <h2 className="text-sm font-medium text-foreground truncate">{title}</h2>
                 <InfoTooltip text={description || t('messages.descriptionComingSoon', { title })} />
                 {/* Demo data indicator - shows if card uses demo data (respects child opt-out) */}
                 {showDemoIndicator && (
@@ -933,8 +933,9 @@ export const CardWrapper = memo(function CardWrapper({
                               onRefresh()
                             }}
                             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+                            aria-label={t('cardWrapper.loadingTimedOutRetry')}
                           >
-                            <RefreshCw className="w-3 h-3" />
+                            <RefreshCw className="w-3 h-3" aria-hidden="true" />
                             {t('cardWrapper.loadingTimedOutRetry')}
                           </button>
                         )}
@@ -942,9 +943,10 @@ export const CardWrapper = memo(function CardWrapper({
                           <button
                             onClick={onRemove}
                             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                            aria-label={t('cardWrapper.removeCardButton')}
                             data-testid="card-remove-button"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3 h-3" aria-hidden="true" />
                             {t('cardWrapper.removeCardButton')}
                           </button>
                         )}
@@ -969,8 +971,9 @@ export const CardWrapper = memo(function CardWrapper({
                           <button
                             onClick={onRefresh}
                             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+                            aria-label={t('cardWrapper.loadingTimedOutRetry')}
                           >
-                            <RefreshCw className="w-3 h-3" />
+                            <RefreshCw className="w-3 h-3" aria-hidden="true" />
                             {t('cardWrapper.loadingTimedOutRetry')}
                           </button>
                         )}
@@ -978,9 +981,10 @@ export const CardWrapper = memo(function CardWrapper({
                           <button
                             onClick={onRemove}
                             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+                            aria-label={t('cardWrapper.removeCardButton')}
                             data-testid="card-remove-button"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3 h-3" aria-hidden="true" />
                             {t('cardWrapper.removeCardButton')}
                           </button>
                         )}

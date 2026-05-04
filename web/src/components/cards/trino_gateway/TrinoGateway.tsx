@@ -172,7 +172,7 @@ function StatTile({ icon: Icon, label, value, color }: { icon: typeof Server; la
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h4 className="text-xs font-medium text-muted-foreground mb-1">{title}</h4>
+      <h3 className="text-xs font-medium text-muted-foreground mb-1">{title}</h3>
       <div className="space-y-1">{children}</div>
     </div>
   )

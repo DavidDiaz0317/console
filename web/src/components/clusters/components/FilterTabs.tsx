@@ -138,6 +138,7 @@ export function FilterTabs({
             value={sortBy}
             onChange={(e) => onSortByChange(e.target.value as SortByType)}
             className="px-2 py-1.5 rounded-lg text-sm bg-card/50 border border-border text-foreground"
+            aria-label={t('actions.sort')}
           >
             <option value="custom">{t('common.custom')}</option>
             <option value="name">{t('common.name')}</option>
@@ -150,6 +151,7 @@ export function FilterTabs({
             onClick={() => onSortAscChange(!sortAsc)}
             className="p-1.5 rounded-lg bg-card/50 border border-border text-muted-foreground hover:text-foreground"
             title={sortAsc ? 'Ascending' : 'Descending'}
+            aria-label={sortAsc ? 'Ascending' : 'Descending'}
           >
             {sortAsc ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
           </button>
