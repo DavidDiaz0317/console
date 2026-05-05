@@ -159,6 +159,12 @@ export async function fetchTreeChildren(node: TreeNode): Promise<TreeNode[]> {
     }
 
     if (nodeId.startsWith('kubara/')) {
+      // Don't recurse into templates folder — it's a placeholder directory
+      // that should remain empty. Without this check, expanding "templates"
+      // creates another "templates" node ad infinitum (issue #12220).
+      if (nodeId.includes('/templates')) {
+        return []
+      }
       const cfg = await getKubaraConfig()
       return KUBARA_CHART_FILES.map(fname => ({
         id: `${nodeId}/${fname}`,

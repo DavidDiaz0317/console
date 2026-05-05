@@ -111,6 +111,11 @@ export function MissionControlDialog({ open, onClose, initialKubaraChart, review
   useEffect(() => {
     if (open && initialKubaraChart && initialChartAdded.current !== initialKubaraChart) {
       initialChartAdded.current = initialKubaraChart
+      // issue #12216 — Reset the entire session when opening with a new chart.
+      // Without this, if the user previously opened MC, progressed to Phase 3,
+      // then closed and re-opened with a different chart, they'd be dropped
+      // into Phase 3 of the old session instead of starting fresh at Phase 1.
+      mc.reset()
       const alreadyAdded = state.projects.some(p => p.name === initialKubaraChart)
       if (!alreadyAdded) {
         mc.addProject({
@@ -124,7 +129,7 @@ export function MissionControlDialog({ open, onClose, initialKubaraChart, review
           userAdded: true,
         })
       }
-      // Ensure we're on Phase 1
+      // Ensure we're on Phase 1 (reset() already sets this, but be explicit)
       mc.setPhase('define')
     }
   }, [open, initialKubaraChart]) // eslint-disable-line react-hooks/exhaustive-deps

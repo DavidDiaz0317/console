@@ -421,6 +421,17 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
     setRawContent(JSON.stringify(mission, null, 2))
     setShowRaw(false)
 
+    // issue #12223 — "Reveal in Explorer": when clicking a recommended mission,
+    // select the path in the sidebar tree so the user can see where it came from.
+    // This provides context about whether it's from KubeStellar Community, Kubara, etc.
+    const sourcePath = mission.metadata?.source
+    if (sourcePath && typeof sourcePath === 'string' && sourcePath.startsWith('/')) {
+      // Community mission (e.g. "/install/prometheus.json") → select the file node
+      const nodeId = `community${sourcePath.replace(/\.[^.]+$/, '')}`
+      setSelectedPath(nodeId)
+    }
+    // For GitHub/kubara sources, skip for now as they use different path structures
+
     // Fetch full file content (steps, uninstall, upgrade, troubleshooting)
     try {
       const { mission: fullMission, raw } = await fetchMissionContent(mission)
