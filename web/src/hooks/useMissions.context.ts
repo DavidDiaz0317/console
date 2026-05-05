@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Mission, MissionFeedback, PendingReviewEntry, StartMissionParams, SaveMissionParams, SavedMissionUpdates } from './useMissionTypes'
 import type { AgentInfo } from '../types/agent'
+import { generateRequestId } from './useMissions.constants'
 
 // Re-exports from useMissionTypes (maintain public API)
 export type {
@@ -9,18 +10,8 @@ export type {
 } from './useMissionTypes'
 export { INACTIVE_MISSION_STATUSES, isActiveMission } from './useMissionTypes'
 
-/**
- * #7089 — Monotonic counter for generating unique request IDs. The previous
- * `claude-${Date.now()}` pattern could collide when two requests were sent
- * in the same millisecond (rapid sends, concurrent tabs). A monotonic counter
- * combined with a random suffix guarantees uniqueness within the same tab,
- * and the random suffix provides uniqueness across tabs.
- */
-let requestIdCounter = 0
-export function generateRequestId(prefix = 'claude'): string {
-  requestIdCounter += 1
-  return `${prefix}-${Date.now()}-${requestIdCounter}-${crypto.randomUUID().replace(/-/g, '').slice(0, 6)}`
-}
+// Re-export for backward compatibility
+export { generateRequestId } from './useMissions.constants'
 
 export interface MissionContextValue {
   missions: Mission[]
