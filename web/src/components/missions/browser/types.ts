@@ -14,6 +14,8 @@ export interface TreeNode {
   repoOwner?: string
   /** GitHub repo name (for external sources like Kubara) */
   repoName?: string
+  /** Normalized directory paths visited to reach this node; used to prevent cycles. */
+  visitedPaths?: string[]
   /** Info tooltip shown on root-level nodes (depth===0) via an ⓘ button */
   infoTooltip?: string
 }

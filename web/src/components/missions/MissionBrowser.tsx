@@ -159,6 +159,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([])
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
 
   // Content state
   const [directoryEntries, setDirectoryEntries] = useState<BrowseEntry[]>([])
@@ -235,7 +236,9 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
         type: 'directory',
         source: 'community',
         loaded: false,
-        description: 'console-kb' },
+        description: 'console-kb',
+        visitedPaths: ['fixes'],
+      },
       {
         id: 'kubara',
         name: 'Kubara Platform Catalog',
@@ -246,6 +249,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
         description: isDemoMode() ? 'Demo catalog — install console locally for live data' : 'Production-tested Helm values from kubara-io/kubara',
         repoOwner: 'kubara-io',
         repoName: 'kubara',
+        visitedPaths: ['go-binary/templates/embedded/managed-service-catalog/helm'],
         infoTooltip: 'Catalog: kubara-io/kubara · Set KUBARA_CATALOG_REPO (and optionally KUBARA_CATALOG_PATH) to use your own public or private catalog' },
     ]
 
@@ -259,6 +263,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
           path: cfg.catalogPath,
           repoOwner: cfg.repoOwner,
           repoName: cfg.repoName,
+          visitedPaths: [cfg.catalogPath],
           description: isDemoMode()
             ? 'Demo catalog — install console locally for live data'
             : isCustom
@@ -285,7 +290,9 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
           type: 'directory' as const,
           source: 'github' as const,
           loaded: false,
-          description: repo })) })
+          description: repo,
+          visitedPaths: [repo],
+        })) })
     }
 
     rootNodes.push({
@@ -302,11 +309,14 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
         type: 'directory' as const,
         source: 'local' as const,
         loaded: false,
-        description: p })),
+        description: p,
+        visitedPaths: [p],
+      })),
       description: 'Drop files or add paths' })
 
     setTreeNodes(rootNodes)
     setSelectedPath(null)
+    setSelectedNode(null)
     setSelectedMission(null)
     setDirectoryEntries([])
     setShowRaw(false)
@@ -605,6 +615,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
 
   const selectNode = async (node: TreeNode) => {
     setSelectedPath(node.id)
+    setSelectedNode(node)
     setSelectedMission(null)
     setRawContent(null)
     setShowRaw(false)
@@ -773,7 +784,9 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
         path: file.name,
         type: 'file',
         source: 'local',
-        loaded: true }
+        loaded: true,
+        visitedPaths: [file.name],
+      }
 
       setTreeNodes((prev) =>
         prev.map((n) =>
@@ -1170,6 +1183,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
                 loading={loading}
                 filteredEntries={filteredEntries}
                 selectedPath={selectedPath}
+                selectedNode={selectedNode}
                 viewMode={viewMode}
                 onImportDirectoryEntry={handleImportDirectoryEntry}
                 onToggleNode={toggleNode}

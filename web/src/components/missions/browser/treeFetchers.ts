@@ -26,6 +26,10 @@ const KUBARA_CHART_NAMES = [
 /** Files surfaced for each Kubara chart node — Chart.yaml and values.yaml are
  *  loaded lazily as files; templates is a (synthetic) directory placeholder. */
 const KUBARA_CHART_FILES = ['Chart.yaml', 'values.yaml', 'templates'] as const
+const MAX_TREE_DEPTH = 10
+const KUBARA_CHART_DIRECTORY_DEPTH = 1
+const KUBARA_CHART_FILE_DEPTH = 2
+const KUBARA_CONFIG_TIMEOUT_MS = 5_000
 
 const KUBARA_DEFAULT_REPO_OWNER = 'kubara-io'
 const KUBARA_DEFAULT_REPO_NAME = 'kubara'
@@ -47,7 +51,7 @@ let cachedKubaraConfig: KubaraConfig | null = null
 export async function getKubaraConfig(): Promise<KubaraConfig> {
   if (cachedKubaraConfig) return cachedKubaraConfig
   try {
-    const res = await fetch('/api/kubara/config', { signal: AbortSignal.timeout(5_000) })
+    const res = await fetch('/api/kubara/config', { signal: AbortSignal.timeout(KUBARA_CONFIG_TIMEOUT_MS) })
     if (res.ok) {
       const cfg = (await res.json()) as { repo?: string; path?: string }
       const [owner, name] = (cfg.repo ?? '').split('/')
@@ -95,6 +99,78 @@ function splitOwnerRepo(node: TreeNode): { owner: string; repo: string; subPath:
   }
 }
 
+function normalizeTreePath(path: string): string {
+  return path.replace(/^\/+|\/+$/g, '')
+}
+
+function getNormalizedVisitedPaths(node: TreeNode): string[] {
+  return (node.visitedPaths || [])
+    .map(normalizeTreePath)
+    .filter(Boolean)
+}
+
+function getTreeDepth(node: TreeNode): number {
+  const visitedPathCount = getNormalizedVisitedPaths(node).length
+  return visitedPathCount > 0 ? visitedPathCount - 1 : 0
+}
+
+function hasVisitedPath(node: TreeNode, path: string): boolean {
+  const normalizedPath = normalizeTreePath(path)
+  return normalizedPath.length > 0 && getNormalizedVisitedPaths(node).includes(normalizedPath)
+}
+
+function buildChildVisitedPaths(node: TreeNode, childPath: string): string[] {
+  const normalizedChildPath = normalizeTreePath(childPath)
+  if (!normalizedChildPath) {
+    return getNormalizedVisitedPaths(node)
+  }
+
+  return [...getNormalizedVisitedPaths(node), normalizedChildPath]
+}
+
+function isKubaraChartDirectory(node: TreeNode): boolean {
+  return node.id.startsWith('kubara/') && getTreeDepth(node) === KUBARA_CHART_DIRECTORY_DEPTH
+}
+
+function shouldUseKubaraSampleContent(node: TreeNode): boolean {
+  return node.id.startsWith('kubara/') &&
+    getTreeDepth(node) === KUBARA_CHART_FILE_DEPTH &&
+    (node.name === 'Chart.yaml' || node.name === 'values.yaml')
+}
+
+async function fetchGitHubContents(node: TreeNode): Promise<GitHubEntry[]> {
+  const { owner, repo, subPath } = splitOwnerRepo(node)
+  const apiPath = subPath
+    ? `/api/github/repos/${owner}/${repo}/contents/${subPath}`
+    : `/api/github/repos/${owner}/${repo}/contents/`
+  const { data: ghEntries } = await api.get<GitHubEntry[]>(apiPath)
+  return ghEntries || []
+}
+
+function createGitHubTreeNode(node: TreeNode, entry: GitHubEntry): TreeNode | null {
+  const { owner, repo } = splitOwnerRepo(node)
+  const childPath = node.repoOwner && node.repoName
+    ? entry.path
+    : `${owner}/${repo}/${entry.path}`
+
+  if (entry.type === 'dir' && hasVisitedPath(node, childPath)) {
+    return null
+  }
+
+  return {
+    id: `${node.id}/${entry.name}`,
+    name: entry.name,
+    path: childPath,
+    type: (entry.type === 'dir' ? 'directory' : 'file') as TreeNode['type'],
+    source: 'github' as const,
+    repoOwner: node.repoOwner,
+    repoName: node.repoName,
+    loaded: entry.type !== 'dir',
+    description: entry.size ? `${entry.size} bytes` : undefined,
+    visitedPaths: buildChildVisitedPaths(node, childPath),
+  }
+}
+
 // ============================================================================
 // Tree expansion — fetch children for a node
 // ============================================================================
@@ -108,6 +184,10 @@ function splitOwnerRepo(node: TreeNode): { owner: string; repo: string; subPath:
 export async function fetchTreeChildren(node: TreeNode): Promise<TreeNode[]> {
   const nodeId = node.id
 
+  if (getTreeDepth(node) >= MAX_TREE_DEPTH) {
+    return []
+  }
+
   if (node.source === 'community') {
     const { data: entries } = await api.get<BrowseEntry[]>(
       `/api/missions/browse?path=${encodeURIComponent(node.path)}`
@@ -116,14 +196,22 @@ export async function fetchTreeChildren(node: TreeNode): Promise<TreeNode[]> {
     // #6421 — filter ALL dot-prefixed entries (directories AND files).
     return entries
       .filter(e => !isHiddenEntry(e.name))
-      .map((e) => ({
-        id: `${nodeId}/${e.name}`,
-        name: e.name,
-        path: e.path,
-        type: e.type,
-        source: 'community' as const,
-        loaded: e.type === 'file',
-        description: e.description }))
+      .flatMap((e) => {
+        if (e.type === 'directory' && hasVisitedPath(node, e.path)) {
+          return []
+        }
+
+        return [{
+          id: `${nodeId}/${e.name}`,
+          name: e.name,
+          path: e.path,
+          type: e.type,
+          source: 'community' as const,
+          loaded: e.type === 'file',
+          description: e.description,
+          visitedPaths: buildChildVisitedPaths(node, e.path),
+        }]
+      })
   }
 
   if (node.source === 'github') {
@@ -139,54 +227,60 @@ export async function fetchTreeChildren(node: TreeNode): Promise<TreeNode[]> {
         type: 'directory' as const,
         source: 'github' as const,
         loaded: false,
-        description: r.full_name }))
+        description: r.full_name,
+        visitedPaths: [normalizeTreePath(r.full_name)],
+      }))
     }
 
     if (nodeId === 'kubara') {
       // Static Kubara catalog (cached, no API calls). Used in demo mode AND
       // in real mode — see KUBARA_CHART_NAMES rationale above.
       const cfg = await getKubaraConfig()
-      return KUBARA_CHART_NAMES.map(name => ({
-        id: `kubara/${name}`,
-        name,
-        path: `${cfg.catalogPath}/${name}`,
-        type: 'directory' as const,
-        source: 'github' as const,
-        repoOwner: cfg.repoOwner,
-        repoName: cfg.repoName,
-        loaded: false,
-      }))
+      return KUBARA_CHART_NAMES.map(name => {
+        const chartPath = `${cfg.catalogPath}/${name}`
+        return {
+          id: `kubara/${name}`,
+          name,
+          path: chartPath,
+          type: 'directory' as const,
+          source: 'github' as const,
+          repoOwner: cfg.repoOwner,
+          repoName: cfg.repoName,
+          loaded: false,
+          visitedPaths: buildChildVisitedPaths(node, chartPath),
+        }
+      })
     }
 
-    if (nodeId.startsWith('kubara/')) {
+    if (isKubaraChartDirectory(node)) {
       const cfg = await getKubaraConfig()
-      return KUBARA_CHART_FILES.map(fname => ({
-        id: `${nodeId}/${fname}`,
-        name: fname,
-        path: `${node.path}/${fname}`,
-        type: (fname === 'templates' ? 'directory' : 'file') as TreeNode['type'],
-        source: 'github' as const,
-        repoOwner: cfg.repoOwner,
-        repoName: cfg.repoName,
-        loaded: fname !== 'templates',
-      }))
+      return KUBARA_CHART_FILES.flatMap((fname) => {
+        const childPath = `${node.path}/${fname}`
+        if (fname === 'templates' && hasVisitedPath(node, childPath)) {
+          return []
+        }
+
+        return [{
+          id: `${nodeId}/${fname}`,
+          name: fname,
+          path: childPath,
+          type: (fname === 'templates' ? 'directory' : 'file') as TreeNode['type'],
+          source: 'github' as const,
+          repoOwner: cfg.repoOwner,
+          repoName: cfg.repoName,
+          loaded: fname !== 'templates',
+          visitedPaths: buildChildVisitedPaths(node, childPath),
+        }]
+      })
     }
 
-    // Specific repo node — list repo contents via GitHub Contents API
-    const repoPath = node.path
-    const { data: ghEntries } = await api.get<GitHubEntry[]>(
-      `/api/github/repos/${repoPath}/contents`
-    )
-    return (ghEntries || [])
+    const ghEntries = await fetchGitHubContents(node)
+    return ghEntries
       .filter(e => e.type === 'dir' || isMissionFile(e.name))
-      .map(e => ({
-        id: `${nodeId}/${e.name}`,
-        name: e.name,
-        path: `${repoPath.split('/').slice(0, 2).join('/')}/${e.path}`,
-        type: (e.type === 'dir' ? 'directory' : 'file') as TreeNode['type'],
-        source: 'github' as const,
-        loaded: e.type !== 'dir',
-        description: e.size ? `${e.size} bytes` : undefined }))
+      .flatMap((e) => {
+        const childNode = createGitHubTreeNode(node, e)
+        return childNode ? [childNode] : []
+      })
   }
 
   return []
@@ -216,14 +310,11 @@ export async function fetchDirectoryEntries(node: TreeNode): Promise<BrowseEntry
   }
 
   if (node.source === 'github') {
-    // Fetch repo contents via GitHub Contents API proxy
-    const { owner, repo, subPath } = splitOwnerRepo(node)
-    const apiPath = subPath
-      ? `/api/github/repos/${owner}/${repo}/contents/${subPath}`
-      : `/api/github/repos/${owner}/${repo}/contents/`
-    const { data: ghEntries } = await api.get<GitHubEntry[]>(apiPath)
-    return (ghEntries || [])
+    const { owner, repo } = splitOwnerRepo(node)
+    const ghEntries = await fetchGitHubContents(node)
+    return ghEntries
       .filter(e => e.type === 'dir' || isMissionFile(e.name))
+      .filter(e => e.type !== 'dir' || !hasVisitedPath(node, node.repoOwner ? e.path : `${owner}/${repo}/${e.path}`))
       .map(e => ({
         name: e.name,
         path: node.repoOwner ? e.path : `${owner}/${repo}/${e.path}`,
@@ -274,20 +365,16 @@ export async function fetchNodeFileContent(node: TreeNode): Promise<string | nul
   }
 
   if (node.source === 'github') {
-    // Serve canned sample content for kubara/* nodes instead of hitting
-    // the GitHub Contents API — avoids per-file rate-limit burn when a
-    // user expands a chart tree.
-    if (node.id.startsWith('kubara/')) {
+    // Serve canned sample content for the synthetic kubara chart root files to
+    // avoid burning rate limits when the user only needs a quick preview.
+    if (shouldUseKubaraSampleContent(node)) {
       return getKubaraSampleContent(node)
     }
 
     // Fetch raw file content via GitHub Contents API proxy
-    const parts = node.path.split('/')
-    const owner = parts[0]
-    const repo = parts[1]
-    const filePath = parts.slice(2).join('/')
+    const { owner, repo, subPath } = splitOwnerRepo(node)
     const { data: ghFile } = await api.get<GitHubFile>(
-      `/api/github/repos/${owner}/${repo}/contents/${filePath}`
+      `/api/github/repos/${owner}/${repo}/contents/${subPath}`
     )
     // GitHub returns base64-encoded content for files
     if (ghFile.content && ghFile.encoding === 'base64') {

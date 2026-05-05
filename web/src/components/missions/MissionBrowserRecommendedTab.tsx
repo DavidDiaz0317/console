@@ -47,6 +47,7 @@ interface MissionBrowserRecommendedTabProps {
   loading: boolean
   filteredEntries: BrowseEntry[]
   selectedPath: string | null
+  selectedNode: TreeNode | null
   viewMode: ViewMode
   /** Called when the user imports a file from the directory listing (parent handles API fetch) */
   onImportDirectoryEntry: (entry: BrowseEntry) => void
@@ -68,6 +69,7 @@ export function MissionBrowserRecommendedTab({
   loading,
   filteredEntries,
   selectedPath,
+  selectedNode,
   viewMode,
   onImportDirectoryEntry,
   onToggleNode,
@@ -251,14 +253,19 @@ export function MissionBrowserRecommendedTab({
           entries={filteredEntries}
           viewMode={viewMode}
           onSelect={(entry) => {
-            const entrySource = selectedPath?.startsWith('github/') ? ('github' as const) : ('community' as const)
+            const entrySource = selectedNode?.source ?? (selectedPath?.startsWith('github/') ? ('github' as const) : ('community' as const))
             const node: TreeNode = {
-              id: entry.path,
+              id: selectedNode ? `${selectedNode.id}/${entry.name}` : entry.path,
               name: entry.name,
               path: entry.path,
               type: entry.type,
               source: entrySource,
               loaded: entry.type === 'file',
+              repoOwner: selectedNode?.repoOwner,
+              repoName: selectedNode?.repoName,
+              visitedPaths: entry.type === 'directory'
+                ? [...(selectedNode?.visitedPaths || []), entry.path]
+                : selectedNode?.visitedPaths,
             }
             if (entry.type === 'file') {
               onSelectNode(node)
