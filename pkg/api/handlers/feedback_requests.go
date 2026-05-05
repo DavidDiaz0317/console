@@ -112,7 +112,7 @@ func (h *FeedbackHandler) CreateFeatureRequest(c *fiber.Ctx) error {
 		if errors.Is(err, errGitHubInsufficientPermissions) {
 			return fiber.NewError(fiber.StatusForbidden, "GitHub could not create the issue because the current token does not have permission to open issues in this repository. Re-authenticate with GitHub OAuth and try again, or open the issue directly on GitHub.")
 		}
-		return fiber.NewError(fiber.StatusBadGateway, fmt.Sprintf("Failed to create GitHub issue: %v", err))
+		return fiber.NewError(fiber.StatusBadGateway, "Failed to create GitHub issue")
 	}
 	request.GitHubIssueNumber = &issueNumber
 	request.Status = models.RequestStatusOpen
