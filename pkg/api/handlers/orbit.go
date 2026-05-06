@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -104,14 +105,16 @@ type OrbitHandler struct {
 	mu       sync.RWMutex
 	missions map[string]*OrbitMission
 	dataFile string
+	executor MissionExecutor
 }
 
 // NewOrbitHandler creates an OrbitHandler, loading any persisted missions
 // from disk. dataDir is the console data directory (e.g. "./data").
-func NewOrbitHandler(dataDir string) *OrbitHandler {
+func NewOrbitHandler(dataDir string, executor MissionExecutor) *OrbitHandler {
 	h := &OrbitHandler{
 		missions: make(map[string]*OrbitMission),
 		dataFile: filepath.Join(dataDir, orbitDefaultDataFile),
+		executor: executor,
 	}
 	h.loadFromDisk()
 	return h
@@ -182,39 +185,24 @@ func (h *OrbitHandler) CreateMission(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(m)
 }
 
-// RunMission marks an orbit mission as having been run right now.
+// RunMission executes an orbit mission right now.
 // POST /api/orbit/missions/:id/run
 func (h *OrbitHandler) RunMission(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	h.mu.Lock()
+	h.mu.RLock()
 	m, ok := h.missions[id]
 	if !ok {
-		h.mu.Unlock()
+		h.mu.RUnlock()
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "mission not found"})
 	}
+	mission := cloneOrbitMission(m)
+	h.mu.RUnlock()
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	m.LastRunAt = &now
-	result := "success"
-	m.LastRunResult = &result
-	m.History = append(m.History, OrbitRunRecord{
-		Timestamp: now,
-		Result:    result,
-	})
+	execution := h.executeMission(c.UserContext(), mission)
+	h.recordMissionRun(id, &execution)
 
-	// Cap history length
-	if len(m.History) > orbitMaxHistoryEntries {
-		m.History = m.History[len(m.History)-orbitMaxHistoryEntries:]
-	}
-	h.mu.Unlock()
-	h.saveToDisk()
-
-	return c.JSON(fiber.Map{
-		"missionId": id,
-		"runAt":     now,
-		"result":    result,
-	})
+	return c.JSON(execution)
 }
 
 // GetSchedule returns which missions are due based on their cadence.
@@ -286,12 +274,10 @@ func (h *OrbitHandler) StartScheduler(done <-chan struct{}) {
 // checkDueMissions iterates all missions and auto-runs those that are
 // due and have autoRun enabled.
 func (h *OrbitHandler) checkDueMissions() {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
+	h.mu.RLock()
 	now := time.Now().UTC()
-	changed := false
-
+	dueMissionIDs := make([]string, 0)
+	dueMissions := make([]*OrbitMission, 0)
 	for _, m := range h.missions {
 		if !m.AutoRun {
 			continue
@@ -315,26 +301,66 @@ func (h *OrbitHandler) checkDueMissions() {
 		}
 
 		if isDue {
-			ts := now.Format(time.RFC3339)
-			m.LastRunAt = &ts
-			result := "success"
-			m.LastRunResult = &result
-			m.History = append(m.History, OrbitRunRecord{
-				Timestamp: ts,
-				Result:    result,
-				Summary:   "Auto-run by backend scheduler",
-			})
-			if len(m.History) > orbitMaxHistoryEntries {
-				m.History = m.History[len(m.History)-orbitMaxHistoryEntries:]
-			}
-			changed = true
-			slog.Info("orbit auto-run triggered", "mission", m.ID, "type", m.OrbitType)
+			dueMissionIDs = append(dueMissionIDs, m.ID)
+			dueMissions = append(dueMissions, cloneOrbitMission(m))
 		}
 	}
+	h.mu.RUnlock()
 
-	if changed {
-		h.saveToDiskLocked()
+	if len(dueMissions) == 0 {
+		return
 	}
+
+	for idx, mission := range dueMissions {
+		execution := h.executeMission(context.Background(), mission)
+		h.recordMissionRun(dueMissionIDs[idx], &execution)
+		slog.Info("orbit auto-run triggered", "mission", mission.ID, "type", mission.OrbitType, "result", execution.Result, "summary", execution.Summary, "executionTime", execution.ExecutionTime)
+	}
+}
+
+func cloneOrbitMission(m *OrbitMission) *OrbitMission {
+	if m == nil {
+		return nil
+	}
+	cloned := *m
+	cloned.Clusters = append([]string(nil), m.Clusters...)
+	cloned.Steps = append([]OrbitStep(nil), m.Steps...)
+	cloned.History = append([]OrbitRunRecord(nil), m.History...)
+	return &cloned
+}
+
+func (h *OrbitHandler) recordMissionRun(id string, execution *orbitMissionExecution) {
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	if execution != nil {
+		execution.MissionID = id
+		execution.RunAt = now
+	}
+
+	h.mu.Lock()
+	mission, ok := h.missions[id]
+	if !ok {
+		h.mu.Unlock()
+		return
+	}
+	mission.LastRunAt = &now
+	result := "skipped"
+	summary := ""
+	if execution != nil {
+		result = execution.Result
+		summary = execution.Summary
+	}
+	mission.LastRunResult = &result
+	mission.History = append(mission.History, OrbitRunRecord{
+		Timestamp: now,
+		Result:    result,
+		Summary:   summary,
+	})
+	if len(mission.History) > orbitMaxHistoryEntries {
+		mission.History = mission.History[len(mission.History)-orbitMaxHistoryEntries:]
+	}
+	h.saveToDiskLocked()
+	h.mu.Unlock()
 }
 
 // ─── Persistence ────────────────────────────────────────────────────
