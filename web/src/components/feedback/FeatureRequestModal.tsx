@@ -27,6 +27,8 @@ import { DraftsTab } from './DraftsTab'
 import { UpdatesTab } from './UpdatesTab'
 import { SubmitForm, SuccessView, SubmitFooter } from './SubmitTab'
 
+const FEATURE_REQUEST_MODAL_CLASS = '!h-[min(90dvh,48rem)] !min-h-0 !max-h-[calc(100dvh-2rem)]'
+
 export function FeatureRequestModal({ isOpen, onClose, initialTab, initialRequestType, initialContext }: FeatureRequestModalProps) {
   const { t } = useTranslation()
   const { user, isAuthenticated, token } = useAuth()
@@ -252,7 +254,14 @@ export function FeatureRequestModal({ isOpen, onClose, initialTab, initialReques
   }, [forceClose])
 
   return (
-    <BaseModal isOpen={isOpen} onClose={handleClose} size="lg" closeOnBackdrop={true} closeOnEscape={true} className="h-[80vh]!">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="lg"
+      closeOnBackdrop={true}
+      closeOnEscape={true}
+      className={FEATURE_REQUEST_MODAL_CLASS}
+    >
       {/* Discard/Save Draft confirmation */}
       {showDiscardConfirm && (
         <DiscardConfirmDialog

@@ -423,7 +423,7 @@ export function SubmitForm({
 
   return (
     <form id="feedback-form" onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      <div className="p-4 space-y-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
         {isAuthGated && (
           <div
             role="region"
@@ -523,22 +523,22 @@ export function SubmitForm({
         {/* Type Selection */}
         <fieldset
           disabled={inputsDisabled}
-          className="flex gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex flex-col gap-2 sm:flex-row disabled:opacity-60 disabled:cursor-not-allowed"
           aria-disabled={inputsDisabled}
         >
           <button
             type="button"
             onClick={() => setRequestType('bug')}
             disabled={inputsDisabled}
-            className={`flex-1 p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
+            className={`flex-1 min-w-0 px-3 py-2.5 sm:p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 overflow-hidden disabled:cursor-not-allowed ${
               requestType === 'bug'
                 ? 'bg-red-500/20 border-red-500/50 text-red-400'
                 : 'border-border text-muted-foreground hover:border-muted-foreground'
             }`}
           >
-            <Bug className="w-4 h-4" />
-            {t('feedback.bugReport')}
-            <span className="text-2xs text-muted-foreground">
+            <Bug className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('feedback.bugReport')}</span>
+            <span className="shrink-0 text-2xs text-muted-foreground">
               +{REWARD_ACTIONS.bug_report.coins}
             </span>
           </button>
@@ -546,15 +546,15 @@ export function SubmitForm({
             type="button"
             onClick={() => setRequestType('feature')}
             disabled={inputsDisabled}
-            className={`flex-1 p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
+            className={`flex-1 min-w-0 px-3 py-2.5 sm:p-3 rounded-lg border transition-colors flex items-center justify-center gap-2 overflow-hidden disabled:cursor-not-allowed ${
               requestType === 'feature'
                 ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
                 : 'border-border text-muted-foreground hover:border-muted-foreground'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            {t('feedback.featureRequest')}
-            <span className="text-2xs text-muted-foreground">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span className="truncate">{t('feedback.featureRequest')}</span>
+            <span className="shrink-0 text-2xs text-muted-foreground">
               +{REWARD_ACTIONS.feature_suggestion.coins}
             </span>
           </button>
@@ -662,7 +662,7 @@ export function SubmitForm({
                   ? 'Example bug report: (replace this with a detailed bug report)\n\nWhat happened:\nThe GPU utilization card shows 0% even though pods are running.\n\nWhat I expected:\nGPU metrics should reflect actual usage from nvidia-smi.\n\nSteps to reproduce:\n1. Deploy a GPU workload\n2. Open the dashboard\n3. Check the GPU card'
                   : 'Example feature request: (replace this with your feature request)\n\nWhat I want:\nAdd a button to export dashboard data as CSV.\n\nWhy it would be useful:\nI need to share cluster metrics with my team in spreadsheets.\n\nAdditional context:\nShould include all visible card data with timestamps.'
               }
-              className="w-full h-[200px] px-3 py-2 bg-secondary/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 resize-none font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-40 sm:h-[200px] px-3 py-2 bg-secondary/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-purple-500/50 resize-none font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={inputsDisabled}
               aria-disabled={inputsDisabled}
             />
