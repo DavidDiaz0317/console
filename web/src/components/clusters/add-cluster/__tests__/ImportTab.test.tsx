@@ -1,8 +1,8 @@
 /**
  * ImportTab component smoke tests
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { render, fireEvent, screen } from '@testing-library/react'
 import { createRef } from 'react'
 
 vi.mock('../../../../lib/demoMode', () => ({
@@ -35,6 +35,31 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en', changeLanguage: vi.fn() } }),
 }))
 
+vi.mock('../../../../lib/modals/ConfirmDialog', () => ({
+  ConfirmDialog: ({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    message,
+    confirmLabel,
+  }: {
+    isOpen: boolean
+    onClose: () => void
+    onConfirm: () => void
+    title: string
+    message: string
+    confirmLabel?: string
+  }) => isOpen ? (
+    <div data-testid="confirm-dialog">
+      <span>{title}</span>
+      <span>{message}</span>
+      <button onClick={onClose}>cancel</button>
+      <button onClick={onConfirm}>{confirmLabel ?? 'Confirm'}</button>
+    </div>
+  ) : null,
+}))
+
 import { ImportTab } from '../ImportTab'
 
 describe('ImportTab', () => {
@@ -61,16 +86,6 @@ describe('ImportTab', () => {
   })
 
   describe('upload overwrite confirmation (#8917)', () => {
-    let confirmSpy: ReturnType<typeof vi.spyOn>
-
-    beforeEach(() => {
-      confirmSpy = vi.spyOn(window, 'confirm')
-    })
-
-    afterEach(() => {
-      confirmSpy.mockRestore()
-    })
-
     // Test fixture: a minimal File that satisfies the onChange handler contract.
     // We don't actually exercise FileReader here — that logic lives in the parent
     // (AddClusterDialog.handleFileUpload). We only verify the confirmation gate.
@@ -110,7 +125,7 @@ describe('ImportTab', () => {
       const { container } = renderTab('', handleFileUpload)
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(input, makeFileChangeEvent())
-      expect(confirmSpy).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       expect(handleFileUpload).toHaveBeenCalledTimes(1)
     })
 
@@ -119,27 +134,29 @@ describe('ImportTab', () => {
       const { container } = renderTab('   \n  ', handleFileUpload)
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(input, makeFileChangeEvent())
-      expect(confirmSpy).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       expect(handleFileUpload).toHaveBeenCalledTimes(1)
     })
 
-    it('prompts for confirmation when pasted YAML exists and proceeds on accept', () => {
-      confirmSpy.mockReturnValue(true)
+    it('opens the confirm dialog when pasted YAML exists and proceeds on accept', () => {
       const handleFileUpload = vi.fn()
       const { container } = renderTab('apiVersion: v1', handleFileUpload)
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(input, makeFileChangeEvent())
-      expect(confirmSpy).toHaveBeenCalledTimes(1)
+
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'actions.replace' }))
       expect(handleFileUpload).toHaveBeenCalledTimes(1)
     })
 
-    it('does NOT call the parent upload handler when the user cancels the confirm', () => {
-      confirmSpy.mockReturnValue(false)
+    it('does NOT call the parent upload handler when the user cancels the dialog', () => {
       const handleFileUpload = vi.fn()
       const { container } = renderTab('apiVersion: v1', handleFileUpload)
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(input, makeFileChangeEvent())
-      expect(confirmSpy).toHaveBeenCalledTimes(1)
+
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
       expect(handleFileUpload).not.toHaveBeenCalled()
     })
   })

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Save, Coins, RefreshCw } from 'lucide-react'
 import { StatusBadge } from '../../../components/ui/StatusBadge'
 import { Button } from '../../../components/ui/Button'
+import { ConfirmDialog } from '../../../lib/modals/ConfirmDialog'
 import { getTokenAlertLevel, type TokenUsage, type TokenAlertLevel } from '../../../hooks/useTokenUsage'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../../lib/constants/network'
 
@@ -34,6 +35,8 @@ export function TokenUsageSection({ usage, updateSettings, resetUsage, isDemoDat
   const [criticalThreshold, setCriticalThreshold] = useState(usage.criticalThreshold * 100)
   const [saved, setSaved] = useState(false)
   const [thresholdError, setThresholdError] = useState<string | null>(null)
+  // Replaces window.confirm for zero-limit destructive action (#8870)
+  const [showZeroLimitConfirm, setShowZeroLimitConfirm] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const usagePercent = usage.limit > 0 ? Math.min((usage.used / usage.limit) * 100, 100) : 0
   const alertLevel = getTokenAlertLevel(usage)
@@ -47,6 +50,17 @@ export function TokenUsageSection({ usage, updateSettings, resetUsage, isDemoDat
     return () => clearTimeout(savedTimerRef.current)
   }, [])
 
+  const commitSave = () => {
+    updateSettings({
+      limit: tokenLimit,
+      warningThreshold: warningThreshold / 100,
+      criticalThreshold: criticalThreshold / 100,
+    })
+    setSaved(true)
+    clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), UI_FEEDBACK_TIMEOUT_MS)
+  }
+
   const handleSaveTokenSettings = () => {
     // #8869: warning must be strictly less than critical, otherwise alert semantics invert
     if (warningThreshold >= criticalThreshold) {
@@ -56,19 +70,13 @@ export function TokenUsageSection({ usage, updateSettings, resetUsage, isDemoDat
     setThresholdError(null)
 
     // #8870: a limit of 0 silently disables all AI operations; require explicit confirmation
+    // Uses themed ConfirmDialog instead of window.confirm for accessibility.
     if (tokenLimit === DISABLED_TOKEN_LIMIT) {
-      const confirmed = window.confirm(t('settings.tokens.validation.limitZeroConfirm'))
-      if (!confirmed) return
+      setShowZeroLimitConfirm(true)
+      return
     }
 
-    updateSettings({
-      limit: tokenLimit,
-      warningThreshold: warningThreshold / 100,
-      criticalThreshold: criticalThreshold / 100,
-    })
-    setSaved(true)
-    clearTimeout(savedTimerRef.current)
-    savedTimerRef.current = setTimeout(() => setSaved(false), UI_FEEDBACK_TIMEOUT_MS)
+    commitSave()
   }
 
   return (
@@ -206,6 +214,16 @@ export function TokenUsageSection({ usage, updateSettings, resetUsage, isDemoDat
           {saved ? t('settings.tokens.saved') : t('settings.tokens.saveSettings')}
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={showZeroLimitConfirm}
+        onClose={() => setShowZeroLimitConfirm(false)}
+        onConfirm={() => { setShowZeroLimitConfirm(false); commitSave() }}
+        title={t('settings.tokens.validation.limitZeroTitle')}
+        message={t('settings.tokens.validation.limitZeroConfirm')}
+        confirmLabel={t('settings.tokens.validation.limitZeroConfirmLabel')}
+        variant="warning"
+      />
     </div>
   )
 }

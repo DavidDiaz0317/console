@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, Check, Loader2 } from 'lucide-react'
 import { StatusBadge } from '../../ui/StatusBadge'
+import { ConfirmDialog } from '../../../lib/modals/ConfirmDialog'
 import type { ImportState, PreviewContext } from './types'
 
 interface ImportTabProps {
@@ -35,21 +37,32 @@ export function ImportTab({
   handleImport,
 }: ImportTabProps) {
   const { t } = useTranslation()
+  const [pendingUploadEvent, setPendingUploadEvent] = useState<React.ChangeEvent<HTMLInputElement> | null>(null)
 
   const newCount = previewContexts.filter((c) => c.isNew).length
 
   // Wrap the upload handler to confirm before overwriting existing pasted YAML.
   // Fixes #8917 — uploading a file used to silently replace pasted content.
+  // Replaces window.confirm() with the themed ConfirmDialog (accessibility fix).
   const handleFileUploadWithConfirm = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (kubeconfigYaml.trim().length > 0) {
-      const confirmed = window.confirm(t('cluster.importOverwriteConfirm'))
-      if (!confirmed) {
-        // Clear the file input so re-selecting the same file still fires onChange next time.
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        return
-      }
+      setPendingUploadEvent(e)
+      return
     }
     handleFileUpload(e)
+  }
+
+  const handleConfirmOverwrite = () => {
+    if (pendingUploadEvent) {
+      handleFileUpload(pendingUploadEvent)
+    }
+    setPendingUploadEvent(null)
+  }
+
+  const handleCancelOverwrite = () => {
+    // Clear the file input so re-selecting the same file still fires onChange next time.
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setPendingUploadEvent(null)
   }
 
   return (
@@ -182,6 +195,15 @@ export function ImportTab({
           )}
         </>
       )}
+      <ConfirmDialog
+        isOpen={pendingUploadEvent !== null}
+        onClose={handleCancelOverwrite}
+        onConfirm={handleConfirmOverwrite}
+        title={t('cluster.importOverwriteTitle')}
+        message={t('cluster.importOverwriteConfirm')}
+        confirmLabel={t('actions.replace')}
+        variant="warning"
+      />
     </div>
   )
 }
