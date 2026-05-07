@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { getSidebarCardCount } from '../sidebarCardCount'
+import { getSidebarCardCount, getSidebarHrefCardCount } from '../sidebarCardCount'
 import { aiAgentsDashboardConfig } from '../../../config/dashboards/ai-agents'
+import { alertsDashboardConfig } from '../../../config/dashboards/alerts'
 import { mainDashboardConfig } from '../../../config/dashboards/main'
 
 describe('getSidebarCardCount', () => {
@@ -14,5 +15,15 @@ describe('getSidebarCardCount', () => {
 
   it('returns null when the dashboard config is missing', () => {
     expect(getSidebarCardCount(undefined)).toBeNull()
+  })
+})
+
+describe('getSidebarHrefCardCount', () => {
+  it('returns the alerts dashboard card count for the alerts sidebar entry', () => {
+    expect(getSidebarHrefCardCount('/alerts')).toBe(alertsDashboardConfig.cards.length)
+  })
+
+  it('returns null for sidebar entries without a dashboard config', () => {
+    expect(getSidebarHrefCardCount('/does-not-exist')).toBeNull()
   })
 })

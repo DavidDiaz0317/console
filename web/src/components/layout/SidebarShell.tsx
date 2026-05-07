@@ -36,7 +36,6 @@ import type { SnoozedMission } from '../../hooks/useSnoozedMissions'
 import { useActiveUsers } from '../../hooks/useActiveUsers'
 import { useMissions } from '../../hooks/useMissions'
 import { ROUTES } from '../../config/routes'
-import { DASHBOARD_CONFIGS } from '../../config/dashboards/index'
 import { emitSidebarNavigated, emitDashboardRenamed } from '../../lib/analytics'
 import { prefetchDashboard } from '../../lib/prefetchDashboard'
 import { useVersionCheck } from '../../hooks/useVersionCheck'
@@ -44,7 +43,7 @@ import { useUpgradeState } from '../../hooks/useUpgradeState'
 import { STORAGE_KEY_GROUND_CONTROL_DASHBOARDS } from '../../lib/constants/storage'
 import { NAVBAR_HEIGHT_PX, SIDEBAR_CONTROLS_LEFT_OFFSET_PX } from '../../lib/constants/ui'
 import { safeGetJSON } from '../../lib/utils/localStorage'
-import { getSidebarCardCount } from './sidebarCardCount'
+import { getSidebarHrefCardCount } from './sidebarCardCount'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -132,25 +131,6 @@ const SIDEBAR_MAX_WIDTH_PX = 480
 
 /** Index of the primary (dashboard list) section — "Add more..." button renders after it */
 const PRIMARY_SECTION_INDEX = 0
-
-/** Map sidebar item href to dashboard config ID for card count display.
- * NOTE: '/alerts' is intentionally excluded — displaying the card count
- * next to "Alerts" would be confused with the active alert count shown
- * in the header badge (#11404). */
-const HREF_TO_DASHBOARD_ID: Record<string, string> = {
-  '/': 'main', '/compute': 'compute', '/security': 'security',
-  '/gitops': 'gitops', '/storage': 'storage', '/network': 'network',
-  '/events': 'events', '/workloads': 'workloads', '/operators': 'operators',
-  '/clusters': 'clusters', '/compliance': 'compliance', '/cost': 'cost',
-  '/gpu-reservations': 'gpu', '/nodes': 'nodes', '/deployments': 'deployments',
-  '/pods': 'pods', '/services': 'services', '/helm': 'helm',
-  '/ai-ml': 'ai-ml', '/ci-cd': 'ci-cd',
-  '/logs': 'logs', '/data-compliance': 'data-compliance', '/arcade': 'arcade',
-  '/deploy': 'deploy', '/ai-agents': 'ai-agents',
-  '/llm-d-benchmarks': 'llm-d-benchmarks', '/cluster-admin': 'cluster-admin',
-  '/insights': 'insights', '/drasi': 'drasi',
-  '/multi-tenancy': 'multi-tenancy', '/acmm': 'acmm',
-}
 
 const CUSTOM_DASHBOARD_PREFIX = '/custom-dashboard/'
 
@@ -483,12 +463,7 @@ export function SidebarShell({
           >
             {renderIcon(item.icon, isCollapsed ? 'w-6 h-6' : 'w-5 h-5')}
             {!isCollapsed && (() => {
-              const dashId = HREF_TO_DASHBOARD_ID[item.href]
-              // Skip card count for alerts dashboard — the header AlertBadge already
-              // shows the actual firing alert count; showing the dashboard card count
-              // here (e.g. "5") creates a conflicting signal (#11404).
-              const count = dashId && item.href !== '/alerts'
-                ? getSidebarCardCount(DASHBOARD_CONFIGS[dashId]) : null
+              const count = getSidebarHrefCardCount(item.href)
               const isGC = isGroundControlItem(item.href)
               return (
                 <span className="flex-1 min-w-0 flex items-center gap-1">
