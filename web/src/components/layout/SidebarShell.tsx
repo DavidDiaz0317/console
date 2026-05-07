@@ -484,10 +484,7 @@ export function SidebarShell({
             {renderIcon(item.icon, isCollapsed ? 'w-6 h-6' : 'w-5 h-5')}
             {!isCollapsed && (() => {
               const dashId = HREF_TO_DASHBOARD_ID[item.href]
-              // Skip card count for alerts dashboard — the header AlertBadge already
-              // shows the actual firing alert count; showing the dashboard card count
-              // here (e.g. "5") creates a conflicting signal (#11404).
-              const count = dashId && item.href !== '/alerts'
+              const count = dashId
                 ? getSidebarCardCount(DASHBOARD_CONFIGS[dashId]) : null
               const isGC = isGroundControlItem(item.href)
               return (
