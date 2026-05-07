@@ -3416,7 +3416,37 @@
     "errorLoadingData": "Error loading node data",
     "totalNodes": "total nodes",
     "cpuCores": "CPU cores",
-    "tpus": "TPUs"
+    "tpus": "TPUs",
+    "clearFilters": "Clear filters"
+  },
+  "storage": {
+    "title": "Storage",
+    "subtitle": "Monitor storage resources across clusters",
+    "dashboardTitle": "Storage Dashboard",
+    "emptyDescription": "Add cards to monitor PVCs, StorageClasses, and storage utilization across your clusters.",
+    "errorLoadingData": "Error loading storage data",
+    "totalAllocatable": "total allocatable",
+    "persistentVolumeClaims": "persistent volume claims",
+    "pvcsBound": "PVCs bound",
+    "pvcsPending": "PVCs pending",
+    "persistentVolumesBound": "persistent volumes (bound)",
+    "classesInUse": "classes in use"
+  },
+  "cicd": {
+    "title": "CI/CD",
+    "subtitle": "Monitor continuous integration and deployment pipelines",
+    "dashboardTitle": "CI/CD Dashboard",
+    "emptyDescription": "Add cards to monitor pipelines, builds, and deployment status across your clusters."
+  },
+  "compliance": {
+    "title": "Compliance Frameworks",
+    "subtitle": "Evaluate clusters against PCI-DSS 4.0, SOC 2 Type II, and other regulatory standards",
+    "loadingFrameworks": "Loading frameworks…",
+    "failedToLoad": "Failed to load frameworks",
+    "retry": "Retry",
+    "noClustersAvailable": "No clusters available",
+    "evaluating": "Evaluating…",
+    "runEvaluation": "Run Evaluation"
   },
   "operators": {
     "title": "Operators",
@@ -3983,6 +4013,17 @@
     "errorLoading": "Error loading deployment data"
   },
   "workloads": {
+    "title": "Workloads",
+    "subtitle": "View and manage deployed applications across clusters",
+    "dashboardTitle": "Workloads Dashboard",
+    "emptyDescription": "Add cards to monitor deployments, pods, and application health across your clusters.",
+    "activeNamespaces": "active namespaces",
+    "criticalIssues": "critical issues",
+    "warningIssues": "warning issues",
+    "healthyNamespaces": "healthy namespaces",
+    "totalDeployments": "total deployments",
+    "podIssues": "pod issues",
+    "deploymentIssues": "deployment issues",
     "deleteDeployment": "Delete Deployment",
     "confirmDelete": "Are you sure you want to delete deployment {{name}}? This action cannot be undone.",
     "deleting": "Deleting deployment...",

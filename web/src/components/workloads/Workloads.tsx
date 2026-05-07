@@ -278,19 +278,19 @@ export function Workloads() {
   const getDashboardStatValue = (blockId: string): StatBlockValue => {
     switch (blockId) {
       case 'namespaces':
-        return { value: stats.total, sublabel: 'active namespaces', onClick: () => drillToAllNamespaces(), isClickable: apps.length > 0 }
+        return { value: stats.total, sublabel: t('workloads.activeNamespaces'), onClick: () => drillToAllNamespaces(), isClickable: apps.length > 0 }
       case 'critical':
-        return { value: stats.critical, sublabel: 'critical issues', onClick: () => drillToAllNamespaces('critical'), isClickable: stats.critical > 0 }
+        return { value: stats.critical, sublabel: t('workloads.criticalIssues'), onClick: () => drillToAllNamespaces('critical'), isClickable: stats.critical > 0 }
       case 'warning':
-        return { value: stats.warning, sublabel: 'warning issues', onClick: () => drillToAllNamespaces('warning'), isClickable: stats.warning > 0 }
+        return { value: stats.warning, sublabel: t('workloads.warningIssues'), onClick: () => drillToAllNamespaces('warning'), isClickable: stats.warning > 0 }
       case 'healthy':
-        return { value: stats.healthy, sublabel: 'healthy namespaces', onClick: () => drillToAllNamespaces('healthy'), isClickable: stats.healthy > 0 }
+        return { value: stats.healthy, sublabel: t('workloads.healthyNamespaces'), onClick: () => drillToAllNamespaces('healthy'), isClickable: stats.healthy > 0 }
       case 'deployments':
-        return { value: stats.totalDeployments, sublabel: 'total deployments', onClick: () => drillToAllDeployments(), isClickable: stats.totalDeployments > 0 }
+        return { value: stats.totalDeployments, sublabel: t('workloads.totalDeployments'), onClick: () => drillToAllDeployments(), isClickable: stats.totalDeployments > 0 }
       case 'pod_issues':
-        return { value: stats.totalPodIssues, sublabel: 'pod issues', onClick: () => drillToAllPods('issues'), isClickable: stats.totalPodIssues > 0 }
+        return { value: stats.totalPodIssues, sublabel: t('workloads.podIssues'), onClick: () => drillToAllPods('issues'), isClickable: stats.totalPodIssues > 0 }
       case 'deployment_issues':
-        return { value: stats.totalDeploymentIssues, sublabel: 'deployment issues', onClick: () => drillToAllDeployments('issues'), isClickable: stats.totalDeploymentIssues > 0 }
+        return { value: stats.totalDeploymentIssues, sublabel: t('workloads.deploymentIssues'), onClick: () => drillToAllDeployments('issues'), isClickable: stats.totalDeploymentIssues > 0 }
       default:
         return { value: '-', sublabel: '' }
     }
@@ -298,8 +298,8 @@ export function Workloads() {
 
   return (
     <DashboardPage
-      title="Workloads"
-      subtitle="View and manage deployed applications across clusters"
+      title={t('workloads.title')}
+      subtitle={t('workloads.subtitle')}
       icon="Box"
       rightExtra={
         <div className="flex items-center gap-2">
@@ -325,8 +325,8 @@ export function Workloads() {
       lastUpdated={lastUpdated}
       hasData={apps.length > 0 || !showSkeletons}
       emptyState={{
-        title: 'Workloads Dashboard',
-        description: 'Add cards to monitor deployments, pods, and application health across your clusters.'
+        title: t('workloads.dashboardTitle'),
+        description: t('workloads.emptyDescription')
       }}
     >
       {/* Workloads List */}

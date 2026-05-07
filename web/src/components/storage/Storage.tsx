@@ -120,6 +120,7 @@ const STORAGE_CARDS_KEY = 'kubestellar-storage-cards'
 const DEFAULT_STORAGE_CARDS = getDefaultCards('storage')
 
 export function Storage() {
+  const { t } = useTranslation()
   const { deduplicatedClusters: clusters, isLoading, isRefreshing: dataRefreshing, lastUpdated, refetch, error: clustersError } = useClusters()
   const {
     selectedClusters: globalSelectedClusters,
@@ -202,28 +203,28 @@ export function Storage() {
       case 'ephemeral':
         return {
           value: formatStorage(stats?.totalStorageGB || 0, hasDataToShow),
-          sublabel: 'total allocatable',
+          sublabel: t('storage.totalAllocatable'),
           onClick: hasDataToShow ? drillToResources : undefined,
           isClickable: hasDataToShow
         }
       case 'pvcs':
         return {
           value: formatStatValue(stats?.totalPVCs || 0, hasDataToShow),
-          sublabel: 'persistent volume claims',
+          sublabel: t('storage.persistentVolumeClaims'),
           onClick: () => { setPVCModalFilter('all'); openPVCModal() },
           isClickable: hasDataToShow && (stats?.totalPVCs || 0) > 0
         }
       case 'bound':
         return {
           value: formatStatValue(stats?.boundPVCs || 0, hasDataToShow),
-          sublabel: 'PVCs bound',
+          sublabel: t('storage.pvcsBound'),
           onClick: () => { setPVCModalFilter('Bound'); openPVCModal() },
           isClickable: hasDataToShow && (stats?.boundPVCs || 0) > 0
         }
       case 'pending':
         return {
           value: formatStatValue(stats?.pendingPVCs || 0, hasDataToShow),
-          sublabel: 'PVCs pending',
+          sublabel: t('storage.pvcsPending'),
           onClick: () => { setPVCModalFilter('Pending'); openPVCModal() },
           isClickable: hasDataToShow && (stats?.pendingPVCs || 0) > 0
         }
@@ -234,14 +235,14 @@ export function Storage() {
         const boundPVCount = filteredPVCs.filter(p => p.status === 'Bound').length
         return {
           value: formatStatValue(boundPVCount, hasDataToShow),
-          sublabel: 'persistent volumes (bound)',
+          sublabel: t('storage.persistentVolumesBound'),
           isClickable: false,
         }
       }
       case 'storage_classes': {
         // Count unique storage classes from PVCs (shows storage classes in use)
         const uniqueStorageClasses = new Set(filteredPVCs.map(p => p.storageClass).filter(Boolean))
-        return { value: uniqueStorageClasses.size, sublabel: 'classes in use', isClickable: false }
+        return { value: uniqueStorageClasses.size, sublabel: t('storage.classesInUse'), isClickable: false }
       }
       default:
         return { value: '-', sublabel: '' }
@@ -253,8 +254,8 @@ export function Storage() {
   return (
     <>
       <DashboardPage
-        title="Storage"
-        subtitle="Monitor storage resources across clusters"
+        title={t('storage.title')}
+        subtitle={t('storage.subtitle')}
         icon="HardDrive"
         rightExtra={<RotatingTip page="storage" />}
         storageKey={STORAGE_CARDS_KEY}
@@ -267,15 +268,15 @@ export function Storage() {
         lastUpdated={lastUpdated}
         hasData={hasDataToShow}
         emptyState={{
-          title: 'Storage Dashboard',
-          description: 'Add cards to monitor PVCs, StorageClasses, and storage utilization across your clusters.' }}
+          title: t('storage.dashboardTitle'),
+          description: t('storage.emptyDescription') }}
       >
         {/* Error Display */}
         {error && (
           <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-400">Error loading storage data</p>
+              <p className="text-sm font-medium text-red-400">{t('storage.errorLoadingData')}</p>
               <p className="text-xs text-muted-foreground mt-1">{error}</p>
             </div>
           </div>

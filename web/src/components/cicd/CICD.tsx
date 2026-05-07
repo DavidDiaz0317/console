@@ -4,6 +4,7 @@ import { RotatingTip } from '../ui/RotatingTip'
 import { PipelineFilterProvider, PipelineDataProvider, PipelineFilterBar } from '../cards/pipelines'
 import { usePipelineFilter } from '../cards/pipelines/PipelineFilterContext'
 import { useCICDStats } from './useCICDStats'
+import { useTranslation } from 'react-i18next'
 
 const CICD_CARDS_KEY = 'kubestellar-cicd-cards'
 
@@ -15,6 +16,7 @@ const DEFAULT_CICD_CARDS = getDefaultCards('ci-cd')
  * consume the unified pipeline data for stat calculations.
  */
 function CICDDashboard() {
+  const { t } = useTranslation()
   const {
     getStatValue,
     isLoading,
@@ -27,8 +29,8 @@ function CICDDashboard() {
 
   return (
     <DashboardPage
-      title="CI/CD"
-      subtitle="Monitor continuous integration and deployment pipelines"
+      title={t('cicd.title')}
+      subtitle={t('cicd.subtitle')}
       icon="GitMerge"
       rightExtra={<RotatingTip page="ci-cd" />}
       headerExtra={<PipelineFilterBar />}
@@ -43,8 +45,8 @@ function CICDDashboard() {
       lastUpdated={lastRefresh != null ? new Date(lastRefresh) : null}
       onRefresh={refetch ?? undefined}
       emptyState={{
-        title: 'CI/CD Dashboard',
-        description: 'Add cards to monitor pipelines, builds, and deployment status across your clusters.' }}
+        title: t('cicd.dashboardTitle'),
+        description: t('cicd.emptyDescription') }}
     />
   )
 }

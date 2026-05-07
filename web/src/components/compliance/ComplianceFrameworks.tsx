@@ -22,6 +22,7 @@ import { useComplianceFrameworks, useFrameworkEvaluation, type Framework, type C
 import { clusterCache, subscribeClusterData } from '../../hooks/mcp/shared'
 import { DashboardHeader } from '../shared/DashboardHeader'
 import { RotatingTip } from '../ui/RotatingTip'
+import { useTranslation } from 'react-i18next'
 
 /* ────────── status badge helpers ────────── */
 
@@ -198,6 +199,7 @@ function useClusterNames(): string[] {
 /* ────────── main page ────────── */
 
 export const ComplianceFrameworksContent = memo(function ComplianceFrameworksContent() {
+  const { t } = useTranslation()
   const { frameworks, isLoading: fwLoading, error: fwError, refetch } = useComplianceFrameworks()
   const clusterNames = useClusterNames()
   const { result, isEvaluating, error: evalError, evaluate } = useFrameworkEvaluation()
@@ -243,7 +245,7 @@ export const ComplianceFrameworksContent = memo(function ComplianceFrameworksCon
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Loading frameworks…
+        {t('compliance.loadingFrameworks')}
       </div>
     )
   }
@@ -251,10 +253,10 @@ export const ComplianceFrameworksContent = memo(function ComplianceFrameworksCon
   if (fwError) {
     return (
       <div className="p-6 text-red-400">
-        <p className="font-medium">Failed to load frameworks</p>
+        <p className="font-medium">{t('compliance.failedToLoad')}</p>
         <p className="text-sm mt-1">{fwError}</p>
         <button onClick={refetch} className="mt-3 text-sm text-blue-400 hover:underline" type="button">
-          Retry
+          {t('compliance.retry')}
         </button>
       </div>
     )
@@ -263,8 +265,8 @@ export const ComplianceFrameworksContent = memo(function ComplianceFrameworksCon
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <DashboardHeader
-        title="Compliance Frameworks"
-        subtitle="Evaluate clusters against PCI-DSS 4.0, SOC 2 Type II, and other regulatory standards"
+        title={t('compliance.title')}
+        subtitle={t('compliance.subtitle')}
         isFetching={fwLoading}
         onRefresh={refetch}
         autoRefresh={autoRefresh}
@@ -296,7 +298,7 @@ export const ComplianceFrameworksContent = memo(function ComplianceFrameworksCon
             onChange={e => setSelectedCluster(e.target.value)}
             className="flex-1 max-w-xs bg-secondary text-foreground text-sm rounded-md border border-border px-3 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
           >
-            {clusterNames.length === 0 && <option value="">No clusters available</option>}
+            {clusterNames.length === 0 && <option value="">{t('compliance.noClustersAvailable')}</option>}
             {clusterNames.map(name => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -308,7 +310,7 @@ export const ComplianceFrameworksContent = memo(function ComplianceFrameworksCon
             type="button"
           >
             {isEvaluating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-            {isEvaluating ? 'Evaluating…' : 'Run Evaluation'}
+            {isEvaluating ? t('compliance.evaluating') : t('compliance.runEvaluation')}
           </button>
         </div>
       )}
