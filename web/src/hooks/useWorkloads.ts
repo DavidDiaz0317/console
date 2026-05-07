@@ -95,6 +95,11 @@ export function requireLocalAgentHttp(action: string): string {
 }
 
 
+function getFetchSignal(signal?: AbortSignal): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS)
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
+}
+
 export function getDemoWorkloads(cluster?: string, namespace?: string): Workload[] {
   const workloads: Workload[] = [
     { name: 'api-server', namespace: 'production', type: 'Deployment', cluster: 'eks-prod-us-east-1', replicas: 3, readyReplicas: 3, status: 'Running', image: 'api-server:v2.1.0', createdAt: new Date(Date.now() - 30 * 86400000).toISOString() },
@@ -279,7 +284,10 @@ export function useWorkloads(options?: {
       const queryString = params.toString()
       const url = `/api/workloads${queryString ? `?${queryString}` : ''}`
 
-      const res = await fetch(url, { headers: authHeaders(), signal: signal || AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+      const res = await fetch(url, {
+        headers: authHeaders(),
+        signal: getFetchSignal(signal),
+      })
       if (!res.ok) {
         throw new Error(`Failed to fetch workloads: ${res.statusText}`)
       }
