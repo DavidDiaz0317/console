@@ -31,13 +31,10 @@ func TestServer_HandleScaleHTTP(t *testing.T) {
 
 	s.handleScaleHTTP(w, req)
 
-	// ScaleWorkload returns a DeployResponse (not an error) when a cluster is
-	// not registered — the handler always returns HTTP 200 with a JSON body
-	// containing "success". A handler-level non-2xx for partial/all-cluster
-	// failure would be an improvement, but the current contract is 200 + body.
-	// TODO: handler should return 500 when all target clusters fail (#11844).
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected 200, got %d", w.Code)
+	// All-target scale failure should be surfaced as non-2xx so callers can
+	// reliably detect transport-level failure via response.ok.
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("Expected 500, got %d", w.Code)
 	}
 
 	var resp map[string]interface{}

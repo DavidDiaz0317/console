@@ -316,5 +316,5 @@ test.describe('CI/CD Deep Tests (/ci-cd)', () => {
       // New pill not visible
     }
     }
-  })
+  )
 })

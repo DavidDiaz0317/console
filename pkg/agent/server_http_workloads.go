@@ -150,12 +150,17 @@ func (s *Server) handleScaleHTTP(w http.ResponseWriter, r *http.Request) {
 	result, err := s.k8sClient.ScaleWorkload(ctx, namespace, name, targetClusters, replicas)
 	if err != nil {
 		slog.Warn("error scaling resource", "namespace", namespace, "name", name, "targetClusters", targetClusters, "error", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
 			"source":  "agent",
 		})
 		return
+	}
+
+	if !result.Success && len(result.DeployedTo) == 0 && len(result.FailedClusters) > 0 {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	writeJSON(w, map[string]interface{}{
