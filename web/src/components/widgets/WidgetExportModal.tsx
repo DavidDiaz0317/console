@@ -82,6 +82,20 @@ interface WidgetExportModalProps {
 }
 
 type ExportTab = 'card' | 'stats' | 'templates'
+const EXPORT_TAB_IDS: Record<ExportTab, string> = {
+  templates: 'widget-export-tab-templates',
+  card: 'widget-export-tab-card',
+  stats: 'widget-export-tab-stats',
+}
+const EXPORT_PANEL_IDS: Record<ExportTab, string> = {
+  templates: 'widget-export-panel-templates',
+  card: 'widget-export-panel-card',
+  stats: 'widget-export-panel-stats',
+}
+const API_ENDPOINT_INPUT_ID = 'widget-export-api-endpoint'
+const REFRESH_INTERVAL_INPUT_ID = 'widget-export-refresh-interval'
+const WIDGET_CODE_PANEL_ID = 'widget-export-code-panel'
+const MIN_REFRESH_INTERVAL_SECONDS = 10
 
 export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'picker', embedded = false }: WidgetExportModalProps) {
   const { t } = useTranslation('common')
@@ -205,9 +219,13 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
   const widgetContent = (
       <div className="flex flex-col h-full min-h-0">
         {/* Tabs */}
-        <div className="flex border-b border-border mb-4">
+        <div className="flex border-b border-border mb-4" role="tablist" aria-label={t('widgets.exportDesktopWidget')}>
           <button
             onClick={() => setActiveTab('templates')}
+            id={EXPORT_TAB_IDS.templates}
+            role="tab"
+            aria-selected={activeTab === 'templates'}
+            aria-controls={EXPORT_PANEL_IDS.templates}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'templates'
                 ? 'text-primary border-primary'
@@ -218,6 +236,10 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
           </button>
           <button
             onClick={() => setActiveTab('card')}
+            id={EXPORT_TAB_IDS.card}
+            role="tab"
+            aria-selected={activeTab === 'card'}
+            aria-controls={EXPORT_PANEL_IDS.card}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'card'
                 ? 'text-primary border-primary'
@@ -228,6 +250,10 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
           </button>
           <button
             onClick={() => setActiveTab('stats')}
+            id={EXPORT_TAB_IDS.stats}
+            role="tab"
+            aria-selected={activeTab === 'stats'}
+            aria-controls={EXPORT_PANEL_IDS.stats}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'stats'
                 ? 'text-primary border-primary'
@@ -241,7 +267,13 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
         <div className="flex-1 flex items-start gap-4 min-h-0">
           {/* Left: Selection */}
           <div className="w-1/2 flex flex-col overflow-hidden min-h-0">
-            <div ref={cardListRef} className="flex-1 overflow-y-auto pr-2">
+            <div
+              id={EXPORT_PANEL_IDS[activeTab]}
+              ref={cardListRef}
+              className="flex-1 overflow-y-auto pr-2"
+              role="tabpanel"
+              aria-labelledby={EXPORT_TAB_IDS[activeTab]}
+            >
               {activeTab === 'templates' && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">
@@ -295,7 +327,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
             <div className="mt-4 pt-4 border-t border-border space-y-3">
               <div>
                 <div className="flex items-center gap-1.5 mb-1">
-                  <label className="block text-xs text-muted-foreground">{t('widgets.apiEndpoint')}</label>
+                  <label htmlFor={API_ENDPOINT_INPUT_ID} className="block text-xs text-muted-foreground">{t('widgets.apiEndpoint')}</label>
                   <div className="relative group">
                     <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 cursor-help" />
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 rounded-lg bg-card border border-border shadow-xl text-xs text-muted-foreground opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-dropdown">
@@ -314,6 +346,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
                   </div>
                 </div>
                 <input
+                  id={API_ENDPOINT_INPUT_ID}
                   type="text"
                   value={apiEndpoint}
                   onChange={(e) => setApiEndpoint(e.target.value)}
@@ -338,14 +371,15 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
                 )}
               </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">
+                <label htmlFor={REFRESH_INTERVAL_INPUT_ID} className="block text-xs text-muted-foreground mb-1">
                   {t('widgets.refreshInterval')}
                 </label>
                 <input
+                  id={REFRESH_INTERVAL_INPUT_ID}
                   type="number"
                   value={refreshInterval}
-                  onChange={(e) => setRefreshInterval(Math.max(10, parseInt(e.target.value) || 30))}
-                  min={10}
+                  onChange={(e) => setRefreshInterval(Math.max(MIN_REFRESH_INTERVAL_SECONDS, parseInt(e.target.value) || 30))}
+                  min={MIN_REFRESH_INTERVAL_SECONDS}
                   className="w-24 px-3 py-1.5 text-sm bg-secondary rounded border border-border focus:border-purple-500 focus:outline-hidden"
                 />
               </div>
@@ -360,13 +394,15 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
               <button
                 onClick={() => setShowCode(!showCode)}
                 className="text-xs text-purple-400 hover:text-purple-300"
+                aria-pressed={showCode}
+                aria-controls={WIDGET_CODE_PANEL_ID}
               >
                 {showCode ? t('widgets.hideCode') : t('widgets.showCode')}
               </button>
             </div>
 
             {showCode ? (
-              <div className="flex-1 bg-card rounded-lg p-3 overflow-auto">
+              <div id={WIDGET_CODE_PANEL_ID} className="flex-1 bg-card rounded-lg p-3 overflow-auto">
                 <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono">
                   {widgetCode || '// Select an item to generate widget code'}
                 </pre>
@@ -414,6 +450,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
               onClick={handleCopy}
               disabled={!widgetCode}
               className="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded flex items-center gap-2 disabled:opacity-50"
+              aria-label={copied ? t('widgets.copied', 'Copied!') : t('widgets.copyCode', 'Copy Code')}
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Copied!' : 'Copy Code'}
@@ -422,6 +459,7 @@ export function WidgetExportModal({ isOpen, onClose, cardType, mode: _mode = 'pi
               onClick={handleDownload}
               disabled={!widgetCode || isLoading}
               className="px-4 py-1.5 text-sm bg-purple-600 hover:bg-purple-700 rounded flex items-center gap-2 disabled:opacity-50"
+              aria-label={t('widgets.downloadFilename', { filename })}
             >
               <Download className="w-4 h-4" />
               {t('widgets.downloadFilename', { filename })}
@@ -469,6 +507,7 @@ function TemplateCard({
   return (
     <button
       onClick={onSelect}
+      aria-pressed={selected}
       className={`w-full text-left p-3 rounded-lg border transition-colors ${
         selected
           ? 'bg-purple-500/20 border-purple-500/50'
@@ -512,6 +551,7 @@ function CardItem({
     <button
       data-widget-card={card.cardType}
       onClick={onSelect}
+      aria-pressed={selected}
       className={`w-full text-left p-3 rounded-lg border transition-colors ${
         selected
           ? 'bg-purple-500/20 border-purple-500/50'
@@ -539,6 +579,7 @@ function StatItem({
   return (
     <button
       onClick={onToggle}
+      aria-pressed={selected}
       className={`w-full text-left p-2 rounded-lg border transition-colors flex items-center gap-3 ${
         selected
           ? 'bg-purple-500/20 border-purple-500/50'

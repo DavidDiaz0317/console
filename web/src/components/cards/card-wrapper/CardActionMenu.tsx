@@ -36,6 +36,7 @@ const VIEWPORT_PADDING = 8
 const SUBMENU_WIDTH_PX = 144
 /** Right-edge margin before flipping submenu to the left side. */
 const SUBMENU_EDGE_MARGIN_PX = 20
+const MENU_ITEM_SELECTOR = 'button[role="menuitem"]:not([disabled])'
 
 /** Compute a safe position for the menu relative to an anchor element. */
 function computeMenuPosition(anchorRect: DOMRect): { top: number; right: number } {
@@ -94,7 +95,14 @@ export const CardActionMenu = memo(function CardActionMenu({
 
   const menuContainerRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const resizeMenuRef = useRef<HTMLDivElement>(null)
   const heightMenuContainerRef = useRef<HTMLDivElement>(null)
+  const heightMenuRef = useRef<HTMLDivElement>(null)
+  const restoreFocusRef = useRef(false)
+  const menuId = `card-action-menu-${cardId || cardType}`
+  const resizeMenuId = `${menuId}-resize`
+  const heightMenuId = `${menuId}-height`
 
   // Close resize/height submenus when main menu closes (#7869)
   useEffect(() => {
@@ -102,8 +110,30 @@ export const CardActionMenu = memo(function CardActionMenu({
       setShowResizeMenu(false)
       setShowHeightMenu(false)
       setMenuPosition(null)
+      if (restoreFocusRef.current) {
+        menuButtonRef.current?.focus()
+        restoreFocusRef.current = false
+      }
     }
   }, [showMenu])
+
+  useEffect(() => {
+    if (!showMenu) return
+    const firstItem = menuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR)
+    firstItem?.focus()
+  }, [showMenu])
+
+  useEffect(() => {
+    if (!showResizeMenu) return
+    const firstItem = resizeMenuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR)
+    firstItem?.focus()
+  }, [showResizeMenu])
+
+  useEffect(() => {
+    if (!showHeightMenu) return
+    const firstItem = heightMenuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR)
+    firstItem?.focus()
+  }, [showHeightMenu])
 
   // Close this menu when another card's menu opens (#8556).
   useEffect(() => {
@@ -179,9 +209,32 @@ export const CardActionMenu = memo(function CardActionMenu({
   }, [showHeightMenu])
 
   const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      restoreFocusRef.current = true
+      setShowResizeMenu(false)
+      setShowHeightMenu(false)
+      setShowMenu(false)
+      return
+    }
+    if (e.key === 'ArrowLeft' && (showResizeMenu || showHeightMenu)) {
+      e.preventDefault()
+      setShowResizeMenu(false)
+      setShowHeightMenu(false)
+      menuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR)?.focus()
+      return
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return
     e.preventDefault()
-    const items = e.currentTarget.querySelectorAll<HTMLElement>('button[role="menuitem"]:not([disabled])')
+    const items = e.currentTarget.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)
+    if (e.key === 'Home') {
+      items[0]?.focus()
+      return
+    }
+    if (e.key === 'End') {
+      items[items.length - 1]?.focus()
+      return
+    }
     const idx = Array.from(items).indexOf(document.activeElement as HTMLElement)
     if (e.key === 'ArrowDown') items[Math.min(idx + 1, items.length - 1)]?.focus()
     else items[Math.max(idx - 1, 0)]?.focus()
@@ -205,12 +258,15 @@ export const CardActionMenu = memo(function CardActionMenu({
         aria-label={t('cardWrapper.cardMenuTooltip')}
         aria-expanded={showMenu}
         aria-haspopup="menu"
+        aria-controls={showMenu ? menuId : undefined}
         title={t('cardWrapper.cardMenuTooltip')}
       >
         <MoreVertical className="w-4 h-4" aria-hidden="true" />
       </button>
       {showMenu && menuPosition && createPortal(
         <div
+          id={menuId}
+          ref={menuRef}
           data-card-action-menu
           className="fixed w-48 glass rounded-lg py-1 z-50 shadow-xl bg-glass-overlay!"
           role="menu"
@@ -250,6 +306,7 @@ export const CardActionMenu = memo(function CardActionMenu({
                 role="menuitem"
                 aria-haspopup="menu"
                 aria-expanded={showResizeMenu}
+                aria-controls={showResizeMenu ? resizeMenuId : undefined}
                 title={t('cardWrapper.resizeTooltip')}
               >
                 <span className="flex items-center gap-2">
@@ -260,8 +317,11 @@ export const CardActionMenu = memo(function CardActionMenu({
               </button>
               {showResizeMenu && (
                 <div
+                  id={resizeMenuId}
+                  ref={resizeMenuRef}
                   className={cn('absolute top-0 w-36 glass rounded-lg py-1 z-20', resizeMenuOnLeft ? 'right-full mr-1' : 'left-full ml-1')}
                   role="menu"
+                  aria-label={t('cardWrapper.resizeTooltip')}
                   onKeyDown={handleMenuKeyDown}
                 >
                   {WIDTH_OPTIONS.map((option) => (
@@ -294,6 +354,7 @@ export const CardActionMenu = memo(function CardActionMenu({
                 role="menuitem"
                 aria-haspopup="menu"
                 aria-expanded={showHeightMenu}
+                aria-controls={showHeightMenu ? heightMenuId : undefined}
                 title={t('cardWrapper.resizeHeightTooltip')}
               >
                 <span className="flex items-center gap-2">
@@ -304,8 +365,11 @@ export const CardActionMenu = memo(function CardActionMenu({
               </button>
               {showHeightMenu && (
                 <div
+                  id={heightMenuId}
+                  ref={heightMenuRef}
                   className={cn('absolute top-0 w-36 glass rounded-lg py-1 z-20', heightMenuOnLeft ? 'right-full mr-1' : 'left-full ml-1')}
                   role="menu"
+                  aria-label={t('cardWrapper.resizeHeightTooltip')}
                   onKeyDown={handleMenuKeyDown}
                 >
                   {HEIGHT_OPTIONS.map((option) => (

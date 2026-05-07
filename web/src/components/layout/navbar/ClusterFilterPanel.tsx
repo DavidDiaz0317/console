@@ -9,6 +9,9 @@ import { Tooltip } from '../../ui/Tooltip'
 
 /** Color palette for saved filter sets */
 const FILTER_SET_COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899']
+const FILTER_PANEL_ID = 'navbar-cluster-filter-panel'
+const CUSTOM_FILTER_INPUT_ID = 'navbar-cluster-filter-input'
+const SAVE_FILTER_NAME_INPUT_ID = 'navbar-save-filter-name'
 
 interface FilterSectionConfig {
   label: string
@@ -46,10 +49,18 @@ function FilterSection<T extends string>({
           <span className="text-sm font-medium text-foreground">{title}</span>
         </div>
         <div className="flex gap-2">
-          <button onClick={onSelectAll} className="text-xs text-purple-400 hover:text-purple-300">
+          <button
+            onClick={onSelectAll}
+            className="text-xs text-purple-400 hover:text-purple-300"
+            aria-label={t('common:filters.selectAllInSection', { defaultValue: `Select all ${title}` })}
+          >
             {t('common.all')}
           </button>
-          <button onClick={onDeselectAll} className="text-xs text-muted-foreground hover:text-foreground">
+          <button
+            onClick={onDeselectAll}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            aria-label={t('common:filters.clearSection', { defaultValue: `Clear ${title}` })}
+          >
             {t('common.none')}
           </button>
         </div>
@@ -62,6 +73,7 @@ function FilterSection<T extends string>({
             <button
               key={item}
               onClick={() => onToggle(item)}
+              aria-pressed={isSelected}
               className={cn(
                 'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors',
                 isSelected
@@ -128,6 +140,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
   const [newName, setNewName] = useState('')
   const [newColor, setNewColor] = useState(FILTER_SET_COLORS[0])
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Helper to get cluster status tooltip
   const getClusterStatusTooltip = (clusterName: string) => {
@@ -172,6 +185,11 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
     ? savedFilterSets.find(fs => fs.id === activeFilterSetId)
     : null
 
+  const closePanelAndRestoreFocus = () => {
+    closeDropdown()
+    triggerRef.current?.focus()
+  }
+
   return (
     <>
       {/* Filter icon button — isolate creates a stacking context to prevent
@@ -179,6 +197,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
       <div className="relative isolate" ref={dropdownRef}>
         <Tooltip content={t('help.globalClusterFilter')} side="bottom">
           <button
+            ref={triggerRef}
             data-testid="navbar-cluster-filter-btn"
             onClick={() => toggleDropdown()}
             className={cn(
@@ -189,6 +208,9 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                 : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
             )}
             aria-label={isFiltered ? t('layout.navbar.filtersActive') : t('layout.navbar.noFilters')}
+            aria-expanded={showDropdown}
+            aria-haspopup="dialog"
+            aria-controls={showDropdown ? FILTER_PANEL_ID : undefined}
           >
             <Filter className="w-4 h-4 shrink-0" />
             {showLabel && (
@@ -206,7 +228,19 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
 
         {/* Filter dropdown */}
         {showDropdown && (
-          <div data-testid="navbar-cluster-filter-dropdown" className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-toast max-h-[80vh] overflow-y-auto">
+          <div
+            id={FILTER_PANEL_ID}
+            data-testid="navbar-cluster-filter-dropdown"
+            className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-toast max-h-[80vh] overflow-y-auto"
+            role="dialog"
+            aria-label={t('navbar.clusterFilter')}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                closePanelAndRestoreFocus()
+              }
+            }}
+          >
 
             {/* Clear All — shown at top when filters are active */}
             {isFiltered && (
@@ -217,6 +251,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                 <button
                   onClick={clearAllFilters}
                   className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                  aria-label={t('common:filters.clearAll', 'Clear All')}
                 >
                   {t('common:filters.clearAll', 'Clear All')}
                 </button>
@@ -239,6 +274,8 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                       <div key={fs.id} className="flex items-center group/fs">
                         <button
                           onClick={() => applySavedFilterSet(fs.id)}
+                          aria-pressed={isActive}
+                          aria-label={t('common:filters.applyFilterSet', { defaultValue: `Apply filter set ${fs.name}`, name: fs.name })}
                           className={cn(
                             'flex items-center gap-1.5 px-2 py-1 rounded-l text-xs font-medium transition-colors',
                             isActive
@@ -255,6 +292,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                         </button>
                         <button
                           onClick={() => deleteSavedFilterSet(fs.id)}
+                          aria-label={t('common:filters.deleteFilter', { defaultValue: `Delete filter set ${fs.name}`, name: fs.name })}
                           className={cn(
                             'flex items-center justify-center px-1 py-1 rounded-r text-muted-foreground transition-all',
                             isActive
@@ -280,6 +318,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
               </div>
               <div className="flex gap-2">
                 <input
+                  id={CUSTOM_FILTER_INPUT_ID}
                   type="text"
                   value={customFilter}
                   onChange={(e) => setCustomFilter(e.target.value)}
@@ -290,6 +329,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                   <button
                     onClick={clearCustomFilter}
                     className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={t('common:filters.clearCustomFilter', 'Clear custom filter')}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -332,10 +372,18 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                     <span className="text-sm font-medium text-foreground">{t('common:filters.distribution', 'Distribution')}</span>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={selectAllDistributions} className="text-xs text-purple-400 hover:text-purple-300">
+                    <button
+                      onClick={selectAllDistributions}
+                      className="text-xs text-purple-400 hover:text-purple-300"
+                      aria-label={t('common:filters.selectAllInSection', { defaultValue: 'Select all distributions' })}
+                    >
                       {t('common.all')}
                     </button>
-                    <button onClick={deselectAllDistributions} className="text-xs text-muted-foreground hover:text-foreground">
+                    <button
+                      onClick={deselectAllDistributions}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      aria-label={t('common:filters.clearSection', { defaultValue: 'Clear distributions' })}
+                    >
                       {t('common.none')}
                     </button>
                   </div>
@@ -347,6 +395,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                       <button
                         key={dist}
                         onClick={() => toggleDistribution(dist)}
+                        aria-pressed={isSelected}
                         className={cn(
                           'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors capitalize',
                           isSelected
@@ -374,12 +423,14 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                   <button
                     onClick={selectAllClusters}
                     className="text-xs text-purple-400 hover:text-purple-300"
+                    aria-label={t('common:filters.selectAllInSection', { defaultValue: 'Select all clusters' })}
                   >
                     {t('common.all')}
                   </button>
                   <button
                     onClick={deselectAllClusters}
                     className="text-xs text-muted-foreground hover:text-foreground"
+                    aria-label={t('common:filters.clearSection', { defaultValue: 'Clear clusters' })}
                   >
                     {t('common.none')}
                   </button>
@@ -406,6 +457,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                       <button
                         key={cluster}
                         onClick={() => toggleCluster(cluster)}
+                        aria-pressed={isSelected}
                         className={cn(
                           'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors',
                           isSelected
@@ -444,6 +496,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
               {showSaveForm ? (
                 <div className="space-y-2 p-2 bg-secondary/20 rounded">
                   <input
+                    id={SAVE_FILTER_NAME_INPUT_ID}
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
@@ -460,6 +513,8 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                       <button
                         key={c}
                         onClick={() => setNewColor(c)}
+                        aria-label={t('common:filters.colorOption', { defaultValue: `Select color ${c}`, color: c })}
+                        aria-pressed={newColor === c}
                         className={cn(
                           'w-5 h-5 rounded-full border-2 transition-all',
                           newColor === c ? 'border-foreground scale-110' : 'border-transparent',
@@ -489,6 +544,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
                   onClick={() => openSaveForm()}
                   disabled={!isFiltered}
                   className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary/30 hover:bg-secondary/50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label={t('common:filters.saveCurrentFilters', 'Save Current Filters')}
                 >
                   <Save className="w-3 h-3" />
                   {t('common:filters.saveCurrentFilters', 'Save Current Filters')}
