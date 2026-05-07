@@ -175,17 +175,13 @@ async function fetchProviders(clusterSnapshot: Array<{ name: string; server?: st
 export function useProviderHealth() {
   const { deduplicatedClusters: clusters } = useClusters()
 
-  // Always use a stable cache key — refetch when the cluster set changes
-  const clustersRef = useRef(clusters)
-  clustersRef.current = clusters
-
   const cacheResult = useCache<ProviderHealthInfo[]>({
     key: 'provider-health',
     category: 'default',
     initialData: [],
     demoData: DEMO_PROVIDERS,
     demoWhenEmpty: true,
-    fetcher: () => fetchProviders(clustersRef.current),
+    fetcher: () => fetchProviders(clusters),
     refreshInterval: 60_000 })
 
   // Re-fetch when the cluster count changes (cloud provider list depends on clusters)

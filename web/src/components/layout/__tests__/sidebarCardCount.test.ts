@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getSidebarCardCount } from '../sidebarCardCount'
 import { aiAgentsDashboardConfig } from '../../../config/dashboards/ai-agents'
+import { alertsDashboardConfig } from '../../../config/dashboards/alerts'
 import { mainDashboardConfig } from '../../../config/dashboards/main'
 
 describe('getSidebarCardCount', () => {
@@ -10,6 +11,10 @@ describe('getSidebarCardCount', () => {
 
   it('falls back to the first tab card count for tabbed dashboards', () => {
     expect(getSidebarCardCount(aiAgentsDashboardConfig)).toBe(aiAgentsDashboardConfig.tabs?.[0]?.cards.length)
+  })
+
+  it('returns the alerts dashboard card count', () => {
+    expect(getSidebarCardCount(alertsDashboardConfig)).toBe(alertsDashboardConfig.cards.length)
   })
 
   it('returns null when the dashboard config is missing', () => {
