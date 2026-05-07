@@ -66,6 +66,9 @@ export interface Workload {
 const SCALE_SUCCESS_RESET_MS = 2000
 const REFETCH_AFTER_SCALE_MS = 1500
 
+// Replica count constants
+const ZERO_REPLICAS = 0
+
 // Demo workload data
 const DEMO_WORKLOADS: Workload[] = [
   {
@@ -398,18 +401,21 @@ function DraggableWorkloadItem({ workload, isSelected, onSelect, onScaled }: Dra
     }
   }
 
-  const handleApplyScale = () => {
+  const handleApplyScale = async () => {
+    if (desiredReplicas === workload.replicas || isScaling) return
+
     // Show confirmation dialog when scaling to zero
-    if (desiredReplicas === 0) {
+    if (desiredReplicas === ZERO_REPLICAS) {
       setShowScaleToZeroDialog(true)
-    } else {
-      performScale()
+      return
     }
+
+    await performScale()
   }
 
-  const handleConfirmScaleToZero = () => {
+  const handleConfirmScaleToZero = async () => {
     setShowScaleToZeroDialog(false)
-    performScale()
+    await performScale()
   }
   // Source cluster is the first cluster in the list (where we'll copy from)
   const sourceCluster = (workload.targetClusters || [])[0] || 'unknown'
