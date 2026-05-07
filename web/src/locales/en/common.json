@@ -4031,7 +4031,11 @@
     "deleteError": "Failed to delete deployment",
     "restarting": "Restarting deployment...",
     "restartSuccess": "Restart triggered",
-    "restartError": "Failed to restart deployment"
+    "restartError": "Failed to restart deployment",
+    "addWorkload": "Add Workload",
+    "deployWorkload": "Deploy a Workload",
+    "noWorkloadsTitle": "No workloads found",
+    "noWorkloadsDesc": "No deployments detected across your clusters"
   },
   "nodeDetail": {
     "showAll": "Show all",
