@@ -5,6 +5,7 @@ const mockUseAlerts = vi.fn()
 const mockUseClusters = vi.fn()
 const mockUsePodIssues = vi.fn()
 const mockUseBackendHealth = vi.fn()
+const mockUseLocalAgent = vi.fn()
 
 vi.mock('../useAlerts', () => ({
   useAlerts: () => mockUseAlerts(),
@@ -19,10 +20,15 @@ vi.mock('../useBackendHealth', () => ({
   useBackendHealth: () => mockUseBackendHealth(),
 }))
 
+vi.mock('../useLocalAgent', () => ({
+  useLocalAgent: () => mockUseLocalAgent(),
+}))
+
 // Default all tests to a "connected" backend so pre-existing cases stay
 // healthy. Individual tests override this for disconnected scenarios.
 beforeEach(() => {
   mockUseBackendHealth.mockReturnValue({ status: 'connected' })
+  mockUseLocalAgent.mockReturnValue({ status: 'connected', dataErrorCount: 0 })
 })
 
 import { useDashboardHealth } from '../useDashboardHealth'
@@ -138,6 +144,20 @@ describe('useDashboardHealth', () => {
     const { result } = renderHook(() => useDashboardHealth())
     expect(result.current.status).toBe('healthy')
     expect(result.current.criticalCount).toBe(0)
+  })
+
+  it('surfaces degraded local agent as page warning', () => {
+    mockUseLocalAgent.mockReturnValue({ status: 'degraded', dataErrorCount: 3 })
+    mockUseAlerts.mockReturnValue({ activeAlerts: [] })
+    mockUseClusters.mockReturnValue({ deduplicatedClusters: [], isLoading: false })
+    mockUsePodIssues.mockReturnValue({ issues: [], isLoading: false })
+
+    const { result } = renderHook(() => useDashboardHealth())
+
+    expect(result.current.status).toBe('warning')
+    expect(result.current.message).toBe('Degraded')
+    expect(result.current.details).toContain('Local agent degraded (3 errors)')
+    expect(result.current.warningCount).toBe(1)
   })
 
   it('skips cluster/pod checks while loading', () => {
