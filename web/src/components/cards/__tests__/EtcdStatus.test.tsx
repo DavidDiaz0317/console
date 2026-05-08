@@ -101,6 +101,29 @@ describe('EtcdStatus', () => {
       render(<EtcdStatus />)
       expect(screen.getByText(/etcdStatus.membersSummary/)).toBeTruthy()
     })
+
+    it('shows demo etcd members instead of not-detected state in demo mode', async () => {
+      const { useCachedPods } = await import('../../../hooks/useCachedData')
+      vi.mocked(useCachedPods).mockReturnValue({
+        pods: [
+          makeEtcdPod({ cluster: 'eks-prod-us-east-1' }),
+          makeEtcdPod({ name: 'etcd-eks-1', cluster: 'eks-prod-us-east-1' }),
+          makeEtcdPod({ name: 'etcd-gke-0', cluster: 'gke-staging' }),
+          makeEtcdPod({ name: 'etcd-gke-1', cluster: 'gke-staging' }),
+        ],
+        isLoading: false,
+        isRefreshing: false,
+        isDemoFallback: true,
+        isFailed: false,
+        consecutiveFailures: 0,
+      } as never)
+      const { useCardLoadingState } = await import('../CardDataContext')
+      vi.mocked(useCardLoadingState).mockReturnValue({ showSkeleton: false } as never)
+      render(<EtcdStatus />)
+      expect(screen.getByText('eks-prod-us-east-1')).toBeTruthy()
+      expect(screen.getByText('gke-staging')).toBeTruthy()
+      expect(screen.queryByText('etcdStatus.notDetected')).toBeNull()
+    })
   })
 
   describe('Cluster rows', () => {
