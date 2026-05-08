@@ -5,11 +5,15 @@ import * as authModule from '../../lib/auth'
 
 vi.mock('../../lib/auth')
 
-vi.mock('../../lib/demoMode', () => ({
-  isQuantumForcedToDemo: vi.fn(() => false),
-  isDemoMode: vi.fn(() => false),
-  subscribeDemoMode: vi.fn(() => () => {}),
-}))
+vi.mock('../../lib/demoMode', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>
+  return {
+    ...actual,
+    isQuantumForcedToDemo: vi.fn(() => false),
+    isDemoMode: vi.fn(() => false),
+    subscribeDemoMode: vi.fn(() => () => {}),
+  }
+})
 
 describe('useResultHistogram', () => {
   beforeEach(() => {
