@@ -201,9 +201,9 @@ export function useUniversalStats() {
       case 'cpus':
         return { value: totalCPUs, sublabel: 'total CPUs', isClickable: false }
       case 'memory':
-        return { value: `${Math.round(totalMemoryGB)}`, sublabel: 'GB memory', isClickable: false }
+        return { value: `${Math.round(totalMemoryGB)} GB`, sublabel: 'total memory', isClickable: false }
       case 'storage':
-        return { value: `${Math.round(totalStorageGB)}`, sublabel: 'GB storage', isClickable: false }
+        return { value: `${Math.round(totalStorageGB)} GB`, sublabel: 'total storage', isClickable: false }
       case 'gpus':
         return { value: realGPUCount, sublabel: 'total GPUs', onClick: () => drillToAllGPU(), isClickable: realGPUCount > 0 }
       case 'pods':

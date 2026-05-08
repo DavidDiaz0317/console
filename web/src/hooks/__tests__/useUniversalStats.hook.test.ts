@@ -343,13 +343,13 @@ describe('useUniversalStats', () => {
     })
 
     it('formats memory as rounded GB string', () => {
-      expect(getStatValue('memory')?.value).toBe('80') // Math.round(64 + 16)
-      expect(getStatValue('memory')?.sublabel).toBe('GB memory')
+      expect(getStatValue('memory')?.value).toBe('80 GB') // Math.round(64 + 16)
+      expect(getStatValue('memory')?.sublabel).toBe('total memory')
     })
 
     it('formats storage as rounded GB string', () => {
-      expect(getStatValue('storage')?.value).toBe('250') // Math.round(200 + 50)
-      expect(getStatValue('storage')?.sublabel).toBe('GB storage')
+      expect(getStatValue('storage')?.value).toBe('250 GB') // Math.round(200 + 50)
+      expect(getStatValue('storage')?.sublabel).toBe('total storage')
     })
 
     it('de-duplicates namespaces across clusters', () => {
@@ -1424,8 +1424,8 @@ describe('useUniversalStats', () => {
       unreachable: 'offline',
       nodes: 'total nodes',
       cpus: 'total CPUs',
-      memory: 'GB memory',
-      storage: 'GB storage',
+      memory: 'total memory',
+      storage: 'total storage',
       gpus: 'total GPUs',
       pods: 'total pods',
       total_pods: 'across all clusters',
