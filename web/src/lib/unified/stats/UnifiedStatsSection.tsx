@@ -23,7 +23,6 @@ export function UnifiedStatsSection({
   getStatValue,
   hasData = true,
   isLoading = false,
-  lastUpdated,
   className = '' }: UnifiedStatsSectionProps) {
   // Collapsed state with localStorage persistence.
   // The storage key name says "collapsed", so the stored value represents
@@ -154,13 +153,6 @@ export function UnifiedStatsSection({
             <StatusBadge color="yellow" size="xs" variant="outline" rounded="full" icon={<FlaskConical className="w-2.5 h-2.5" />}>
               Demo
             </StatusBadge>
-          )}
-
-          {/* Last updated */}
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground/60">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
           )}
         </div>
 

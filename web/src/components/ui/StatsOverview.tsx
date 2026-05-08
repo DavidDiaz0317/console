@@ -446,7 +446,6 @@ export function StatsOverview({
   collapsible = true,
   defaultExpanded = true,
   collapsedStorageKey,
-  lastUpdated,
   className = '',
   title,
   showConfigButton = true,
@@ -548,11 +547,7 @@ export function StatsOverview({
               {t('statsOverview.demo')}
             </StatusBadge>
           )}
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground/60">
-              {t('statsOverview.updated', { time: lastUpdated.toLocaleTimeString() })}
-            </span>
-          )}
+
         </div>
         {showConfigButton && isExpanded && (
           <Button

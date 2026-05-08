@@ -153,7 +153,6 @@ export function StatsRuntime({
   getStatValue: customGetStatValue,
   hasData = true,
   isLoading = false,
-  lastUpdated,
   collapsible = true,
   defaultExpanded = true,
   collapsedStorageKey,
@@ -273,11 +272,7 @@ export function StatsRuntime({
               <span>{title}</span>
             </div>
           )}
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground/60">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
+
         </div>
         {showConfigButton && isExpanded && (
           <button
