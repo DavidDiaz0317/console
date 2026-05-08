@@ -11,7 +11,7 @@ import { InsightDetailModal } from './InsightDetailModal'
 import type { MultiClusterInsight } from '../../../types/insights'
 
 export function RestartCorrelationMatrix() {
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
   const { selectedClusters } = useGlobalFilters()
   const [modalInsight, setModalInsight] = useState<MultiClusterInsight | null>(null)
 
@@ -29,8 +29,11 @@ export function RestartCorrelationMatrix() {
   const hasData = restartInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   const appBugInsights = (restartInsights || []).filter(i => i.id.includes('app-bug'))
 

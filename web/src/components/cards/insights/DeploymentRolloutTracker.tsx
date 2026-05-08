@@ -44,7 +44,7 @@ function getStatusIcon(status: string) {
 }
 
 export function DeploymentRolloutTracker() {
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
   const { selectedClusters } = useGlobalFilters()
 
   const rolloutInsightsRaw = (() => {
@@ -61,8 +61,11 @@ export function DeploymentRolloutTracker() {
   const hasData = rolloutInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   const [selectedRollout, setSelectedRollout] = useState(0)
   const insight = rolloutInsights[selectedRollout] || rolloutInsights[0]

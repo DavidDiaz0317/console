@@ -21,7 +21,7 @@ const SEVERITY_DOT_COLORS: Record<InsightSeverity, string> = {
   info: 'bg-blue-500' }
 
 export function CascadeImpactMap() {
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
   const { selectedClusters } = useGlobalFilters()
   const [modalInsight, setModalInsight] = useState<MultiClusterInsight | null>(null)
 
@@ -39,8 +39,11 @@ export function CascadeImpactMap() {
   const hasData = cascadeInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   if (!isLoading && cascadeInsightsRaw.length === 0) {
     return (

@@ -28,7 +28,7 @@ const MEDIUM_DRIFT_THRESHOLD = 0.3
 
 export function ConfigDriftHeatmap() {
   const { t } = useTranslation('cards')
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
   const { selectedClusters } = useGlobalFilters()
   const [selectedInsight, setSelectedInsight] = useState<MultiClusterInsight | null>(null)
 
@@ -40,8 +40,11 @@ export function ConfigDriftHeatmap() {
   const hasData = driftInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   // Build cluster-pair drift counts
   const { clusters, driftMatrix } = useMemo(() => {

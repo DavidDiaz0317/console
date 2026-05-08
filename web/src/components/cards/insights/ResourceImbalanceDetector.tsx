@@ -27,7 +27,7 @@ const CHART_LABEL_MAX_LEN = 15
 const CHART_LABEL_TRUNCATE_LEN = 12
 
 export function ResourceImbalanceDetector() {
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
   const { selectedClusters } = useGlobalFilters()
   const [modalInsight, setModalInsight] = useState<MultiClusterInsight | null>(null)
 
@@ -39,8 +39,11 @@ export function ResourceImbalanceDetector() {
   const hasData = imbalanceInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   // Build chart data from the first (CPU) insight's metrics
   const chartData = useMemo(() => {

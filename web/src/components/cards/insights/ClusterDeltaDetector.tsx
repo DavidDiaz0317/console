@@ -21,7 +21,7 @@ const SIGNIFICANCE_COLORS: Record<string, string> = {
   low: 'border-border bg-secondary/30' }
 
 export function ClusterDeltaDetector() {
-  const { insightsByCategory, isLoading, isDemoData } = useMultiClusterInsights()
+  const { insightsByCategory, isLoading, isRefreshing, isDemoData, isFailed, consecutiveFailures } = useMultiClusterInsights()
 
   const deltaInsightsRaw = insightsByCategory['cluster-delta'] || []
   const {
@@ -31,8 +31,11 @@ export function ClusterDeltaDetector() {
   const hasData = deltaInsightsRaw.length > 0
   useCardLoadingState({
     isLoading: isLoading && !hasData,
+    isRefreshing,
     hasAnyData: hasData,
-    isDemoData })
+    isDemoData,
+    isFailed,
+    consecutiveFailures })
 
   // Use first insight's clusters as default selection
   const [selectedInsight, setSelectedInsight] = useState(0)

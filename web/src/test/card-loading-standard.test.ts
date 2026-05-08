@@ -149,6 +149,11 @@ function usesClustersHook(src: string): boolean {
   return /useClusters\(\)/.test(src)
 }
 
+/** Check if file uses the multi-cluster insights aggregate hook */
+function usesMultiClusterInsightsHook(src: string): boolean {
+  return /useMultiClusterInsights\(\)/.test(src)
+}
+
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('Card Loading State Gold Standard', () => {
@@ -208,7 +213,7 @@ describe('Card Loading State Gold Standard', () => {
       const rel = relPath(filePath)
       const src = readFileSync(filePath, 'utf-8')
 
-      if (!usesCachedHook(src) && !usesClustersHook(src)) continue
+      if (!usesCachedHook(src) && !usesClustersHook(src) && !usesMultiClusterInsightsHook(src)) continue
 
       it(`${rel}: isRefreshing wired in useCardLoadingState`, () => {
         if (isKnownViolation(rel, 'missing-isRefreshing')) return // grandfathered
@@ -230,7 +235,7 @@ describe('Card Loading State Gold Standard', () => {
       const rel = relPath(filePath)
       const src = readFileSync(filePath, 'utf-8')
 
-      if (!usesCachedHook(src) && !usesClustersHook(src)) continue
+      if (!usesCachedHook(src) && !usesClustersHook(src) && !usesMultiClusterInsightsHook(src)) continue
 
       it(`${rel}: isDemoData wired in useCardLoadingState`, () => {
         if (isKnownViolation(rel, 'missing-isDemoData')) return // grandfathered
@@ -254,7 +259,7 @@ describe('Card Loading State Gold Standard', () => {
       const rel = relPath(filePath)
       const src = readFileSync(filePath, 'utf-8')
 
-      if (!usesCachedHook(src) && !usesClustersHook(src)) continue
+      if (!usesCachedHook(src) && !usesClustersHook(src) && !usesMultiClusterInsightsHook(src)) continue
 
       it(`${rel}: isFailed wired in useCardLoadingState`, () => {
         if (isKnownViolation(rel, 'missing-isFailed')) return // grandfathered
@@ -276,7 +281,7 @@ describe('Card Loading State Gold Standard', () => {
       const rel = relPath(filePath)
       const src = readFileSync(filePath, 'utf-8')
 
-      if (!usesCachedHook(src) && !usesClustersHook(src)) continue
+      if (!usesCachedHook(src) && !usesClustersHook(src) && !usesMultiClusterInsightsHook(src)) continue
 
       it(`${rel}: consecutiveFailures wired in useCardLoadingState`, () => {
         if (isKnownViolation(rel, 'missing-consecutiveFailures')) return // grandfathered
@@ -295,7 +300,7 @@ describe('Card Loading State Gold Standard', () => {
       const rel = relPath(filePath)
       const src = readFileSync(filePath, 'utf-8')
 
-      if (src.includes('DEMO_DATA_CARDS') || (!usesCachedHook(src) && !usesClustersHook(src))) continue
+      if (src.includes('DEMO_DATA_CARDS') || (!usesCachedHook(src) && !usesClustersHook(src) && !usesMultiClusterInsightsHook(src))) continue
 
       it(`${rel}: no hardcoded isLoading: false`, () => {
         if (isKnownViolation(rel, 'hardcoded-false')) return // grandfathered
