@@ -1491,6 +1491,19 @@
     "formatBadge": "Badge",
     "formatNumber": "Number"
   },
+  "statBlockModePicker": {
+    "changeDisplayMode": "Change display mode",
+    "displayMode": "Display mode",
+    "number": "Number",
+    "sparkline": "Sparkline",
+    "gauge": "Gauge",
+    "horseshoe": "Horseshoe",
+    "ring": "Ring",
+    "bar": "Bar",
+    "trend": "Trend",
+    "stacked": "Stacked",
+    "heatmap": "Heatmap"
+  },
   "events": {
     "allNamespaces": "All Namespaces",
     "allReasons": "All Reasons",

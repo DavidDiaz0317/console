@@ -1,12 +1,17 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Settings, Hash, TrendingUp, CircleDot, BarChart3, ArrowUpDown, Layers } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from './Button'
 import type { StatDisplayMode } from './StatsBlockDefinitions'
 import { useModalState } from '../../lib/modals'
 
 /** Gap between trigger button and popover in pixels */
 const POPOVER_GAP_PX = 4
+/** Fixed popover width in pixels */
+const POPOVER_WIDTH_PX = 160
+/** Minimum viewport margin for the popover in pixels */
+const VIEWPORT_MARGIN_PX = 8
 
 /** Gauge icon — custom SVG since Lucide doesn't have a half-arc gauge */
 function GaugeIcon({ className }: { className?: string }) {
@@ -42,16 +47,16 @@ function HeatmapIcon({ className }: { className?: string }) {
   )
 }
 
-const MODE_OPTIONS: { mode: StatDisplayMode; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { mode: 'numeric', icon: Hash, label: 'Number' },
-  { mode: 'sparkline', icon: TrendingUp, label: 'Sparkline' },
-  { mode: 'gauge', icon: GaugeIcon, label: 'Gauge' },
-  { mode: 'horseshoe', icon: HorseshoeIcon, label: 'Horseshoe' },
-  { mode: 'ring-3', icon: CircleDot, label: 'Ring' },
-  { mode: 'mini-bar', icon: BarChart3, label: 'Bar' },
-  { mode: 'trend', icon: ArrowUpDown, label: 'Trend' },
-  { mode: 'stacked-bar', icon: Layers, label: 'Stacked' },
-  { mode: 'heatmap', icon: HeatmapIcon, label: 'Heatmap' },
+const MODE_OPTIONS: { mode: StatDisplayMode; icon: React.ComponentType<{ className?: string }>; labelKey: string }[] = [
+  { mode: 'numeric', icon: Hash, labelKey: 'statBlockModePicker.number' },
+  { mode: 'sparkline', icon: TrendingUp, labelKey: 'statBlockModePicker.sparkline' },
+  { mode: 'gauge', icon: GaugeIcon, labelKey: 'statBlockModePicker.gauge' },
+  { mode: 'horseshoe', icon: HorseshoeIcon, labelKey: 'statBlockModePicker.horseshoe' },
+  { mode: 'ring-3', icon: CircleDot, labelKey: 'statBlockModePicker.ring' },
+  { mode: 'mini-bar', icon: BarChart3, labelKey: 'statBlockModePicker.bar' },
+  { mode: 'trend', icon: ArrowUpDown, labelKey: 'statBlockModePicker.trend' },
+  { mode: 'stacked-bar', icon: Layers, labelKey: 'statBlockModePicker.stacked' },
+  { mode: 'heatmap', icon: HeatmapIcon, labelKey: 'statBlockModePicker.heatmap' },
 ]
 
 interface StatBlockModePickerProps {
@@ -61,19 +66,22 @@ interface StatBlockModePickerProps {
 }
 
 export function StatBlockModePicker({ currentMode, availableModes, onModeChange }: StatBlockModePickerProps) {
+  const { t } = useTranslation()
   const { isOpen, close, toggle } = useModalState()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
+  const [position, setPosition] = useState({ top: 0, left: VIEWPORT_MARGIN_PX })
 
-  const updatePosition = () => {
+  const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
+    const maxLeft = Math.max(window.innerWidth - POPOVER_WIDTH_PX - VIEWPORT_MARGIN_PX, VIEWPORT_MARGIN_PX)
+    const rightAlignedLeft = rect.right - POPOVER_WIDTH_PX
     setPosition({
       top: rect.bottom + POPOVER_GAP_PX,
-      left: Math.max(rect.right - 160, 8), // Right-align, keep on screen
+      left: Math.min(Math.max(rightAlignedLeft, VIEWPORT_MARGIN_PX), maxLeft),
     })
-  }
+  }, [])
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -88,9 +96,12 @@ export function StatBlockModePicker({ currentMode, availableModes, onModeChange 
     close()
   }
 
-  // Close on click outside
+  // Keep the portal aligned with its trigger while the layout changes.
   useEffect(() => {
     if (!isOpen) return
+
+    updatePosition()
+
     const handleClick = (e: MouseEvent) => {
       if (
         popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
@@ -102,13 +113,32 @@ export function StatBlockModePicker({ currentMode, availableModes, onModeChange 
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
+    const handleViewportChange = () => {
+      updatePosition()
+    }
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' && triggerRef.current
+      ? new ResizeObserver(() => {
+          updatePosition()
+        })
+      : null
+
     document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleEsc)
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+    if (resizeObserver && triggerRef.current) {
+      resizeObserver.observe(triggerRef.current)
+    }
+
     return () => {
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleEsc)
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+      resizeObserver?.disconnect()
     }
-  }, [isOpen, close])
+  }, [isOpen, close, updatePosition])
 
   const availableSet = new Set(availableModes)
 
@@ -120,21 +150,21 @@ export function StatBlockModePicker({ currentMode, availableModes, onModeChange 
         size="sm"
         icon={<Settings className="w-3 h-3" />}
         onClick={handleToggle}
-        title="Change display mode"
+        title={t('statBlockModePicker.changeDisplayMode')}
         className="absolute top-1.5 right-1.5 p-1 opacity-0 group-hover:opacity-100 transition-all z-10"
       />
       {isOpen && createPortal(
         <div
           ref={popoverRef}
           role="menu"
-          aria-label="Display mode"
+          aria-label={t('statBlockModePicker.displayMode')}
           className="fixed z-dropdown bg-card border border-border rounded-lg shadow-xl p-1.5 animate-in fade-in zoom-in-95 duration-150"
-          style={{ top: position.top, left: position.left, width: 160 }}
+          style={{ top: position.top, left: position.left, width: POPOVER_WIDTH_PX }}
         >
           <div className="text-2xs text-muted-foreground px-2 py-1 font-medium uppercase tracking-wider">
-            Display Mode
+            {t('statBlockModePicker.displayMode')}
           </div>
-          {MODE_OPTIONS.map(({ mode, icon: Icon, label }) => {
+          {MODE_OPTIONS.map(({ mode, icon: Icon, labelKey }) => {
             const isAvailable = availableSet.has(mode)
             const isActive = mode === currentMode
             return (
@@ -152,7 +182,7 @@ export function StatBlockModePicker({ currentMode, availableModes, onModeChange 
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 {isActive && <span className="ml-auto text-purple-400">&#x2713;</span>}
               </button>
             )
