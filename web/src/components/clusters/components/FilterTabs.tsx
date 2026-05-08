@@ -1,7 +1,8 @@
 import { WifiOff, SortAsc, SortDesc, LayoutGrid, List, Grid3X3, Columns, Plus, Sparkles } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '../../../lib/cn'
 import { ClusterStats } from './StatsOverview'
 import { ClusterLayoutMode } from './ClusterGrid'
-import { useTranslation } from 'react-i18next'
 
 export type FilterType = 'all' | 'healthy' | 'unhealthy' | 'unreachable'
 export type SortByType = 'name' | 'nodes' | 'pods' | 'health' | 'provider' | 'custom'
@@ -26,6 +27,13 @@ const LAYOUT_OPTIONS: { mode: ClusterLayoutMode; icon: typeof LayoutGrid; label:
   { mode: 'compact', icon: Grid3X3, label: 'Compact (small cards)' },
   { mode: 'wide', icon: Columns, label: 'Wide (2 columns)' },
 ]
+
+const ACTION_BUTTON_CLASSES = cn(
+  'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+  'bg-primary text-primary-foreground hover:bg-primary/90',
+)
+
+const AI_ACTION_BUTTON_CLASSES = cn(ACTION_BUTTON_CLASSES, 'border border-primary/30')
 
 export function FilterTabs({
   stats,
@@ -94,7 +102,7 @@ export function FilterTabs({
             {onAddCluster && (
               <button
                 onClick={onAddCluster}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+                className={ACTION_BUTTON_CLASSES}
               >
                 <Plus className="w-4 h-4" />
                 {t('cluster.addCluster')}
@@ -103,7 +111,7 @@ export function FilterTabs({
             {onCreateClusterWithAI && (
               <button
                 onClick={onCreateClusterWithAI}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-purple-600/80 hover:bg-purple-500 text-white transition-colors border border-purple-500/30"
+                className={AI_ACTION_BUTTON_CLASSES}
               >
                 <Sparkles className="w-4 h-4" />
                 {t('cluster.createClusterWithAI')}
