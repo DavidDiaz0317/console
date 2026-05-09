@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "last_updated": "2026-04-13T04:06:10Z",
+  "last_updated": "2026-05-09T04:08:48Z",
   "rolling_window_days": 30,
   "categories": {
     "performance": {
@@ -18,11 +18,11 @@
       "last_evaluated": "2026-04-07T03:57:21Z"
     },
     "a11y": {
-      "merged": 34,
+      "merged": 35,
       "closed": 21,
-      "acceptance_rate": 0.62,
+      "acceptance_rate": 0.63,
       "status": "normal",
-      "last_evaluated": "2026-04-07T03:57:21Z"
+      "last_evaluated": "2026-05-09T04:08:48Z"
     },
     "operator": {
       "merged": 11,
@@ -98,13 +98,6 @@
     ]
   },
   "history": [
-    {
-      "date": "2026-03-07",
-      "total_merged": 101,
-      "total_closed": 73,
-      "categories_blocked": [],
-      "categories_boosted": []
-    },
     {
       "date": "2026-03-08",
       "total_merged": 109,
@@ -322,12 +315,22 @@
         "sre"
       ],
       "categories_boosted": []
+    },
+    {
+      "date": "2026-05-09",
+      "total_merged": 132,
+      "total_closed": 289,
+      "categories_blocked": [
+        "operator",
+        "sre"
+      ],
+      "categories_boosted": []
     }
   ],
   "rotation_weights": {
     "performance": 0.71,
     "security": 0.63,
-    "a11y": 0.93,
+    "a11y": 0.95,
     "operator": 0,
     "sre": 0,
     "features": 0.41,
