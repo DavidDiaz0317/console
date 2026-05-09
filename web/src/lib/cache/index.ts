@@ -834,7 +834,12 @@ class CacheStore<T> {
   }
 
   // Fetching
-  async fetch(fetcher: () => Promise<T>, merge?: (old: T, new_: T) => T, progressiveFetcher?: (onProgress: (partialData: T) => void) => Promise<T>): Promise<void> {
+  async fetch(
+    fetcher: () => Promise<T>,
+    merge?: (old: T, new_: T) => T,
+    progressiveFetcher?: (onProgress: (partialData: T) => void) => Promise<T>,
+    preserveCachedDataOnEmpty = true,
+  ): Promise<void> {
     if (this.fetchingRef) return
     this.fetchingRef = true
 
@@ -928,19 +933,20 @@ class CacheStore<T> {
         return
       }
 
-      // Guard: fetcher returned empty data (equivalent to initialData) AND we
-      // already have cached data — keep the cache to avoid wiping good data
-      // with an empty response (e.g. backend not yet connected).
-      // On cold load (no cached data), fall through so the empty result is
-      // accepted as a valid successful fetch; don't keep the skeleton forever.
-      if (isEquivalentToInitial(newData, this.initialData) && hasCachedData) {
+      // Guard: some hooks prefer to keep cached data when a refresh returns the
+      // initial/empty value (for example while a backend is still connecting).
+      // Others, like events, need an authoritative empty response to clear stale
+      // charts and counters after all items are deleted.
+      const isEmptyResult = isEquivalentToInitial(newData, this.initialData)
+      if (preserveCachedDataOnEmpty && isEmptyResult && hasCachedData) {
         // Have cache — keep it, just stop refreshing
         this.fetchingRef = false
         this.setState({ isLoading: false, isRefreshing: false })
         return
       }
 
-      const finalData = merge && hasCachedData ? merge(this.state.data, newData) : newData
+      const shouldApplyMerge = !!merge && hasCachedData && (preserveCachedDataOnEmpty || !isEmptyResult)
+      const finalData = shouldApplyMerge ? merge!(this.state.data, newData) : newData
 
       // #6671 — Pre-save generation guard. Without this, a mode-transition
       // that clears storage AFTER the fetch started but BEFORE this save
@@ -1122,6 +1128,8 @@ export interface UseCacheOptions<T> {
   liveInDemoMode?: boolean
   /** Merge function for combining old and new data */
   merge?: (oldData: T, newData: T) => T
+  /** Preserve cached data when a refresh returns the initial/empty value (default: true) */
+  preserveCachedDataOnEmpty?: boolean
   /** Share cache across components with same key (default: true) */
   shared?: boolean
   /** Alternative fetcher that receives an onProgress callback for progressive/partial updates.
@@ -1171,6 +1179,7 @@ export function useCache<T>({
   isEmpty: isEmptyFn,
   liveInDemoMode = false,
   merge,
+  preserveCachedDataOnEmpty = true,
   shared = true,
   progressiveFetcher }: UseCacheOptions<T>): UseCacheResult<T> {
   // Subscribe to demo mode - this ensures we re-render when demo mode changes
@@ -1245,8 +1254,13 @@ export function useCache<T>({
 
   const refetch = useCallback(async () => {
     if (!effectiveEnabled || !keepAliveActive) return
-    await store.fetch(() => fetcherRef.current(), mergeRef.current, progressiveFetcherRef.current)
-  }, [effectiveEnabled, keepAliveActive, store])
+    await store.fetch(
+      () => fetcherRef.current(),
+      mergeRef.current,
+      progressiveFetcherRef.current,
+      preserveCachedDataOnEmpty,
+    )
+  }, [effectiveEnabled, keepAliveActive, preserveCachedDataOnEmpty, store])
 
   /** Reset failure counters then refetch — use for explicit user-triggered retries
    *  so backoff is cleared and the fetch runs immediately.
@@ -1254,8 +1268,13 @@ export function useCache<T>({
    *  is disabled (e.g. demo mode) so the user gets immediate feedback (#11772). */
   const retryFetch = useCallback(async () => {
     store.resetFailures()
-    await store.fetch(() => fetcherRef.current(), mergeRef.current, progressiveFetcherRef.current)
-  }, [store])
+    await store.fetch(
+      () => fetcherRef.current(),
+      mergeRef.current,
+      progressiveFetcherRef.current,
+      preserveCachedDataOnEmpty,
+    )
+  }, [preserveCachedDataOnEmpty, store])
 
   const clearAndRefetch = async () => {
     await store.clear()

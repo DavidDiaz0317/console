@@ -426,6 +426,7 @@ export function useCachedWarningEvents(
     category,
     initialData: [] as ClusterEvent[],
     demoData: getDemoCachedWarningEvents(),
+    preserveCachedDataOnEmpty: false,
     fetcher: async () => {
       // events/warnings is a backend-only endpoint (#9996)
       if (cluster) {

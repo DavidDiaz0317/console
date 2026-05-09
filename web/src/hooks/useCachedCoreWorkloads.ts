@@ -285,6 +285,7 @@ export function useCachedEvents(
     category,
     initialData: [] as ClusterEvent[],
     demoData: getDemoEvents(),
+    preserveCachedDataOnEmpty: false,
     fetcher: async () => {
       // Try agent first (direct kubectl proxy — works before backend auth)
       if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {

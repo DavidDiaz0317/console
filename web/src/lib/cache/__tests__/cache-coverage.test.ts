@@ -276,6 +276,47 @@ describe('CacheStore.fetch() with progressive fetcher', () => {
     // Error was thrown, but partial data should be preserved
     expect(result.current.error).toBe('stream interrupted')
   })
+
+  it('can replace cached data with an authoritative empty result', async () => {
+    seedSessionStorage('empty-replaces-cache', [1, 2, 3], Date.now() - STALE_AGE_MS)
+
+    const { useCache } = await importFresh()
+
+    const { result } = renderHook(() => useCache({
+      key: 'empty-replaces-cache',
+      fetcher: () => Promise.resolve([] as number[]),
+      initialData: [] as number[],
+      preserveCachedDataOnEmpty: false,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.data).toEqual([])
+  })
+
+  it('skips merge when authoritative empty data should clear the cache', async () => {
+    seedSessionStorage('empty-skips-merge', [1, 2, 3], Date.now() - STALE_AGE_MS)
+
+    const { useCache } = await importFresh()
+    const merge = vi.fn((oldData: number[], newData: number[]) => [...oldData, ...newData])
+
+    const { result } = renderHook(() => useCache({
+      key: 'empty-skips-merge',
+      fetcher: () => Promise.resolve([] as number[]),
+      initialData: [] as number[],
+      preserveCachedDataOnEmpty: false,
+      merge,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(merge).not.toHaveBeenCalled()
+    expect(result.current.data).toEqual([])
+  })
 })
 
 // ============================================================================

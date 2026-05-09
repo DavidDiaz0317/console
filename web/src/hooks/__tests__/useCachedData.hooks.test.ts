@@ -275,6 +275,14 @@ describe('useCachedData', () => {
       const call = mockUseCache.mock.calls[0][0]
       expect(call.key).toContain(':20')
     })
+
+    it('allows empty refresh results to clear stale cached events', async () => {
+      mockUseCache.mockReturnValue(makeCacheResult([]))
+      const { useCachedEvents } = await loadModule()
+      useCachedEvents()
+      const call = mockUseCache.mock.calls[0][0]
+      expect(call.preserveCachedDataOnEmpty).toBe(false)
+    })
   })
 
   // ========================================================================

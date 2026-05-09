@@ -174,4 +174,9 @@ describe('useCachedWarningEvents', () => {
     renderHook(() => useCachedWarningEvents('prod-cluster'))
     expect(mockUseCache.mock.calls[0][0].key).toContain('prod-cluster')
   })
+
+  it('allows empty refresh results to clear stale warning events', () => {
+    renderHook(() => useCachedWarningEvents())
+    expect(mockUseCache.mock.calls[0][0].preserveCachedDataOnEmpty).toBe(false)
+  })
 })
