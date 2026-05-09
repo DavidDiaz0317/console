@@ -16,6 +16,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
 import { isDemoMode } from '../../lib/demoMode'
 import { useAuth } from '../../lib/auth'
@@ -214,6 +215,7 @@ function resolveMissionTreeTarget(
 // ============================================================================
 
 export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUseInMissionControl }: MissionBrowserProps) {
+  const { t } = useTranslation()
   const { user, isAuthenticated } = useAuth()
   const { clusterContext } = useClusterContext()
   const clusterContextRef = useRef(clusterContext)
@@ -932,12 +934,13 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
     if (!validation.valid) {
       const missionTitle = (toValidate as Record<string, unknown>)?.title as string
         ?? (toValidate as Record<string, unknown>)?.name as string
-        ?? 'unknown'
+        ?? t('layout.missionBrowser.untitledMission')
       emitFixerImportError(
         missionTitle,
         validation.errors.length,
         validation.errors[0]?.message ?? 'unknown',
       )
+      showToast(t('layout.missionBrowser.importFailed', { title: missionTitle }), 'error')
       setScanResult({
         valid: false,
         findings: validation.errors.map((e) => ({
@@ -969,6 +972,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
     }
     if (result.valid) {
       emitFixerImported(mission.title, mission.cncfProject)
+      showToast(t('layout.missionBrowser.importSuccess', { title: mission.title }), 'success')
       onImport(mission)
       onClose()
     }

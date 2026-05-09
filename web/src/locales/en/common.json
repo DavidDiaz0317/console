@@ -3945,6 +3945,11 @@
         "viewAll": "View all"
       }
     },
+    "missionBrowser": {
+      "importSuccess": "Imported \"{{title}}\" and opened it in Missions.",
+      "importFailed": "Couldn't import \"{{title}}\". Review the scan results and try again.",
+      "untitledMission": "Untitled mission"
+    },
     "missionSidebar": {
       "deleteMission": "Delete Mission",
       "deleteMissionConfirm": "Are you sure you want to delete this mission? This action cannot be undone.",

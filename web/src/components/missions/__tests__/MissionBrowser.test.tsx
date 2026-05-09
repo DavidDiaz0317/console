@@ -24,6 +24,14 @@ const browserMockState = vi.hoisted(() => ({
   fetchTreeChildren: vi.fn(async () => []),
 }))
 
+const fileParserMockState = vi.hoisted(() => ({
+  parseFileContent: vi.fn(() => ({ type: 'structured', mission: {} })),
+}))
+
+const toastMockState = vi.hoisted(() => ({
+  showToast: vi.fn(),
+}))
+
 // ── Mocks ────────────────────────────────────────────────────────────────
 
 vi.mock('react-i18next', () => ({
@@ -79,7 +87,7 @@ vi.mock('../../../lib/missions/scanner/index', () => ({
 }))
 
 vi.mock('../../../lib/missions/fileParser', () => ({
-  parseFileContent: vi.fn(() => ({ type: 'structured', mission: {} })),
+  parseFileContent: fileParserMockState.parseFileContent,
 }))
 
 vi.mock('../../../lib/clipboard', () => ({
@@ -88,7 +96,7 @@ vi.mock('../../../lib/clipboard', () => ({
 
 vi.mock('../../ui/Toast', () => ({
   useToast: () => ({
-    showToast: vi.fn(),
+    showToast: toastMockState.showToast,
   }),
 }))
 
@@ -184,7 +192,13 @@ vi.mock('../MissionBrowserSidebar', () => ({
 }))
 
 vi.mock('../ScanProgressOverlay', () => ({
-  ScanProgressOverlay: () => null,
+  ScanProgressOverlay: ({ result, onComplete }: { result: any; onComplete: (result: any) => void }) => (
+    result ? (
+      <button type="button" data-testid="scan-complete" onClick={() => onComplete(result)}>
+        Complete scan
+      </button>
+    ) : null
+  ),
 }))
 
 vi.mock('../InstallerCard', () => ({
@@ -196,7 +210,12 @@ vi.mock('../FixerCard', () => ({
 }))
 
 vi.mock('../MissionDetailView', () => ({
-  MissionDetailView: () => <div data-testid="mission-detail">Detail View</div>,
+  MissionDetailView: ({ onImport }: { onImport: () => void }) => (
+    <div data-testid="mission-detail">
+      Detail View
+      <button type="button" onClick={onImport}>Import mission</button>
+    </div>
+  ),
 }))
 
 vi.mock('../ImproveMissionDialog', () => ({
@@ -226,6 +245,7 @@ describe('MissionBrowser', () => {
     browserMockState.missionCache.listeners.clear()
     browserMockState.fetchMissionContent.mockImplementation(async (mission: any) => ({ mission, raw: JSON.stringify(mission) }))
     browserMockState.fetchTreeChildren.mockImplementation(async () => [])
+    fileParserMockState.parseFileContent.mockImplementation(() => ({ type: 'structured', mission: {} }))
   })
 
   const addRecommendedMission = () => {
@@ -303,6 +323,46 @@ describe('MissionBrowser', () => {
     await user.click(screen.getByTestId('tree-node-local/local-mission.json'))
     await waitFor(() => {
       expect(screen.getByTestId('mission-detail')).toBeInTheDocument()
+    })
+  })
+
+  it('shows a success toast and closes after importing a local mission', async () => {
+    const user = userEvent.setup()
+    const onImport = vi.fn()
+    const onClose = vi.fn()
+    const mission = {
+      version: '1.0',
+      title: 'Imported mission',
+      description: 'Mission description',
+      type: 'deploy',
+      tags: ['demo'],
+      steps: [{ title: 'Step 1', description: 'Do something' }],
+    }
+
+    fileParserMockState.parseFileContent.mockImplementation(() => ({ type: 'structured', mission }))
+
+    render(<MissionBrowser {...defaultProps} onImport={onImport} onClose={onClose} />)
+
+    const localFile = new File([JSON.stringify(mission)], 'imported-mission.json', {
+      type: 'application/json',
+    })
+
+    await user.upload(screen.getByTestId('mission-file-input'), localFile)
+    await waitFor(() => {
+      expect(screen.getByTestId('mission-detail')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Import mission' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('scan-complete')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('scan-complete'))
+
+    await waitFor(() => {
+      expect(toastMockState.showToast).toHaveBeenCalledWith('layout.missionBrowser.importSuccess', 'success')
+      expect(onImport).toHaveBeenCalledWith(expect.objectContaining({ title: 'Imported mission' }))
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 
