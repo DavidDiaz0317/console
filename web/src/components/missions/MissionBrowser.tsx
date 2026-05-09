@@ -115,6 +115,28 @@ const MODAL_TOP_INSET_PX = NAVBAR_HEIGHT_PX + MODAL_NAVBAR_GAP_PX
  */
 const MODAL_SIDE_INSET_PX = 16
 
+/**
+ * Viewports below Tailwind's `sm` breakpoint collapse recommendation filters by
+ * default so mission results stay visible above the fold on phones.
+ */
+const MOBILE_FILTER_COLLAPSE_BREAKPOINT_PX = 640
+
+/**
+ * Below Tailwind's `md` breakpoint the browser defaults to list mode for denser
+ * content and easier scanning.
+ */
+const MOBILE_MISSION_LAYOUT_BREAKPOINT_PX = 768
+
+function isCompactMissionFilterViewport() {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth < MOBILE_FILTER_COLLAPSE_BREAKPOINT_PX
+}
+
+function isMobileMissionViewport() {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth < MOBILE_MISSION_LAYOUT_BREAKPOINT_PX
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -230,10 +252,12 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
   const [missionClassFilter, setMissionClassFilter] = useState<string>('All')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('All')
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
-  // Default to list view and hide filters on mobile for better content visibility
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const isMobile = isMobileMissionViewport()
   const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? 'list' : 'grid')
-  const [showFilters, setShowFilters] = useState(!isMobile)
+  const [isCompactFilterViewport, setIsCompactFilterViewport] = useState(isCompactMissionFilterViewport)
+  const [desktopFiltersVisible, setDesktopFiltersVisible] = useState(true)
+  const [mobileFiltersVisible, setMobileFiltersVisible] = useState(false)
+  const showFilters = isCompactFilterViewport ? mobileFiltersVisible : desktopFiltersVisible
 
   // Tree state
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([])
@@ -303,6 +327,34 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
   useEffect(() => {
     expandedNodesRef.current = expandedNodes
   }, [expandedNodes])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_FILTER_COLLAPSE_BREAKPOINT_PX - 1}px)`)
+    const syncViewport = (matches: boolean) => {
+      setIsCompactFilterViewport(matches)
+    }
+
+    syncViewport(mediaQuery.matches)
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      syncViewport(event.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  const handleToggleFilters = () => {
+    if (isCompactFilterViewport) {
+      setMobileFiltersVisible((prev) => !prev)
+      return
+    }
+
+    setDesktopFiltersVisible((prev) => !prev)
+  }
+
   const loadingInstallers = !missionCache.installersDone
   const loadingFixers = !missionCache.fixesDone
   const [missionFetchError, setMissionFetchError] = useState<string | null>(missionCache.fetchError)
@@ -1218,8 +1270,9 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
         onSearchChange={setSearchQuery}
         activeTab={activeTab}
         showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
+        onToggleFilters={handleToggleFilters}
         activeFilterCount={activeFilterCount}
+        isCompactFilterViewport={isCompactFilterViewport}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onClose={onClose}

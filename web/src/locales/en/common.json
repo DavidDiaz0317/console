@@ -4000,6 +4000,9 @@
         "requestFailedGeneric": "Failed to check required tools: {{message}}"
       }
     },
+    "browser": {
+      "filters": "Filters"
+    },
     "detail": {
       "tabs": {
         "install": "Install",

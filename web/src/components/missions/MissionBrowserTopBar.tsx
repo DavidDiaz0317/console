@@ -9,6 +9,7 @@
  */
 
 import { Search, Filter, Grid3X3, List, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
 import type { ViewMode, BrowserTab } from './browser'
 
@@ -19,6 +20,7 @@ interface MissionBrowserTopBarProps {
   showFilters: boolean
   onToggleFilters: () => void
   activeFilterCount: number
+  isCompactFilterViewport: boolean
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
   onClose: () => void
@@ -31,10 +33,12 @@ export function MissionBrowserTopBar({
   showFilters,
   onToggleFilters,
   activeFilterCount,
+  isCompactFilterViewport,
   viewMode,
   onViewModeChange,
   onClose,
 }: MissionBrowserTopBarProps) {
+  const { t } = useTranslation()
   const searchPlaceholder =
     activeTab === 'installers'
       ? 'Search installers… (AND logic: "argo events" = argo AND events)'
@@ -43,9 +47,9 @@ export function MissionBrowserTopBar({
         : 'Search missions by name, tag, or description…'
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-card border-b border-border sm:flex-nowrap">
       {/* Global search input */}
-      <div className="flex-1 relative">
+      <div className="order-1 w-full relative sm:flex-1 sm:min-w-0">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
@@ -58,66 +62,76 @@ export function MissionBrowserTopBar({
         />
       </div>
 
-      {/* Filter toggle */}
-      <button
-        onClick={onToggleFilters}
-        className={cn(
-          'p-2 rounded-lg transition-colors relative',
-          showFilters
-            ? 'bg-purple-500/20 text-purple-400'
-            : 'hover:bg-secondary text-muted-foreground hover:text-foreground',
-        )}
-        title="Toggle filters"
-      >
-        <Filter className="w-5 h-5" />
-        {activeFilterCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center">
-            {activeFilterCount}
-          </span>
-        )}
-      </button>
-
-      {/* Grid / list view-mode toggle */}
-      <div className="flex items-center border border-border rounded-lg overflow-hidden">
+      <div className="order-2 ml-auto flex items-center gap-2 sm:ml-0">
+        {/* Filter toggle */}
         <button
-          onClick={() => onViewModeChange('grid')}
+          onClick={onToggleFilters}
           className={cn(
-            'p-2 transition-colors',
-            viewMode === 'grid'
+            'inline-flex items-center gap-2 rounded-lg transition-colors relative px-3 py-2 sm:p-2',
+            showFilters
               ? 'bg-purple-500/20 text-purple-400'
-              : 'text-muted-foreground hover:text-foreground',
+              : 'hover:bg-secondary text-muted-foreground hover:text-foreground',
           )}
-          title="Grid view"
-          aria-label="Grid view"
-          aria-pressed={viewMode === 'grid'}
+          title="Toggle filters"
+          aria-controls="mission-browser-filters"
+          aria-expanded={showFilters}
+          data-testid="mission-browser-filter-toggle"
         >
-          <Grid3X3 className="w-4 h-4" />
+          <Filter className="w-5 h-5" />
+          {isCompactFilterViewport && (
+            <span className="text-sm font-medium">
+              {t('missions.browser.filters', { defaultValue: 'Filters' })}
+            </span>
+          )}
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
         </button>
+
+        {/* Grid / list view-mode toggle */}
+        <div className="flex items-center border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => onViewModeChange('grid')}
+            className={cn(
+              'p-2 transition-colors',
+              viewMode === 'grid'
+                ? 'bg-purple-500/20 text-purple-400'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            title="Grid view"
+            aria-label="Grid view"
+            aria-pressed={viewMode === 'grid'}
+          >
+            <Grid3X3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onViewModeChange('list')}
+            className={cn(
+              'p-2 transition-colors',
+              viewMode === 'list'
+                ? 'bg-purple-500/20 text-purple-400'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+            title="List view"
+            aria-label="List view"
+            aria-pressed={viewMode === 'list'}
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Close button — right-aligned per #6308 to match BaseModal convention */}
         <button
-          onClick={() => onViewModeChange('list')}
-          className={cn(
-            'p-2 transition-colors',
-            viewMode === 'list'
-              ? 'bg-purple-500/20 text-purple-400'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-          title="List view"
-          aria-label="List view"
-          aria-pressed={viewMode === 'list'}
+          onClick={onClose}
+          className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          title="Close (Esc)"
+          aria-label="Close mission browser"
         >
-          <List className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
       </div>
-
-      {/* Close button — right-aligned per #6308 to match BaseModal convention */}
-      <button
-        onClick={onClose}
-        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        title="Close (Esc)"
-        aria-label="Close mission browser"
-      >
-        <X className="w-5 h-5" />
-      </button>
     </div>
   )
 }
