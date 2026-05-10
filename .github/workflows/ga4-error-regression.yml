@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.2
         with:
           sparse-checkout: |
             .github
@@ -128,10 +128,10 @@ jobs:
               return result;
             }
 
-            core.info('Querying GA4: this week (last 7 days) vs previous week (8–14 days ago)…');
+            core.info('Querying GA4: last 7 complete days (yesterday through 7 days ago) vs previous 7 days (8–14 days ago)…');
 
             const [thisWeek, lastWeek] = await Promise.all([
-              queryErrorsByCategory('7daysAgo', 'today'),
+              queryErrorsByCategory('7daysAgo', 'yesterday'),
               queryErrorsByCategory('14daysAgo', '8daysAgo'),
             ]);
 
