@@ -41,7 +41,7 @@ vi.mock('../../lib/kagentiProviderBackend', () => ({
     mockFetchKagentiProviderAgents(...args),
 }))
 
-import { useKagentBackend } from '../useKagentBackend'
+import { useKagentBackend, __resetForTest, __testables } from '../useKagentBackend'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -112,6 +112,7 @@ function setupBothAvailable() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  __resetForTest()
   vi.clearAllMocks()
   localStorage.clear()
   setupBothUnavailable()
@@ -380,6 +381,66 @@ describe('useKagentBackend', () => {
     unmount()
     expect(clearIntervalSpy).toHaveBeenCalled()
     clearIntervalSpy.mockRestore()
+  })
+
+  it('shares a single polling cycle across multiple consumers', async () => {
+    setupBothUnavailable()
+    const first = renderHook(() => useKagentBackend())
+    const second = renderHook(() => useKagentBackend())
+
+    await waitFor(() => expect(first.result.current.hasPolled).toBe(true))
+    await waitFor(() => expect(second.result.current.hasPolled).toBe(true))
+
+    expect(mockFetchKagentStatus).toHaveBeenCalledTimes(1)
+    expect(mockFetchKagentiProviderStatus).toHaveBeenCalledTimes(1)
+
+    first.unmount()
+    second.unmount()
+  })
+
+  it('debounces rapid remount polling for kagenti status', async () => {
+    vi.useFakeTimers()
+    setupBothUnavailable()
+
+    const firstMount = renderHook(() => useKagentBackend())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    expect(mockFetchKagentiProviderStatus).toHaveBeenCalledTimes(1)
+    firstMount.unmount()
+
+    const secondMount = renderHook(() => useKagentBackend())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    expect(mockFetchKagentiProviderStatus).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(__testables.BACKEND_REFRESH_MIN_INTERVAL_MS)
+    })
+    expect(mockFetchKagentiProviderStatus).toHaveBeenCalledTimes(2)
+
+    secondMount.unmount()
+    vi.useRealTimers()
+  })
+
+  it('aborts in-flight polling when the last consumer unmounts', () => {
+    let observedSignal: AbortSignal | undefined
+
+    mockFetchKagentStatus.mockImplementation(({ signal }: { signal?: AbortSignal } = {}) => {
+      observedSignal = signal
+      return new Promise(() => {})
+    })
+    mockFetchKagentiProviderStatus.mockImplementation(() => new Promise(() => {}))
+
+    const { unmount } = renderHook(() => useKagentBackend())
+
+    expect(observedSignal).toBeDefined()
+    expect(observedSignal?.aborted).toBe(false)
+
+    unmount()
+
+    expect(observedSignal?.aborted).toBe(true)
   })
 
   it('refresh triggers an immediate re-fetch', async () => {
