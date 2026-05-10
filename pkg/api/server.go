@@ -40,6 +40,8 @@ import (
 	"github.com/kubestellar/console/pkg/mcp"
 	"github.com/kubestellar/console/pkg/notifications"
 	"github.com/kubestellar/console/pkg/settings"
+	"github.com/kubestellar/console/pkg/stellar/scheduler"
+	"github.com/kubestellar/console/pkg/stellar/watcher"
 	"github.com/kubestellar/console/pkg/store"
 )
 
@@ -1106,6 +1108,54 @@ func (s *Server) setupRoutes() {
 	// Mission knowledge base routes (validate, share — protected)
 	missions := handlers.NewMissionsHandler()
 	missions.RegisterRoutes(api.Group("/missions"))
+
+	// Stellar assistant persistence routes (sticky preferences + mission registry)
+	if stellarStore, ok := s.store.(handlers.StellarStore); ok {
+		stellar := handlers.NewStellarHandler(stellarStore, s.k8sClient)
+		api.Get("/stellar/preferences", stellar.GetPreferences)
+		api.Put("/stellar/preferences", stellar.UpdatePreferences)
+		api.Get("/stellar/missions", stellar.ListMissions)
+		api.Get("/stellar/missions/:id", stellar.GetMission)
+		api.Post("/stellar/missions", stellar.CreateMission)
+		api.Put("/stellar/missions/:id", stellar.UpdateMission)
+		api.Delete("/stellar/missions/:id", stellar.DeleteMission)
+		api.Get("/stellar/executions", stellar.ListExecutions)
+		api.Get("/stellar/executions/:id", stellar.GetExecution)
+		api.Get("/stellar/actions", stellar.ListActions)
+		api.Post("/stellar/actions", stellar.CreateAction)
+		api.Get("/stellar/actions/:id", stellar.GetAction)
+		api.Post("/stellar/actions/:id/approve", stellar.ApproveAction)
+		api.Post("/stellar/actions/:id/reject", stellar.RejectAction)
+		api.Delete("/stellar/actions/:id", stellar.DeleteAction)
+		api.Get("/stellar/memory", stellar.ListMemory)
+		api.Post("/stellar/memory/search", stellar.SearchMemory)
+		api.Delete("/stellar/memory/:id", stellar.DeleteMemory)
+		api.Get("/stellar/state", stellar.GetState)
+		api.Get("/stellar/digest", stellar.GetDigest)
+		api.Post("/stellar/ask", stellar.Ask)
+		api.Get("/stellar/notifications", stellar.ListNotifications)
+		api.Post("/stellar/notifications/:id/read", stellar.MarkNotificationRead)
+		api.Get("/stellar/stream", stellar.Stream)
+
+		if s.k8sClient != nil {
+			stellarCtx, cancelStellar := context.WithCancel(context.Background())
+			go func() {
+				<-s.done
+				cancelStellar()
+			}()
+			watcherInterval := 30 * time.Second
+			if raw := strings.TrimSpace(os.Getenv("STELLAR_WATCHER_INTERVAL")); raw != "" {
+				if parsed, err := time.ParseDuration(raw); err == nil {
+					watcherInterval = parsed
+				}
+			}
+			go watcher.New(stellarStore, s.k8sClient, watcherInterval).Start(stellarCtx)
+			go scheduler.New(stellarStore, s.k8sClient).Start(stellarCtx)
+			slog.Info("stellar: watcher and scheduler started", "watcher_interval", watcherInterval.String())
+		}
+	} else {
+		slog.Warn("[Server] stellar routes disabled: store does not implement StellarStore")
+	}
 
 	// Orbit (recurring maintenance) routes — protected
 	orbitDataDir := filepath.Dir(s.config.DatabasePath)

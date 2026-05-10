@@ -70,6 +70,7 @@ import { ROUTES } from '../../config/routes'
 // not part of the initial bundle — they only load when the sidebar is first rendered.
 const MissionSidebar = safeLazy(() => import('./mission-sidebar'), 'MissionSidebar')
 const MissionSidebarToggle = safeLazy(() => import('./mission-sidebar'), 'MissionSidebarToggle')
+const StellarSidebar = safeLazy(() => import('../stellar'), 'StellarSidebar')
 
 // Module-level constant — computed once, never changes on re-render.
 // Prevents star field from flickering when Layout re-renders due to hooks.
@@ -739,6 +740,9 @@ export function Layout({ children: _children }: LayoutProps) {
             <Outlet />
           </div>
         </main>
+        <Suspense fallback={null}>
+          <StellarSidebar />
+        </Suspense>
       </div>
 
           {/* AI Mission sidebar — lazy loaded to keep react-markdown out of initial bundle */}
