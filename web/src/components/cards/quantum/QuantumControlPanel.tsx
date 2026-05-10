@@ -214,6 +214,7 @@ export const QuantumControlPanel: React.FC = () => {
       }
     } catch (err) {
       console.error('Error fetching auth status:', err)
+      setError('Unable to load IBM Quantum authentication status')
     }
   }, [])
 
@@ -387,6 +388,7 @@ export const QuantumControlPanel: React.FC = () => {
           }
       } catch (err) {
           console.error('Error polling after execution:', err)
+          setError('Execution started, but status refresh failed')
       }
       }, EXECUTION_STATUS_POLL_DELAY_MS)
     } catch (err) {
