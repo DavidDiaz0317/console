@@ -16,10 +16,10 @@ import { compressScreenshot } from '../../lib/imageCompression'
 import { copyBlobToClipboard } from '../../lib/clipboard'
 import { useToast } from '../ui/Toast'
 import { useTranslation } from 'react-i18next'
-
-import { LazyMarkdown as ReactMarkdown } from '../ui/LazyMarkdown'
 import { useBackendHealth } from '../../hooks/useBackendHealth'
 import { useKagentBackend } from '../../hooks/useKagentBackend'
+
+import { LazyMarkdown as ReactMarkdown } from '../ui/LazyMarkdown'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
