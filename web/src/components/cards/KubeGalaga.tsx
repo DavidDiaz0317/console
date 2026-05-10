@@ -600,6 +600,7 @@ export function KubeGalaga() {
             <button
               onClick={togglePause}
               className="flex items-center gap-1 px-3 py-1 bg-secondary hover:bg-secondary/80 rounded text-sm"
+              aria-label="Pause game"
             >
               <Pause className="w-4 h-4" />
               Pause

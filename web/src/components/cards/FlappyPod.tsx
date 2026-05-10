@@ -346,6 +346,7 @@ export function FlappyPod(_props: CardComponentProps) {
               <button
                 onClick={startGame}
                 className="px-6 py-3 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 font-semibold"
+                aria-label="Play again"
               >
                 Play Again
               </button>

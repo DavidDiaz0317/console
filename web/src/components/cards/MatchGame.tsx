@@ -315,6 +315,7 @@ export function MatchGame(_props: CardComponentProps) {
                   ? 'bg-purple-500 text-white'
                   : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-muted-foreground'
               }`}
+              aria-label={`Set difficulty to ${d}`}
             >
               {d.charAt(0).toUpperCase() + d.slice(1)}
             </button>
@@ -394,6 +395,7 @@ export function MatchGame(_props: CardComponentProps) {
           <button
             onClick={resetGame}
             className="px-4 py-1.5 bg-linear-to-r from-green-500 to-green-500 rounded-lg text-sm font-semibold hover:from-green-600 hover:to-green-600 transition-all transform hover:scale-105 flex items-center gap-2"
+            aria-label="Play again"
           >
             <RotateCcw className="w-4 h-4" />
             Play Again
@@ -421,6 +423,7 @@ export function MatchGame(_props: CardComponentProps) {
                 disabled={isFlipped || isPaused}
                 className="relative w-full aspect-square max-w-[60px] max-h-[60px] perspective-1000"
                 style={{ opacity: isPaused ? 0.5 : 1 }}
+                aria-label={isFlipped ? `Card ${icon?.label || 'unknown'}` : 'Hidden card'}
               >
                 <div
                   className={`card-inner w-full h-full transition-transform duration-500 transform-style-3d ${
@@ -454,6 +457,7 @@ export function MatchGame(_props: CardComponentProps) {
             <button
               onClick={togglePause}
               className="mt-2 px-3 py-1.5 text-sm bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Resume game"
             >
               Resume
             </button>

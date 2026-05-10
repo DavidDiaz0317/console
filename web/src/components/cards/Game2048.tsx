@@ -324,6 +324,7 @@ export function Game2048(_props: CardComponentProps) {
           onClick={newGame}
           className="p-1.5 rounded hover:bg-secondary"
           title="New Game"
+          aria-label="New Game"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -397,6 +398,7 @@ export function Game2048(_props: CardComponentProps) {
               <button
                 onClick={newGame}
                 className="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30"
+                aria-label="Try again"
               >
                 Try Again
               </button>
