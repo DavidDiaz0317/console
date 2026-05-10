@@ -378,6 +378,7 @@ export function ActiveAlerts() {
         value={localSearch}
         onChange={setLocalSearch}
         placeholder={t('activeAlerts.searchAlerts')}
+        className="mb-3 flex-none"
       />
 
       {/* Stats Row */}

@@ -201,7 +201,7 @@ export function AlertRulesCard() {
         value={localSearch}
         onChange={setLocalSearch}
         placeholder={t('alertRules.searchRules')}
-        className="mb-3"
+        className="mb-3 flex-none"
       />
 
       {/* Rules List */}
