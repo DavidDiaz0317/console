@@ -366,25 +366,31 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
 
     // Resolve active catalog config and update the kubara node description + repo
     // so the tree reflects whatever KUBARA_CATALOG_REPO is set to server-side.
-    getKubaraConfig().then((cfg) => {
-      const repo = `${cfg.repoOwner}/${cfg.repoName}`
-      const isCustom = repo !== 'kubara-io/kubara'
-      setTreeNodes((prev) => {
-        const next = updateNodeInTree(prev, 'kubara', {
-          path: cfg.catalogPath,
-          repoOwner: cfg.repoOwner,
-          repoName: cfg.repoName,
-          description: isDemoMode()
-            ? 'Demo catalog — install console locally for live data'
-            : isCustom
-              ? `Custom catalog: ${repo}`
-              : 'Production-tested Helm values from kubara-io/kubara',
-          infoTooltip: `Catalog: ${repo} · Set KUBARA_CATALOG_REPO (and optionally KUBARA_CATALOG_PATH) to use your own public or private catalog`,
+    getKubaraConfig()
+      .then((cfg) => {
+        const repo = `${cfg.repoOwner}/${cfg.repoName}`
+        const isCustom = repo !== 'kubara-io/kubara'
+        setTreeNodes((prev) => {
+          const next = updateNodeInTree(prev, 'kubara', {
+            path: cfg.catalogPath,
+            repoOwner: cfg.repoOwner,
+            repoName: cfg.repoName,
+            description: isDemoMode()
+              ? 'Demo catalog — install console locally for live data'
+              : isCustom
+                ? `Custom catalog: ${repo}`
+                : 'Production-tested Helm values from kubara-io/kubara',
+            infoTooltip: `Catalog: ${repo} · Set KUBARA_CATALOG_REPO (and optionally KUBARA_CATALOG_PATH) to use your own public or private catalog`,
+          })
+          treeNodesRef.current = next
+          return next
         })
-        treeNodesRef.current = next
-        return next
       })
-    }).catch(() => { /* keep defaults on error */ })
+      .catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error('[MissionBrowser] failed to load kubara config:', error)
+        showToast(errorMessage, 'error')
+      })
 
     if (isAuthenticated && user) {
       rootNodes.push({
@@ -436,7 +442,7 @@ export function MissionBrowser({ isOpen, onClose, onImport, initialMission, onUs
     setPendingImport(null)
     setIsScanning(false)
     // Preserve activeTab, searchQuery, and filter state across re-opens
-  }, [isOpen, isAuthenticated, user, watchedRepos, watchedPaths])
+  }, [isAuthenticated, isOpen, showToast, user, watchedPaths, watchedRepos])
 
   // ============================================================================
   // Fetch recommendations (with module-level caching to avoid recomputation)

@@ -81,10 +81,12 @@ export function useMissionToolCheck({
       })
       .catch((error: unknown) => {
         if (!isActive) return
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error('[MissionToolCheck] preflight failed:', error)
         setResult({
           status: 'error',
           missingTools: [],
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage,
         })
       })
 
