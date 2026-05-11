@@ -98,7 +98,7 @@ const DEMO_STATUS: SystemStatus = {
 
 export const QuantumControlPanel: React.FC = () => {
   const { isAuthenticated, login, isLoading: authIsLoading } = useAuth()
-  const { open: openDrillDown } = useDrillDown()
+  const { open: openDrillDown, close: closeDrillDown } = useDrillDown()
   const [control, setControl] = useState<ControlState>(DEMO_DATA)
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -253,9 +253,10 @@ export const QuantumControlPanel: React.FC = () => {
       data: {
         ibmAuthenticated,
         onSave: handleSaveCredentials,
+        onClose: closeDrillDown,
       },
     })
-  }, [ibmAuthenticated, openDrillDown])
+  }, [ibmAuthenticated, openDrillDown, closeDrillDown])
 
   // Clear IBM Quantum credentials
   const handleClearCredentials = useCallback(async () => {
