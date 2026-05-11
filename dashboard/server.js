@@ -13,6 +13,13 @@ const CONFIG_PATH = process.env.HIVE_PROJECT_CONFIG || '/etc/hive/hive-project.y
 // Runtime config — dashboard customizations that survive deploys
 const RUNTIME_CONFIG_PATH = process.env.HIVE_RUNTIME_CONFIG || '/etc/hive/hive-runtime.yaml';
 
+/** Mask a secret value — show only whether it's configured and last 4 chars */
+function maskSecret(val) {
+  if (!val) return '';
+  if (val.length <= 8) return '••••••••';
+  return '••••••••' + val.slice(-4);
+}
+
 function _loadYaml(filePath) {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
@@ -1752,9 +1759,11 @@ app.get('/api/config/governor', (_req, res) => {
 
     const agentBaseEnv = parseEnvFile(`${ENV_DIR}/agent.env`);
     const notifications = {
-      ntfyServer: govEnv.NTFY_SERVER || agentBaseEnv.NTFY_SERVER || '',
-      ntfyTopic: govEnv.NTFY_TOPIC || agentBaseEnv.NTFY_TOPIC || '',
-      discordWebhook: govEnv.DISCORD_WEBHOOK || agentBaseEnv.DISCORD_WEBHOOK || '',
+      ntfyServer: maskSecret(govEnv.NTFY_SERVER || agentBaseEnv.NTFY_SERVER || ''),
+      ntfyTopic: maskSecret(govEnv.NTFY_TOPIC || agentBaseEnv.NTFY_TOPIC || ''),
+      discordWebhook: maskSecret(govEnv.DISCORD_WEBHOOK || agentBaseEnv.DISCORD_WEBHOOK || ''),
+      hasNtfy: !!(govEnv.NTFY_SERVER || agentBaseEnv.NTFY_SERVER),
+      hasDiscord: !!(govEnv.DISCORD_WEBHOOK || agentBaseEnv.DISCORD_WEBHOOK),
     };
 
     const health = {
