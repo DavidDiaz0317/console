@@ -40,6 +40,7 @@ import (
 	"github.com/kubestellar/console/pkg/mcp"
 	"github.com/kubestellar/console/pkg/notifications"
 	"github.com/kubestellar/console/pkg/settings"
+	"github.com/kubestellar/console/pkg/stellar/providers"
 	"github.com/kubestellar/console/pkg/stellar/scheduler"
 	"github.com/kubestellar/console/pkg/stellar/watcher"
 	"github.com/kubestellar/console/pkg/store"
@@ -1112,6 +1113,7 @@ func (s *Server) setupRoutes() {
 	// Stellar assistant persistence routes (sticky preferences + mission registry)
 	if stellarStore, ok := s.store.(handlers.StellarStore); ok {
 		stellar := handlers.NewStellarHandler(stellarStore, s.k8sClient)
+		stellar.SetProviderRegistry(providers.NewRegistry())
 		api.Get("/stellar/preferences", stellar.GetPreferences)
 		api.Put("/stellar/preferences", stellar.UpdatePreferences)
 		api.Get("/stellar/missions", stellar.ListMissions)
@@ -1136,6 +1138,11 @@ func (s *Server) setupRoutes() {
 		api.Get("/stellar/notifications", stellar.ListNotifications)
 		api.Post("/stellar/notifications/:id/read", stellar.MarkNotificationRead)
 		api.Get("/stellar/stream", stellar.Stream)
+		api.Get("/stellar/providers", stellar.ListProviders)
+		api.Post("/stellar/providers", stellar.CreateProvider)
+		api.Delete("/stellar/providers/:id", stellar.DeleteProvider)
+		api.Post("/stellar/providers/:id/test", stellar.TestProvider)
+		api.Post("/stellar/providers/:id/default", stellar.SetDefaultProvider)
 
 		if s.k8sClient != nil {
 			stellarCtx, cancelStellar := context.WithCancel(context.Background())
@@ -1149,9 +1156,16 @@ func (s *Server) setupRoutes() {
 					watcherInterval = parsed
 				}
 			}
-			go watcher.New(stellarStore, s.k8sClient, watcherInterval).Start(stellarCtx)
-			go scheduler.New(stellarStore, s.k8sClient).Start(stellarCtx)
-			slog.Info("stellar: watcher and scheduler started", "watcher_interval", watcherInterval.String())
+			concurrency := 3
+			if raw := strings.TrimSpace(os.Getenv("STELLAR_SCHEDULER_CONCURRENCY")); raw != "" {
+				if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+					concurrency = parsed
+				}
+			}
+			go watcher.New(stellarStore, s.k8sClient, watcherInterval, nil).Start(stellarCtx)
+			go scheduler.New(stellarStore, s.k8sClient, concurrency).Start(stellarCtx)
+			go runRetentionWorker(stellarCtx, stellarStore)
+			slog.Info("stellar: watcher, scheduler and retention started", "watcher_interval", watcherInterval.String(), "scheduler_concurrency", concurrency)
 		}
 	} else {
 		slog.Warn("[Server] stellar routes disabled: store does not implement StellarStore")
@@ -1611,6 +1625,43 @@ func (s *Server) Shutdown() error {
 		shutdownErr = s.app.Shutdown()
 	})
 	return shutdownErr
+}
+
+type stellarRetentionStore interface {
+	PruneOldNotifications(ctx context.Context, retentionDays int) (int64, error)
+	PruneOldExecutions(ctx context.Context, retentionDays int) (int64, error)
+	PruneExpiredMemory(ctx context.Context) (int64, error)
+}
+
+func runRetentionWorker(ctx context.Context, s stellarRetentionStore) {
+	notifDays := getEnvInt("STELLAR_NOTIFICATION_RETENTION_DAYS", 30)
+	execDays := getEnvInt("STELLAR_EXECUTION_RETENTION_DAYS", 90)
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	slog.Info("stellar/retention: started", "notification_days", notifDays, "execution_days", execDays)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			n1, _ := s.PruneOldNotifications(ctx, notifDays)
+			n2, _ := s.PruneOldExecutions(ctx, execDays)
+			n3, _ := s.PruneExpiredMemory(ctx)
+			slog.Info("stellar/retention: pruned", "notifications", n1, "executions", n2, "memory", n3)
+		}
+	}
+}
+
+func getEnvInt(name string, fallback int) int {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return v
 }
 
 func customErrorHandler(c *fiber.Ctx, err error) error {
