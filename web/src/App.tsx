@@ -34,6 +34,18 @@ import { Dashboard } from './components/dashboard/Dashboard'
 
 const MissionLandingPage = safeLazy(() => import('./components/missions/MissionLandingPage'), 'MissionLandingPage')
 
+// Stellar audit page — lazy loaded, only needed when navigating to /stellar/audit
+const StellarAuditPageLazy = safeLazy(() => import('./components/stellar/AuditPage').then(m => ({ default: m.AuditPage })), 'default')
+function StellarAuditPageWrapper() {
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--s-bg, #0a0e14)' }}>
+      <Suspense fallback={<LoadingFallback />}>
+        <StellarAuditPageLazy />
+      </Suspense>
+    </div>
+  )
+}
+
 // Lazy-load DrillDownModal — the drilldown views (~64 KB) are only needed
 // when a user clicks into a card detail, not on initial page render.
 const DrillDownModal = safeLazy(() => import('./components/drilldown/DrillDownModal'), 'DrillDownModal')
@@ -641,6 +653,17 @@ function App() {
           ~200KB and eliminates cold-start API calls. */}
       <Route path={ROUTES.MISSION} element={
         <LightweightShell><MissionLandingPage /></LightweightShell>
+      } />
+
+      {/* ── Stellar audit log ─────────────────────────────────────────
+          Read-only audit trail for Stellar PA actions. Protected route
+          inside the full dashboard stack. */}
+      <Route path={ROUTES.STELLAR_AUDIT} element={
+        <LightweightShell>
+          <ProtectedRoute>
+            <StellarAuditPageWrapper />
+          </ProtectedRoute>
+        </LightweightShell>
       } />
 
       {/* ── Public landing pages ──────────────────────────────────────

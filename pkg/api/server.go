@@ -27,7 +27,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/fiber/v2/middleware/recover"
+	recovermw "github.com/gofiber/fiber/v2/middleware/recover"
 
 	"github.com/kubestellar/console/pkg/agent"
 	"github.com/kubestellar/console/pkg/api/audit"
@@ -40,6 +40,7 @@ import (
 	"github.com/kubestellar/console/pkg/mcp"
 	"github.com/kubestellar/console/pkg/notifications"
 	"github.com/kubestellar/console/pkg/settings"
+	"github.com/kubestellar/console/pkg/stellar/observer"
 	"github.com/kubestellar/console/pkg/stellar/providers"
 	"github.com/kubestellar/console/pkg/stellar/scheduler"
 	"github.com/kubestellar/console/pkg/stellar/watcher"
@@ -458,7 +459,7 @@ func startLoadingServer(addr string) *http.Server {
 
 func (s *Server) setupMiddleware() {
 	// Recovery middleware
-	s.app.Use(recover.New())
+	s.app.Use(recovermw.New())
 
 	// Gzip/Brotli compression for API responses only — static assets are pre-compressed at build time.
 	// The handler is created once and reused across requests (#7575).
@@ -1113,7 +1114,8 @@ func (s *Server) setupRoutes() {
 	// Stellar assistant persistence routes (sticky preferences + mission registry)
 	if stellarStore, ok := s.store.(handlers.StellarStore); ok {
 		stellar := handlers.NewStellarHandler(stellarStore, s.k8sClient)
-		stellar.SetProviderRegistry(providers.NewRegistry())
+		providerRegistry := providers.NewRegistry()
+		stellar.SetProviderRegistry(providerRegistry)
 		api.Get("/stellar/preferences", stellar.GetPreferences)
 		api.Put("/stellar/preferences", stellar.UpdatePreferences)
 		api.Get("/stellar/missions", stellar.ListMissions)
@@ -1137,12 +1139,22 @@ func (s *Server) setupRoutes() {
 		api.Post("/stellar/ask", stellar.Ask)
 		api.Get("/stellar/notifications", stellar.ListNotifications)
 		api.Post("/stellar/notifications/:id/read", stellar.MarkNotificationRead)
+		api.Get("/stellar/tasks", stellar.ListTasks)
+		api.Post("/stellar/tasks", stellar.CreateTask)
+		api.Post("/stellar/tasks/:id/status", stellar.UpdateTaskStatus)
+		api.Get("/stellar/observations", stellar.ListObservations)
 		api.Get("/stellar/stream", stellar.Stream)
 		api.Get("/stellar/providers", stellar.ListProviders)
 		api.Post("/stellar/providers", stellar.CreateProvider)
 		api.Delete("/stellar/providers/:id", stellar.DeleteProvider)
 		api.Post("/stellar/providers/:id/test", stellar.TestProvider)
 		api.Post("/stellar/providers/:id/default", stellar.SetDefaultProvider)
+		api.Get("/stellar/watches", stellar.ListWatches)
+		api.Post("/stellar/watches", stellar.CreateWatch)
+		api.Post("/stellar/watches/:id/resolve", stellar.ResolveWatch)
+		api.Delete("/stellar/watches/:id", stellar.DismissWatch)
+		api.Post("/stellar/watches/:id/snooze", stellar.SnoozeWatch)
+		api.Get("/stellar/audit", stellar.ListAuditLog)
 
 		if s.k8sClient != nil {
 			stellarCtx, cancelStellar := context.WithCancel(context.Background())
@@ -1163,9 +1175,29 @@ func (s *Server) setupRoutes() {
 				}
 			}
 			go watcher.New(stellarStore, s.k8sClient, watcherInterval, nil).Start(stellarCtx)
-			go scheduler.New(stellarStore, s.k8sClient, concurrency).Start(stellarCtx)
+			sched := scheduler.New(stellarStore, s.k8sClient, concurrency)
+			go sched.Start(stellarCtx)
+			go sched.StartDigestScheduler(stellarCtx)
+			// Observer with panic recovery wrapper
+			obs := observer.New(stellarStore, s.k8sClient, providerRegistry, 60*time.Second)
+			go func() {
+				for {
+					func() {
+						defer func() {
+							if r := recover(); r != nil {
+								slog.Error("stellar/observer: panic recovered", "error", r)
+							}
+						}()
+						obs.Start(stellarCtx)
+					}()
+					if stellarCtx.Err() != nil {
+						return
+					}
+					time.Sleep(5 * time.Second)
+				}
+			}()
 			go runRetentionWorker(stellarCtx, stellarStore)
-			slog.Info("stellar: watcher, scheduler and retention started", "watcher_interval", watcherInterval.String(), "scheduler_concurrency", concurrency)
+			slog.Info("stellar: watcher, scheduler, observer and retention started", "watcher_interval", watcherInterval.String(), "scheduler_concurrency", concurrency)
 		}
 	} else {
 		slog.Warn("[Server] stellar routes disabled: store does not implement StellarStore")
