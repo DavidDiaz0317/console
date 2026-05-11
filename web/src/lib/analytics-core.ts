@@ -54,6 +54,8 @@ const GTAG_CDN_URL = 'https://www.googletagmanager.com/gtag/js'
 const GTAG_LOAD_TIMEOUT_MS = 5_000
 // Delay after script.onload to verify gtag.js actually initialized
 const GTAG_INIT_CHECK_MS = 100
+// Maximum time to wait for the proxy beacon fetch fallback.
+const PROXY_BEACON_TIMEOUT_MS = 5_000
 
 // GA4 considers a session "engaged" after 10 seconds of active use.
 // Once set, it stays true for the rest of the session.
@@ -295,6 +297,30 @@ function sendViaGtag(
  * (/api/m). This fallback is used when gtag.js is blocked by ad blockers.
  * Events appear in standard GA4 reports but NOT in Realtime.
  */
+function warnAnalyticsDeliveryFailure(method: 'sendBeacon' | 'fetch', detail: unknown) {
+  console.warn(`[analytics] GA4 beacon delivery failed via ${method}:`, detail)
+}
+
+function sendAnalyticsBeaconViaFetch(url: string) {
+  try {
+    fetch(url, {
+      method: 'POST',
+      keepalive: true,
+      signal: AbortSignal.timeout(PROXY_BEACON_TIMEOUT_MS),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          warnAnalyticsDeliveryFailure('fetch', new Error(`HTTP ${response.status}`))
+        }
+      })
+      .catch((error: unknown) => {
+        warnAnalyticsDeliveryFailure('fetch', error)
+      })
+  } catch (error: unknown) {
+    warnAnalyticsDeliveryFailure('fetch', error)
+  }
+}
+
 function sendViaProxy(
   eventName: string,
   params?: Record<string, string | number | boolean>,
@@ -385,10 +411,19 @@ function sendViaProxy(
   const url = `${PROXY_PATH}?d=${encodeURIComponent(encoded)}`
 
   if (navigator.sendBeacon) {
-    navigator.sendBeacon(url)
-  } else {
-    fetch(url, { method: 'POST', keepalive: true, signal: AbortSignal.timeout(5_000) }).catch(() => {})
+    try {
+      const delivered = navigator.sendBeacon(url)
+      if (delivered) {
+        return
+      }
+
+      warnAnalyticsDeliveryFailure('sendBeacon', new Error('navigator.sendBeacon returned false'))
+    } catch (error: unknown) {
+      warnAnalyticsDeliveryFailure('sendBeacon', error)
+    }
   }
+
+  sendAnalyticsBeaconViaFetch(url)
 }
 
 /**
