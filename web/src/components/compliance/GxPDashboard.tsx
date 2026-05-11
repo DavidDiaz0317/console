@@ -232,7 +232,7 @@ export const GxPDashboardContent = memo(function GxPDashboardContent() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTION_STYLES[r.action] || 'bg-gray-500/20 text-muted-foreground'}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${ACTION_STYLES[r.action] || 'bg-muted text-muted-foreground'}`}>
                           {r.action}
                         </span>
                         <span className="text-foreground font-medium">{r.resource}</span>

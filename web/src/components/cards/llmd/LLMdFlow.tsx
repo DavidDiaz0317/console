@@ -77,6 +77,24 @@ const COLORS = {
   gateway: '#3b82f6',
   epp: '#f59e0b' }
 
+const FLOW_LEGEND_DOT_CLASSES: Record<'prefill' | 'decode' | 'kv-transfer', string> = {
+  prefill: 'bg-purple-500 shadow-[0_0_6px_theme(colors.purple.500)]',
+  decode: 'bg-green-500 shadow-[0_0_6px_theme(colors.green.500)]',
+  'kv-transfer': 'bg-cyan-500 shadow-[0_0_6px_theme(colors.cyan.500)]',
+}
+
+const METRIC_ACCENT_CLASSES: Record<'load' | 'queue' | 'rps', string> = {
+  load: 'text-amber-400',
+  queue: 'text-cyan-400',
+  rps: 'text-blue-400',
+}
+
+const METRIC_DOT_CLASSES: Record<'load' | 'queue' | 'rps', string> = {
+  load: 'bg-amber-400',
+  queue: 'bg-cyan-400',
+  rps: 'bg-blue-400',
+}
+
 // Premium gauge node with glowing arc
 interface PremiumNodeProps {
   id: string
@@ -259,7 +277,7 @@ function PremiumNode({ id, label, metrics, nodeColor, isSelected, onClick, uniqu
             fill="#ffffff"
             fontSize="3.2"
             fontWeight="700"
-            style={{ textShadow: `0 0 4px ${loadColors.glow}` }}
+            filter={`url(#${filterIdGlow})`}
           >
             {load}%
           </text>
@@ -461,7 +479,7 @@ function HorseshoeFlowNode({ id, label, metrics, isSelected, onClick, uniqueId, 
             fill="#ffffff"
             fontSize="4"
             fontWeight="700"
-            style={{ textShadow: `0 0 4px ${color}` }}
+            filter={`url(#${filterId})`}
           >
             {load}%
           </text>
@@ -987,7 +1005,7 @@ export function LLMdFlow() {
           )}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{t('llmd.throughput')}:</span>
-            <span className="text-white font-mono font-medium">{totalThroughput} <Acronym term="RPS" /></span>
+            <span className="text-foreground font-mono font-medium">{totalThroughput} <Acronym term="RPS" /></span>
           </div>
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{t('llmd.avgLoad')}:</span>
@@ -1025,15 +1043,15 @@ export function LLMdFlow() {
       {/* Legend */}
       <div className="absolute bottom-2 left-3 flex items-center gap-4 text-xs z-10">
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.prefill, boxShadow: `0 0 6px ${COLORS.prefill}` }} />
+          <div className={`w-2.5 h-2.5 rounded-full ${FLOW_LEGEND_DOT_CLASSES.prefill}`} />
           <span className="text-muted-foreground">{t('llmd.prefill')}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS.decode, boxShadow: `0 0 6px ${COLORS.decode}` }} />
+          <div className={`w-2.5 h-2.5 rounded-full ${FLOW_LEGEND_DOT_CLASSES.decode}`} />
           <span className="text-muted-foreground">{t('llmd.decode')}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS['kv-transfer'], boxShadow: `0 0 6px ${COLORS['kv-transfer']}` }} />
+          <div className={`w-2.5 h-2.5 rounded-full ${FLOW_LEGEND_DOT_CLASSES['kv-transfer']}`} />
           <span className="text-muted-foreground"><Acronym term="KV" /> Transfer</span>
         </div>
       </div>
@@ -1102,7 +1120,7 @@ export function LLMdFlow() {
             className="absolute top-10 left-3 w-56 bg-background/95 backdrop-blur-xs rounded-xl p-4 border border-border shadow-xl"
           >
             <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
-              <h3 className="text-white font-semibold text-sm">
+              <h3 className="text-foreground font-semibold text-sm">
                 {selectedMetrics.name}
               </h3>
               <span className={`px-2 py-0.5 rounded-full text-2xs font-medium ${
@@ -1122,13 +1140,13 @@ export function LLMdFlow() {
                   onClick={() => toggleMetric(metric)}
                   className={`flex-1 px-2 py-1.5 rounded text-2xs font-medium transition-all ${
                     selectedMetricTypes.includes(metric)
-                      ? 'bg-secondary text-white ring-1 ring-border'
+                      ? 'bg-secondary text-secondary-foreground ring-1 ring-border'
                       : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
                   }`}
                 >
                   <div className="text-center">
                     <div className="text-[9px] text-muted-foreground uppercase">{t(`llmd.${metric}`)}</div>
-                    <div className="font-mono" style={{ color: selectedMetricTypes.includes(metric) ? metricConfig[metric].color : undefined }}>
+                    <div className={`font-mono ${selectedMetricTypes.includes(metric) ? METRIC_ACCENT_CLASSES[metric] : ""}`}>
                       {metric === 'load' ? `${selectedMetrics.load}%` :
                        metric === 'queue' ? selectedMetrics.queueDepth :
                        selectedMetrics.throughputRps}
@@ -1147,10 +1165,7 @@ export function LLMdFlow() {
               {selectedMetricTypes.map(metric => (
                 <div key={metric} className="bg-secondary/50 rounded-lg p-2">
                   <div className="text-[9px] text-muted-foreground mb-1 flex items-center gap-1">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: metricConfig[metric].color }}
-                    />
+                    <div className={`w-1.5 h-1.5 rounded-full ${METRIC_DOT_CLASSES[metric]}`} />
                     {t(`llmd.${metric}`)}
                   </div>
                   <Sparkline

@@ -692,24 +692,24 @@ export const QuantumControlPanel: React.FC = () => {
           </div>
 
           {/* Loop Mode Toggle */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/50">
             <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${control.loop_mode ? 'bg-blue-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${control.loop_mode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Loop Mode</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{control.loop_mode ? 'Enabled - Continuous execution' : 'Disabled - Single execution'}</p>
+                <p className="text-sm font-medium text-foreground">Loop Mode</p>
+                <p className="text-xs text-muted-foreground">{control.loop_mode ? 'Enabled - Continuous execution' : 'Disabled - Single execution'}</p>
               </div>
             </div>
             <button
               onClick={handleLoopModeToggle}
               disabled={control.executing}
-              className={`relative w-12 h-7 rounded-full transition-colors ${control.loop_mode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'} disabled:opacity-50`}
+              className={`relative w-12 h-7 rounded-full transition-colors ${control.loop_mode ? 'bg-primary hover:bg-primary/90' : 'bg-muted hover:bg-muted/80'} disabled:opacity-50`}
             >
-              <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${control.loop_mode ? 'translate-x-5' : ''}`} />
+              <div className={`absolute top-1 left-1 w-5 h-5 bg-background border border-border rounded-full transition-transform ${control.loop_mode ? 'translate-x-5' : ''}`} />
             </button>
           </div>
 
@@ -717,14 +717,14 @@ export const QuantumControlPanel: React.FC = () => {
           <button
             onClick={handleExecute}
             disabled={control.executing}
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:opacity-50 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+            className="w-full px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-primary/60 disabled:opacity-50 text-primary-foreground rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
           >
             <Play className="w-4 h-4" />
             {control.executing ? 'Executing...' : control.loop_mode ? 'Update Parameters' : 'Execute Circuit'}
           </button>
 
           {/* Status Display */}
-          <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="p-3 rounded-lg border border-border bg-muted/50">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">System Status</p>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">

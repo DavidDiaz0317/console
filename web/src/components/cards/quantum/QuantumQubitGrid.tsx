@@ -358,14 +358,14 @@ export const QuantumQubitGrid: React.FC = () => {
         </div>
 
         {/* Display Mask Selector */}
-        <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2">
-          <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+        <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-2">
+          <label className="text-xs font-semibold text-muted-foreground">
             Display Mask
           </label>
           <select
             value={selectedMask}
             onChange={e => setSelectedMask(e.target.value as MaskKey)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm"
+            className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground text-sm"
           >
             {MASK_OPTIONS.map(opt => (
               <option
@@ -382,20 +382,20 @@ export const QuantumQubitGrid: React.FC = () => {
         {/* Legend */}
         <div className="grid grid-cols-4 gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded border border-gray-300" />
-            <span className="text-gray-600 dark:text-gray-400">|0⟩ State</span>
+            <div className="w-4 h-4 bg-blue-500 rounded border border-border" />
+            <span className="text-muted-foreground">|0⟩ State</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded border border-gray-300" />
-            <span className="text-gray-600 dark:text-gray-400">|1⟩ State</span>
+            <div className="w-4 h-4 bg-red-500 rounded border border-border" />
+            <span className="text-muted-foreground">|1⟩ State</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: 'rgb(104, 97, 104)' }} />
-            <span className="text-gray-600 dark:text-gray-400">Unused/Unmeasured</span>
+            <div className="w-4 h-4 rounded border border-border bg-muted-foreground/60" />
+            <span className="text-muted-foreground">Unused/Unmeasured</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-black rounded border border-gray-300" />
-            <span className="text-gray-600 dark:text-gray-400">BKGD</span>
+            <div className="w-4 h-4 bg-foreground rounded border border-border" />
+            <span className="text-muted-foreground">BKGD</span>
           </div>
         </div>
 

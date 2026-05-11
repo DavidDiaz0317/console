@@ -13,7 +13,6 @@ import { useReportCardDataState } from '../CardDataContext'
 import { useCachedBenchmarkReports } from '../../../hooks/useBenchmarkData'
 import {
   generateLeaderboardRows,
-  CONFIG_COLORS,
   type LeaderboardRow } from '../../../lib/llmd/benchmarkMockData'
 import { CardSearch, useCardSearch } from '../../ui/CardSearch'
 import { CardControls, type SortDirection } from '../../ui/CardControls'
@@ -43,6 +42,12 @@ const COLUMNS: { key: SortKey; label: string; width: string }[] = [
   { key: 'score', label: 'Score', width: 'w-[70px]' },
   { key: 'llmdAdvantage', label: 'Advantage', width: 'w-[80px]' },
 ]
+
+const CONFIG_BADGE_CLASSES: Record<string, string> = {
+  standalone: 'bg-amber-500/20 text-amber-400',
+  scheduling: 'bg-blue-500/20 text-blue-400',
+  disaggregated: 'bg-emerald-500/20 text-emerald-400',
+}
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDirection }) {
   if (!active) return <ArrowUpDown size={11} className="text-muted-foreground" />
@@ -107,7 +112,7 @@ export function HardwareLeaderboard() {
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-3">
         <div className="flex items-center gap-2">
           <Trophy size={16} className="text-yellow-400" />
-          <span className="text-sm font-medium text-white">Hardware Leaderboard</span>
+          <span className="text-sm font-medium text-foreground">Hardware Leaderboard</span>
           <span className="text-xs text-muted-foreground">{totalItems} configs</span>
         </div>
         <div className="flex items-center gap-2">
@@ -127,7 +132,7 @@ export function HardwareLeaderboard() {
           <select
             value={modelFilter}
             onChange={e => setModelFilter(e.target.value)}
-            className="bg-secondary border border-border rounded px-2 py-1 text-xs text-white"
+            className="bg-secondary border border-border rounded px-2 py-1 text-xs text-foreground"
           >
             <option value="all">{t('selectors.allModels')}</option>
             {models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -148,7 +153,7 @@ export function HardwareLeaderboard() {
                 <th
                   key={col.key}
                   onClick={() => toggleSort(col.key)}
-                  className={`text-right py-2 px-2 text-muted-foreground font-medium cursor-pointer hover:text-white transition-colors ${col.width}`}
+                  className={`text-right py-2 px-2 text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors ${col.width}`}
                 >
                   <div className="flex items-center justify-end gap-1">
                     <span>{col.label}</span>
@@ -163,7 +168,7 @@ export function HardwareLeaderboard() {
               <tr
                 key={row.rank}
                 className={`border-b border-border/50 transition-colors hover:bg-secondary/30 ${
-                  row.config !== 'standalone' ? 'bg-blue-500/3' : ''
+                  row.config !== 'standalone' ? 'bg-primary/5' : ''
                 }`}
               >
                 <td className="py-2 px-2 font-mono text-muted-foreground">
@@ -173,7 +178,7 @@ export function HardwareLeaderboard() {
                     row.rank
                   )}
                 </td>
-                <td className="py-2 px-2 text-white font-medium">{row.hardware}</td>
+                <td className="py-2 px-2 text-foreground font-medium">{row.hardware}</td>
                 <td className="py-2 px-2 text-foreground truncate max-w-[100px]">{row.model}</td>
                 <td className="py-2 px-2">
                   {/* Issue 9071: inline `background`/`color` are data-driven accent
@@ -181,14 +186,11 @@ export function HardwareLeaderboard() {
                    * These are intentionally not theme-switched — the /20 alpha
                    * background + full-saturation foreground pairing reads on
                    * both light and dark by design. */}
-                  <span
-                    className="px-1.5 py-0.5 rounded text-2xs font-medium"
-                    style={{ background: `${CONFIG_COLORS[row.config]}20`, color: CONFIG_COLORS[row.config] }}
-                  >
+                  <span className={`px-1.5 py-0.5 rounded text-2xs font-medium ${CONFIG_BADGE_CLASSES[row.config] || 'bg-muted text-muted-foreground'}`}>
                     {row.config}
                   </span>
                 </td>
-                <td className="py-2 px-2 text-right font-mono text-white">{row.throughputPerGpu.toLocaleString()}</td>
+                <td className="py-2 px-2 text-right font-mono text-foreground">{row.throughputPerGpu.toLocaleString()}</td>
                 <td className="py-2 px-2 text-right font-mono text-foreground">{row.ttftP50Ms.toFixed(1)}</td>
                 <td className="py-2 px-2 text-right font-mono text-foreground">{row.tpotP50Ms.toFixed(2)}</td>
                 <td className="py-2 px-2 text-right font-mono text-foreground">{row.p99LatencyMs.toLocaleString()}</td>
