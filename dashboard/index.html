@@ -1458,6 +1458,16 @@
     const LAYOUT_KEY = 'hive-layout-mode';
     const LAYOUT_MODES = ['classic', 'light'];
     const LAYOUT_LABELS = { classic: '☰ Light View', light: '☰ Classic View' };
+    /** Escape HTML special characters to prevent XSS in innerHTML sinks */
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     function getLayout() {
       let stored = localStorage.getItem(LAYOUT_KEY) || 'classic';
       if (stored === 'openclaw') { stored = 'light'; setLayout(stored); }
@@ -1666,13 +1676,15 @@
         const OC_THRESH_SURGE = govThresh.surge || 20;
         const OC_GAUGE_MAX = Math.max(OC_THRESH_SURGE + 10, govActionable + 5);
         const gaugePct = Math.min(govActionable / OC_GAUGE_MAX * 100, 100);
+        const safeGovMode = escapeHtml(String(gov.mode || '—'));
+        const safeOcHoldTooltip = escapeHtml((window._lastStatus?.hold?.items || []).map(h => (h.type === 'pr' ? 'PR' : 'Issue') + ' ' + h.repo + '#' + h.number + ': ' + h.title).join('\n') || 'No items on hold');
         govOuter.innerHTML = `
           <div class="gov-metric"><span class="gm-label">timer</span><span class="gm-val" style="color:#16a34a">${gov.active !== false ? '● active' : '○ off'}</span></div>
-          <div class="gov-metric"><span class="gm-label">mode</span><span class="gm-val ${govModeClass}">${gov.mode || '—'}</span></div>
+          <div class="gov-metric"><span class="gm-label">mode</span><span class="gm-val ${govModeClass}">${safeGovMode}</span></div>
           <div class="gov-metric"><span class="gm-label">actionable</span><span class="gm-val">${govActionable}</span></div>
           <div class="gov-metric"><span class="gm-label">PRs</span><span class="gm-val">${govPrs}</span></div>
           <div class="gov-metric"><span class="gm-label">MTTR</span><span class="gm-val" style="color:${MTTR_COLOR}">${formatFixTime(itmMedian)}</span></div>
-          <div class="gov-metric" title="${(window._lastStatus?.hold?.items || []).map(h => (h.type === 'pr' ? 'PR' : 'Issue') + ' ' + h.repo + '#' + h.number + ': ' + h.title).join('\n') || 'No items on hold'}"><span class="gm-label">on hold</span><span class="gm-val" style="color:#d29922">${window._lastStatus?.hold?.total || 0}</span></div>
+          <div class="gov-metric" title="${safeOcHoldTooltip}"><span class="gm-label">on hold</span><span class="gm-val" style="color:#d29922">${window._lastStatus?.hold?.total || 0}</span></div>
           <div class="oc-gov-gauge">
             <div class="temp-gauge-track" style="background:linear-gradient(to right, #238636 0%, #238636 ${OC_THRESH_QUIET/OC_GAUGE_MAX*100}%, #1f6feb ${OC_THRESH_QUIET/OC_GAUGE_MAX*100}%, #1f6feb ${OC_THRESH_BUSY/OC_GAUGE_MAX*100}%, #d29922 ${OC_THRESH_BUSY/OC_GAUGE_MAX*100}%, #d29922 ${OC_THRESH_SURGE/OC_GAUGE_MAX*100}%, #f85149 ${OC_THRESH_SURGE/OC_GAUGE_MAX*100}%, #f85149 100%)">
               <div class="temp-gauge-glow" style="width:100%"></div>
@@ -2072,13 +2084,13 @@
       for (const g of groups) {
         const validAgents = (g.agents || []).filter(n => agentMap[n]);
         if (g.name) {
-          const esc = g.name.replace(/'/g, "\\'");
-          html += `<div class="oc-sidebar-group" data-group-name="${g.name}">`;
+          const safeGroupName = escapeHtml(g.name);
+          html += `<div class="oc-sidebar-group" data-group-name="${safeGroupName}">`;
           html += `<div class="oc-sidebar-group-header" draggable="true" data-action="ocToggleSidebarGroup">`;
-          html += `<span class="oc-group-arrow">▼</span> ${g.name}`;
+          html += `<span class="oc-group-arrow">▼</span> ${safeGroupName}`;
           html += `<span class="oc-group-actions" onclick="event.stopPropagation()">`;
-          html += `<button data-action="ocRenameSidebarGroup" data-group="${esc}" title="Rename">✏</button>`;
-          html += `<button data-action="ocRemoveSidebarGroup" data-group="${esc}" title="Remove group">✕</button>`;
+          html += `<button data-action="ocRenameSidebarGroup" data-group="${safeGroupName}" title="Rename">✏</button>`;
+          html += `<button data-action="ocRemoveSidebarGroup" data-group="${safeGroupName}" title="Remove group">✕</button>`;
           html += `</span></div>`;
           html += `<div class="oc-sidebar-group-children">`;
           html += validAgents.map(n => _sidebarRenderAgent(agentMap[n])).join('');
@@ -2218,19 +2230,21 @@
     function renderStatHtml(stat, name) {
       const v = resolveStatValue(stat, name);
       const style = stat.style;
-      const label = stat.label || stat.key;
-      const icon = stat.icon ? stat.icon + ' ' : '';
+      const labelText = String(stat.label || stat.key || '');
+      const safeLabel = escapeHtml(labelText);
+      const safeUpperLabel = escapeHtml(labelText.toUpperCase());
+      const safeIcon = stat.icon ? escapeHtml(String(stat.icon)) + ' ' : '';
 
       if (style === 'dot') {
         const dotCls = v === 1 ? 'ok' : v === 0 ? 'fail' : 'unknown';
-        return `<span class="ind-dot-item"><span class="health-dot ${dotCls}"></span><span class="ind-dlabel">${label}</span></span>`;
+        return `<span class="ind-dot-item"><span class="health-dot ${dotCls}"></span><span class="ind-dlabel">${safeLabel}</span></span>`;
       }
 
       if (style === 'pct') {
         const PCT_GOOD = 90;
         const PCT_WARN = 70;
         const cls = v >= PCT_GOOD ? 'good' : v >= PCT_WARN ? 'warn' : 'bad';
-        return `<span class="ind-dot-item"><span class="health-ci ${cls}">${v || 0}%</span><span class="ind-dlabel">${label}</span></span>`;
+        return `<span class="ind-dot-item"><span class="health-ci ${cls}">${v || 0}%</span><span class="ind-dlabel">${safeLabel}</span></span>`;
       }
 
       if (style === 'pct-bar') {
@@ -2241,7 +2255,7 @@
         const barColor = pct >= target ? 'var(--green)' : pct >= target - TARGET_WARN_OFFSET ? 'var(--yellow)' : 'var(--red)';
         const MAX_BAR_WIDTH = 120;
         const BAR_HEIGHT = 6;
-        return `<div class="ind-group"><span class="ind-group-label">${label.toUpperCase()}</span><div class="ind-dots">
+        return `<div class="ind-group"><span class="ind-group-label">${safeUpperLabel}</span><div class="ind-dots">
           <span class="ind-dot-item"><span class="ind-num ${covCls}">${pct}%</span><span class="ind-dlabel">current</span></span>
           <span class="ind-dot-item"><span class="ind-dlabel">goal: ${target}%</span></span>
           <span class="ind-dot-item" style="flex:1;max-width:${MAX_BAR_WIDTH}px">
@@ -2257,11 +2271,11 @@
         const color = SPARK_COLORS[trendField] || DEFAULT_SPARK_COLOR;
         const trendSeries = (window._trendData || []).map(s => s[trendField] || 0);
         const spark = sparkSvg(trendSeries, color);
-        return `<span class="ind-dot-item"><span class="ind-num">${icon}${v || 0}</span><span class="ind-dlabel">${label} ${spark}</span></span>`;
+        return `<span class="ind-dot-item"><span class="ind-num">${safeIcon}${v || 0}</span><span class="ind-dlabel">${safeLabel} ${spark}</span></span>`;
       }
 
       // style === 'number' (default)
-      return `<span class="ind-dot-item"><span class="ind-num">${icon}${v || 0}</span><span class="ind-dlabel">${label}</span></span>`;
+      return `<span class="ind-dot-item"><span class="ind-num">${safeIcon}${v || 0}</span><span class="ind-dlabel">${safeLabel}</span></span>`;
     }
 
     function renderStatsFromConfig(stats, name) {
@@ -2573,17 +2587,21 @@
       const HOLD_COLOR = '#d29922';
       const holdTooltip = holdItems.length > 0 ? holdItems.map(h => `${h.type === 'pr' ? 'PR' : 'Issue'} ${h.repo}#${h.number}: ${h.title}`).join('\n') : 'No items on hold';
       const holdSpark = sparkSvg(getHistorySeries('govHold'), HOLD_COLOR);
+      const safeGovMode = escapeHtml(String(gov.mode || '—'));
+      const safeItmTitle = escapeHtml(itmTitle);
+      const safeHoldTooltip = escapeHtml(holdTooltip);
+      const safeNextKick = escapeHtml(String(gov.nextKick || '—'));
 
       el.innerHTML = `
         <div class="gov-title">Governor <button class="config-gear" onclick="openConfigDialog('governor')" title="Configure Governor">⚙️</button></div>
         <div class="gov-grid">
           <div class="gov-stat"><div class="label">timer</div><div class="val ${cls}">${gov.active ? '● active' : '⚠ DEAD'}</div></div>
-          <div class="gov-stat"><div class="label">mode</div><div class="val" style="color:${modeColor}">${gov.mode}</div></div>
+          <div class="gov-stat"><div class="label">mode</div><div class="val" style="color:${modeColor}">${safeGovMode}</div></div>
           <div class="gov-stat"><div class="label">actionable issues</div><div class="spark-row"><span class="val">${issueCount}</span>${issuesSpark}</div></div>
           <div class="gov-stat"><div class="label">PRs</div><div class="spark-row"><span class="val">${gov.prs}</span>${prsSpark}</div></div>
-          <div class="gov-stat" title="${itmTitle}"><div class="label">MTTR</div><div class="spark-row"><span class="val" style="color:${FIX_TIME_SPARK_COLOR}">${formatFixTime(itmMedian)}</span>${itmSpark}</div></div>
-          <div class="gov-stat" title="${holdTooltip}"><div class="label">on hold</div><div class="spark-row"><span class="val" style="color:${HOLD_COLOR}">${holdTotal}</span>${holdSpark}</div></div>
-          <div class="gov-stat"><div class="label">next run</div><div class="val">${gov.nextKick || '—'}</div></div>
+          <div class="gov-stat" title="${safeItmTitle}"><div class="label">MTTR</div><div class="spark-row"><span class="val" style="color:${FIX_TIME_SPARK_COLOR}">${formatFixTime(itmMedian)}</span>${itmSpark}</div></div>
+          <div class="gov-stat" title="${safeHoldTooltip}"><div class="label">on hold</div><div class="spark-row"><span class="val" style="color:${HOLD_COLOR}">${holdTotal}</span>${holdSpark}</div></div>
+          <div class="gov-stat"><div class="label">next run</div><div class="val">${safeNextKick}</div></div>
         </div>
         <div class="temp-gauge">
           <div class="temp-gauge-label"><span>Issues: ${issueCount}</span><span>max ${maxQ}</span></div>
@@ -3491,13 +3509,13 @@ function burnAreaChart() {
       if (dryRuns.length > 0) {
         html += `<h3 style="margin-top:12px">${mode === 'observe' ? 'Would Have Tested' : 'Recent Proposals'}</h3>`;
         for (const dr of dryRuns) {
-          const paramKeys = dr.params ? Object.entries(dr.params).map(([k,v]) => `<code style="font-size:0.7rem;background:var(--bg);padding:1px 4px;border-radius:3px">${k}=${v}</code>`).join(' ') : '';
+          const paramKeys = dr.params ? Object.entries(dr.params).map(([k,v]) => `<code style="font-size:0.7rem;background:var(--bg);padding:1px 4px;border-radius:3px">${escapeHtml(String(k))}=${escapeHtml(String(v))}</code>`).join(' ') : '';
           html += `<div style="font-size:0.75rem;padding:6px 0;border-bottom:1px solid var(--border)">`;
-          html += `<div><strong>${dr.id || '?'}</strong></div>`;
-          html += `<div style="color:var(--muted);margin-top:2px">${dr.hypothesis || 'no description'}</div>`;
+          html += `<div><strong>${escapeHtml(String(dr.id || '?'))}</strong></div>`;
+          html += `<div style="color:var(--muted);margin-top:2px">${escapeHtml(String(dr.hypothesis || 'no description'))}</div>`;
           if (paramKeys) html += `<div style="margin-top:4px">${paramKeys}</div>`;
           if (dr.predicted) {
-            const preds = Object.entries(dr.predicted).map(([k,v]) => `${k.replace(/_/g,' ')}: ${v > 0 ? '+' : ''}${v}%`).join(', ');
+            const preds = Object.entries(dr.predicted).map(([k,v]) => `${escapeHtml(String(k).replace(/_/g,' '))}: ${escapeHtml(`${v > 0 ? '+' : ''}${v}%`)}`).join(', ');
             html += `<div style="font-size:0.7rem;color:#7c3aed;margin-top:2px">Predicted: ${preds}</div>`;
           }
           html += '</div>';
@@ -3508,13 +3526,17 @@ function burnAreaChart() {
       // Active experiment card
       if (s.activeExperiment) {
         const exp = s.activeExperiment;
+        const expId = escapeHtml(String(exp.id || '?'));
+        const expProgressPct = Number(exp.progressPct) || 0;
+        const expQueueMax = escapeHtml(String(exp.fastFail?.queueMax ?? '—'));
+        const expMttrMax = escapeHtml(String(exp.fastFail?.mttrMax ?? '—'));
         html += '<div class="nous-experiment-live">';
-        html += `<h4>Active Experiment: ${exp.id}</h4>`;
-        html += `<div class="nous-progress"><div class="nous-progress-fill" style="width:${exp.progressPct}%;background:#16a34a"></div></div>`;
-        html += `<div style="font-size:0.72rem;color:var(--muted)">${exp.progressPct}% complete — ${Math.round((exp.ttlSec - exp.elapsed) / 60)}min remaining</div>`;
+        html += `<h4>Active Experiment: ${expId}</h4>`;
+        html += `<div class="nous-progress"><div class="nous-progress-fill" style="width:${expProgressPct}%;background:#16a34a"></div></div>`;
+        html += `<div style="font-size:0.72rem;color:var(--muted)">${expProgressPct}% complete — ${Math.round((exp.ttlSec - exp.elapsed) / 60)}min remaining</div>`;
         html += '<div style="display:flex;gap:16px;margin-top:8px;font-size:0.75rem">';
-        html += `<span>Queue limit: ${exp.fastFail.queueMax}</span>`;
-        html += `<span>MTTR limit: ${exp.fastFail.mttrMax}min</span>`;
+        html += `<span>Queue limit: ${expQueueMax}</span>`;
+        html += `<span>MTTR limit: ${expMttrMax}min</span>`;
         html += '</div>';
         html += `<button class="nous-btn nous-btn-abort" style="margin-top:10px" onclick="nousAbort()">Abort Experiment</button>`;
         html += '</div>';
@@ -3523,18 +3545,20 @@ function burnAreaChart() {
       // Pending experiment (suggest mode)
       if (s.pending && mode === 'suggest') {
         const p = s.pending;
+        const pendingId = escapeHtml(String(p.id || 'experiment'));
+        const pendingHypothesis = escapeHtml(String(p.hypothesis || 'No hypothesis description'));
         html += '<div class="nous-pending-card">';
-        html += `<h4>Pending Proposal: ${p.id || 'experiment'}</h4>`;
-        html += `<div style="font-size:0.78rem;margin-bottom:8px">${p.hypothesis || 'No hypothesis description'}</div>`;
+        html += `<h4>Pending Proposal: ${pendingId}</h4>`;
+        html += `<div style="font-size:0.78rem;margin-bottom:8px">${pendingHypothesis}</div>`;
         if (p.params) {
           html += '<table class="nous-pending-params"><tbody>';
           for (const [k, v] of Object.entries(p.params)) {
-            html += `<tr><td style="color:var(--muted)">${k}</td><td><strong>${v}</strong></td></tr>`;
+            html += `<tr><td style="color:var(--muted)">${escapeHtml(String(k))}</td><td><strong>${escapeHtml(String(v))}</strong></td></tr>`;
           }
           html += '</tbody></table>';
         }
         if (p.predicted) {
-          html += `<div style="font-size:0.72rem;color:#92400e">Predicted: ${JSON.stringify(p.predicted)}</div>`;
+          html += `<div style="font-size:0.72rem;color:#92400e">Predicted: ${escapeHtml(JSON.stringify(p.predicted))}</div>`;
         }
         html += '<div style="margin-top:10px">';
         html += '<button class="nous-btn nous-btn-approve" onclick="nousApprove()">Apply</button>';
@@ -3552,7 +3576,7 @@ function burnAreaChart() {
           const barColor = conf >= 80 ? '#16a34a' : conf >= 50 ? '#d97706' : '#dc2626';
           html += '<div class="nous-principle">';
           html += `<div class="nous-confidence-bar"><div class="nous-confidence-fill" style="width:${conf}%;background:${barColor}"></div></div>`;
-          html += `<div class="nous-principle-text">${p.text || p.id}</div>`;
+          html += `<div class="nous-principle-text">${escapeHtml(String(p.text || p.id || ''))}</div>`;
           html += `<div class="nous-principle-score">${conf}%</div>`;
           html += '</div>';
         }
@@ -3569,8 +3593,9 @@ function burnAreaChart() {
         for (const entry of recent) {
           const colors = { dry_run: '#94a3b8', active: '#2563eb', completed: '#16a34a', aborted: '#dc2626', analysis: '#7c3aed', shadow_analysis: '#a78bfa' };
           const color = colors[entry.type] || '#94a3b8';
-          const outcome = entry.outcome || entry.type;
-          html += `<div class="nous-timeline-bar" style="height:${20 + Math.random() * 20}px;background:${color}" title="${entry.id || '?'}: ${outcome}"></div>`;
+          const outcome = escapeHtml(String(entry.outcome || entry.type || ''));
+          const timelineId = escapeHtml(String(entry.id || '?'));
+          html += `<div class="nous-timeline-bar" style="height:${20 + Math.random() * 20}px;background:${color}" title="${timelineId}: ${outcome}"></div>`;
         }
         html += '</div>';
         html += '<div style="font-size:0.65rem;color:var(--muted);margin-top:4px;display:flex;gap:12px">';
@@ -3589,8 +3614,8 @@ function burnAreaChart() {
         html += `<h3 style="color:#7c3aed">Pending Recommendations (${recs.length})</h3>`;
         for (const r of recs) {
           html += `<div style="font-size:0.78rem;padding:4px 0;border-bottom:1px solid var(--border)">`;
-          html += `<strong>${r.var}</strong>: ${r.current || '?'} → <strong>${r.proposed}</strong>`;
-          html += `<div style="font-size:0.7rem;color:var(--muted)">${r.rationale} (${Math.round((r.confidence || 0) * 100)}% confidence)</div>`;
+          html += `<strong>${escapeHtml(String(r.var || '?'))}</strong>: ${escapeHtml(String(r.current || '?'))} → <strong>${escapeHtml(String(r.proposed || '?'))}</strong>`;
+          html += `<div style="font-size:0.7rem;color:var(--muted)">${escapeHtml(String(r.rationale || ''))} (${Math.round((r.confidence || 0) * 100)}% confidence)</div>`;
           html += '</div>';
         }
         html += '</div>';
@@ -3893,12 +3918,7 @@ function burnAreaChart() {
 
     function esc(s) {
       if (typeof s !== 'string') return '';
-      return s
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
+      return escapeHtml(s)
         .replace(/`/g, '&#96;')
         .replace(/\n/g, ' ')
         .replace(/\r/g, '');
@@ -4125,7 +4145,10 @@ function burnAreaChart() {
         const v = await res.json();
         const el = document.getElementById('git-version');
         const ocEl = document.getElementById('oc-git-version');
-        let html = `<a href="https://github.com/kubestellar/hive/commit/${v.hash}" target="_blank" style="color:inherit;text-decoration:none" title="${v.hash}">${v.short}</a>`;
+        const safeHash = escapeHtml(String(v.hash || ''));
+        const safeShort = escapeHtml(String(v.short || ''));
+        const commitHash = encodeURIComponent(String(v.hash || ''));
+        let html = `<a href="https://github.com/kubestellar/hive/commit/${commitHash}" target="_blank" style="color:inherit;text-decoration:none" title="${safeHash}">${safeShort}</a>`;
         if (v.dirty) html += ' <span class="git-dirty">*</span>';
         if (v.behind > 0) html += ` <span class="git-behind">${v.behind} behind</span>`;
         el.innerHTML = html;
@@ -5102,11 +5125,46 @@ function burnAreaChart() {
     const CHAT_STORAGE_KEY = 'hive-chat-history';
     let chatContext = [];
 
+    function renderChatMessageHtml(text, raw, sources) {
+      let html = formatChatHtml(text);
+      if (raw) {
+        const rawId = 'chat-raw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+        html += `<details class="chat-raw-details"><summary>Search data</summary><pre id="${rawId}">${escapeHtml(raw)}</pre></details>`;
+      }
+      if (sources && sources.length) {
+        html += '<div class="chat-sources">Sources: ' + sources.map(s => '<span>' + escapeHtml(String(s)) + '</span>').join('') + '</div>';
+      }
+      return html;
+    }
+
+    function appendChatMsg(entry, save = true) {
+      const el = document.createElement('div');
+      el.className = 'chat-msg ' + entry.cls;
+      el._chatPersist = entry;
+      if (entry.kind === 'rich') {
+        el.innerHTML = renderChatMessageHtml(entry.text, entry.raw, entry.sources);
+      } else {
+        el.textContent = entry.text;
+      }
+      chatMessages.appendChild(el);
+      if (chatMessages.children.length > CHAT_MAX_HISTORY) chatMessages.removeChild(chatMessages.firstChild);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      if (save && entry.cls !== 'thinking') saveChatHistory();
+      return el;
+    }
+
     function saveChatHistory() {
       const msgs = [];
       chatMessages.querySelectorAll('.chat-msg').forEach(el => {
         if (el.classList.contains('thinking')) return;
-        msgs.push({ cls: el.classList.contains('user') ? 'user' : 'system', html: el.innerHTML });
+        const entry = el._chatPersist || { cls: el.classList.contains('user') ? 'user' : 'system', kind: 'text', text: el.textContent || '', raw: '', sources: [] };
+        msgs.push({
+          cls: entry.cls,
+          kind: entry.kind,
+          text: entry.text,
+          raw: entry.raw || '',
+          sources: Array.isArray(entry.sources) ? entry.sources : [],
+        });
       });
       const MAX_PERSIST = 30;
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(msgs.slice(-MAX_PERSIST)));
@@ -5116,10 +5174,13 @@ function burnAreaChart() {
       try {
         const saved = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]');
         saved.forEach(m => {
-          const el = document.createElement('div');
-          el.className = 'chat-msg ' + m.cls;
-          el.innerHTML = m.html;
-          chatMessages.appendChild(el);
+          appendChatMsg({
+            cls: m.cls === 'user' ? 'user' : 'system',
+            kind: m.kind === 'rich' ? 'rich' : 'text',
+            text: typeof m.text === 'string' ? m.text : '',
+            raw: typeof m.raw === 'string' ? m.raw : '',
+            sources: Array.isArray(m.sources) ? m.sources : [],
+          }, false);
         });
         if (saved.length) chatMessages.scrollTop = chatMessages.scrollHeight;
       } catch (_) {}
@@ -5162,15 +5223,15 @@ function burnAreaChart() {
       });
     })();
 
-    function chatAddMsg(text, cls) {
-      const el = document.createElement('div');
-      el.className = 'chat-msg ' + cls;
-      el.innerHTML = text;
-      chatMessages.appendChild(el);
-      if (chatMessages.children.length > CHAT_MAX_HISTORY) chatMessages.removeChild(chatMessages.firstChild);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-      if (cls !== 'thinking') saveChatHistory();
-      return el;
+    function chatAddMsg(text, cls, options = {}) {
+      const entry = {
+        cls,
+        kind: options.rich ? 'rich' : 'text',
+        text: typeof text === 'string' ? text : '',
+        raw: typeof options.raw === 'string' ? options.raw : '',
+        sources: Array.isArray(options.sources) ? options.sources : [],
+      };
+      return appendChatMsg(entry);
     }
 
     async function chatSendQuery() {
@@ -5179,7 +5240,7 @@ function burnAreaChart() {
       chatBusy = true;
       chatSend.disabled = true;
       chatInput.value = '';
-      chatAddMsg(esc(q), 'user');
+      chatAddMsg(q, 'user');
       chatContext.push({ role: 'user', text: q });
       if (chatContext.length > CHAT_CONTEXT_LIMIT) chatContext = chatContext.slice(-CHAT_CONTEXT_LIMIT);
       const thinking = chatAddMsg('Thinking…', 'thinking');
@@ -5192,24 +5253,20 @@ function burnAreaChart() {
         const data = await resp.json();
         thinking.remove();
         if (data.error) {
-          chatAddMsg('Error: ' + esc(data.error), 'system');
+          chatAddMsg('Error: ' + (data.error || ''), 'system');
         } else {
           const answer = data.answer || 'No results found.';
           chatContext.push({ role: 'assistant', text: answer });
           if (chatContext.length > CHAT_CONTEXT_LIMIT) chatContext = chatContext.slice(-CHAT_CONTEXT_LIMIT);
-          let html = formatChatHtml(answer);
-          if (data.raw) {
-            const rawId = 'chat-raw-' + Date.now();
-            html += `<details class="chat-raw-details"><summary>Search data</summary><pre id="${rawId}">${esc(data.raw)}</pre></details>`;
-          }
-          if (data.sources && data.sources.length) {
-            html += '<div class="chat-sources">Sources: ' + data.sources.map(s => '<span>' + esc(s) + '</span>').join('') + '</div>';
-          }
-          chatAddMsg(html, 'system');
+          chatAddMsg(answer, 'system', {
+            rich: true,
+            raw: typeof data.raw === 'string' ? data.raw : '',
+            sources: Array.isArray(data.sources) ? data.sources : [],
+          });
         }
       } catch (err) {
         thinking.remove();
-        chatAddMsg('Network error: ' + esc(err.message), 'system');
+        chatAddMsg('Network error: ' + (err?.message || ''), 'system');
       }
       chatBusy = false;
       chatSend.disabled = false;
