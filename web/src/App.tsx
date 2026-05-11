@@ -821,6 +821,7 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
           {/* /feature, /features open the feedback modal on the feature tab */}
           <Route path={ROUTES.FEATURE} element={<FeatureRedirect />} />
           <Route path={ROUTES.FEATURES} element={<FeatureRedirect />} />
+          <Route path="*" element={<SuspenseRoute><NotFound /></SuspenseRoute>} />
         </Route>
 
         <Route path="*" element={<SuspenseRoute><NotFound /></SuspenseRoute>} />
