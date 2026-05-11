@@ -439,7 +439,9 @@ export function useSidebarConfig() {
     updateSharedConfig(newConfig)
   }
 
-  const addItem = (item: Omit<SidebarItem, 'id' | 'order'>, target: 'primary' | 'secondary' | 'sections') => {
+  const addItem = (item: Omit<SidebarItem, 'id' | 'order'>, target: 'primary' | 'secondary' | 'sections'): SidebarItem | null => {
+    let addedItem: SidebarItem | null = null
+
     setConfig((prev) => {
       const newItem = buildSidebarItem(
         item,
@@ -449,6 +451,7 @@ export function useSidebarConfig() {
             ? prev.secondaryNav.length
             : prev.sections.length
       )
+      addedItem = newItem
       const removedBuiltinItemIds = BUILTIN_NAV_ITEM_IDS.has(newItem.id)
         ? prev.removedBuiltinItemIds.filter((removedId) => removedId !== newItem.id)
         : prev.removedBuiltinItemIds
@@ -461,6 +464,8 @@ export function useSidebarConfig() {
         return { ...prev, sections: [...prev.sections, newItem], removedBuiltinItemIds }
       }
     })
+
+    return addedItem
   }
 
   // Add multiple items at once to avoid React batching issues

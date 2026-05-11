@@ -47,6 +47,8 @@ import { NAV_AFTER_ANIMATION_MS } from '../../lib/constants/network'
 import { suggestDashboardIcon, suggestIconSync } from '../../lib/iconSuggester'
 import { BaseModal, useModalState } from '../../lib/modals'
 import { iconRegistry } from '../../lib/icons'
+import { useToast } from '../ui/Toast'
+import { ROUTES } from '../../config/routes'
 
 // Sortable sidebar item component
 interface SortableItemProps {
@@ -249,6 +251,7 @@ export function SidebarCustomizer({ isOpen, onClose, embedded = false }: Sidebar
   }
 
   const { createDashboard, dashboards } = useDashboards()
+  const { showToast } = useToast()
 
   const [isGenerating, setIsGenerating] = useState(false)
   const { isOpen: isCreateDashboardOpen, close: closeCreateDashboard } = useModalState()
@@ -359,10 +362,8 @@ export function SidebarCustomizer({ isOpen, onClose, embedded = false }: Sidebar
 
     // Use keyword-based icon immediately, then upgrade via AI
     const quickIcon = suggestIconSync(name)
-
-    // Add sidebar item, close modals, and navigate — all synchronous
-    addItem({
-      name: name,
+    const sidebarItem = addItem({
+      name,
       icon: quickIcon,
       href,
       type: 'link',
@@ -373,19 +374,32 @@ export function SidebarCustomizer({ isOpen, onClose, embedded = false }: Sidebar
     onClose()
     navigate(href)
 
-    // Try to persist to backend in the background (optional, may fail offline)
-    createDashboard(name).catch(() => {
-      // Dashboard works purely from localStorage — backend persistence is optional
+    void createDashboard(name).then((createdDashboard) => {
+      if (sidebarItem) {
+        updateItem(sidebarItem.id, {
+          href: `/custom-dashboard/${createdDashboard.id}`,
+          name: createdDashboard.name,
+        })
+      }
+
+      if (window.location.pathname === href) {
+        navigate(`/custom-dashboard/${createdDashboard.id}`, { replace: true })
+      }
+    }).catch((error: unknown) => {
+      if (sidebarItem) {
+        removeItem(sidebarItem.id)
+      }
+      if (window.location.pathname === href) {
+        navigate(ROUTES.HOME, { replace: true })
+      }
+      console.error('Failed to create dashboard:', error)
+      showToast('Failed to create dashboard', 'error')
     })
 
     // Ask AI agent for a better icon in the background
     suggestDashboardIcon(name).then((aiIcon) => {
-      if (aiIcon && aiIcon !== quickIcon) {
-        const items = [...config.primaryNav, ...config.secondaryNav]
-        const item = items.find(i => i.href === href && i.isCustom)
-        if (item) {
-          updateItem(item.id, { icon: aiIcon })
-        }
+      if (aiIcon && aiIcon !== quickIcon && sidebarItem) {
+        updateItem(sidebarItem.id, { icon: aiIcon })
       }
     }).catch(() => { /* suggestDashboardIcon always resolves — defensive catch */ })
   }

@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom'
 import { useDashboards } from '../../../hooks/useDashboards'
 import { useSidebarConfig } from '../../../hooks/useSidebarConfig'
 import { suggestIconSync } from '../../../lib/iconSuggester'
+import { useToast } from '../../ui/Toast'
+import { ROUTES } from '../../../config/routes'
 import type { CardSuggestion, HoveredCard } from '../shared/cardCatalog'
 import type { DashboardTemplate } from '../templates'
 
@@ -87,7 +89,8 @@ export function DashboardCustomizer({
   // Global search reserved for future use
   const globalSearch = ''
   const { dashboards, createDashboard: _createDashboard } = useDashboards()
-  const { addItem } = useSidebarConfig()
+  const { addItem, updateItem, removeItem } = useSidebarConfig()
+  const { showToast } = useToast()
   const navigate = useNavigate()
 
   const handleHoverCard = useCallback((card: HoveredCard | null) => setHoveredCard(card), [])
@@ -168,10 +171,31 @@ export function DashboardCustomizer({
               onCreate={async (name, _template, _description) => {
                 const localId = `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
                 const href = `/custom-dashboard/${localId}`
-                addItem({ name, icon: suggestIconSync(name), href, type: 'link' }, 'primary')
-                await _createDashboard(name).catch(() => { /* offline — sidebar item already added */ })
+                const sidebarItem = addItem({ name, icon: suggestIconSync(name), href, type: 'link' }, 'primary')
                 onClose()
                 navigate(href)
+
+                try {
+                  const createdDashboard = await _createDashboard(name)
+                  if (sidebarItem) {
+                    updateItem(sidebarItem.id, {
+                      href: `/custom-dashboard/${createdDashboard.id}`,
+                      name: createdDashboard.name,
+                    })
+                  }
+                  if (window.location.pathname === href) {
+                    navigate(`/custom-dashboard/${createdDashboard.id}`, { replace: true })
+                  }
+                } catch (error: unknown) {
+                  if (sidebarItem) {
+                    removeItem(sidebarItem.id)
+                  }
+                  if (window.location.pathname === href) {
+                    navigate(ROUTES.HOME, { replace: true })
+                  }
+                  console.error('Failed to create dashboard:', error)
+                  showToast('Failed to create dashboard', 'error')
+                }
               }}
               existingNames={dashboards.map(d => d.name)}
               embedded

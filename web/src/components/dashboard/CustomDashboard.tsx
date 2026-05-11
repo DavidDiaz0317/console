@@ -75,6 +75,7 @@ const EXPANDED_CARD_ROW_MIN_HEIGHT_PX = 180
 
 /** Default row span when a card has no persisted position.h */
 const DEFAULT_CARD_ROW_SPAN = 2
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // Sortable card component
 interface SortableCardProps {
@@ -238,7 +239,7 @@ export function CustomDashboard() {
   const { showToast } = useToast()
   const { getDashboardWithCards, deleteDashboard, exportDashboard, importDashboard } = useDashboards()
   const { deduplicatedClusters, isLoading: isClustersLoading } = useClusters()
-  const { config, removeItem } = useSidebarConfig()
+  const { config, removeItem, restoreDashboard } = useSidebarConfig()
   const { drillToAllClusters, drillToAllNodes, drillToAllPods } = useDrillDownActions()
   const { t } = useTranslation()
 
@@ -418,6 +419,63 @@ export function CustomDashboard() {
     }
   }, [cards, storageKey])
 
+  const syncCardsStorage = useCallback((nextCards: Card[]) => {
+    if (nextCards.length > 0) {
+      safeSetJSON(storageKey, nextCards)
+      return
+    }
+    safeRemoveItem(storageKey)
+  }, [storageKey])
+
+  const replaceCards = useCallback((nextCards: Card[]) => {
+    setCards(nextCards)
+    syncCardsStorage(nextCards)
+  }, [syncCardsStorage])
+
+  const restoreCardsAfterError = useCallback((previousCards: Card[], message: string, error: unknown) => {
+    console.error(message, error)
+    replaceCards(previousCards)
+    showToast(message, 'error')
+  }, [replaceCards, showToast])
+
+  const persistNewCards = useCallback(async (dashboardId: string, newCards: Card[]) => {
+    const persistedCards: Card[] = []
+
+    try {
+      for (const card of newCards) {
+        const { data } = await api.post<Card>(`/api/dashboards/${dashboardId}/cards`, {
+          card_type: card.card_type,
+          config: card.config,
+          position: card.position,
+        })
+        persistedCards.push({
+          ...data,
+          title: card.title,
+        })
+      }
+    } catch (error: unknown) {
+      for (const card of persistedCards) {
+        try {
+          await api.delete(`/api/cards/${card.id}`)
+        } catch {
+          // Best-effort rollback — the caller will re-sync from the backend.
+        }
+      }
+      throw error
+    }
+
+    return persistedCards
+  }, [])
+
+  const deletePersistedCards = useCallback(async (dashboardCards: Card[]) => {
+    for (const card of dashboardCards) {
+      if (!UUID_PATTERN.test(card.id)) {
+        continue
+      }
+      await api.delete(`/api/cards/${card.id}`)
+    }
+  }, [])
+
   // Card operations
   const handleAddCards = async (newCards: Array<{ type: string; title: string; config: Record<string, unknown> }>) => {
     const cardsToAdd = newCards.map((c, index) => ({
@@ -427,44 +485,39 @@ export function CustomDashboard() {
       config: c.config,
       position: { x: 0, y: 0, w: 4, h: 2 }
     }))
-
-    // Add to local state
-    snapshot(cardsRef.current)
+    const previousCards = cardsRef.current
     const idx = insertAtIndexRef.current
-    if (idx !== null) {
-      setCards(prev => [...prev.slice(0, idx), ...cardsToAdd, ...prev.slice(idx)])
+
+    try {
+      const persistedCards = id ? await persistNewCards(id, cardsToAdd) : cardsToAdd
+      const nextCards = idx !== null
+        ? [...previousCards.slice(0, idx), ...persistedCards, ...previousCards.slice(idx)]
+        : [...persistedCards, ...previousCards]
+
+      snapshot(previousCards)
+      replaceCards(nextCards)
       setInsertAtIndex(null)
-    } else {
-      setCards(prev => [...cardsToAdd, ...prev])
+      closeAddCard()
+      showToast(`Added ${newCards.length} card${newCards.length > 1 ? 's' : ''}`, 'success')
+    } catch (error: unknown) {
+      console.error('Failed to add cards:', error)
+      await loadDashboard(true)
+      showToast('Failed to add cards', 'error')
     }
-
-    // Persist to backend
-    if (id) {
-      for (const card of cardsToAdd) {
-        try {
-          await api.post(`/api/dashboards/${id}/cards`, card)
-        } catch (error: unknown) {
-          console.error('Failed to persist card:', error)
-          showToast('Failed to persist card to backend', 'error')
-        }
-      }
-    }
-
-    closeAddCard()
-    showToast(`Added ${newCards.length} card${newCards.length > 1 ? 's' : ''}`, 'success')
   }
 
   const handleRemoveCard = async (cardId: string) => {
-    snapshot(cardsRef.current)
-    setCards(prev => prev.filter(c => c.id !== cardId))
+    const previousCards = cardsRef.current
+    const nextCards = previousCards.filter((card) => card.id !== cardId)
 
-    if (id) {
+    snapshot(previousCards)
+    replaceCards(nextCards)
+
+    if (id && UUID_PATTERN.test(cardId)) {
       try {
-        await api.delete(`/api/dashboards/${id}/cards/${cardId}`)
+        await api.delete(`/api/cards/${cardId}`)
       } catch (error: unknown) {
-        // Card is already removed from UI state above — backend failure is
-        // non-critical. Log for debugging but don't alarm the user. (#8564)
-        console.debug('Backend card deletion failed (card already removed from UI):', error)
+        restoreCardsAfterError(previousCards, 'Failed to delete card', error)
       }
     }
   }
@@ -474,27 +527,72 @@ export function CustomDashboard() {
     openConfigureCard()
   }
 
-  const handleCardConfigured = async (cardId: string, config: Record<string, unknown>) => {
-    snapshot(cardsRef.current)
-    setCards(prev => prev.map(c =>
-      c.id === cardId ? { ...c, config } : c
-    ))
+  const handleCardConfigured = async (cardId: string, config: Record<string, unknown>, title?: string) => {
+    const previousCards = cardsRef.current
+    const nextCards = previousCards.map((card) =>
+      card.id === cardId ? { ...card, config, title: title || card.title } : card
+    )
+
+    snapshot(previousCards)
+    replaceCards(nextCards)
+
+    if (id && UUID_PATTERN.test(cardId)) {
+      try {
+        await api.put(`/api/cards/${cardId}`, { config })
+      } catch (error: unknown) {
+        restoreCardsAfterError(previousCards, 'Failed to update card configuration', error)
+        return
+      }
+    }
+
     closeConfigureCard()
     setSelectedCard(null)
   }
 
-  const handleWidthChange = (cardId: string, newWidth: number) => {
-    snapshot(cardsRef.current)
-    setCards(prev => prev.map(c =>
-      c.id === cardId ? { ...c, position: { ...c.position, w: newWidth } } : c
-    ))
+  const handleWidthChange = async (cardId: string, newWidth: number) => {
+    const previousCards = cardsRef.current
+    const nextCards = previousCards.map((card) =>
+      card.id === cardId ? { ...card, position: { ...card.position, w: newWidth } } : card
+    )
+
+    snapshot(previousCards)
+    replaceCards(nextCards)
+
+    if (id && UUID_PATTERN.test(cardId)) {
+      try {
+        const card = previousCards.find((candidate) => candidate.id === cardId)
+        if (card) {
+          await api.put(`/api/cards/${cardId}`, {
+            position: { ...card.position, w: newWidth },
+          })
+        }
+      } catch (error: unknown) {
+        restoreCardsAfterError(previousCards, 'Failed to update card width', error)
+      }
+    }
   }
 
-  const handleHeightChange = (cardId: string, newHeight: number) => {
-    snapshot(cardsRef.current)
-    setCards(prev => prev.map(c =>
-      c.id === cardId ? { ...c, position: { ...c.position, h: newHeight } } : c
-    ))
+  const handleHeightChange = async (cardId: string, newHeight: number) => {
+    const previousCards = cardsRef.current
+    const nextCards = previousCards.map((card) =>
+      card.id === cardId ? { ...card, position: { ...card.position, h: newHeight } } : card
+    )
+
+    snapshot(previousCards)
+    replaceCards(nextCards)
+
+    if (id && UUID_PATTERN.test(cardId)) {
+      try {
+        const card = previousCards.find((candidate) => candidate.id === cardId)
+        if (card) {
+          await api.put(`/api/cards/${cardId}`, {
+            position: { ...card.position, h: newHeight },
+          })
+        }
+      } catch (error: unknown) {
+        restoreCardsAfterError(previousCards, 'Failed to update card height', error)
+      }
+    }
   }
 
   const handleApplyTemplate = async (template: DashboardTemplate) => {
@@ -505,56 +603,72 @@ export function CustomDashboard() {
       config: tc.config || {},
       position: { x: 0, y: 0, w: tc.position?.w || 4, h: tc.position?.h || 2 }
     }))
+    const previousCards = cardsRef.current
 
-    snapshot(cardsRef.current)
-    setCards(templateCards)
-    closeTemplates()
+    try {
+      const nextCards = id
+        ? await (async () => {
+          await deletePersistedCards(previousCards)
+          return persistNewCards(id, templateCards)
+        })()
+        : templateCards
 
-    // Persist to backend
-    if (id) {
-      for (const card of templateCards) {
-        try {
-          await api.post(`/api/dashboards/${id}/cards`, card)
-        } catch (error: unknown) {
-          console.error('Failed to persist template card:', error)
-          showToast('Failed to persist template card', 'error')
-        }
-      }
+      snapshot(previousCards)
+      replaceCards(nextCards)
+      closeTemplates()
+      showToast(`Applied template "${template.name}" with ${templateCards.length} cards`, 'success')
+    } catch (error: unknown) {
+      console.error('Failed to apply dashboard template:', error)
+      await loadDashboard(true)
+      showToast('Failed to apply template', 'error')
     }
-
-    showToast(`Applied template "${template.name}" with ${templateCards.length} cards`, 'success')
   }
 
   const handleAddRecommendedCard = (cardType: string, config?: Record<string, unknown>) => {
-    handleAddCards([{ type: cardType, title: formatCardTitle(cardType), config: config || {} }])
+    void handleAddCards([{ type: cardType, title: formatCardTitle(cardType), config: config || {} }])
   }
 
-  const handleReset = () => {
-    snapshot(cardsRef.current)
-    setCards([])
-    safeRemoveItem(storageKey)
-    showToast('Dashboard reset to empty', 'info')
+  const handleReset = async () => {
+    const previousCards = cardsRef.current
+
+    try {
+      if (id) {
+        await deletePersistedCards(previousCards)
+      }
+
+      snapshot(previousCards)
+      replaceCards([])
+      showToast('Dashboard reset to empty', 'info')
+    } catch (error: unknown) {
+      console.error('Failed to reset dashboard:', error)
+      await loadDashboard(true)
+      showToast('Failed to reset dashboard', 'error')
+    }
   }
 
-  const handleDeleteDashboard = () => {
+  const handleDeleteDashboard = async () => {
     if (!id) return
 
-    // Remove sidebar item
     if (sidebarItem) {
       removeItem(sidebarItem.id)
     }
-
-    // Remove local card storage
     safeRemoveItem(storageKey)
-
-    const displayName = sidebarItem?.name || dashboard?.name || 'this dashboard'
-    showToast(`Deleted "${displayName}"`, 'success')
     navigate(ROUTES.HOME)
 
-    // Try to delete from backend in the background (may fail offline)
-    deleteDashboard(id).catch(() => {
-      // Backend deletion is optional — sidebar + localStorage are the source of truth
-    })
+    const displayName = sidebarItem?.name || dashboard?.name || 'this dashboard'
+
+    try {
+      await deleteDashboard(id)
+      showToast(`Deleted "${displayName}"`, 'success')
+    } catch (error: unknown) {
+      console.error('Failed to delete dashboard:', error)
+      if (sidebarItem) {
+        restoreDashboard(sidebarItem)
+      }
+      syncCardsStorage(cardsRef.current)
+      navigate(activeDashboardPath, { replace: true })
+      showToast('Failed to delete dashboard', 'error')
+    }
   }
 
   // Drag handlers
