@@ -3519,7 +3519,10 @@
     "diagnoseMissionTitle": "Diagnose {{cluster}}",
     "diagnoseMissionDescription": "Analyzing cluster health and identifying issues",
     "repairMissionTitle": "Repair {{cluster}}",
-    "repairMissionDescription": "Automatically fixing cluster issues"
+    "repairMissionDescription": "Automatically fixing cluster issues",
+    "andMoreClusters": "+{{count}} more",
+    "andMoreClusters_one": "+{{count}} more",
+    "andMoreClusters_other": "+{{count}} more"
   },
   "remediation": {
     "title": "AI Remediation Console",
@@ -3698,6 +3701,7 @@
     "openConsole": "Open {{provider}} console",
     "akaLabel": "aka:",
     "alsoKnownAs": "Also known as: {{aliases}}",
+    "serverAddress": "Server Address",
     "healthy": "Healthy",
     "unhealthy": "Unhealthy",
     "offlineStatus": "Offline - check network connection",
