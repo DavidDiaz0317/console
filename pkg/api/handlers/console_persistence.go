@@ -637,8 +637,7 @@ func (h *ConsolePersistenceHandlers) reconcileDeployment(ctx context.Context, wd
 	if err != nil {
 		slog.Error("[reconcile] failed to resolve ManagedWorkload",
 			"name", wd.Name, "error", err)
-		h.setTerminalStatus(wd, "Failed",
-			fmt.Sprintf("Failed to resolve ManagedWorkload: %v", err), updateStatus)
+		h.setTerminalStatus(wd, "Failed", "Failed to resolve ManagedWorkload", updateStatus)
 		return
 	}
 
@@ -647,8 +646,7 @@ func (h *ConsolePersistenceHandlers) reconcileDeployment(ctx context.Context, wd
 	if err != nil {
 		slog.Error("[reconcile] failed to resolve target clusters",
 			"name", wd.Name, "error", err)
-		h.setTerminalStatus(wd, "Failed",
-			fmt.Sprintf("Failed to resolve target clusters: %v", err), updateStatus)
+		h.setTerminalStatus(wd, "Failed", "Failed to resolve target clusters", updateStatus)
 		return
 	}
 	if len(targets) == 0 {
