@@ -208,7 +208,7 @@ export const SigstoreDashboardContent = memo(function SigstoreDashboardContent()
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
-      <span className="ml-3 text-gray-200">Loading Sigstore data…</span>
+      <span className="ml-3 text-foreground">Loading Sigstore data…</span>
     </div>
   )
 
@@ -266,17 +266,17 @@ export const SigstoreDashboardContent = memo(function SigstoreDashboardContent()
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 bg-gray-900/50 border border-gray-600 rounded px-3 py-2">
               <ShieldCheck className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-gray-200">{summary.trust_roots} Trust Roots</span>
+              <span className="text-sm text-foreground">{summary.trust_roots} Trust Roots</span>
             </div>
             <span className="text-gray-600">→</span>
             <div className="flex items-center gap-2 bg-gray-900/50 border border-gray-600 rounded px-3 py-2">
               <BadgeCheck className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-gray-200">{summary.policies_enforced} Policies</span>
+              <span className="text-sm text-foreground">{summary.policies_enforced} Policies</span>
             </div>
             <span className="text-gray-600">→</span>
             <div className="flex items-center gap-2 bg-gray-900/50 border border-gray-600 rounded px-3 py-2">
               <CheckCircle2 className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-gray-200">{summary.verified_signatures} Verified</span>
+              <span className="text-sm text-foreground">{summary.verified_signatures} Verified</span>
             </div>
           </div>
         </div>
@@ -285,13 +285,13 @@ export const SigstoreDashboardContent = memo(function SigstoreDashboardContent()
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-700">
         <button
-          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'signatures' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'signatures' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-muted-foreground hover:text-foreground'}`}
           onClick={() => setActiveTab('signatures')}
         >
           <BadgeCheck className="w-4 h-4 inline mr-1" /> Signatures ({signatures.length})
         </button>
         <button
-          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'verifications' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'verifications' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-muted-foreground hover:text-foreground'}`}
           onClick={() => setActiveTab('verifications')}
         >
           <ShieldCheck className="w-4 h-4 inline mr-1" /> Verifications ({verifications.length})
