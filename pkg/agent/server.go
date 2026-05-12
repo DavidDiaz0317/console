@@ -114,6 +114,12 @@ var CommitSHA = "unknown"
 // BuildTime is set by ldflags during build (ISO 8601 timestamp)
 var BuildTime = "unknown"
 
+// EventProcessor is a callback interface for processing k8s events in real-time.
+// Stellar implements this to integrate with the console's event pipeline.
+type EventProcessor interface {
+	ProcessEvent(ctx context.Context, cluster, namespace, name, kind, reason, message, eventType string, count int32)
+}
+
 // Config holds agent configuration
 type Config struct {
 	Port           int
@@ -208,6 +214,9 @@ type Server struct {
 	resourceRetryState map[string]clusterResourceRetryState
 
 	SkipKeyValidation bool // For testing purposes
+
+	// Event processor callback for Stellar integration
+	eventProcessor EventProcessor
 }
 
 // NewServer creates a new agent server
@@ -360,6 +369,12 @@ func NewServer(cfg Config) (*Server, error) {
 	})
 
 	return server, nil
+}
+
+// SetEventProcessor sets the event processor callback for Stellar integration.
+// This allows the agent to forward k8s events to Stellar's notification system.
+func (s *Server) SetEventProcessor(processor EventProcessor) {
+	s.eventProcessor = processor
 }
 
 // checkOrigin validates the Origin header against allowed origins

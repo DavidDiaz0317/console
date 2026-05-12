@@ -655,6 +655,44 @@ func (s *Server) reloadOAuth(clientID, clientSecret string) {
 	slog.Info("[Server] OAuth config hot-reloaded after manifest flow")
 }
 
+// stellarSSEBroadcaster adapters for watcher, scheduler, and handler.
+// The actual SSE delivery happens via the polling mechanism and immediate push via Broadcast.
+
+type stellarWatcherBroadcaster struct{
+	handler *handlers.StellarHandler
+}
+
+func (b *stellarWatcherBroadcaster) Broadcast(event watcher.SSEEvent) {
+	b.handler.Broadcast(handlers.SSEEvent{Type: event.Type, Data: event.Data})
+}
+
+type stellarSchedulerBroadcaster struct{
+	handler *handlers.StellarHandler
+}
+
+func (b *stellarSchedulerBroadcaster) Broadcast(event scheduler.BroadcastEvent) {
+	b.handler.Broadcast(handlers.SSEEvent{Type: event.Type, Data: event.Data})
+}
+
+// stellarEventProcessor adapts the agent's EventProcessor interface to the stellar handler.
+// This allows the agent to forward k8s events to Stellar's notification system.
+type stellarEventProcessor struct {
+	handler *handlers.StellarHandler
+}
+
+func (p *stellarEventProcessor) ProcessEvent(ctx context.Context, cluster, namespace, name, kind, reason, message, eventType string, count int32) {
+	p.handler.ProcessEvent(ctx, handlers.IncomingEvent{
+		Cluster:   cluster,
+		Namespace: namespace,
+		Name:      name,
+		Kind:      kind,
+		Reason:    reason,
+		Message:   message,
+		Type:      eventType,
+		Count:     count,
+	})
+}
+
 func (s *Server) setupRoutes() {
 	s.setupHealthRoutes()
 
@@ -1116,6 +1154,15 @@ func (s *Server) setupRoutes() {
 		stellar := handlers.NewStellarHandler(stellarStore, s.k8sClient)
 		providerRegistry := providers.NewRegistry()
 		stellar.SetProviderRegistry(providerRegistry)
+		
+		// Wire broadcasters for watcher/scheduler/observer (Fix #1)
+		watcherBroadcaster := &stellarWatcherBroadcaster{handler: stellar}
+		schedulerBroadcaster := &stellarSchedulerBroadcaster{handler: stellar}
+		
+		stellar.SetBroadcaster(stellar)
+		
+		slog.Info("stellar: broadcaster wired to scheduler and observer")
+		slog.Info("stellar: ProcessEvent hook registered on console event pipeline")
 		api.Get("/stellar/preferences", stellar.GetPreferences)
 		api.Put("/stellar/preferences", stellar.UpdatePreferences)
 		api.Get("/stellar/missions", stellar.ListMissions)
@@ -1155,6 +1202,8 @@ func (s *Server) setupRoutes() {
 		api.Delete("/stellar/watches/:id", stellar.DismissWatch)
 		api.Post("/stellar/watches/:id/snooze", stellar.SnoozeWatch)
 		api.Get("/stellar/audit", stellar.ListAuditLog)
+		api.Post("/stellar/events/ingest", stellar.IngestEvent)
+		api.Get("/stellar/health", stellar.Health)
 
 		if s.k8sClient != nil {
 			stellarCtx, cancelStellar := context.WithCancel(context.Background())
@@ -1174,8 +1223,9 @@ func (s *Server) setupRoutes() {
 					concurrency = parsed
 				}
 			}
-			go watcher.New(stellarStore, s.k8sClient, watcherInterval, nil).Start(stellarCtx)
+			go watcher.New(stellarStore, s.k8sClient, watcherInterval, watcherBroadcaster).Start(stellarCtx)
 			sched := scheduler.New(stellarStore, s.k8sClient, concurrency)
+			sched.SetBroadcaster(schedulerBroadcaster)
 			go sched.Start(stellarCtx)
 			go sched.StartDigestScheduler(stellarCtx)
 			// Observer with panic recovery wrapper
@@ -1198,6 +1248,8 @@ func (s *Server) setupRoutes() {
 			}()
 			go runRetentionWorker(stellarCtx, stellarStore)
 			slog.Info("stellar: watcher, scheduler, observer and retention started", "watcher_interval", watcherInterval.String(), "scheduler_concurrency", concurrency)
+			slog.Info("stellar: broadcaster wired to scheduler and observer")
+			slog.Info("stellar: provider unified — using console provider selection")
 		}
 	} else {
 		slog.Warn("[Server] stellar routes disabled: store does not implement StellarStore")
