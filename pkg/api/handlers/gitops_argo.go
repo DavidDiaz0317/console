@@ -28,7 +28,7 @@ func (h *GitOpsHandlers) ListHelmHistory(c *fiber.Ctx) error {
 	// SECURITY: Validate all user-supplied params before passing to helm CLI
 	for field, val := range map[string]string{"cluster": cluster, "release": release, "namespace": namespace} {
 		if err := validateK8sName(val, field); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(400).JSON(fiber.Map{"error": "invalid " + field})
 		}
 	}
 
@@ -78,7 +78,7 @@ func (h *GitOpsHandlers) GetHelmValues(c *fiber.Ctx) error {
 	// SECURITY: Validate all user-supplied params before passing to helm CLI
 	for field, val := range map[string]string{"cluster": cluster, "release": release, "namespace": namespace} {
 		if err := validateK8sName(val, field); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(400).JSON(fiber.Map{"error": "invalid " + field})
 		}
 	}
 

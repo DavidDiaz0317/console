@@ -239,7 +239,7 @@ func (h *KagentiProviderProxyHandler) UpdateConfig(c *fiber.Ctx) error {
 	if err != nil {
 		switch {
 		case errors.Is(err, kagenti_provider.ErrUnsupportedLLMProvider), errors.Is(err, kagenti_provider.ErrAPIKeyRequired):
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid provider configuration"})
 		default:
 			slog.Error("kagenti provider config update failed", "error", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update kagenti config"})
