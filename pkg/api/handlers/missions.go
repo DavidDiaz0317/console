@@ -601,7 +601,8 @@ func (h *MissionsHandler) fetchWithCache(c *fiber.Ctx, cacheKey, url, logContext
 func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 	path, err := sanitizePath(c.Query("path", ""))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		slog.Info("[missions] invalid path in browse request", "error", err)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid path"})
 	}
 
 	cacheKey := "browse:" + path
@@ -610,11 +611,13 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 	res, err := h.fetchWithCache(c, cacheKey, url, "(browse)", "path", path)
 	if err != nil {
 		if res == nil {
-			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+			slog.Error("[missions] upstream request failed (browse)", "path", path, "error", err)
+			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": "upstream request failed"})
 		}
 		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
+			slog.Warn("[missions] upstream rate limited (browse)", "path", path, "status", res.StatusCode)
 			return c.Status(res.StatusCode).JSON(fiber.Map{
-				"error":  err.Error(),
+				"error":  "upstream rate limited",
 				"status": res.StatusCode,
 				"code":   "rate_limited",
 			})
@@ -623,7 +626,8 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 		if res != nil && res.StatusCode > 0 {
 			status = res.StatusCode
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		slog.Error("[missions] upstream error (browse)", "path", path, "status", status, "error", err)
+		return c.Status(status).JSON(fiber.Map{"error": "upstream request failed"})
 	}
 
 	if res.CacheStatus != cacheStatusMiss {
@@ -737,12 +741,14 @@ func (h *MissionsHandler) GetMissionFile(c *fiber.Ctx) error {
 	}
 	path, err := sanitizePath(rawPath)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		slog.Info("[missions] invalid path in file request", "error", err)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid path"})
 	}
 	rawRef := c.Query("ref", "master")
 	ref, err := sanitizeRef(rawRef)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		slog.Info("[missions] invalid ref in file request", "error", err)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid ref"})
 	}
 
 	cacheKey := "file:" + ref + ":" + path
@@ -751,11 +757,13 @@ func (h *MissionsHandler) GetMissionFile(c *fiber.Ctx) error {
 	res, err := h.fetchWithCache(c, cacheKey, url, "(file)", "ref", ref, "path", path)
 	if err != nil {
 		if res == nil {
-			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+			slog.Error("[missions] upstream request failed (file)", "ref", ref, "path", path, "error", err)
+			return c.Status(http.StatusBadGateway).JSON(fiber.Map{"error": "upstream request failed"})
 		}
 		if res.StatusCode == http.StatusForbidden || res.StatusCode == http.StatusTooManyRequests {
+			slog.Warn("[missions] upstream rate limited (file)", "ref", ref, "path", path, "status", res.StatusCode)
 			return c.Status(res.StatusCode).JSON(fiber.Map{
-				"error":  err.Error(),
+				"error":  "upstream rate limited",
 				"status": res.StatusCode,
 				"code":   "rate_limited",
 			})
@@ -764,7 +772,8 @@ func (h *MissionsHandler) GetMissionFile(c *fiber.Ctx) error {
 		if res != nil && res.StatusCode > 0 {
 			status = res.StatusCode
 		}
-		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
+		slog.Error("[missions] upstream error (file)", "ref", ref, "path", path, "status", status, "error", err)
+		return c.Status(status).JSON(fiber.Map{"error": "upstream request failed"})
 	}
 
 	if res.CacheStatus != cacheStatusMiss {
@@ -860,11 +869,9 @@ func (h *MissionsHandler) ValidateMission(c *fiber.Ctx) error {
 
 	index, err := h.fetchMissionIndex(c)
 	if err != nil {
-		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+		slog.Error("[missions] failed to fetch mission index (validate)", "error", err)
+		return c.Status(502).JSON(fiber.Map{"error": "upstream request failed"})
 	}
-
-	for _, entry := range index.Missions {
-		if entry.Path != req.Path {
 			continue
 		}
 		if entry.QualityPass != nil && !*entry.QualityPass {
@@ -961,7 +968,8 @@ func (h *MissionsHandler) GetKBScores(c *fiber.Ctx) error {
 	}
 	index, err := h.fetchMissionIndex(c)
 	if err != nil {
-		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+		slog.Error("[missions] failed to fetch mission index (scores)", "error", err)
+		return c.Status(502).JSON(fiber.Map{"error": "upstream request failed"})
 	}
 
 	// Filter just the scoring related fields
@@ -1005,11 +1013,9 @@ func (h *MissionsHandler) GetMissionScore(c *fiber.Ctx) error {
 
 	index, err := h.fetchMissionIndex(c)
 	if err != nil {
-		return c.Status(502).JSON(fiber.Map{"error": err.Error()})
+		slog.Error("[missions] failed to fetch mission index (score by id)", "error", err)
+		return c.Status(502).JSON(fiber.Map{"error": "upstream request failed"})
 	}
-
-	for _, m := range index.Missions {
-		mProject := "unknown"
 		if len(m.CncfProjects) > 0 {
 			mProject = m.CncfProjects[0]
 		}
@@ -1112,7 +1118,8 @@ func (h *MissionsHandler) ShareToSlack(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
 	}
 	if err := validateSlackWebhookURL(req.WebhookURL); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		slog.Info("[missions] invalid Slack webhook URL", "error", err)
+		return c.Status(400).JSON(fiber.Map{"error": "invalid webhook URL"})
 	}
 	if req.Text == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "text is required"})

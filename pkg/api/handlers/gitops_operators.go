@@ -22,12 +22,10 @@ func (h *GitOpsHandlers) ListOperators(c *fiber.Ctx) error {
 	// SECURITY: Validate cluster name before passing to kubectl CLI
 	if cluster != "" {
 		if err := validateK8sName(cluster, "cluster"); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+			slog.Info("[GitOps] invalid cluster name in ListOperators", "error", err)
+			return c.Status(400).JSON(fiber.Map{"error": "invalid cluster name"})
 		}
 	}
-
-	// If specific cluster requested, query only that cluster
-	if cluster != "" {
 		ctx, cancel := context.WithTimeout(c.Context(), operatorPerClusterTimeout)
 		defer cancel()
 		operators, fetchErr := h.getOperatorsForClusterWithError(ctx, cluster)
@@ -453,12 +451,10 @@ func (h *GitOpsHandlers) ListOperatorSubscriptions(c *fiber.Ctx) error {
 	// SECURITY: Validate cluster name before passing to kubectl CLI
 	if cluster != "" {
 		if err := validateK8sName(cluster, "cluster"); err != nil {
-			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+			slog.Info("[GitOps] invalid cluster name in ListOperatorSubscriptions", "error", err)
+			return c.Status(400).JSON(fiber.Map{"error": "invalid cluster name"})
 		}
 	}
-
-	if cluster != "" {
-		ctx, cancel := context.WithTimeout(c.Context(), subscriptionPerClusterTimeout)
 		defer cancel()
 		subs, fetchErr := h.getSubscriptionsForClusterWithError(ctx, cluster)
 		resp := fiber.Map{"subscriptions": subs}
