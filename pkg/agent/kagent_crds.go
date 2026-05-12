@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -125,11 +124,7 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.k8sClient == nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{"agents": []any{}}); err != nil {
-			slog.Error("encode kagent agents empty response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"agents": []any{}})
 		return
 	}
 
@@ -137,11 +132,7 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	if cluster == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]any{"agents": []any{}, "error": "cluster parameter required"}); err != nil {
-			slog.Error("encode kagent agents bad request failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"agents": []any{}, "error": "cluster parameter required"})
 		return
 	}
 
@@ -152,11 +143,7 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("error fetching kagent agents for cluster", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]any{"agents": []any{}, "error": "internal server error"}); err != nil {
-			slog.Error("encode kagent agents internal error failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"agents": []any{}, "error": "internal server error"})
 		return
 	}
 
@@ -168,11 +155,7 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		// CRD not installed is expected — return empty list, not error
-		if err := json.NewEncoder(w).Encode(map[string]any{"agents": []any{}}); err != nil {
-			slog.Error("encode kagent agents missing crd response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"agents": []any{}})
 		return
 	}
 
@@ -217,11 +200,7 @@ func (s *Server) handleKagentCRDAgents(w http.ResponseWriter, r *http.Request) {
 		agents = append(agents, a)
 	}
 
-	if err := json.NewEncoder(w).Encode(map[string]any{"agents": agents, "source": "agent"}); err != nil {
-		slog.Error("encode kagent agents response failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, map[string]any{"agents": agents, "source": "agent"})
 }
 
 // extractConditionStatus checks status.conditions for a condition type and returns whether its status is "True"
@@ -257,11 +236,7 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.k8sClient == nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{"tools": []any{}}); err != nil {
-			slog.Error("encode kagent tools empty response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"tools": []any{}})
 		return
 	}
 
@@ -269,11 +244,7 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	if cluster == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]any{"tools": []any{}, "error": "cluster parameter required"}); err != nil {
-			slog.Error("encode kagent tools bad request failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"tools": []any{}, "error": "cluster parameter required"})
 		return
 	}
 
@@ -284,11 +255,7 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("error fetching kagent tools for cluster", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]any{"tools": []any{}, "error": "internal server error"}); err != nil {
-			slog.Error("encode kagent tools internal error failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"tools": []any{}, "error": "internal server error"})
 		return
 	}
 
@@ -364,11 +331,7 @@ func (s *Server) handleKagentCRDTools(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(map[string]any{"tools": tools, "source": "agent"}); err != nil {
-		slog.Error("encode kagent tools response failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, map[string]any{"tools": tools, "source": "agent"})
 }
 
 // extractDiscoveredTools extracts status.discoveredTools as a slice of {name, description}
@@ -406,11 +369,7 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.k8sClient == nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{"models": []any{}}); err != nil {
-			slog.Error("encode kagent models empty response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"models": []any{}})
 		return
 	}
 
@@ -418,11 +377,7 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	if cluster == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]any{"models": []any{}, "error": "cluster parameter required"}); err != nil {
-			slog.Error("encode kagent models bad request failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"models": []any{}, "error": "cluster parameter required"})
 		return
 	}
 
@@ -433,11 +388,7 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("error fetching kagent models for cluster", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]any{"models": []any{}, "error": "internal server error"}); err != nil {
-			slog.Error("encode kagent models internal error failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"models": []any{}, "error": "internal server error"})
 		return
 	}
 
@@ -506,11 +457,7 @@ func (s *Server) handleKagentCRDModels(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(map[string]any{"models": models, "source": "agent"}); err != nil {
-		slog.Error("encode kagent models response failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, map[string]any{"models": models, "source": "agent"})
 }
 
 // extractDiscoveredModels extracts status.discoveredModels as a slice of {name, description}
@@ -548,11 +495,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 	}
 
 	if s.k8sClient == nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{"memories": []any{}}); err != nil {
-			slog.Error("encode kagent memories empty response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"memories": []any{}})
 		return
 	}
 
@@ -560,11 +503,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 	namespace := r.URL.Query().Get("namespace")
 	if cluster == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]any{"memories": []any{}, "error": "cluster parameter required"}); err != nil {
-			slog.Error("encode kagent memories bad request failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"memories": []any{}, "error": "cluster parameter required"})
 		return
 	}
 
@@ -575,11 +514,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		slog.Warn("error fetching kagent memories for cluster", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]any{"memories": []any{}, "error": "internal server error"}); err != nil {
-			slog.Error("encode kagent memories internal error failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"memories": []any{}, "error": "internal server error"})
 		return
 	}
 
@@ -590,11 +525,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 		list, err = dynClient.Resource(memoryGVR).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{"memories": []any{}}); err != nil {
-			slog.Error("encode kagent memories missing crd response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"memories": []any{}})
 		return
 	}
 
@@ -616,11 +547,7 @@ func (s *Server) handleKagentCRDMemories(w http.ResponseWriter, r *http.Request)
 		memories = append(memories, m)
 	}
 
-	if err := json.NewEncoder(w).Encode(map[string]any{"memories": memories, "source": "agent"}); err != nil {
-		slog.Error("encode kagent memories response failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, map[string]any{"memories": memories, "source": "agent"})
 }
 
 // handleKagentCRDSummary returns an aggregated summary of kagent.dev resources for a cluster.
@@ -640,26 +567,18 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if s.k8sClient == nil {
-		if err := json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"agentCount": 0, "toolServerCount": 0, "remoteMCPServerCount": 0,
 			"modelConfigCount": 0, "modelProviderConfigCount": 0, "memoryCount": 0,
 			"byCluster": map[string]any{}, "byProvider": map[string]int{},
-		}); err != nil {
-			slog.Error("encode kagent summary empty response failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		})
 		return
 	}
 
 	cluster := r.URL.Query().Get("cluster")
 	if cluster == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if err := json.NewEncoder(w).Encode(map[string]any{"error": "cluster parameter required"}); err != nil {
-			slog.Error("encode kagent summary bad request failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		writeJSON(w, map[string]any{"error": "cluster parameter required"})
 		return
 	}
 
@@ -667,16 +586,12 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		slog.Warn("error fetching kagent CRD summary for cluster", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(w, map[string]any{
 			"agentCount": 0, "toolServerCount": 0, "remoteMCPServerCount": 0,
 			"modelConfigCount": 0, "modelProviderConfigCount": 0, "memoryCount": 0,
 			"byCluster": map[string]any{}, "byProvider": map[string]int{},
 			"error": "internal server error",
-		}); err != nil {
-			slog.Error("encode kagent summary internal error failed", "error", err)
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
-		}
+		})
 		return
 	}
 
@@ -836,9 +751,5 @@ func (s *Server) handleKagentCRDSummary(w http.ResponseWriter, r *http.Request) 
 		result["warnings"] = warnings
 	}
 
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		slog.Error("encode kagent summary response failed", "error", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	writeJSON(w, result)
 }
