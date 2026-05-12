@@ -32,7 +32,7 @@ var allowedTransitions = map[ReservationStatus]map[ReservationStatus]bool{
 	ReservationStatusCancelled: {}, // terminal
 }
 
-// IsValidStatus returns true when s is one of the four recognised statuses.
+// IsValidStatus returns true when s is one of the recognised statuses.
 func (s ReservationStatus) IsValid() bool {
 	return validStatuses[s]
 }

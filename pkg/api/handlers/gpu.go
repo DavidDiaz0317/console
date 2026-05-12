@@ -59,7 +59,7 @@ type GPUHandler struct {
 // capacityProvider supplies server-side cluster GPU capacity; if nil,
 // over-allocation checks are skipped (safe default for tests).
 // k8sClient enables synchronous namespace+quota provisioning; if nil,
-// reservations are created with "pending" status (no cluster access).
+// cluster-side provisioning is skipped.
 func NewGPUHandler(s store.Store, capacityProvider ClusterCapacityProvider, k8sClient *k8s.MultiClusterClient) *GPUHandler {
 	return &GPUHandler{store: s, clusterCapacity: capacityProvider, k8sClient: k8sClient}
 }
@@ -142,6 +142,7 @@ func (h *GPUHandler) CreateReservation(c *fiber.Ctx) error {
 		StartDate:     input.StartDate,
 		DurationHours: input.DurationHours,
 		Notes:         input.Notes,
+		Status:        models.ReservationStatusActive,
 		QuotaName:     input.QuotaName,
 		QuotaEnforced: input.QuotaEnforced,
 	}
@@ -151,33 +152,50 @@ func (h *GPUHandler) CreateReservation(c *fiber.Ctx) error {
 	// checks see the canonical shape before the store call below.
 	reservation.NormalizeGPUTypes()
 
-	// Synchronous provisioning: create namespace + ResourceQuota on the
-	// target cluster before persisting the reservation. This eliminates
-	// the "pending" state — the caller gets either "active" (provisioned)
-	// or an immediate error.
-	provisioned := false
-	if h.k8sClient != nil {
-		if provErr := h.provisionOnCluster(c.Context(), reservation); provErr != nil {
-			slog.Error("[gpu] synchronous provisioning failed",
-				"cluster", reservation.Cluster,
-				"namespace", reservation.Namespace,
-				"error", provErr)
-			return fiber.NewError(fiber.StatusServiceUnavailable,
-				fmt.Sprintf("Failed to provision namespace/quota on cluster %q", reservation.Cluster))
-		}
-		reservation.Status = models.ReservationStatusActive
-		provisioned = true
-	}
-
 	if err := h.store.CreateGPUReservationWithCapacity(c.UserContext(), reservation, capacity); err != nil {
-		if provisioned {
-			h.cleanupProvisionedResources(c.Context(), reservation)
-		}
 		if errors.Is(err, store.ErrGPUQuotaExceeded) {
 			return fiber.NewError(fiber.StatusConflict,
-				fmt.Sprintf("Over-allocation: cluster %q would exceed capacity of %d GPUs", input.Cluster, capacity))
+				"requested GPUs exceed available capacity")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create reservation")
+	}
+
+	// Synchronous provisioning: persist the reservation first so a later DB
+	// failure cannot orphan cluster-side resources. If provisioning fails,
+	// roll back the DB record.
+	if h.k8sClient != nil {
+		namespaceCreated, provErr := h.provisionOnCluster(c.Context(), reservation)
+		if provErr != nil {
+			slog.Error("gpu provisioning failed",
+				"cluster", reservation.Cluster,
+				"namespace", reservation.Namespace,
+				"err", provErr)
+			h.cleanupProvisionedResources(c.Context(), reservation, namespaceCreated, false)
+			if deleteErr := h.store.DeleteGPUReservation(c.UserContext(), reservation.ID); deleteErr != nil {
+				slog.Error("[gpu] failed to roll back reservation after provisioning error",
+					"reservation_id", reservation.ID,
+					"cluster", reservation.Cluster,
+					"namespace", reservation.Namespace,
+					"error", deleteErr)
+			}
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to provision cluster resources")
+		}
+		if err := h.store.UpdateGPUReservation(c.UserContext(), reservation); err != nil {
+			slog.Error("[gpu] failed to persist provisioned reservation metadata",
+				"reservation_id", reservation.ID,
+				"cluster", reservation.Cluster,
+				"namespace", reservation.Namespace,
+				"error", err)
+			h.cleanupProvisionedResources(c.Context(), reservation, namespaceCreated, true)
+			if deleteErr := h.store.DeleteGPUReservation(c.UserContext(), reservation.ID); deleteErr != nil {
+				slog.Error("[gpu] failed to roll back reservation after metadata persistence error",
+					"reservation_id", reservation.ID,
+					"cluster", reservation.Cluster,
+					"namespace", reservation.Namespace,
+					"error", deleteErr)
+			}
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create reservation")
+		}
 	}
 
 	// #9890: persist audit entry after successful mutation.
@@ -366,7 +384,7 @@ func (h *GPUHandler) UpdateReservation(c *fiber.Ctx) error {
 		newStatus := *input.Status
 		if !newStatus.IsValid() {
 			return fiber.NewError(fiber.StatusBadRequest,
-				fmt.Sprintf("Invalid status %q; must be one of: pending, active, completed, cancelled", newStatus))
+				fmt.Sprintf("Invalid status %q; must be one of: active, completed, cancelled", newStatus))
 		}
 		if !existing.Status.CanTransitionTo(newStatus) {
 			return fiber.NewError(fiber.StatusBadRequest,
@@ -595,8 +613,8 @@ func (h *GPUHandler) checkOverAllocationWithCapacity(ctx context.Context, cluste
 // provisionOnCluster creates the namespace (if it doesn't already exist) and a
 // ResourceQuota enforcing the GPU limit on the target cluster. This runs
 // synchronously during reservation creation so the caller gets an immediate
-// success/failure signal instead of a deferred "pending" state.
-func (h *GPUHandler) provisionOnCluster(ctx context.Context, r *models.GPUReservation) error {
+// success/failure signal instead of any deferred state.
+func (h *GPUHandler) provisionOnCluster(ctx context.Context, r *models.GPUReservation) (bool, error) {
 	provCtx, cancel := context.WithTimeout(ctx, provisionTimeoutSeconds*time.Second)
 	defer cancel()
 
@@ -604,9 +622,14 @@ func (h *GPUHandler) provisionOnCluster(ctx context.Context, r *models.GPUReserv
 		reservationNSLabel:             "true",
 		"app.kubernetes.io/managed-by": "kubestellar-console",
 	}
+	namespaceCreated := false
 	_, err := h.k8sClient.CreateNamespace(provCtx, r.Cluster, r.Namespace, nsLabels)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return fmt.Errorf("create namespace %q: %w", r.Namespace, err)
+	if err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return false, fmt.Errorf("create namespace %q: %w", r.Namespace, err)
+		}
+	} else {
+		namespaceCreated = true
 	}
 
 	quotaName := r.QuotaName
@@ -631,30 +654,36 @@ func (h *GPUHandler) provisionOnCluster(ctx context.Context, r *models.GPUReserv
 	}
 
 	if _, err := h.k8sClient.CreateOrUpdateResourceQuota(provCtx, r.Cluster, quotaSpec); err != nil {
-		return fmt.Errorf("create ResourceQuota %q in %q: %w", quotaName, r.Namespace, err)
+		return namespaceCreated, fmt.Errorf("create ResourceQuota %q in %q: %w", quotaName, r.Namespace, err)
 	}
 
 	r.QuotaName = quotaName
 	r.QuotaEnforced = true
-	return nil
+	return namespaceCreated, nil
 }
 
-// cleanupProvisionedResources is a best-effort rollback when the DB insert
-// fails after k8s resources were already created. Prevents orphaned
-// namespaces/quotas when the store rejects the reservation (e.g. TOCTOU
-// quota race).
-func (h *GPUHandler) cleanupProvisionedResources(ctx context.Context, r *models.GPUReservation) {
+// cleanupProvisionedResources best-effort rolls back any cluster-side objects
+// created during synchronous GPU reservation provisioning.
+func (h *GPUHandler) cleanupProvisionedResources(ctx context.Context, r *models.GPUReservation, namespaceCreated, quotaProvisioned bool) {
 	if h.k8sClient == nil {
 		return
 	}
 	cleanupCtx, cancel := context.WithTimeout(ctx, provisionTimeoutSeconds*time.Second)
 	defer cancel()
 
-	if r.QuotaName != "" {
-		if err := h.k8sClient.DeleteResourceQuota(cleanupCtx, r.Cluster, r.Namespace, r.QuotaName); err != nil {
+	if quotaProvisioned && r.QuotaName != "" {
+		if err := h.k8sClient.DeleteResourceQuota(cleanupCtx, r.Cluster, r.Namespace, r.QuotaName); err != nil && !apierrors.IsNotFound(err) {
 			slog.Warn("[gpu] cleanup: failed to delete ResourceQuota",
 				"cluster", r.Cluster, "namespace", r.Namespace,
 				"quota", r.QuotaName, "error", err)
+		}
+	}
+	if namespaceCreated {
+		if err := h.k8sClient.DeleteNamespace(cleanupCtx, r.Cluster, r.Namespace); err != nil && !apierrors.IsNotFound(err) {
+			slog.Warn("[gpu] cleanup: failed to delete namespace",
+				"cluster", r.Cluster,
+				"namespace", r.Namespace,
+				"error", err)
 		}
 	}
 }
