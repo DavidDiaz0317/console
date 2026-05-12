@@ -13,6 +13,7 @@ import (
 
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/api/middleware"
+	"github.com/kubestellar/console/pkg/k8s"
 	"github.com/kubestellar/console/pkg/models"
 	"github.com/kubestellar/console/pkg/store"
 )
@@ -34,6 +35,9 @@ const maxGPUCountWithoutCapacity = 1024
 // minDurationHours is the minimum acceptable DurationHours for a reservation.
 const minDurationHours = 1
 
+// gpuProvisionTimeout bounds synchronous namespace/quota provisioning.
+const gpuProvisionTimeout = 30 * time.Second
+
 // ClusterCapacityProvider returns the total GPU capacity for a cluster
 // by querying authoritative server-side data (e.g. k8s node resources).
 // Returns 0 if the cluster has no GPUs or cannot be reached.
@@ -43,13 +47,14 @@ type ClusterCapacityProvider func(ctx context.Context, cluster string) int
 type GPUHandler struct {
 	store           store.Store
 	clusterCapacity ClusterCapacityProvider
+	k8sClient       *k8s.MultiClusterClient
 }
 
 // NewGPUHandler creates a new GPU handler.
 // capacityProvider supplies server-side cluster GPU capacity; if nil,
 // over-allocation checks are skipped (safe default for tests).
-func NewGPUHandler(s store.Store, capacityProvider ClusterCapacityProvider) *GPUHandler {
-	return &GPUHandler{store: s, clusterCapacity: capacityProvider}
+func NewGPUHandler(s store.Store, capacityProvider ClusterCapacityProvider, k8sClient *k8s.MultiClusterClient) *GPUHandler {
+	return &GPUHandler{store: s, clusterCapacity: capacityProvider, k8sClient: k8sClient}
 }
 
 // CreateReservation creates a new GPU reservation
@@ -141,6 +146,65 @@ func (h *GPUHandler) CreateReservation(c *fiber.Ctx) error {
 				fmt.Sprintf("Over-allocation: cluster %q would exceed capacity of %d GPUs", input.Cluster, capacity))
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create reservation")
+	}
+
+	if h.k8sClient != nil {
+		provCtx, cancel := context.WithTimeout(context.Background(), gpuProvisionTimeout)
+		defer cancel()
+
+		nsLabels := map[string]string{
+			"kubestellar.io/gpu-reservation": reservation.ID.String(),
+			"kubestellar.io/managed-by":      "console",
+		}
+		if _, err := h.k8sClient.CreateNamespace(provCtx, reservation.Cluster, reservation.Namespace, nsLabels); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				slog.Error("gpu: failed to create namespace",
+					"cluster", reservation.Cluster,
+					"namespace", reservation.Namespace,
+					"error", err)
+				return fiber.NewError(fiber.StatusInternalServerError, "Failed to provision namespace on cluster")
+			}
+		}
+
+		quotaName := reservation.QuotaName
+		if quotaName == "" {
+			quotaName = fmt.Sprintf("gpu-reservation-%s", reservation.ID.String()[:8])
+		}
+		quotaSpec := k8s.ResourceQuotaSpec{
+			Name:      quotaName,
+			Namespace: reservation.Namespace,
+			Hard: map[string]string{
+				"requests.nvidia.com/gpu": fmt.Sprintf("%d", reservation.GPUCount),
+				"limits.nvidia.com/gpu":   fmt.Sprintf("%d", reservation.GPUCount),
+			},
+			Labels: map[string]string{
+				"kubestellar.io/gpu-reservation": reservation.ID.String(),
+				"kubestellar.io/managed-by":      "console",
+			},
+			Annotations: map[string]string{
+				"kubestellar.io/reservation-user":  reservation.UserName,
+				"kubestellar.io/reservation-title": reservation.Title,
+			},
+		}
+		if _, err := h.k8sClient.CreateOrUpdateResourceQuota(provCtx, reservation.Cluster, quotaSpec); err != nil {
+			slog.Error("gpu: failed to create resource quota",
+				"cluster", reservation.Cluster,
+				"namespace", reservation.Namespace,
+				"error", err)
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to enforce GPU quota on cluster")
+		}
+
+		updatedReservation := *reservation
+		updatedReservation.QuotaName = quotaName
+		updatedReservation.Status = models.ReservationStatusActive
+		if err := h.store.UpdateGPUReservation(context.Background(), &updatedReservation); err != nil {
+			slog.Error("gpu: failed to update reservation status to active",
+				"id", reservation.ID,
+				"error", err)
+		} else {
+			reservation.QuotaName = quotaName
+			reservation.Status = models.ReservationStatusActive
+		}
 	}
 
 	// #9890: persist audit entry after successful mutation.

@@ -32,7 +32,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	"github.com/kubestellar/console/pkg/agent"
-	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/api/handlers"
 	"github.com/kubestellar/console/pkg/api/middleware"
@@ -42,6 +41,7 @@ import (
 	"github.com/kubestellar/console/pkg/kagenti_provider"
 	"github.com/kubestellar/console/pkg/mcp"
 	"github.com/kubestellar/console/pkg/notifications"
+	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/settings"
 	"github.com/kubestellar/console/pkg/store"
 )
@@ -1270,7 +1270,7 @@ func (s *Server) setupRoutes() {
 		}
 		return total
 	})
-	gpuHandler := handlers.NewGPUHandler(s.store, gpuCapacity)
+	gpuHandler := handlers.NewGPUHandler(s.store, gpuCapacity, s.k8sClient)
 	api.Post("/gpu/reservations", gpuHandler.CreateReservation)
 	api.Get("/gpu/reservations", gpuHandler.ListReservations)
 	api.Get("/gpu/reservations/:id", gpuHandler.GetReservation)
