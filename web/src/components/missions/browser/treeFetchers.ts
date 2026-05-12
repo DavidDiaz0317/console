@@ -346,7 +346,12 @@ export async function fetchNodeFileContent(node: TreeNode): Promise<string | nul
 // Cache invalidation on navigation/visibility changes
 // ============================================================================
 
-if (typeof window !== 'undefined') {
+// Guard against duplicate listeners on HMR re-execution of module scope
+let cacheListenersRegistered = false
+
+if (typeof window !== 'undefined' && !cacheListenersRegistered) {
+  cacheListenersRegistered = true
+
   // Reset cache when page becomes hidden (user navigates away or switches tabs)
   // This ensures fresh fetches after navigation in Playwright tests and normal usage
   document.addEventListener('visibilitychange', () => {
