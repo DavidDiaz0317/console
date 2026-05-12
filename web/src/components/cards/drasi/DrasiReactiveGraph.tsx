@@ -96,12 +96,13 @@ function buildStreamEndpoint(
 export function DrasiReactiveGraph() {
   const { t } = useTranslation()
   const { shouldUseDemoData: isDemoMode, showDemoBadge } = useCardDemoState({ requires: 'none' })
-  const { data: liveData, isLoading, error } = useDrasiResources()
+  const { data: liveData, isLoading, isRefreshing, error } = useDrasiResources()
 
   useReportCardDataState({
     isDemoData: showDemoBadge || (!liveData && !isLoading),
     isFailed: !!error,
     consecutiveFailures: error ? 1 : 0,
+    isRefreshing,
     hasData: true,
   })
 

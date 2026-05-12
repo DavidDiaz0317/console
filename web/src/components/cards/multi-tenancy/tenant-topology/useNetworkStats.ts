@@ -150,6 +150,8 @@ export interface UseNetworkStatsResult {
   k3sEth1Rx: number
   /** Transmit bytes/sec for K3s eth1 */
   k3sEth1Tx: number
+  /** Whether cached stats are refreshing in the background */
+  isRefreshing: boolean
   /** Whether we are showing demo/fallback data */
   isDemoData: boolean
   /** Whether any real stats were returned */
@@ -157,7 +159,7 @@ export interface UseNetworkStatsResult {
 }
 
 export function useNetworkStats(): UseNetworkStatsResult {
-  const { data, isDemoFallback, isLoading } = useCache<NetworkStatsData>({
+  const { data, isDemoFallback, isLoading, isRefreshing } = useCache<NetworkStatsData>({
     key: NETWORK_STATS_CACHE_KEY,
     category: NETWORK_STATS_REFRESH_CATEGORY,
     initialData: INITIAL_DATA,
@@ -203,6 +205,7 @@ export function useNetworkStats(): UseNetworkStatsResult {
     k3sEth0Tx: sumField(k3sPods, 'eth0', 'txBytesPerSec'),
     k3sEth1Rx: sumField(k3sPods, 'eth1', 'rxBytesPerSec'),
     k3sEth1Tx: sumField(k3sPods, 'eth1', 'txBytesPerSec'),
+    isRefreshing,
     isDemoData: isDemoFallback && !isLoading,
     hasData: (data.stats || []).length > 0,
   }

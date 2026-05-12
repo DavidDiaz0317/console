@@ -341,6 +341,7 @@ async function fetchViaDrasiPlatform(
 export interface UseDrasiResourcesResult {
   data: DrasiResourceData | null
   isLoading: boolean
+  isRefreshing: boolean
   error: string | null
   refetch: () => void
 }
@@ -349,23 +350,33 @@ export function useDrasiResources(): UseDrasiResourcesResult {
   const { activeConnection } = useDrasiConnections()
   const [data, setData] = useState<DrasiResourceData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const dataRef = useRef<DrasiResourceData | null>(null)
 
   const fetchOnce = useCallback(async () => {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const hasCachedData = dataRef.current !== null
 
     if (!activeConnection || activeConnection.isDemoSeed) {
       // No active connection, or the active one is a demo seed (fake URL
       // that points nowhere) — leave data null so the card stays in demo
       // mode without triggering failing fetches.
       setData(null)
+      dataRef.current = null
+      setIsLoading(false)
+      setIsRefreshing(false)
       return
     }
 
-    setIsLoading(true)
+    if (hasCachedData) {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
     try {
       let next: DrasiResourceData | null = null
       if (activeConnection.mode === 'server' && activeConnection.url) {
@@ -374,14 +385,19 @@ export function useDrasiResources(): UseDrasiResourcesResult {
         next = await fetchViaDrasiPlatform(activeConnection.cluster, controller.signal)
       }
       setData(next)
+      dataRef.current = next
       setError(null)
     } catch (e: unknown) {
       if ((e as Error).name !== 'AbortError') {
         setError((e as Error).message || 'Failed to fetch Drasi resources')
         setData(null)
+        dataRef.current = null
       }
     } finally {
-      setIsLoading(false)
+      if (abortRef.current === controller) {
+        setIsLoading(false)
+        setIsRefreshing(false)
+      }
     }
   }, [activeConnection])
 
@@ -394,5 +410,5 @@ export function useDrasiResources(): UseDrasiResourcesResult {
     }
   }, [fetchOnce])
 
-  return { data, isLoading, error, refetch: fetchOnce }
+  return { data, isLoading, isRefreshing, error, refetch: fetchOnce }
 }

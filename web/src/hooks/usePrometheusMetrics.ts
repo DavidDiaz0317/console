@@ -23,6 +23,7 @@ export interface PrometheusMetricsResult {
   /** Per-pod metrics keyed by pod name */
   metrics: Record<string, PodMetrics> | null
   loading: boolean
+  isRefreshing: boolean
   error: string | null
 }
 
@@ -80,8 +81,10 @@ export function usePrometheusMetrics(
 ): PrometheusMetricsResult {
   const [metrics, setMetrics] = useState<Record<string, PodMetrics> | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const metricsRef = useRef<Record<string, PodMetrics> | null>(null)
 
   const fetchMetrics = useCallback(async () => {
     if (!cluster || !namespace) return
@@ -90,8 +93,13 @@ export function usePrometheusMetrics(
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const hasCachedMetrics = metricsRef.current !== null
 
-    setLoading(prev => !prev ? true : prev) // only set true on first load
+    if (hasCachedMetrics) {
+      setIsRefreshing(true)
+    } else {
+      setLoading(prev => !prev ? true : prev)
+    }
 
     try {
       // Fire all 6 queries in parallel
@@ -142,22 +150,22 @@ export function usePrometheusMetrics(
 
       if (!hasAnyData) {
         setMetrics(null)
+        metricsRef.current = null
         setError('No Prometheus data available')
       } else {
         setMetrics(podMap)
+        metricsRef.current = podMap
         setError(null)
       }
     } catch (e: unknown) {
       if (controller.signal.aborted) return
       setMetrics(null)
+      metricsRef.current = null
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
-      // Reset loading if this controller is still the active one.
-      // If a newer fetchMetrics call superseded us, abortRef.current
-      // points to the new controller — skip to avoid clearing its loading state.
-      // If cleanup aborted us (unmount), still clear loading to avoid stuck state (#7787).
-      if (abortRef.current === controller || controller.signal.aborted) {
+      if (abortRef.current === controller) {
         setLoading(false)
+        setIsRefreshing(false)
       }
     }
   }, [cluster, namespace])
@@ -165,8 +173,10 @@ export function usePrometheusMetrics(
   useEffect(() => {
     if (!cluster || !namespace) {
       setMetrics(null)
+      metricsRef.current = null
       setError(null)
       setLoading(false)
+      setIsRefreshing(false)
       return
     }
 
@@ -180,5 +190,5 @@ export function usePrometheusMetrics(
     }
   }, [fetchMetrics, pollIntervalMs, cluster, namespace])
 
-  return { metrics, loading, error }
+  return { metrics, loading, isRefreshing, error }
 }
