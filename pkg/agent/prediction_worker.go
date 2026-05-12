@@ -126,7 +126,9 @@ func NewPredictionWorker(k8sClient *k8s.MultiClusterClient, registry *Registry, 
 
 // Start begins the background analysis loop
 func (w *PredictionWorker) Start() {
-	go w.runLoop()
+	safego.GoWith("prediction-worker-loop", func() {
+		w.runLoop()
+	})
 }
 
 // Stop gracefully shuts down the worker and cancels all in-flight analyses.

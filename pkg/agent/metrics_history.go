@@ -114,7 +114,9 @@ func (mh *MetricsHistory) SetDataDir(dir string) {
 
 // Start begins the metrics collection loop
 func (mh *MetricsHistory) Start(interval time.Duration) {
-	go mh.runLoop(interval)
+	safego.GoWith("metrics-history-loop", func() {
+		mh.runLoop(interval)
+	})
 }
 
 // Stop gracefully shuts down the history manager. It is safe to call

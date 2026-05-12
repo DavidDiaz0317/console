@@ -21,6 +21,7 @@ import (
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/api/middleware"
 	"github.com/kubestellar/console/pkg/models"
+	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/store"
 )
 
@@ -188,14 +189,14 @@ func NewAuthHandler(s store.Store, cfg AuthConfig) *AuthHandler {
 			Scopes:       []string{"user:email"},
 			Endpoint:     oauthEndpoint,
 		},
-		githubAPIBase:  apiBase,
-		jwtSecret:      cfg.JWTSecret,
-		frontendURL:    cfg.FrontendURL,
-		devUserLogin:   cfg.DevUserLogin,
-		devUserEmail:   cfg.DevUserEmail,
-		devUserAvatar:  cfg.DevUserAvatar,
-		githubToken:    cfg.GitHubToken,
-		devMode:        cfg.DevMode,
+		githubAPIBase:    apiBase,
+		jwtSecret:        cfg.JWTSecret,
+		frontendURL:      cfg.FrontendURL,
+		devUserLogin:     cfg.DevUserLogin,
+		devUserEmail:     cfg.DevUserEmail,
+		devUserAvatar:    cfg.DevUserAvatar,
+		githubToken:      cfg.GitHubToken,
+		devMode:          cfg.DevMode,
 		skipOnboarding:   cfg.SkipOnboarding,
 		cleanupCtx:       cleanupCtx,
 		cleanupCancel:    cleanupCancel,
@@ -212,7 +213,9 @@ func NewAuthHandler(s store.Store, cfg AuthConfig) *AuthHandler {
 	// that use DevMode handlers do not leak a background goroutine for
 	// the lifetime of the test process (#6125).
 	if cfg.GitHubClientID != "" {
-		go h.runOAuthStateCleanup()
+		safego.GoWith("oauth-state-cleanup", func() {
+			h.runOAuthStateCleanup()
+		})
 	}
 
 	return h

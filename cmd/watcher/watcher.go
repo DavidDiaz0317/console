@@ -301,7 +301,9 @@ func handleConn(conn net.Conn, tlsCfg *tls.Config, srv *http.Server, listenPort 
 	if first[0] == 0x16 {
 		tlsConn := tls.Server(newPeekedConn(conn, br), tlsCfg)
 		srv.ConnState = nil
-		go srv.Serve(&singleConnListener{conn: tlsConn})
+		safego.GoWith("watcher-serve-single-conn", func() {
+			_ = srv.Serve(&singleConnListener{conn: tlsConn})
+		})
 		return
 	}
 

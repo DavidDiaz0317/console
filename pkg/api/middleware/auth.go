@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kubestellar/console/pkg/api/audit"
+	"github.com/kubestellar/console/pkg/safego"
 )
 
 const (
@@ -122,7 +123,9 @@ func InitTokenRevocation(store TokenRevoker) {
 		revokedTokens.store = store
 		revokedTokens.cleanupCancel = cancel
 		revokedTokens.Unlock()
-		go revokedTokens.cleanupLoop(ctx)
+		safego.GoWith("token-revocation-cleanup", func() {
+			revokedTokens.cleanupLoop(ctx)
+		})
 	})
 }
 

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
+	"github.com/kubestellar/console/pkg/safego"
 )
 
 const (
@@ -24,10 +26,10 @@ const (
 	FailureThresholdHardLock = 21 // 1hr Retry-After + GA4 event (Phase 3)
 
 	// Retry-After values (seconds) for each tier.
-	RetryAfterNormalSec    = 60   // default for rate-limited requests
-	RetryAfterEscalateSec  = 300  // 5 minutes
-	RetryAfterSoftLockSec  = 900  // 15 minutes
-	RetryAfterHardLockSec  = 3600 // 1 hour
+	RetryAfterNormalSec   = 60   // default for rate-limited requests
+	RetryAfterEscalateSec = 300  // 5 minutes
+	RetryAfterSoftLockSec = 900  // 15 minutes
+	RetryAfterHardLockSec = 3600 // 1 hour
 )
 
 // failureRecord tracks consecutive auth failures for a single composite key.
@@ -53,7 +55,9 @@ func NewFailureTracker() *FailureTracker {
 		failures: make(map[string]*failureRecord),
 		cancel:   cancel,
 	}
-	go ft.cleanupLoop(ctx)
+	safego.GoWith("failure-tracker-cleanup", func() {
+		ft.cleanupLoop(ctx)
+	})
 	return ft
 }
 

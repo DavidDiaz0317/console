@@ -32,7 +32,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	"github.com/kubestellar/console/pkg/agent"
-	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/api/handlers"
 	"github.com/kubestellar/console/pkg/api/middleware"
@@ -42,6 +41,7 @@ import (
 	"github.com/kubestellar/console/pkg/kagenti_provider"
 	"github.com/kubestellar/console/pkg/mcp"
 	"github.com/kubestellar/console/pkg/notifications"
+	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/settings"
 	"github.com/kubestellar/console/pkg/store"
 )
@@ -342,7 +342,9 @@ func NewServer(cfg Config) (*Server, error) {
 	hub := handlers.NewHub()
 	hub.SetJWTSecret(cfg.JWTSecret)
 	hub.SetDevMode(cfg.DevMode)
-	go hub.Run()
+	safego.GoWith("websocket-hub-run", func() {
+		hub.Run()
+	})
 
 	// Initialize Kubernetes multi-cluster client
 	k8sClient, err := k8s.NewMultiClusterClient(cfg.Kubeconfig)

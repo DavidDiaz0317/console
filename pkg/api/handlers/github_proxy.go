@@ -15,6 +15,7 @@ import (
 
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/api/middleware"
+	"github.com/kubestellar/console/pkg/safego"
 	"github.com/kubestellar/console/pkg/settings"
 	"github.com/kubestellar/console/pkg/store"
 )
@@ -94,7 +95,9 @@ func getGitHubProxyLimiter(userID string) *rate.Limiter {
 	// Lazy-start the evictor on first limiter creation
 	if !githubProxyLimiters.evictStarted {
 		githubProxyLimiters.evictStarted = true
-		go startGitHubProxyLimiterEvictor(githubProxyEvictCtx)
+		safego.GoWith("github-proxy-limiter-evictor", func() {
+			startGitHubProxyLimiterEvictor(githubProxyEvictCtx)
+		})
 	}
 
 	if entry, ok := githubProxyLimiters.m[userID]; ok {
@@ -116,6 +119,7 @@ func getGitHubProxyLimiter(userID string) *rate.Limiter {
 // startGitHubProxyLimiterEvictor periodically removes idle rate limiters
 // (no requests for >10 minutes) to prevent unbounded map growth.
 // Exits when ctx is cancelled.
+//
 //nolint:nilaway // ctx is always non-nil (created by context.WithCancel)
 func startGitHubProxyLimiterEvictor(ctx context.Context) {
 	if ctx == nil {
