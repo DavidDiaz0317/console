@@ -15,11 +15,13 @@
  * - Exponential backoff reconnection on unexpected disconnects (#3029)
  * - Meaningful error messages when endpoint is unavailable (#3026)
  * - Connection status callbacks for UI indicators (#3027)
+ * - Stale connection detection (#13247)
  */
 
 import { useRef, useCallback, useEffect, useState } from 'react'
 import { LOCAL_AGENT_WS_URL } from '../lib/constants/network'
 import { appendWsAuthToken } from '../lib/utils/wsAuth'
+import { useWsStaleDetection } from '../lib/ws/useWsStaleDetection'
 
 // ============================================================================
 // Constants
@@ -48,6 +50,9 @@ const COUNTDOWN_INTERVAL_MS = 1_000
 
 /** WebSocket close code for normal closure */
 const WS_CLOSE_NORMAL = 1000
+
+/** Stale detection timeout — if no message for 45s, mark as stale */
+const STALE_TIMEOUT_MS = 45_000
 
 // ============================================================================
 // Types
@@ -82,6 +87,8 @@ export interface UseExecSessionResult {
   reconnectAttempt: number
   /** Seconds until next reconnect attempt (0 when not reconnecting) */
   reconnectCountdown: number
+  /** True if the WebSocket connection has been silent for STALE_TIMEOUT_MS */
+  isStale: boolean
   connect: (config: ExecSessionConfig) => void
   disconnect: () => void
   sendInput: (data: string) => void
@@ -142,6 +149,10 @@ export function useExecSession(): UseExecSessionResult {
   /** Ref to the connect function so scheduleReconnect can call it without circular deps */
   const connectInternalRef = useRef<(config: ExecSessionConfig, isReconnect: boolean) => void>(() => {})
 
+  // Stale detection: mark as stale if no messages for 45s
+  const { isStale, startStaleDetection, stopStaleDetection, updateLastMessageTime } =
+    useWsStaleDetection(STALE_TIMEOUT_MS)
+
   const clearReconnectTimers = useCallback(() => {
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current)
@@ -165,10 +176,11 @@ export function useExecSession(): UseExecSessionResult {
   }
 
   const cleanup = useCallback(() => {
+    stopStaleDetection() // Stop stale detection when cleaning up
     clearReconnectTimers()
     closeWebSocket(wsRef.current)
     wsRef.current = null
-  }, [clearReconnectTimers])
+  }, [clearReconnectTimers, stopStaleDetection])
 
   const scheduleReconnect = (config: ExecSessionConfig) => {
     const attempt = reconnectAttemptsRef.current
@@ -249,6 +261,7 @@ export function useExecSession(): UseExecSessionResult {
     wsRef.current = ws
 
     ws.onopen = () => {
+      startStaleDetection() // Start monitoring for stale connection
       // #7993 Phase 3d: kc-agent validates the token on the HTTP upgrade
       // (Authorization header or ?token= query param fallback) rather than
       // via a first-message JWT dance the way the backend handler did. The
@@ -270,6 +283,7 @@ export function useExecSession(): UseExecSessionResult {
     }
 
     ws.onmessage = (event) => {
+      updateLastMessageTime() // Track message for stale detection
       try {
         const msg = JSON.parse(event.data) as ExecMessage
         switch (msg.type) {
@@ -353,7 +367,7 @@ export function useExecSession(): UseExecSessionResult {
       )
       setReconnectAttempt(0)
     }
-  }, [updateStatus, scheduleReconnect, clearReconnectTimers])
+  }, [updateStatus, scheduleReconnect, clearReconnectTimers, startStaleDetection, updateLastMessageTime])
 
   // Keep the ref in sync so scheduleReconnect always calls the latest version
   useEffect(() => {
@@ -411,6 +425,7 @@ export function useExecSession(): UseExecSessionResult {
     error,
     reconnectAttempt,
     reconnectCountdown,
+    isStale,
     connect,
     disconnect,
     sendInput,

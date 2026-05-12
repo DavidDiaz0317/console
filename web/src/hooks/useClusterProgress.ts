@@ -1,9 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
 import { LOCAL_AGENT_WS_URL, MAX_WS_RECONNECT_ATTEMPTS, getWsBackoffDelay } from '../lib/constants/network'
 import { appendWsAuthToken } from '../lib/utils/wsAuth'
+import { useWsStaleDetection } from '../lib/ws/useWsStaleDetection'
 
 /** Auto-dismiss delay after a successful operation */
 export const CLUSTER_PROGRESS_AUTO_DISMISS_MS = 8_000
+
+/** Stale detection timeout — if no message for 45s, mark as stale */
+const STALE_TIMEOUT_MS = 45_000
 
 export type ClusterProgressStatus =
   | 'validating'
@@ -24,6 +28,7 @@ export interface ClusterProgress {
 /**
  * Hook that listens for local_cluster_progress WebSocket broadcasts from kc-agent.
  * Uses a dedicated WebSocket connection (same pattern as useUpdateProgress).
+ * Includes stale detection to detect when the WebSocket connection goes silent.
  */
 export function useClusterProgress() {
   const [progress, setProgress] = useState<ClusterProgress | null>(null)
@@ -32,6 +37,10 @@ export function useClusterProgress() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Track current reconnect attempt number */
   const reconnectAttemptsRef = useRef(0)
+
+  // Stale detection: mark as stale if no messages for 45s
+  const { isStale, startStaleDetection, stopStaleDetection, updateLastMessageTime } =
+    useWsStaleDetection(STALE_TIMEOUT_MS)
 
   useEffect(() => {
     let unmounted = false
@@ -45,6 +54,7 @@ export function useClusterProgress() {
         reconnectAttemptsRef.current = attemptNumber
 
         ws.onmessage = (event) => {
+          updateLastMessageTime() // Track message for stale detection
           try {
             const msg = JSON.parse(event.data)
             if (msg.type === 'local_cluster_progress' && msg.payload) {
@@ -58,10 +68,12 @@ export function useClusterProgress() {
         ws.onopen = () => {
           // Reset reconnect attempts on successful connection
           reconnectAttemptsRef.current = 0
+          startStaleDetection() // Start monitoring for stale connection
         }
 
         ws.onclose = () => {
           wsRef.current = null
+          stopStaleDetection() // Stop monitoring when connection closes
           if (unmounted) return
 
           // Check if we've exceeded max reconnect attempts
@@ -109,6 +121,7 @@ export function useClusterProgress() {
 
     return () => {
       unmounted = true
+      stopStaleDetection() // Clean up stale detection on unmount
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current)
         reconnectTimerRef.current = null
@@ -118,9 +131,9 @@ export function useClusterProgress() {
         wsRef.current = null
       }
     }
-  }, [])
+  }, [startStaleDetection, stopStaleDetection, updateLastMessageTime])
 
   const dismiss = () => setProgress(null)
 
-  return { progress, dismiss }
+  return { progress, isStale, dismiss }
 }
