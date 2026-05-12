@@ -585,6 +585,7 @@
       "createNew": "Create New Cluster",
       "selectTool": "Select tool...",
       "clusterName": "Cluster name",
+      "connectionStale": "Connection lost — cluster operation status may be outdated",
       "creating": "Creating...",
       "create": "Create",
       "localClustersCount": "Local Clusters ({{count}})",
@@ -821,6 +822,23 @@
       "removeThemeTitle": "Remove Theme",
       "removeThemeMessage": "This will uninstall the theme and remove it from your list. This action cannot be undone."
     }
+  },
+  "terminal": {
+    "connect": "Connect",
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "connectingToPod": "Connecting to {{pod}}...",
+    "connectionError": "Connection Error",
+    "connectionStale": "Terminal connection may be stale — reconnect if output stops responding.",
+    "connectionStaleShort": "Connection uncertain",
+    "disconnect": "Disconnect",
+    "disconnected": "Disconnected",
+    "error": "Error",
+    "reconnect": "Reconnect",
+    "reconnectNow": "Reconnect Now",
+    "reconnecting": "Reconnecting...",
+    "reconnectingCountdown": "Reconnecting ({{count}}s)",
+    "tryAgain": "Try Again"
   },
   "filters": {
     "allClusters": "All Clusters",
