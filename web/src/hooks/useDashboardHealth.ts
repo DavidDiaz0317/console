@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/config/routes'
 import { useAlerts } from './useAlerts'
 import { useBackendHealth } from './useBackendHealth'
@@ -7,7 +8,7 @@ import { useClusters, usePodIssues } from './useMCP'
 import { summarizeClusterHealth } from '../components/clusters/utils'
 import { getDemoMode } from '../lib/demoMode'
 
-export type DashboardHealthStatus = 'healthy' | 'warning' | 'critical'
+export type DashboardHealthStatus = 'healthy' | 'warning' | 'critical' | 'empty'
 
 export interface DashboardHealthInfo {
   status: DashboardHealthStatus
@@ -24,6 +25,7 @@ export interface DashboardHealthInfo {
  * agent-level data-path degradation so page health matches the top bar.
  */
 export function useDashboardHealth(): DashboardHealthInfo {
+  const { t } = useTranslation('common')
   const { activeAlerts } = useAlerts()
   const { deduplicatedClusters, isLoading: clustersLoading } = useClusters()
   const { issues: podIssues, isLoading: podsLoading } = usePodIssues()
@@ -85,8 +87,9 @@ export function useDashboardHealth(): DashboardHealthInfo {
       }
     }
 
+    const hasNoClusters = !clustersLoading && deduplicatedClusters.length === 0
     let status: DashboardHealthStatus = 'healthy'
-    let message = 'All systems healthy'
+    let message = t('dashboard.health.allSystemsHealthy')
     let navigateTo: string | undefined
 
     if (criticalCount > 0) {
@@ -99,6 +102,9 @@ export function useDashboardHealth(): DashboardHealthInfo {
         ? 'Degraded'
         : `${warningCount} warning${warningCount > 1 ? 's' : ''}`
       navigateTo = ROUTES.ALERTS
+    } else if (hasNoClusters) {
+      status = 'empty'
+      message = t('dashboard.health.noClustersConnected')
     }
 
     return {
@@ -118,5 +124,6 @@ export function useDashboardHealth(): DashboardHealthInfo {
     deduplicatedClusters,
     podIssues,
     podsLoading,
+    t,
   ])
 }

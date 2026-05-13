@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
+const TRANSLATIONS: Record<string, string> = {
+  'dashboard.health.allSystemsHealthy': 'All systems healthy',
+  'dashboard.health.noClustersConnected': 'No clusters connected',
+}
+
 const mockUseAlerts = vi.fn()
 const mockUseClusters = vi.fn()
 const mockUsePodIssues = vi.fn()
@@ -31,6 +36,12 @@ vi.mock('../../lib/demoMode', () => ({
   getDemoMode: () => mockGetDemoMode(),
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => TRANSLATIONS[key] ?? key,
+  }),
+}))
+
 // Default all tests to a "connected" backend so pre-existing cases stay
 // healthy. Individual tests override this for disconnected scenarios.
 beforeEach(() => {
@@ -51,6 +62,18 @@ describe('useDashboardHealth', () => {
     const { result } = renderHook(() => useDashboardHealth())
     expect(result.current.status).toBe('healthy')
     expect(result.current.message).toBe('All systems healthy')
+    expect(result.current.criticalCount).toBe(0)
+    expect(result.current.warningCount).toBe(0)
+  })
+
+  it('returns empty when no clusters are connected and there are no issues', () => {
+    mockUseAlerts.mockReturnValue({ activeAlerts: [] })
+    mockUseClusters.mockReturnValue({ deduplicatedClusters: [], isLoading: false })
+    mockUsePodIssues.mockReturnValue({ issues: [], isLoading: false })
+
+    const { result } = renderHook(() => useDashboardHealth())
+    expect(result.current.status).toBe('empty')
+    expect(result.current.message).toBe('No clusters connected')
     expect(result.current.criticalCount).toBe(0)
     expect(result.current.warningCount).toBe(0)
   })

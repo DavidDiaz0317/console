@@ -947,6 +947,10 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Your personalized multi-cluster overview",
+    "health": {
+      "allSystemsHealthy": "All systems healthy",
+      "noClustersConnected": "No clusters connected"
+    },
     "studio": {
       "title": "Console Studio",
       "search": "Search cards, collections, dashboards...",
