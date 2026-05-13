@@ -54,6 +54,25 @@ const federationRequestTimeout = 60 * time.Second
 // handler deadline.
 const federationPerProviderTimeout = 10 * time.Second
 
+func federationErrorMessage(errType string) string {
+	switch errType {
+	case "timeout":
+		return "operation timed out"
+	case "config":
+		return "configuration error"
+	case "auth":
+		return "authentication failed"
+	case "network":
+		return "network connectivity error"
+	case "certificate":
+		return "certificate error"
+	case "not_found":
+		return "resource not found"
+	default:
+		return "an error occurred"
+	}
+}
+
 // handleFederationDetect serves `GET /federation/detect[?cluster=<ctx>]` and
 // returns []ProviderHubStatus — one row per (registered provider, resolved
 // context) pair. When `cluster` is omitted the handler fans out over every
@@ -170,7 +189,8 @@ func (s *Server) handleFederationRead(
 
 	contexts, err := s.resolveFederationContexts(ctx, r)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		slog.Warn("federation read: failed to resolve contexts", "itemsKey", itemsKey, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "failed to resolve federation contexts")
 		return
 	}
 	providers := federation.All()
@@ -290,6 +310,7 @@ func runOneDetect(
 
 	cfg, err := getConfig(hubContext)
 	if err != nil {
+		errType := k8s.ClassifyError(err.Error())
 		return federation.ProviderHubStatus{
 			Provider:   p.Name(),
 			HubContext: hubContext,
@@ -297,14 +318,15 @@ func runOneDetect(
 			Error: &federation.FederationError{
 				Provider:   p.Name(),
 				HubContext: hubContext,
-				Type:       federation.ClusterErrorType(k8s.ClassifyError(err.Error())),
-				Message:    err.Error(),
+				Type:       federation.ClusterErrorType(errType),
+				Message:    federationErrorMessage(errType),
 			},
 		}
 	}
 
 	res, err := p.Detect(probeCtx, cfg)
 	if err != nil {
+		errType := k8s.ClassifyError(err.Error())
 		return federation.ProviderHubStatus{
 			Provider:   p.Name(),
 			HubContext: hubContext,
@@ -312,8 +334,8 @@ func runOneDetect(
 			Error: &federation.FederationError{
 				Provider:   p.Name(),
 				HubContext: hubContext,
-				Type:       federation.ClusterErrorType(k8s.ClassifyError(err.Error())),
-				Message:    err.Error(),
+				Type:       federation.ClusterErrorType(errType),
+				Message:    federationErrorMessage(errType),
 			},
 		}
 	}
@@ -404,6 +426,7 @@ func runOneRead(
 
 	cfg, err := getConfig(hubContext)
 	if err != nil {
+		errType := k8s.ClassifyError(err.Error())
 		return struct {
 			items []interface{}
 			err   *federation.FederationError
@@ -411,14 +434,15 @@ func runOneRead(
 			err: &federation.FederationError{
 				Provider:   p.Name(),
 				HubContext: hubContext,
-				Type:       federation.ClusterErrorType(k8s.ClassifyError(err.Error())),
-				Message:    err.Error(),
+				Type:       federation.ClusterErrorType(errType),
+				Message:    federationErrorMessage(errType),
 			},
 		}
 	}
 
 	raw, err := read(probeCtx, p, cfg)
 	if err != nil {
+		errType := k8s.ClassifyError(err.Error())
 		return struct {
 			items []interface{}
 			err   *federation.FederationError
@@ -426,8 +450,8 @@ func runOneRead(
 			err: &federation.FederationError{
 				Provider:   p.Name(),
 				HubContext: hubContext,
-				Type:       federation.ClusterErrorType(k8s.ClassifyError(err.Error())),
-				Message:    err.Error(),
+				Type:       federation.ClusterErrorType(errType),
+				Message:    federationErrorMessage(errType),
 			},
 		}
 	}
@@ -517,7 +541,7 @@ func (s *Server) handleFederationAction(w http.ResponseWriter, r *http.Request) 
 
 	var req federation.ActionRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
+		writeJSONError(w, http.StatusBadRequest, "invalid JSON request body")
 		return
 	}
 
@@ -543,7 +567,8 @@ func (s *Server) handleFederationAction(w http.ResponseWriter, r *http.Request) 
 	// Resolve the user's rest.Config for the specified hub context.
 	cfg, err := s.k8sClient.GetRestConfig(req.HubContext)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "failed to resolve config for context "+req.HubContext+": "+err.Error())
+		slog.Error("federation action: failed to resolve config", "hubContext", req.HubContext, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "failed to resolve configuration for the specified context")
 		return
 	}
 
@@ -552,7 +577,8 @@ func (s *Server) handleFederationAction(w http.ResponseWriter, r *http.Request) 
 
 	result, err := ap.Execute(ctx, cfg, req)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		slog.Error("federation action failed", "provider", req.Provider, "hubContext", req.HubContext, "actionID", req.ActionID, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "federation action failed")
 		return
 	}
 	writeJSON(w, result)

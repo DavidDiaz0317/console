@@ -108,7 +108,8 @@ func (s *Server) handleVClusterCheck(w http.ResponseWriter, r *http.Request) {
 	if context != "" {
 		status, err := s.localClusters.CheckVClusterOnCluster(context)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			slog.Warn("[vCluster] failed to check vcluster on cluster", "context", context, "error", err)
+			http.Error(w, "failed to check vcluster status", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, status)
@@ -118,7 +119,8 @@ func (s *Server) handleVClusterCheck(w http.ResponseWriter, r *http.Request) {
 	// Check all clusters
 	results, err := s.localClusters.CheckVClusterOnAllClusters()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		slog.Warn("[vCluster] failed to check vcluster on all clusters", "error", err)
+		http.Error(w, "failed to check vcluster status", http.StatusInternalServerError)
 		return
 	}
 

@@ -386,7 +386,7 @@ func (s *Server) handleDetectDrift(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("[agent] detect-drift: clone failed", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		writeJSON(w, map[string]string{"error": err.Error(), "source": "agent"})
+		writeJSON(w, map[string]string{"error": "failed to clone repository", "source": "agent"})
 		return
 	}
 	defer gitopsCleanupTempDir(tempDir)
@@ -507,7 +507,7 @@ func (s *Server) handleGitopsSync(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Warn("[agent] sync: clone failed", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		writeJSON(w, map[string]string{"error": err.Error(), "source": "agent"})
+		writeJSON(w, map[string]string{"error": "failed to clone repository", "source": "agent"})
 		return
 	}
 	defer gitopsCleanupTempDir(tempDir)

@@ -359,7 +359,7 @@ func (s *Server) handleVClusterList(w http.ResponseWriter, r *http.Request) {
 	instances, err := s.localClusters.ListVClusters()
 	if err != nil {
 		slog.Error("[vCluster] failed to list vclusters", "error", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "failed to list vclusters", http.StatusInternalServerError)
 		return
 	}
 
@@ -497,7 +497,7 @@ func (s *Server) handleVClusterConnect(w http.ResponseWriter, r *http.Request) {
 			"message":  sanitizeClusterError(err),
 			"progress": progressFailed,
 		})
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "failed to connect to vcluster", http.StatusInternalServerError)
 		return
 	}
 
@@ -569,7 +569,7 @@ func (s *Server) handleVClusterDisconnect(w http.ResponseWriter, r *http.Request
 			"message":  sanitizeClusterError(err),
 			"progress": progressFailed,
 		})
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "failed to disconnect from vcluster", http.StatusInternalServerError)
 		return
 	}
 

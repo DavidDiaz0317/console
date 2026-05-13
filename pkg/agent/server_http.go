@@ -29,21 +29,21 @@ import (
 func mapK8sErrorToHTTP(err error) (int, string) {
 	switch {
 	case k8serrors.IsAlreadyExists(err):
-		return http.StatusConflict, err.Error()
+		return http.StatusConflict, "resource already exists"
 	case k8serrors.IsForbidden(err):
-		return http.StatusForbidden, err.Error()
+		return http.StatusForbidden, "access denied"
 	case k8serrors.IsInvalid(err):
-		return http.StatusBadRequest, err.Error()
+		return http.StatusBadRequest, "invalid resource specification"
 	case k8serrors.IsNotFound(err):
-		return http.StatusNotFound, err.Error()
+		return http.StatusNotFound, "resource not found"
 	case k8serrors.IsUnauthorized(err):
-		return http.StatusUnauthorized, err.Error()
+		return http.StatusUnauthorized, "authentication required"
 	case k8serrors.IsConflict(err):
-		return http.StatusConflict, err.Error()
+		return http.StatusConflict, "resource conflict"
 	case k8serrors.IsTimeout(err), k8serrors.IsServerTimeout(err):
-		return http.StatusGatewayTimeout, err.Error()
+		return http.StatusGatewayTimeout, "operation timed out"
 	case k8serrors.IsServiceUnavailable(err):
-		return http.StatusServiceUnavailable, err.Error()
+		return http.StatusServiceUnavailable, "cluster temporarily unavailable"
 	default:
 		return http.StatusInternalServerError, "internal server error"
 	}

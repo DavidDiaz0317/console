@@ -154,7 +154,7 @@ func (s *Server) handleScaleHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, map[string]interface{}{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "failed to scale workload",
 			"source":  "agent",
 		})
 		return
@@ -302,7 +302,7 @@ func (s *Server) handleDeployWorkloadHTTP(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, map[string]interface{}{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "failed to deploy workload",
 			"source":  "agent",
 		})
 		return
@@ -413,7 +413,7 @@ func (s *Server) handleDeleteWorkloadHTTP(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusInternalServerError)
 		writeJSON(w, map[string]interface{}{
 			"success": false,
-			"error":   err.Error(),
+			"error":   "failed to delete workload",
 			"source":  "agent",
 		})
 		return
@@ -559,7 +559,7 @@ func (s *Server) handlePodsStreamSSE(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				slog.Warn("[SSE] cluster pod fetch failed", "cluster", clusterName, "error", err)
-				payload := map[string]string{"cluster": clusterName, "error": err.Error()}
+				payload := map[string]string{"cluster": clusterName, "error": "failed to fetch pod data"}
 				data, _ := json.Marshal(payload)
 				fmt.Fprintf(bw, "event: cluster_error\ndata: %s\n\n", data)
 				bw.Flush()
@@ -679,7 +679,7 @@ func (s *Server) handleJobsStreamSSE(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				slog.Warn("[SSE] cluster job fetch failed", "cluster", clusterName, "error", err)
-				payload := map[string]string{"cluster": clusterName, "error": err.Error()}
+				payload := map[string]string{"cluster": clusterName, "error": "failed to fetch job data"}
 				data, _ := json.Marshal(payload)
 				fmt.Fprintf(bw, "event: cluster_error\ndata: %s\n\n", data)
 				bw.Flush()

@@ -823,7 +823,7 @@ func classifyProviderError(err error) (code, message string) {
 		strings.Contains(errText, "invalid x-api-key") ||
 		strings.Contains(errText, "invalid_api_key") ||
 		strings.Contains(errText, "unauthorized") {
-		return "authentication_error", "Failed to authenticate. API Error: " + err.Error()
+		return "authentication_error", "Failed to authenticate with AI provider. Check your API key and try again."
 	}
 
 	// Rate limit (HTTP 429)
@@ -832,10 +832,10 @@ func classifyProviderError(err error) (code, message string) {
 		strings.Contains(errText, "rate limit") ||
 		strings.Contains(errText, "too many requests") ||
 		strings.Contains(errText, "resource_exhausted") {
-		return "rate_limit", "Rate limit exceeded. " + err.Error()
+		return "rate_limit", "Rate limit exceeded. Please wait a moment and try again."
 	}
 
-	return "execution_error", "Failed to get response from AI provider. " + err.Error()
+	return "execution_error", "Failed to get response from AI provider. Please try again."
 }
 
 // handleMixedModeChat orchestrates a dual-agent chat:

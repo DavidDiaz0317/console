@@ -70,7 +70,8 @@ func (s *Server) handleEventsStreamSSE(w http.ResponseWriter, r *http.Request) {
 
 	client, err := s.k8sClient.GetClient(cluster)
 	if err != nil {
-		sseWriteError(w, flusher, fmt.Sprintf("failed to get client for cluster %s: %v", cluster, err))
+		slog.Warn("failed to get client for event watch", "cluster", cluster, "error", err)
+		sseWriteError(w, flusher, "failed to connect to cluster")
 		return
 	}
 
@@ -81,7 +82,7 @@ func (s *Server) handleEventsStreamSSE(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Warn("failed to start event watch", "cluster", cluster, "error", err)
-		sseWriteError(w, flusher, fmt.Sprintf("failed to watch events: %v", err))
+		sseWriteError(w, flusher, "failed to watch events")
 		return
 	}
 	defer watcher.Stop()
