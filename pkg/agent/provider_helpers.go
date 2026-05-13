@@ -67,6 +67,10 @@ func newAIProviderHTTPClient() *http.Client {
 	return &http.Client{Timeout: aiProviderHTTPTimeout}
 }
 
+// aiProviderHTTPClient is a package-level cached HTTP client for AI provider requests.
+// Reusing a single client enables connection pooling and reduces GC pressure.
+var aiProviderHTTPClient = newAIProviderHTTPClient()
+
 // buildPromptWithHistoryGeneric creates a prompt string from a ChatRequest
 // including system prompt and conversation history.
 // Used by CLI-based providers that take a single prompt string.
