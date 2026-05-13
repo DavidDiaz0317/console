@@ -18,6 +18,10 @@ import (
 // compatible providers.
 const openAICompatMaxTokens = 4096
 
+// openAICompatHTTPClient is a package-level HTTP client shared across all
+// OpenAI-compatible provider calls for connection pooling and reduced GC pressure.
+var openAICompatHTTPClient = newAIProviderHTTPClient()
+
 // chatViaOpenAICompatible sends a chat request to an OpenAI-compatible endpoint.
 // For endpoints that need extra request headers (e.g. OpenRouter's HTTP-Referer
 // and X-Title) or a default model, use chatViaOpenAICompatibleWithHeaders.
@@ -64,7 +68,7 @@ func chatViaOpenAICompatibleWithHeaders(ctx context.Context, req *ChatRequest, p
 		httpReq.Header.Set(k, v)
 	}
 
-	resp, err := newAIProviderHTTPClient().Do(httpReq)
+	resp, err := openAICompatHTTPClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
@@ -157,7 +161,7 @@ func streamViaOpenAICompatibleWithHeaders(ctx context.Context, req *ChatRequest,
 		httpReq.Header.Set(k, v)
 	}
 
-	resp, err := newAIProviderHTTPClient().Do(httpReq)
+	resp, err := openAICompatHTTPClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
