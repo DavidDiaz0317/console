@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/kubestellar/console/pkg/agent/protocol"
+	"github.com/kubestellar/console/pkg/k8s"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -646,9 +647,9 @@ type AddClusterRequest struct {
 	ServerURL     string `json:"serverUrl"`
 	AuthType      string `json:"authType"` // "token", "certificate"
 	Token         string `json:"token,omitempty"`
-	CertData      string `json:"certData,omitempty"`  // base64 PEM
-	KeyData       string `json:"keyData,omitempty"`   // base64 PEM
-	CAData        string `json:"caData,omitempty"`    // base64 PEM CA cert
+	CertData      string `json:"certData,omitempty"` // base64 PEM
+	KeyData       string `json:"keyData,omitempty"`  // base64 PEM
+	CAData        string `json:"caData,omitempty"`   // base64 PEM CA cert
 	SkipTLSVerify bool   `json:"skipTlsVerify,omitempty"`
 	Namespace     string `json:"namespace,omitempty"` // default namespace
 }
@@ -790,6 +791,31 @@ func (k *KubectlProxy) AddCluster(req AddClusterRequest) error {
 	return nil
 }
 
+// classifyConnectionError returns a safe, non-leaking error description for
+// cluster connection test failures. Uses k8s.ClassifyError for classification,
+// then maps to user-friendly messages.
+func classifyConnectionError(err error) string {
+	if err == nil {
+		return "unknown error"
+	}
+	switch k8s.ClassifyError(err.Error()) {
+	case "timeout":
+		return "connection timed out"
+	case "network":
+		return "connection refused or unreachable"
+	case "certificate":
+		return "TLS/certificate error"
+	case "auth":
+		return "authentication failed"
+	case "config":
+		return "cluster configuration error"
+	case "not_found":
+		return "cluster not found"
+	default:
+		return "connection failed"
+	}
+}
+
 // TestClusterConnection attempts to connect to a Kubernetes API server
 // and returns basic info (version, reachable status).
 func (k *KubectlProxy) TestClusterConnection(req TestConnectionRequest) (*TestConnectionResult, error) {
@@ -837,12 +863,12 @@ func (k *KubectlProxy) TestClusterConnection(req TestConnectionRequest) (*TestCo
 
 	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return &TestConnectionResult{Reachable: false, Error: sanitizeAgentError("create client", err)}, nil
+		return &TestConnectionResult{Reachable: false, Error: classifyConnectionError(err)}, nil
 	}
 
 	version, err := client.Discovery().ServerVersion()
 	if err != nil {
-		return &TestConnectionResult{Reachable: false, Error: sanitizeAgentError("test connection", err)}, nil
+		return &TestConnectionResult{Reachable: false, Error: classifyConnectionError(err)}, nil
 	}
 
 	return &TestConnectionResult{
