@@ -82,6 +82,7 @@ export const STORAGE_KEY_SNOOZED_RECOMMENDATIONS = 'kubestellar-snoozed-recommen
 
 // ── Notification dedup ────────────────────────────────────────────────
 export const STORAGE_KEY_NOTIFIED_ALERT_KEYS = 'kc-notified-alert-keys'
+export const STORAGE_KEY_FEEDBACK_SEEN_IDS = 'kc-feedback-seen-ids'
 
 // ── Component-specific cache ───────────────────────────────────────────
 export const STORAGE_KEY_OPA_CACHE = 'opa-statuses-cache'

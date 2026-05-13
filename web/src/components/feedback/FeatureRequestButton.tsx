@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { safeLazy } from '../../lib/safeLazy'
 import { Bug, Loader2 } from 'lucide-react'
 import { useFeatureRequests } from '../../hooks/useFeatureRequests'
@@ -6,6 +6,7 @@ import type { RequestType } from '../../hooks/useFeatureRequests'
 import { useModalState } from '../../lib/modals'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../lib/cn'
+import { STORAGE_KEY_FEEDBACK_SEEN_IDS } from '../../lib/constants'
 
 // Lazy-load the modal (~67 KB) — only needed when the user clicks the bug icon
 const FeatureRequestModal = safeLazy(() => import('./FeatureRequestModal'), 'FeatureRequestModal')
@@ -19,13 +20,24 @@ export function FeatureRequestButton({ showLabel = false }: FeatureRequestButton
   const { t } = useTranslation()
   const { isOpen: isModalOpen, open: openModal, close: closeModal } = useModalState()
   const [initialRequestType, setInitialRequestType] = useState<RequestType | undefined>()
-  // issue #10681 — Sync the navbar badge with "Your Requests" count shown in
-  // the Updates tab. Previously the badge showed unread *notifications*
-  // (a different data source), so the two numbers never agreed. Now we use
-  // summaries.length — the total request count from the same endpoint that
-  // backs "Your Requests ({n})".
+  // issue #13459 — Badge should decrement after viewing the panel.
+  // Track which request IDs the user has already seen in localStorage.
+  // Badge count = requests NOT yet seen (new since last panel open).
   const { summaries, isLoading: summariesLoading, error: summariesError } = useFeatureRequests(undefined, { countOnly: true })
-  const requestCount = (summaries || []).length
+
+  const getSeenIds = useCallback((): Set<string> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_FEEDBACK_SEEN_IDS)
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
+    } catch {
+      return new Set()
+    }
+  }, [])
+
+  const [seenIds, setSeenIds] = useState<Set<string>>(getSeenIds)
+
+  // Compute unseen request count (only new requests the user hasn't viewed)
+  const requestCount = (summaries || []).filter(s => !seenIds.has(s.id)).length
 
   // Auto-open modal when navigated from /issue, /feedback, /feature routes
   useEffect(() => {
@@ -38,6 +50,22 @@ export function FeatureRequestButton({ showLabel = false }: FeatureRequestButton
       window.removeEventListener('open-feedback-feature', featureHandler)
     }
   }, [openModal])
+
+  // Mark all current request IDs as seen when the modal opens
+  const markAllSeen = useCallback(() => {
+    const ids = (summaries || []).map(s => s.id)
+    if (ids.length === 0) return
+    const merged = new Set([...getSeenIds(), ...ids])
+    const arr = [...merged]
+    localStorage.setItem(STORAGE_KEY_FEEDBACK_SEEN_IDS, JSON.stringify(arr))
+    setSeenIds(merged)
+  }, [summaries, getSeenIds])
+
+  useEffect(() => {
+    if (isModalOpen) {
+      markAllSeen()
+    }
+  }, [isModalOpen, markAllSeen])
 
   return (
     <>
