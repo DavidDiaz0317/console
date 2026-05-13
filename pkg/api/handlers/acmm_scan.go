@@ -191,10 +191,7 @@ func ACMMScanHandler(c *fiber.Ctx) error {
 		case <-waiter.done:
 			if waiter.err != nil {
 				slog.Error("[ACMMScan] in-flight scan failed", "repo", repo, "error", waiter.err)
-				return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-					"error": "ACMM scan failed",
-					"repo":  repo,
-				})
+				return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": "ACMM scan failed"})
 			}
 			return c.JSON(waiter.result)
 		case <-c.Context().Done():
@@ -220,14 +217,11 @@ func ACMMScanHandler(c *fiber.Ctx) error {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			waiter.err = fmt.Errorf("repo not found")
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Repo not found", "detail": repo})
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Repo not found"})
 		}
 		waiter.err = fmt.Errorf("GitHub API error: %s", err.Error())
 		slog.Error("[ACMMScan] GitHub API error", "repo", repo, "error", err)
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"error": "GitHub API request failed",
-			"repo":  repo,
-		})
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": "GitHub API request failed"})
 	}
 
 	// Detect criteria
