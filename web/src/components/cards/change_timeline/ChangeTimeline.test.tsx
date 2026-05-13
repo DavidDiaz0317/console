@@ -59,6 +59,6 @@ describe('ChangeTimeline', () => {
     mockUseCardLoadingState.mockReturnValue({ showSkeleton: true, showEmptyState: false })
     render(<ChangeTimeline />)
 
-    expect(screen.getByTestId('skeleton')).toBeTruthy()
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
   })
 })

@@ -29,11 +29,18 @@ vi.mock('../../ui/Skeleton', () => ({
 function setup(overrides?: Record<string, unknown>) {
   mockUseCachedCloudCustodian.mockReturnValue({
     data: {
-      totalPolicies: 0,
-      activePolicies: 0,
+      health: 'not-installed',
+      version: '0.9.0',
       policies: [],
       topResources: [],
-      violations: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      violationsBySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+      summary: {
+        totalPolicies: 0,
+        successfulPolicies: 0,
+        failedPolicies: 0,
+        dryRunPolicies: 0,
+      },
+      lastCheckTime: new Date().toISOString(),
     },
     isLoading: false,
     isRefreshing: false,
@@ -57,6 +64,6 @@ describe('CloudCustodianStatus', () => {
     mockUseCardLoadingState.mockReturnValue({ showSkeleton: true, showEmptyState: false })
     render(<CloudCustodianStatus />)
 
-    expect(screen.getByTestId('skeleton')).toBeTruthy()
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
   })
 })
