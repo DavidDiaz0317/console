@@ -401,7 +401,7 @@ func (h *SelfUpgradeHandler) TriggerUpgrade(c *fiber.Ctx) error {
 		metav1.PatchOptions{},
 	)
 	if err != nil {
-		slog.Error("[self-upgrade] patch failed", "error", err)
+		slog.Error("[self-upgrade] failed to patch deployment", "error", err)
 		// Terminal error — no intermediate progress was claimed, so clients
 		// transition directly from "idle" to "failed" without a misleading
 		// 20% checkpoint.
@@ -410,11 +410,11 @@ func (h *SelfUpgradeHandler) TriggerUpgrade(c *fiber.Ctx) error {
 			Data: map[string]any{
 				"status":  "failed",
 				"message": "Failed to patch deployment",
-				"error":   err.Error(),
+				"error":   "failed to patch deployment",
 			},
 		})
 		return c.Status(fiber.StatusInternalServerError).JSON(SelfUpgradeTriggerResponse{
-			Error: fmt.Sprintf("failed to patch deployment: %v", err),
+			Error: "failed to patch deployment",
 		})
 	}
 

@@ -514,8 +514,8 @@ func (h *WorkloadHandlers) CreateClusterGroup(c *fiber.Ctx) error {
 			if err := h.k8sClient.LabelClusterNodes(ctx, cluster, map[string]string{
 				"kubestellar.io/group": group.Name,
 			}); err != nil {
-				slog.Error("[Workloads] failed to label cluster", "cluster", cluster, "error", err)
-				labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: %v", cluster, err))
+				slog.Error("[workloads] label query failed", "cluster", cluster, "error", err)
+				labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: failed to query labels", cluster))
 			}
 		}
 		if len(labelErrors) > 0 {
@@ -576,8 +576,8 @@ func (h *WorkloadHandlers) UpdateClusterGroup(c *fiber.Ctx) error {
 		for _, cluster := range oldGroup.Clusters {
 			if !newSet[cluster] {
 				if err := h.k8sClient.RemoveClusterNodeLabels(ctx, cluster, []string{"kubestellar.io/group"}); err != nil {
-					slog.Error("[Workloads] failed to remove label from cluster", "cluster", cluster, "error", err)
-					labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: %v", cluster, err))
+					slog.Error("[workloads] label query failed", "cluster", cluster, "error", err)
+					labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: failed to query labels", cluster))
 				}
 			}
 		}
@@ -586,8 +586,8 @@ func (h *WorkloadHandlers) UpdateClusterGroup(c *fiber.Ctx) error {
 				if err := h.k8sClient.LabelClusterNodes(ctx, cluster, map[string]string{
 					"kubestellar.io/group": group.Name,
 				}); err != nil {
-					slog.Error("[Workloads] failed to label cluster", "cluster", cluster, "error", err)
-					labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: %v", cluster, err))
+					slog.Error("[workloads] label query failed", "cluster", cluster, "error", err)
+					labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: failed to query labels", cluster))
 				}
 			}
 		}
@@ -635,8 +635,8 @@ func (h *WorkloadHandlers) DeleteClusterGroup(c *fiber.Ctx) error {
 		labelErrors := make([]string, 0)
 		for _, cluster := range group.Clusters {
 			if err := h.k8sClient.RemoveClusterNodeLabels(ctx, cluster, []string{"kubestellar.io/group"}); err != nil {
-				slog.Error("[Workloads] failed to remove label from cluster", "cluster", cluster, "error", err)
-				labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: %v", cluster, err))
+				slog.Error("[workloads] label query failed", "cluster", cluster, "error", err)
+				labelErrors = append(labelErrors, fmt.Sprintf("cluster %s: failed to query labels", cluster))
 			}
 		}
 		if len(labelErrors) > 0 {
