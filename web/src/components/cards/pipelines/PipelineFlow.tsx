@@ -389,7 +389,7 @@ export function PipelineFlow() {
   if (error && !hasData) {
     return (
       <div className="p-4 h-full flex items-center justify-center text-sm text-red-400">
-        {t('cards:pipelines.failedToLoadPipelineFlow')} {error}
+        {t('pipelines.failedToLoadPipelineFlow')} {error}
       </div>
     )
   }
