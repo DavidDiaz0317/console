@@ -555,6 +555,7 @@ export function CustomDashboard() {
     deleteDashboard(id).catch((err) => {
       // Backend deletion is optional — sidebar + localStorage are the source of truth
       console.error('[CustomDashboard] backend delete failed (non-critical):', err)
+      showToast(t('dashboard.toast.deleteBackendFailed', 'Deleted locally, but failed to sync dashboard deletion to the backend'), 'warning')
     })
   }
 
