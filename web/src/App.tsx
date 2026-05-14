@@ -11,6 +11,7 @@ import { DrillDownProvider } from './hooks/useDrillDown'
 import { DashboardProvider, useDashboardContext } from './hooks/useDashboardContext'
 import { GlobalFiltersProvider } from './hooks/useGlobalFilters'
 import { MissionProvider } from './hooks/useMissions'
+import { StellarProvider } from './hooks/useStellar'
 import { CardEventProvider } from './lib/cardEvents'
 import { ToastProvider } from './components/ui/Toast'
 import { AlertsProvider } from './contexts/AlertsContext'
@@ -36,6 +37,8 @@ const MissionLandingPage = safeLazy(() => import('./components/missions/MissionL
 
 // Stellar audit page — lazy loaded, only needed when navigating to /stellar/audit
 const StellarAuditPageLazy = safeLazy(() => import('./components/stellar/AuditPage').then(m => ({ default: m.AuditPage })), 'default')
+// Stellar full-page view — lazy loaded, only needed when navigating to /stellar
+const StellarPageLazy = safeLazy(() => import('./components/stellar/StellarPage').then(m => ({ default: m.StellarPage })), 'default')
 function StellarAuditPageWrapper() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--s-bg, #0a0e14)' }}>
@@ -705,6 +708,7 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
       <ToastProvider>
       <GlobalFiltersProvider>
       <MissionProvider>
+      <StellarProvider>
       <CardEventProvider>
       <AlertsProvider>
       <DashboardProvider>
@@ -823,6 +827,7 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
           <Route path={ROUTES.DRASI} element={<SuspenseRoute><Drasi /></SuspenseRoute>} />
           <Route path={ROUTES.ACMM} element={<SuspenseRoute><ACMM /></SuspenseRoute>} />
           <Route path={ROUTES.MARKETPLACE} element={<SuspenseRoute><Marketplace /></SuspenseRoute>} />
+          <Route path={ROUTES.STELLAR} element={<SuspenseRoute><StellarPageLazy /></SuspenseRoute>} />
           <Route path={ROUTES.QUANTUM} element={<SuspenseRoute><Quantum /></SuspenseRoute>} />
           {/* Dev test routes for unified framework validation */}
           <Route path={ROUTES.TEST_UNIFIED_CARD} element={<UnifiedCardTest />} />
@@ -846,6 +851,7 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
       </DashboardProvider>
       </AlertsProvider>
       </CardEventProvider>
+      </StellarProvider>
       </MissionProvider>
       </GlobalFiltersProvider>
       </ToastProvider>

@@ -1149,9 +1149,14 @@ func (s *Server) setupRoutes() {
 	missions := handlers.NewMissionsHandler()
 	missions.RegisterRoutes(api.Group("/missions"))
 
+	// Stellar event sink — populated below if the store supports Stellar.
+	// Referenced by TimelineHandler so cluster events fan out to ProcessEvent.
+	var stellarSink handlers.StellarEventSink
+
 	// Stellar assistant persistence routes (sticky preferences + mission registry)
 	if stellarStore, ok := s.store.(handlers.StellarStore); ok {
 		stellar := handlers.NewStellarHandler(stellarStore, s.k8sClient)
+		stellarSink = stellar
 		providerRegistry := providers.NewRegistry()
 		stellar.SetProviderRegistry(providerRegistry)
 		
@@ -1160,9 +1165,13 @@ func (s *Server) setupRoutes() {
 		schedulerBroadcaster := &stellarSchedulerBroadcaster{handler: stellar}
 		
 		stellar.SetBroadcaster(stellar)
-		
+		stellar.StartBackgroundWorkers(context.Background())
+		stellar.StartStellarV2Workers(context.Background())
+
 		slog.Info("stellar: broadcaster wired to scheduler and observer")
 		slog.Info("stellar: ProcessEvent hook registered on console event pipeline")
+		slog.Info("stellar: due-task reminder loop started")
+		slog.Info("stellar: v2 workers (stale-approval review + daily digest) started")
 		api.Get("/stellar/preferences", stellar.GetPreferences)
 		api.Put("/stellar/preferences", stellar.UpdatePreferences)
 		api.Get("/stellar/missions", stellar.ListMissions)
@@ -1174,6 +1183,7 @@ func (s *Server) setupRoutes() {
 		api.Get("/stellar/executions/:id", stellar.GetExecution)
 		api.Get("/stellar/actions", stellar.ListActions)
 		api.Post("/stellar/actions", stellar.CreateAction)
+		api.Post("/stellar/actions/execute", stellar.ExecuteAction)
 		api.Get("/stellar/actions/:id", stellar.GetAction)
 		api.Post("/stellar/actions/:id/approve", stellar.ApproveAction)
 		api.Post("/stellar/actions/:id/reject", stellar.RejectAction)
@@ -1204,6 +1214,11 @@ func (s *Server) setupRoutes() {
 		api.Get("/stellar/audit", stellar.ListAuditLog)
 		api.Post("/stellar/events/ingest", stellar.IngestEvent)
 		api.Get("/stellar/health", stellar.Health)
+		// Stellar v2: headless solve loop
+		api.Post("/stellar/solve/:eventID", stellar.StartSolve)
+		api.Post("/stellar/solve/:solveID/complete", stellar.CompleteAutoMission)
+		api.Get("/stellar/solves", stellar.ListSolves)
+		api.Get("/stellar/activity", stellar.ListActivity)
 
 		if s.k8sClient != nil {
 			stellarCtx, cancelStellar := context.WithCancel(context.Background())
@@ -1266,6 +1281,14 @@ func (s *Server) setupRoutes() {
 
 	// Cross-cluster event journal (#9967 Phase 1)
 	timeline := handlers.NewTimelineHandler(s.store, s.k8sClient)
+	if stellarSink != nil {
+		// Fan every collected cluster event into Stellar's ProcessEvent. Without
+		// this wiring Stellar was blind to anything except the test-ingest
+		// endpoint, which is why the assistant looked unresponsive to live
+		// CrashLoopBackOff events that the console event-stream card surfaced.
+		timeline.SetStellarEventSink(stellarSink)
+		slog.Info("stellar: timeline event collector wired to ProcessEvent")
+	}
 	api.Get("/timeline", timeline.GetTimeline)
 	timeline.StartEventCollector(s.done)
 
