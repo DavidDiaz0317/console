@@ -344,6 +344,7 @@ export const CARD_CATALOG = {
     { type: 'github_ci_monitor', title: 'GitHub CI Monitor', description: 'Monitor GitHub Actions workflows across repos', visualization: 'table' },
     { type: 'nightly_release_pulse', title: 'Nightly Release Pulse', description: 'Last release, streak, next nightly, 14-day history', visualization: 'sparkline' },
     { type: 'workflow_matrix', title: 'Workflow Matrix', description: 'Heatmap of workflows × 14/30/90 days', visualization: 'bar' },
+    { type: 'agentic_detection_runs', title: 'Detection Runs', description: 'Track agentic workflow runs with threat detection warnings or failures', visualization: 'bar' },
     { type: 'pipeline_flow', title: 'Live Runs (Flow)', description: 'Drasi-style flow visualization of in-flight Actions runs', visualization: 'status' },
     { type: 'recent_failures', title: 'Recent Failures', description: 'Last failed Actions runs with log drill-down and re-run', visualization: 'table' },
     { type: 'cluster_health_monitor', title: 'Cluster Health Monitor', description: 'Monitor cluster health with pod/deployment issue tracking', visualization: 'status' },

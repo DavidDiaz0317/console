@@ -4737,5 +4737,13 @@
   },
   "common": {
     "retry": "Retry"
+  },
+  "agenticDetectionRuns": {
+    "noDetections": "No Detection Problems",
+    "noDetectionsDesc": "All agentic workflows completed without threat detection warnings or failures.",
+    "viewIssue": "View tracking issue",
+    "searchPlaceholder": "Search detection runs...",
+    "viewRun": "View Run",
+    "viewAllIssue": "View all detection runs on GitHub"
   }
 }

@@ -86,6 +86,7 @@ import { tufStatusConfig } from './tuf-status'
 import { vitessStatusConfig } from './vitess-status'
 import { nightlyReleasePulseConfig } from './nightly-release-pulse'
 import { workflowMatrixConfig } from './workflow-matrix'
+import { agenticDetectionRunsConfig } from './agentic-detection-runs'
 import { pipelineFlowConfig } from './pipeline-flow'
 import { recentFailuresConfig } from './recent-failures'
 import { gitopsDriftConfig } from './gitops-drift'
@@ -298,6 +299,7 @@ export const CARD_CONFIGS: CardConfigRegistry = {
   vitess_status: vitessStatusConfig,
   nightly_release_pulse: nightlyReleasePulseConfig,
   workflow_matrix: workflowMatrixConfig,
+  agentic_detection_runs: agenticDetectionRunsConfig,
   pipeline_flow: pipelineFlowConfig,
   recent_failures: recentFailuresConfig,
   gitops_drift: gitopsDriftConfig,
@@ -581,6 +583,7 @@ export {
   githubCiMonitorConfig,
   nightlyReleasePulseConfig,
   workflowMatrixConfig,
+  agenticDetectionRunsConfig,
   pipelineFlowConfig,
   recentFailuresConfig,
   gitopsDriftConfig,

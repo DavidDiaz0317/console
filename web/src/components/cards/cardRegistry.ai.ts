@@ -42,6 +42,7 @@ const NightlyReleasePulse = safeLazy(() => _pipelinesBundle, 'NightlyReleasePuls
 const WorkflowMatrix = safeLazy(() => _pipelinesBundle, 'WorkflowMatrix')
 const PipelineFlow = safeLazy(() => _pipelinesBundle, 'PipelineFlow')
 const RecentFailures = safeLazy(() => _pipelinesBundle, 'RecentFailures')
+const AgenticDetectionRuns = safeLazy(() => import('./AgenticDetectionRuns'), 'AgenticDetectionRuns')
 const ProviderHealth = safeLazy(() => import('./ProviderHealth'), 'ProviderHealth')
 const KagentiStatusCard = safeLazy(() => import('./KagentiStatusCard'), 'KagentiStatusCard')
 const _kagentiBundle = import('./kagenti').catch(() => undefined as never)
@@ -76,7 +77,7 @@ export const aiCardRegistry: CardRegistryCategory = {
     latency_breakdown: LatencyBreakdown, throughput_comparison: ThroughputComparison,
     performance_timeline: PerformanceTimeline, resource_utilization: ResourceUtilization,
     nightly_release_pulse: NightlyReleasePulse, workflow_matrix: WorkflowMatrix, pipeline_flow: PipelineFlow,
-    recent_failures: RecentFailures, provider_health: ProviderHealth, kagenti_status: KagentiStatusCard,
+    recent_failures: RecentFailures, agentic_detection_runs: AgenticDetectionRuns, provider_health: ProviderHealth, kagenti_status: KagentiStatusCard,
     kagenti_agent_fleet: KagentiAgentFleet, kagenti_build_pipeline: KagentiBuildPipeline,
     kagenti_tool_registry: KagentiToolRegistry, kagenti_agent_discovery: KagentiAgentDiscovery,
     kagenti_security: KagentiSecurity, kagenti_security_posture: KagentiSecurityPosture,
@@ -98,7 +99,7 @@ export const aiCardRegistry: CardRegistryCategory = {
     pareto_frontier: () => import('./llmd'), hardware_leaderboard: () => import('./llmd'), latency_breakdown: () => import('./llmd'),
     throughput_comparison: () => import('./llmd'), performance_timeline: () => import('./llmd'), resource_utilization: () => import('./llmd'),
     nightly_release_pulse: () => import('./pipelines'), workflow_matrix: () => import('./pipelines'), pipeline_flow: () => import('./pipelines'),
-    recent_failures: () => import('./pipelines'), provider_health: () => import('./ProviderHealth'), kagenti_status: () => import('./KagentiStatusCard'),
+    recent_failures: () => import('./pipelines'), agentic_detection_runs: () => import('./AgenticDetectionRuns'), provider_health: () => import('./ProviderHealth'), kagenti_status: () => import('./KagentiStatusCard'),
     kagenti_agent_fleet: () => import('./kagenti'), kagenti_build_pipeline: () => import('./kagenti'), kagenti_tool_registry: () => import('./kagenti'),
     kagenti_agent_discovery: () => import('./kagenti'), kagenti_security: () => import('./kagenti'), kagenti_security_posture: () => import('./kagenti'),
     kagenti_topology: () => import('./kagenti'), kagent_status: () => import('./KagentStatusCard'), kagent_agent_fleet: () => import('./kagent'),
@@ -116,10 +117,10 @@ export const aiCardRegistry: CardRegistryCategory = {
     llmd_flow: 8, kvcache_monitor: 4, epp_routing: 6, pd_disaggregation: 6, llmd_ai_insights: 6, llmd_configurator: 4,
     nightly_e2e_status: 12, benchmark_hero: 12, pareto_frontier: 12, hardware_leaderboard: 12, latency_breakdown: 12,
     throughput_comparison: 12, performance_timeline: 12, resource_utilization: 12, nightly_release_pulse: 6,
-    workflow_matrix: 6, pipeline_flow: 12, recent_failures: 6,
+    workflow_matrix: 6, pipeline_flow: 12, recent_failures: 6, agentic_detection_runs: 6,
   },
   demoDataCards: ['ml_jobs', 'ml_notebooks', 'llmd_configurator', 'kagenti_status', 'kagenti_agent_fleet', 'kagenti_build_pipeline', 'kagenti_tool_registry', 'kagenti_agent_discovery', 'kagenti_security', 'kagenti_security_posture', 'kagenti_topology', 'kagent_status', 'kagent_agent_fleet', 'kagent_tool_registry', 'kagent_model_providers', 'kagent_agent_discovery', 'kagent_security', 'kagent_topology'],
-  liveDataCards: ['prow_jobs', 'prow_status', 'prow_history', 'llm_inference', 'llm_models', 'workload_monitor', 'workload_status', 'llmd_stack_monitor', 'prow_ci_monitor', 'github_ci_monitor', 'nightly_release_pulse', 'workflow_matrix', 'pipeline_flow', 'recent_failures', 'cluster_health_monitor', 'nightly_e2e_status', 'kagenti_status', 'kagenti_agent_fleet', 'kagenti_build_pipeline', 'kagenti_tool_registry', 'kagenti_agent_discovery', 'kagenti_security', 'kagenti_topology', 'kagent_status', 'kagent_agent_fleet', 'kagent_tool_registry', 'kagent_model_providers', 'kagent_agent_discovery', 'kagent_security', 'kagent_topology'],
+  liveDataCards: ['prow_jobs', 'prow_status', 'prow_history', 'llm_inference', 'llm_models', 'workload_monitor', 'workload_status', 'llmd_stack_monitor', 'prow_ci_monitor', 'github_ci_monitor', 'nightly_release_pulse', 'workflow_matrix', 'pipeline_flow', 'recent_failures', 'agentic_detection_runs', 'cluster_health_monitor', 'nightly_e2e_status', 'kagenti_status', 'kagenti_agent_fleet', 'kagenti_build_pipeline', 'kagenti_tool_registry', 'kagenti_agent_discovery', 'kagenti_security', 'kagenti_topology', 'kagent_status', 'kagent_agent_fleet', 'kagent_tool_registry', 'kagent_model_providers', 'kagent_agent_discovery', 'kagent_security', 'kagent_topology'],
   demoStartupPreloaders: [
     () => import('./workload-detection/MLJobs'), () => import('./workload-detection/MLNotebooks'), () => import('./llmd'),
     () => import('./KagentiStatusCard'), () => import('./kagenti/KagentiAgentFleet'), () => import('./kagenti/KagentiBuildPipeline'),

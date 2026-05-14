@@ -88,6 +88,10 @@ func (s *Server) setupAPICoreRoutes(routes *routeSetupContext) {
 	api.Get("/github-pipelines", githubPipelines.Serve)
 	api.Post("/github-pipelines", githubPipelines.Serve)
 	api.Get("/github-pipelines/health", githubPipelines.HandleHealth)
+
+	agenticDetectionRuns := handlers.NewAgenticDetectionRunsHandler()
+	api.Get("/agentic/detection-runs", agenticDetectionRuns.GetDetectionRuns)
+
 	api.Get("/github/*", githubProxy.Proxy)
 
 	api.Get("/acmm/scan", handlers.ACMMScanHandler)
