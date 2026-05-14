@@ -2,6 +2,7 @@ import { useState, memo, Suspense } from 'react'
 import { safeLazy } from '../../lib/safeLazy'
 import { useModalState } from '../../lib/modals'
 import { useTranslation } from 'react-i18next'
+import { cn } from '../../lib/cn'
 import {
   Server, CheckCircle2, XCircle, WifiOff, Box, Cpu, MemoryStick, HardDrive, Zap, Layers,
   FolderOpen, AlertCircle, AlertTriangle, AlertOctagon, Package, Ship, Settings, Clock,
@@ -27,6 +28,7 @@ import { useStatHistory, MIN_SPARKLINE_POINTS } from '../../hooks/useStatHistory
 import { wrapAbbreviations } from '../shared/TechnicalAcronym'
 import { safeGetJSON, safeSetJSON } from '../../lib/utils/localStorage'
 import { STAT_BLOCK_COLORS as COLOR_HEX } from '../../lib/tokens'
+import { getContrastTextColor, LIGHT_TEXT_CLASS } from '../../lib/contrastText'
 
 // Icon mapping for dynamic rendering
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -265,6 +267,22 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
   const effectiveMode = mode === 'sparkline' && !hasEnoughHistory
     ? 'numeric'
     : (PROGRESS_DISPLAY_MODES.has(mode) && !canScaleProgress ? 'numeric' : mode)
+  const isHeatmapMode = effectiveMode === 'heatmap' && !isNaN(numericValue)
+  const heatmapOpacity = isHeatmapMode ? getHeatmapOpacity(numericValue) : 0
+  const hasHeatmapBackground = heatmapOpacity > 0
+  const heatmapTextClass = hasHeatmapBackground ? getContrastTextColor(hexColor, heatmapOpacity) : null
+  const heatmapMutedTextClass = hasHeatmapBackground
+    ? (heatmapTextClass === LIGHT_TEXT_CLASS ? 'text-white/80' : 'text-gray-900/80')
+    : 'text-muted-foreground'
+  const heatmapValueClass = hasHeatmapBackground
+    ? cn(heatmapTextClass, heatmapTextClass === LIGHT_TEXT_CLASS && 'drop-shadow-xs')
+    : valueColor
+  const heatmapLabelClass = hasHeatmapBackground
+    ? cn(heatmapTextClass, heatmapTextClass === LIGHT_TEXT_CLASS && 'drop-shadow-xs')
+    : 'text-muted-foreground'
+  const heatmapIconClass = hasHeatmapBackground
+    ? cn(heatmapTextClass, heatmapTextClass === LIGHT_TEXT_CLASS && 'drop-shadow-xs')
+    : (isLoading ? 'text-muted-foreground/30' : colorClass)
 
   return (
     <div
@@ -302,8 +320,8 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
           ("Clusters", "Healthy") never break mid-word at narrow card widths
           (#11456). The full name is available via title tooltip. */}
       <div className="flex items-start gap-2 mb-2 min-w-0">
-        <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${isLoading ? 'text-muted-foreground/30' : colorClass}`} />
-        <span className="text-sm text-muted-foreground truncate leading-tight min-w-0" title={block.name}>{wrapAbbreviations(block.name)}</span>
+        <IconComponent className={cn('w-5 h-5 shrink-0 mt-0.5', heatmapIconClass)} />
+        <span className={cn('text-sm truncate leading-tight min-w-0', heatmapLabelClass)} title={block.name}>{wrapAbbreviations(block.name)}</span>
       </div>
 
       {/* Mode-specific content */}
@@ -436,11 +454,11 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
         <>
           <div
             className="absolute inset-0 rounded-lg transition-colors duration-500"
-            style={{ backgroundColor: hexColor, opacity: getHeatmapOpacity(numericValue) }}
+            style={{ backgroundColor: hexColor, opacity: heatmapOpacity }}
           />
           <div className="relative">
-            <div data-testid={`stat-block-${block.id}-count`} className={`text-3xl font-bold ${numericValue > 0 ? 'text-white drop-shadow-xs' : valueColor}`}>{displayValue}</div>
-            {data.sublabel && <div className={`text-xs ${numericValue > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{wrapAbbreviations(data.sublabel)}</div>}
+            <div data-testid={`stat-block-${block.id}-count`} className={cn('text-3xl font-bold', heatmapValueClass)}>{displayValue}</div>
+            {data.sublabel && <div className={cn('text-xs', heatmapMutedTextClass)}>{wrapAbbreviations(data.sublabel)}</div>}
           </div>
         </>
       ) : (
