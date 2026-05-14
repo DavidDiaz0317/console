@@ -48,14 +48,16 @@ jobs:
           LABEL="workflow-failure"
           SEARCH_TITLE="Workflow failure: ${WORKFLOW_NAME}"
 
-          # Search for an existing open issue with matching title and label
+          # Search for an existing open issue with matching title and label.
+          # Use jq env.SEARCH_TITLE to avoid shell injection via workflow name.
+          export SEARCH_TITLE
           EXISTING=$(gh issue list \
             --repo "${{ github.repository }}" \
             --state open \
             --label "$LABEL" \
             --search "in:title \"${SEARCH_TITLE}\"" \
             --json number,title \
-            --jq ".[] | select(.title == \"${SEARCH_TITLE}\") | .number" \
+            --jq '.[] | select(.title == env.SEARCH_TITLE) | .number' \
           )
 
           if [ -n "$EXISTING" ]; then
@@ -92,16 +94,24 @@ jobs:
           if [ -n "$FAILED_JOBS" ]; then
             JOBS_LINE="- **Failed jobs:** \`${FAILED_JOBS}\`"
           fi
-          gh issue comment "${{ steps.check.outputs.issue_number }}" \
-            --repo "${{ github.repository }}" \
-            --body "$(cat <<EOF
-          **Still failing** — \`${WORKFLOW_NAME}\` failed again.
+
+          # Use a quoted heredoc ('BODYEOF') to prevent shell expansion,
+          # then envsubst to safely substitute env vars without executing
+          # backticks or $(...) constructs.
+          export WORKFLOW_NAME RUN_ID RUN_URL JOBS_LINE
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+          export TIMESTAMP
+          cat >/tmp/comment-body.txt <<'BODYEOF'
+          **Still failing** — `${WORKFLOW_NAME}` failed again.
 
           - **Run:** [#${RUN_ID}](${RUN_URL})
-          - **Time:** $(date -u '+%Y-%m-%d %H:%M UTC')
+          - **Time:** ${TIMESTAMP}
           ${JOBS_LINE}
-          EOF
-          )"
+          BODYEOF
+          envsubst < /tmp/comment-body.txt > /tmp/comment-body-final.txt
+          gh issue comment "${{ steps.check.outputs.issue_number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/comment-body-final.txt
 
       - name: Ensure label exists
         if: steps.check.outputs.exists == 'false'
@@ -142,29 +152,37 @@ jobs:
             FAILED_LINE="| **Failed jobs** | \`${FAILED_JOBS}\` |"
           fi
 
-          gh issue create \
-            --repo "${{ github.repository }}" \
-            --title "Workflow failure: ${WORKFLOW_NAME}" \
-            --label "workflow-failure,bug" \
-            --body "$(cat <<EOF
+          # Use a quoted heredoc ('BODYEOF') to prevent shell expansion,
+          # then envsubst to safely substitute env vars without executing
+          # backticks or $(...) constructs.
+          export WORKFLOW_NAME RUN_ID RUN_URL WORKFLOW_FILE FAILED_LINE
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+          export TIMESTAMP
+          cat >/tmp/issue-body.txt <<'BODYEOF'
           ## Workflow Failure
 
           The **${WORKFLOW_NAME}** workflow failed.
 
           | Detail | Value |
           |--------|-------|
-          | **Workflow** | \`${WORKFLOW_NAME}\` |
+          | **Workflow** | `${WORKFLOW_NAME}` |
           | **Run** | [#${RUN_ID}](${RUN_URL}) |
-          | **File** | \`${WORKFLOW_FILE}\` |
-          | **Time** | $(date -u '+%Y-%m-%d %H:%M UTC') |
+          | **File** | `${WORKFLOW_FILE}` |
+          | **Time** | ${TIMESTAMP} |
           ${FAILED_LINE}
 
           ### Next Steps
           1. Check the [failed run](${RUN_URL}) for error details
           2. Fix the underlying issue
-          3. **Do not close** this issue until the workflow passes on \`main\`
+          3. **Do not close** this issue until the workflow passes on `main`
 
           ---
           *This issue was automatically created by the workflow failure monitor.*
-          EOF
-          )"
+          BODYEOF
+          envsubst < /tmp/issue-body.txt > /tmp/issue-body-final.txt
+
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Workflow failure: ${WORKFLOW_NAME}" \
+            --label "workflow-failure,bug" \
+            --body-file /tmp/issue-body-final.txt

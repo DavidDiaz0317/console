@@ -32,9 +32,11 @@ jobs:
           REF="${{ github.event.deployment.ref }}"
           echo "Deployment ref: $REF"
 
-          # Find PR for this ref
+          # Find PR for this ref — use jq env.REF to avoid injection via
+          # branch names containing quotes or special characters.
+          export REF
           PR_NUM=$(gh api repos/${{ github.repository }}/pulls \
-            --jq ".[] | select(.head.ref == \"$REF\") | .number" | head -1)
+            --jq '.[] | select(.head.ref == env.REF) | .number' | head -1)
 
           if [ -n "$PR_NUM" ]; then
             echo "Found PR #$PR_NUM for ref $REF"
@@ -59,8 +61,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REF="${{ github.event.deployment.ref }}"
+          export REF
           PR_NUM=$(gh api repos/${{ github.repository }}/pulls \
-            --jq ".[] | select(.head.ref == \"$REF\") | .number" | head -1)
+            --jq '.[] | select(.head.ref == env.REF) | .number' | head -1)
 
           if [ -n "$PR_NUM" ]; then
             gh pr edit "$PR_NUM" --repo "${{ github.repository }}" --remove-label "preview-ready" 2>/dev/null || true
