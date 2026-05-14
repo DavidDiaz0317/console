@@ -63,8 +63,13 @@ var allowedQuantumPaths = []string{
 	"status",
 }
 
-// isAllowedQuantumPath validates that the endpoint matches an allowed prefix.
+// isAllowedQuantumPath validates that the endpoint matches an allowed prefix and contains no path traversal attempts.
 func isAllowedQuantumPath(endpoint string) bool {
+	// SECURITY: Reject path traversal attempts
+	if strings.Contains(endpoint, "..") {
+		return false
+	}
+
 	for _, prefix := range allowedQuantumPaths {
 		if endpoint == prefix || strings.HasPrefix(endpoint, prefix+"/") {
 			return true
@@ -77,8 +82,8 @@ func isAllowedQuantumPath(endpoint string) bool {
 func (h *QuantumProxyHandler) ProxyRequest(c *fiber.Ctx) error {
 	endpoint := c.Params("*")
 
-	// SECURITY: Reject path traversal and validate against allowed paths
-	if strings.Contains(endpoint, "..") || !isAllowedQuantumPath(endpoint) {
+	// SECURITY: Validate against allowed paths (includes path traversal check)
+	if !isAllowedQuantumPath(endpoint) {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid quantum API path")
 	}
 
@@ -186,8 +191,8 @@ func (h *QuantumProxyHandler) ProxyResultHistogram(c *fiber.Ctx) error {
 func (h *QuantumProxyHandler) ProxyPostRequest(c *fiber.Ctx) error {
 	endpoint := c.Params("*")
 
-	// SECURITY: Reject path traversal and validate against allowed paths
-	if strings.Contains(endpoint, "..") || !isAllowedQuantumPath(endpoint) {
+	// SECURITY: Validate against allowed paths (includes path traversal check)
+	if !isAllowedQuantumPath(endpoint) {
 		return fiber.NewError(fiber.StatusBadRequest, "Invalid quantum API path")
 	}
 

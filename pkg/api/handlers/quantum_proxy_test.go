@@ -40,9 +40,10 @@ func TestIsAllowedQuantumPath(t *testing.T) {
 		{"config", "config", false},
 		{"admin", "admin", false},
 
-		// Path traversal attempts (note: .. is caught at ProxyRequest level, not by isAllowedQuantumPath)
+		// Path traversal attempts (rejected by isAllowedQuantumPath)
 		{"path traversal ../ prefix", "../auth", false},
-		{"path traversal in middle auth/..", "auth/../status", true}, // isAllowedQuantumPath allows it (.. check happens in ProxyRequest)
+		{"path traversal in middle", "auth/../status", false},
+		{"path traversal complex", "qasm/../../etc/passwd", false},
 
 		// Edge cases
 		{"empty string", "", false},
