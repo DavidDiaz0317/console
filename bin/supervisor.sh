@@ -53,54 +53,75 @@ RATE_LIMIT_ALERTED=""
 
 ACTIVE_LAUNCH_CMD="$AGENT_LAUNCH_CMD"
 
+SUPERVISOR_TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/supervisor.${SESSION}.XXXXXX")"
+chmod 700 "$SUPERVISOR_TMPDIR"
+trap 'rm -rf "$SUPERVISOR_TMPDIR"' EXIT
+LAUNCHER="$SUPERVISOR_TMPDIR/launcher.sh"
+PROMPT_FILE="$SUPERVISOR_TMPDIR/prompt.txt"
+
 log() { hive_log "$*"; }
 
 # ─── Write launcher script (avoids quoting hell with eval) ─────────────────
 
-LAUNCHER="/tmp/.supervisor-launch-${SESSION}.sh"
+serialize_launch_cmd() {
+  local -a launch_cmd_words=()
+  read -r -a launch_cmd_words <<< "$ACTIVE_LAUNCH_CMD"
+  if [ "${#launch_cmd_words[@]}" -eq 0 ]; then
+    echo "FATAL: ACTIVE_LAUNCH_CMD is empty" >&2
+    exit 1
+  fi
+  printf '%q ' "${launch_cmd_words[@]}"
+}
+
+write_launcher_script() {
+  local prompt_mode="$1"
+  local serialized_cmd
+  serialized_cmd="$(serialize_launch_cmd)"
+
+  {
+    printf '#!/bin/bash\n'
+    printf 'cd %q\n' "$WORKDIR"
+    printf 'exec %s' "$serialized_cmd"
+    case "$prompt_mode" in
+      default)
+        printf '"$(cat %q)"\n' "$PROMPT_FILE"
+        ;;
+      stdin)
+        printf -- '-i "$(cat %q)"\n' "$PROMPT_FILE"
+        ;;
+      prompt-flag)
+        printf -- '--prompt "$(cat %q)"\n' "$PROMPT_FILE"
+        ;;
+      none)
+        printf '\n'
+        ;;
+      *)
+        echo "FATAL: unknown prompt mode: $prompt_mode" >&2
+        exit 1
+        ;;
+    esac
+  } > "$LAUNCHER"
+  chmod 700 "$LAUNCHER"
+}
 
 write_launcher() {
-  local prompt_file="/tmp/.supervisor-prompt-${SESSION}.txt"
-  printf '%s' "$AGENT_LOOP_PROMPT" > "$prompt_file"
+  printf '%s' "$AGENT_LOOP_PROMPT" > "$PROMPT_FILE"
+  chmod 600 "$PROMPT_FILE"
 
   case "$CLI" in
     claude)
-      cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD "\$(cat $prompt_file)"
-LAUNCH
+      write_launcher_script default
       ;;
-    copilot)
-      cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD -i "\$(cat $prompt_file)"
-LAUNCH
-      ;;
-    gemini)
-      cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD -i "\$(cat $prompt_file)"
-LAUNCH
+    copilot|gemini)
+      write_launcher_script stdin
       ;;
     goose)
-      cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD --prompt "\$(cat $prompt_file)"
-LAUNCH
+      write_launcher_script prompt-flag
       ;;
     *)
-      cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD "\$(cat $prompt_file)"
-LAUNCH
+      write_launcher_script default
       ;;
   esac
-  chmod +x "$LAUNCHER"
 }
 
 # ─── Tmux styling ─────────────────────────────────────────────────────────
@@ -118,12 +139,7 @@ PROMPT_DELIVERED=""
 is_paused() { hive_is_paused "$SESSION"; }
 
 write_paused_launcher() {
-  cat > "$LAUNCHER" << LAUNCH
-#!/bin/bash
-cd "$WORKDIR"
-exec $ACTIVE_LAUNCH_CMD
-LAUNCH
-  chmod +x "$LAUNCHER"
+  write_launcher_script none
 }
 
 start_session() {
