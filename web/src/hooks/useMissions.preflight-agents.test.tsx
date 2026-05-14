@@ -282,7 +282,7 @@ describe('agent selection logic', () => {
     expect(result.current.selectedAgent).toBe('claude-code')
   })
 
-  it('uses server-selected agent when provided', async () => {
+  it('falls back from unsafe server-selected agents to a headless executor', async () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
     await act(async () => {
       result.current.connectToAgent()
@@ -296,16 +296,15 @@ describe('agent selection logic', () => {
         payload: {
           agents: [
             { name: 'copilot-cli', displayName: 'Copilot CLI', description: '', provider: 'github-cli', available: true },
-            { name: 'claude-code', displayName: 'Claude Code', description: '', provider: 'anthropic-local', available: true },
+            { name: 'claude-code', displayName: 'Claude Code', description: '', provider: 'anthropic-local', available: true, capabilities: 3 },
           ],
           defaultAgent: 'claude-code',
-          selected: 'copilot-cli', // Server explicitly selected copilot-cli
+          selected: 'copilot-cli',
         },
       })
     })
 
-    // Should use server selection when provided
-    expect(result.current.selectedAgent).toBe('copilot-cli')
+    expect(result.current.selectedAgent).toBe('claude-code')
   })
 
   it('restores persisted agent selection from localStorage', async () => {

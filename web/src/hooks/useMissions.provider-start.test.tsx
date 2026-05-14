@@ -391,6 +391,26 @@ describe('startMission', () => {
     expect(emitMissionCompleted).toHaveBeenCalled()
   })
 
+  it('fails a mission when the final result is only a non-interactive warning', async () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+    const { requestId, missionId } = await startMissionWithConnection(result)
+
+    act(() => {
+      MockWebSocket.lastInstance?.simulateMessage({
+        id: requestId,
+        type: 'result',
+        payload: {
+          content: 'Non-interactive mode: this terminal does not support stdin input. Please complete the login step in your own terminal first.',
+        },
+      })
+    })
+
+    const mission = result.current.missions.find(m => m.id === missionId)
+    expect(mission?.status).toBe('failed')
+    expect(mission?.messages.some(m => m.role === 'system' && m.content.includes('Mission stopped before execution'))).toBe(true)
+    expect(emitMissionCompleted).not.toHaveBeenCalled()
+  })
+
   it('does not duplicate response when stream is followed by result with same content', async () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
     const { requestId } = await startMissionWithConnection(result)
@@ -481,6 +501,28 @@ describe('startMission', () => {
     // Use expect.anything() so this assertion stays valid as the 3rd arg
     // evolves (test exists to verify the type+code, not the message body).
     expect(emitMissionError).toHaveBeenCalledWith('troubleshoot', 'test_err', expect.anything())
+  })
+
+  it('fails fast instead of launching Antigravity for mission execution', async () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    act(() => {
+      result.current.selectAgent('antigravity')
+    })
+
+    act(() => {
+      result.current.startMission(defaultParams)
+    })
+    await act(async () => { await Promise.resolve() })
+
+    const mission = result.current.missions[0]
+    expect(mission.status).toBe('failed')
+    expect(mission.messages.some(m => m.role === 'system' && m.content.includes('launches a desktop app'))).toBe(true)
+
+    const chatCalls = MockWebSocket.lastInstance?.send.mock.calls.filter(
+      (call: string[]) => JSON.parse(call[0]).type === 'chat',
+    ) ?? []
+    expect(chatCalls).toHaveLength(0)
   })
 
   it('persists an auto-discovered kagenti agent before starting the mission', async () => {

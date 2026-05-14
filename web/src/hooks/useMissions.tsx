@@ -161,6 +161,19 @@ const OPTIONAL_MISSION_TOOL_PATTERNS = {
 const MISSION_CONTEXT_TOOL_KEYS = ['requiredLocalTools', 'requiredTools', 'requiredMissionTools'] as const
 const MISSING_TOOL_WARNING_HEADING = `**${i18n.t('missions.preflight.toolWarning.heading')}**`
 const MISSING_TOOL_WARNING_SUFFIX = i18n.t('missions.preflight.toolWarning.suffix')
+const NON_HEADLESS_MISSION_AGENTS = new Set(['copilot-cli', 'antigravity'])
+const NON_INTERACTIVE_RESULT_PATTERNS = [
+  /\bnon[- ]interactive (?:mode|terminal)\b/i,
+  /\bno stdin\b/i,
+  /\bstdin (?:is not|not available|unsupported)\b/i,
+  /\brequires interactive (?:input|authentication|login|confirmation)\b/i,
+] as const
+const DESKTOP_LAUNCH_RESULT_PATTERNS = [
+  /\blaunch(?:ing)?\b.*\bantigravity\b/i,
+  /\bopening\b.*\bantigravity\b/i,
+  /\bantigravity\b.*\bdesktop app\b/i,
+  /\bantigravity\b.*\bapp\b/i,
+] as const
 
 function shouldAllowMissingToolWarning(context?: Record<string, unknown>): boolean {
   return context?.allowMissingLocalTools === true
@@ -230,6 +243,52 @@ function buildMissionToolUnavailableError(error: PreflightError, missingTools: s
       missingTools,
     },
   }
+}
+
+function getAgentInfo(agentName: string | null | undefined, agents: AgentInfo[]): AgentInfo | undefined {
+  if (!agentName) return undefined
+  return agents.find(agent => agent.name === agentName)
+}
+
+function isNonHeadlessMissionAgent(agentName: string | null | undefined, agents: AgentInfo[]): boolean {
+  if (!agentName) return false
+  const agent = getAgentInfo(agentName, agents)
+  return NON_HEADLESS_MISSION_AGENTS.has(agentName) || agent?.provider === 'google-ag'
+}
+
+function buildMissionAgentExecutionError(agentName: string | null | undefined, agents: AgentInfo[]): string | null {
+  if (!isNonHeadlessMissionAgent(agentName, agents)) return null
+  const displayName = getAgentInfo(agentName, agents)?.displayName || agentName || 'The selected agent'
+  const desktopSpecific = agentName === 'antigravity'
+    ? `${displayName} launches a desktop app instead of executing Console missions headlessly.`
+    : `${displayName} stops for non-interactive prompts instead of executing Console missions headlessly.`
+
+  return `**Selected agent cannot run this mission**\n\n${desktopSpecific}\n\nSelect a headless CLI agent that executes commands directly, then retry. If authentication is required, run that step in your own terminal first.`
+}
+
+function detectPrematureMissionResultError(
+  content: string,
+  agentName: string | null | undefined,
+  agents: AgentInfo[],
+): { code: string; message: string } | null {
+  const trimmed = content.trim()
+  if (!trimmed) return null
+
+  if (NON_INTERACTIVE_RESULT_PATTERNS.some(pattern => pattern.test(trimmed))) {
+    return {
+      code: 'non_interactive_warning',
+      message: `**Mission stopped before execution**\n\nThe agent reported that this step requires interactive input, so Console did not mark the mission as completed.\n\nComplete the required login or confirmation in your own terminal, or switch to a headless CLI agent and retry.`,
+    }
+  }
+
+  if (isNonHeadlessMissionAgent(agentName, agents) && DESKTOP_LAUNCH_RESULT_PATTERNS.some(pattern => pattern.test(trimmed))) {
+    return {
+      code: 'desktop_launch_blocked',
+      message: `**Mission stopped before execution**\n\nThe selected agent launched a desktop flow instead of running CLI commands. Console will not treat that as a completed mission.\n\nSelect a headless CLI agent and retry the mission.`,
+    }
+  }
+
+  return null
 }
 
 export function MissionProvider({ children }: { children: ReactNode }) {
@@ -331,6 +390,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   const isSidebarOpenRef = useRef(isSidebarOpen)
   const selectedAgentRef = useRef(selectedAgent)
   const defaultAgentRef = useRef(defaultAgent)
+  const agentsRef = useRef<AgentInfo[]>(agents)
   useEffect(() => { missionsRef.current = missions }, [missions])
   useEffect(() => {
     activeMissionIdRef.current = activeMissionId
@@ -350,6 +410,7 @@ export function MissionProvider({ children }: { children: ReactNode }) {
   }, [isSidebarOpen])
   useEffect(() => { selectedAgentRef.current = selectedAgent }, [selectedAgent])
   useEffect(() => { defaultAgentRef.current = defaultAgent }, [defaultAgent])
+  useEffect(() => { agentsRef.current = agents }, [agents])
   // Ref to always hold the latest handleAgentMessage — avoids reconnecting WebSocket when the handler changes
   const handleAgentMessageRef = useRef<(message: { id: string; type: string; payload?: unknown }) => void>(() => {})
   // Ref to track pending WebSocket reconnection timeout so it can be cleared on unmount (#3318)
@@ -1416,26 +1477,27 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
       // If persisted is 'none' but an agent IS available, auto-select it
       // so AI mode is on by default when the agent is present.
       const persisted = localStorage.getItem(SELECTED_AGENT_KEY)
-      const agents = payload.agents ?? []
-      const hasAvailableAgent = agents.some(a => a.available)
-      const persistedAvailable = persisted && persisted !== 'none' && agents.some(a => a.name === persisted && a.available)
+      const availableAgents = sanitizedAgents
+      const hasAvailableAgent = availableAgents.some(a => a.available)
+      const persistedAvailable = persisted && persisted !== 'none' && availableAgents.some(a => a.name === persisted && a.available)
 
       // When auto-selecting, prefer agents that execute commands directly over
-      // agents that only suggest commands (e.g. copilot-cli). Interactive/suggest-only
-      // agents produce terminal prompts instead of executing missions (#3609, #5481).
-      const INTERACTIVE_AGENTS = new Set(['copilot-cli'])
+      // agents that only suggest commands or launch a desktop flow. Those
+      // agents can prematurely end missions instead of executing them.
       const bestAvailable = hasAvailableAgent
-        ? (agents.find(a => a.available && ((a.capabilities ?? 0) & AgentCapabilityToolExec) !== 0 && !INTERACTIVE_AGENTS.has(a.name))?.name
-          || agents.find(a => a.available && !INTERACTIVE_AGENTS.has(a.name))?.name
-          || agents.find(a => a.available)?.name
+        ? (availableAgents.find(a => a.available && ((a.capabilities ?? 0) & AgentCapabilityToolExec) !== 0 && !isNonHeadlessMissionAgent(a.name, availableAgents))?.name
+          || availableAgents.find(a => a.available && !isNonHeadlessMissionAgent(a.name, availableAgents))?.name
+          || availableAgents.find(a => a.available)?.name
           || null)
         : null
-      // Filter the backend's defaultAgent if it is interactive — fall through to
-      // bestAvailable which already excludes interactive agents (#5481).
-      const safeDefaultAgent = payload.defaultAgent && !INTERACTIVE_AGENTS.has(payload.defaultAgent)
+      const safeSelectedAgent = payload.selected && !isNonHeadlessMissionAgent(payload.selected, availableAgents)
+        ? payload.selected
+        : null
+      // Filter backend defaults that are known to stop for prompts or desktop launches.
+      const safeDefaultAgent = payload.defaultAgent && !isNonHeadlessMissionAgent(payload.defaultAgent, availableAgents)
         ? payload.defaultAgent
         : null
-      const resolved = persistedAvailable ? persisted : (payload.selected || safeDefaultAgent || bestAvailable)
+      const resolved = persistedAvailable ? persisted : (safeSelectedAgent || safeDefaultAgent || bestAvailable)
       setSelectedAgent(resolved)
       // #7081 — Always persist the resolved agent preference to localStorage
       // so it survives WS drops. Previously, if the resolved agent came from
@@ -1802,7 +1864,14 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
         // Clear active token tracking for this mission and emit completion
         // event (#6016 — per-operation tracking keyed by missionId).
         clearActiveTokenCategory(missionId)
-        const resultIsError = !!chatPayload.isError
+        const rawResultIsError = !!chatPayload.isError
+        const resultContent = chatPayload.content || (payload as { output?: string }).output || 'Task completed.'
+        const prematureResultError = detectPrematureMissionResultError(
+          resultContent,
+          chatPayload.agent || m.agent,
+          agentsRef.current,
+        )
+        const resultIsError = rawResultIsError || prematureResultError !== null
         if (m.status === 'running' && !resultIsError) {
           // #7326 — Cap duration at 24 hours to prevent numeric overflow
           // from clock skew or backgrounded tabs.
@@ -1814,11 +1883,14 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
           window.dispatchEvent(new CustomEvent('kc-mission-completed', {
             detail: { missionId, missionType: m.type },
           }))
-        } else if (m.status === 'running' && resultIsError) {
-          emitMissionError(m.type, chatPayload.content || 'Mission failed')
+        } else if (m.status === 'running') {
+          emitMissionError(
+            m.type,
+            prematureResultError?.code || chatPayload.content || 'Mission failed',
+            resultContent,
+          )
         }
 
-        const resultContent = chatPayload.content || (payload as { output?: string }).output || 'Task completed.'
         // Check ALL assistant messages since the last user message for streamed content
         // (streaming may split into multiple bubbles due to tool-use gaps)
         const missionMessages = getMissionMessages(m.messages)
@@ -1861,6 +1933,36 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
             normalizedResult.includes(normalizedStreamed)
           )
 
+        const resultMessages = alreadyStreamed ? getMissionMessages(m.messages) : [
+          ...getMissionMessages(m.messages),
+          {
+            id: generateMessageId(),
+            role: 'assistant' as const,
+            content: resultContent,
+            timestamp: new Date(),
+            agent: chatPayload.agent || m.agent }
+        ]
+
+        if (prematureResultError) {
+          return {
+            ...m,
+            status: 'failed' as MissionStatus,
+            currentStep: undefined,
+            updatedAt: new Date(),
+            agent: chatPayload.agent || m.agent,
+            tokenUsage,
+            messages: [
+              ...resultMessages,
+              {
+                id: generateMessageId('premature-result'),
+                role: 'system' as const,
+                content: prematureResultError.message,
+                timestamp: new Date(),
+              },
+            ],
+          }
+        }
+
         // Transition to 'completed' when a result message arrives — this is the
         // backend's final answer for the current turn. The 'waiting_input' state
         // is only used while streaming is in progress (stream done w/o result).
@@ -1873,15 +1975,7 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
           updatedAt: new Date(),
           agent: chatPayload.agent || m.agent,
           tokenUsage,
-          messages: alreadyStreamed ? getMissionMessages(m.messages) : [
-            ...getMissionMessages(m.messages),
-            {
-              id: generateMessageId(),
-              role: 'assistant' as const,
-              content: resultContent,
-              timestamp: new Date(),
-              agent: chatPayload.agent || m.agent }
-          ]
+          messages: resultMessages,
         }
       } else if (message.type === 'error') {
         const payload = message.payload as { code?: string; message?: string }
@@ -2249,6 +2343,33 @@ The WebSocket connection to the agent at \`${LOCAL_AGENT_WS_URL}\` was lost and 
       console.debug(`[Missions] executeMission already in-flight for ${missionId}, skipping duplicate`)
       return
     }
+
+    const missionAgent = selectedAgentRef.current || defaultAgentRef.current
+    const missionAgentError = buildMissionAgentExecutionError(missionAgent, agentsRef.current)
+    if (missionAgentError) {
+      emitMissionError(missionType, 'interactive_agent_unsupported', missionAgent || 'unknown')
+      setMissions(prev => prev.map(m =>
+        m.id === missionId
+          ? {
+              ...m,
+              status: 'failed',
+              currentStep: undefined,
+              updatedAt: new Date(),
+              messages: [
+                ...getMissionMessages(m.messages),
+                {
+                  id: generateMessageId('mission-agent-blocked'),
+                  role: 'system',
+                  content: missionAgentError,
+                  timestamp: new Date(),
+                },
+              ],
+            }
+          : m
+      ))
+      return
+    }
+
     executingMissions.current.add(missionId)
 
     // A retry may reuse a missionId that had a previous cancel intent;
