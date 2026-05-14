@@ -1077,7 +1077,8 @@
     "clearFilter": "Clear Filter",
     "noMatchingItems": "No matching items",
     "noItemsInFeed": "No items in feed",
-    "addFeedsFirst": "Add feeds first to create an aggregate"
+    "addFeedsFirst": "Add feeds first to create an aggregate",
+    "failedToLoadFeed": "Failed to load feed"
   },
   "workloadMonitor": {
     "workloads": "Workloads",
@@ -3043,7 +3044,8 @@
     "scanningKyverno": "Scanning clusters for Kyverno...",
     "noKyvernoClusters": "No clusters with Kyverno detected",
     "contextDescription": "Compares Kyverno policy deployment across clusters. Missing policies (gray) mean inconsistent enforcement.",
-    "scanning": "Scanning..."
+    "scanning": "Scanning...",
+    "failedToLoadKyverno": "Failed to load Kyverno data"
   },
   "llmModels": {
     "inferencePoolDetection": "InferencePool Detection",
@@ -4178,7 +4180,8 @@
     "autoRefreshEvery": "Auto-refreshes every {{seconds}}s",
     "titlePlaceholder": "My Dashboard",
     "closeSettingsAria": "Close settings",
-    "demoModePlaceholder": "Demo mode — iframe disabled"
+    "demoModePlaceholder": "Demo mode — iframe disabled",
+    "failedToLoadContent": "Failed to load content. The site may block embedding (X-Frame-Options) or be unavailable."
   },
   "namespaceOverview": {
     "noNamespaces": "No namespaces",
@@ -4720,5 +4723,19 @@
     "noEvents": "No events detected",
     "noEventsHint": "Live cluster events will stream here as they occur. Connect a cluster to begin.",
     "noMatchingEvents": "No events match current filters"
+  },
+  "pipelines": {
+    "failedToLoadRecentFailures": "Failed to load recent failures.",
+    "failedToLoadMatrix": "Failed to load matrix.",
+    "failedToLoadPipelineFlow": "Failed to load pipeline flow.",
+    "failedToLoadReleasePulse": "Failed to load release pulse."
+  },
+  "failedToLoad": "Failed to load",
+  "insights": {
+    "failedToLoadPreferences": "Failed to load insight preferences. Previously acknowledged insights may reappear.",
+    "failedToSave": "Failed to save insight preference. Your browser storage may be full."
+  },
+  "common": {
+    "retry": "Retry"
   }
 }

@@ -6,17 +6,13 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useToast } from '../../ui/Toast'
 
 /** localStorage key for acknowledged insight IDs */
 const INSIGHT_ACKNOWLEDGE_KEY = 'acknowledged-insights'
 /** sessionStorage key for dismissed insight IDs (session only) */
 const INSIGHT_DISMISS_KEY = 'dismissed-insights-session'
-
-/** User-facing message when insight preferences fail to save */
-const SAVE_ERROR_MESSAGE = 'Failed to save insight preference. Your browser storage may be full.'
-/** User-facing message when insight preferences fail to load */
-const LOAD_ERROR_MESSAGE = 'Failed to load insight preferences. Previously acknowledged insights may reappear.'
 
 function loadSet(storage: Storage, key: string): Set<string> {
   try {
@@ -46,6 +42,7 @@ function saveSet(storage: Storage, key: string, set: Set<string>, onError?: Erro
 }
 
 export function useInsightActions() {
+  const { t } = useTranslation('cards')
   const { showToast } = useToast()
 
   const onSaveError = (message: string) => {
@@ -77,15 +74,19 @@ export function useInsightActions() {
       } catch { hasError = true }
     }
     if (hasError) {
-      showToast(LOAD_ERROR_MESSAGE, 'warning')
+      showToast(t('insights.failedToLoadPreferences'), 'warning')
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t, showToast]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onSaveErrorInside = (message: string) => {
+    showToast(message, 'error')
+  }
 
   const acknowledgeInsight = (id: string) => {
     setAcknowledgedIds(prev => {
       const next = new Set(prev)
       next.add(id)
-      saveSet(localStorage, INSIGHT_ACKNOWLEDGE_KEY, next, onSaveError)
+      saveSet(localStorage, INSIGHT_ACKNOWLEDGE_KEY, next, (msg) => onSaveErrorInside(t('insights.failedToSave')))
       return next
     })
   }
@@ -94,7 +95,7 @@ export function useInsightActions() {
     setDismissedIds(prev => {
       const next = new Set(prev)
       next.add(id)
-      saveSet(sessionStorage, INSIGHT_DISMISS_KEY, next, onSaveError)
+      saveSet(sessionStorage, INSIGHT_DISMISS_KEY, next, (msg) => onSaveErrorInside(t('insights.failedToSave')))
       return next
     })
   }

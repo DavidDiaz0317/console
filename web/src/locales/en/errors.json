@@ -23,7 +23,17 @@
     "noPermission": "You don't have permission for this action",
     "sessionExpired": "Your session has expired. Please log in again.",
     "clusterUnreachable": "Cluster is offline",
-    "storageRestoreFailed": "Failed to restore saved selection"
+    "storageRestoreFailed": "Failed to restore saved selection",
+    "failedToLoadKyvernoData": "Failed to load Kyverno data",
+    "failedToLoadRecentFailures": "Failed to load recent failures.",
+    "failedToLoadMatrix": "Failed to load matrix.",
+    "failedToLoadPipelineFlow": "Failed to load pipeline flow.",
+    "failedToLoadReleasePulse": "Failed to load release pulse.",
+    "failedToLoadContent": "Failed to load content. The site may block embedding (X-Frame-Options) or be unavailable.",
+    "failedToLoad": "Failed to load",
+    "failedToLoadFeed": "Failed to load feed",
+    "failedToLoadInsightPreferences": "Failed to load insight preferences. Previously acknowledged insights may reappear.",
+    "failedToSaveInsightPreference": "Failed to save insight preference. Your browser storage may be full."
   },
   "validation": {
     "required": "This field is required",

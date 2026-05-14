@@ -149,9 +149,9 @@ export function IframeEmbed({ config }: { config?: IframeEmbedConfig }) {
     setLoadError(null)
   }
 
-  const handleError = () => {
+   const handleError = () => {
     setIsLoading(false)
-    setLoadError('Failed to load content. The site may block embedding (X-Frame-Options) or be unavailable.')
+    setLoadError(t('cards.iframeEmbed.failedToLoadContent'))
   }
 
   const handleSaveConfig = () => {

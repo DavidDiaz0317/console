@@ -154,14 +154,14 @@ function CrossClusterPolicyComparisonInternal({ config: _config }: CardConfig) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2 p-4">
         <AlertTriangle className="w-6 h-6 text-destructive opacity-70" />
-        <p className="text-destructive">Failed to load Kyverno data</p>
+        <p className="text-destructive">{t('crossClusterPolicy.failedToLoadKyverno')}</p>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => refetch()}
           className="text-xs text-blue-400 hover:text-blue-300"
         >
-          Retry
+          {t('common.retry')}
         </Button>
       </div>
     )

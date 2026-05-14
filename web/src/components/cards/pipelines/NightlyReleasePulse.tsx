@@ -334,7 +334,7 @@ export function NightlyReleasePulse() {
 
   if (pulseError && !hasData) {
     return <div className="p-4 h-full flex items-center justify-center text-sm text-red-400">
-      Failed to load release pulse. {pulseError}
+      {t('pipelines.failedToLoadReleasePulse')} {pulseError}
     </div>
   }
 

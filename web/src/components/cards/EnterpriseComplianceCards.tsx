@@ -17,13 +17,12 @@ const SCORE_GOOD = 'hsl(var(--chart-success, 142 71% 45%))'
 const SCORE_WARN = 'hsl(var(--chart-warning, 45 93% 47%))'
 const SCORE_BAD = 'hsl(var(--chart-danger, 0 84% 60%))'
 const RING_BG = 'hsl(var(--muted) / 0.4)'
-const CARD_LOAD_ERROR = 'Failed to load'
 const ERROR_TEXT_CLASS = 'text-red-400 text-sm'
 const LOADING_TEXT_CLASS = 'text-gray-500 text-sm'
 const ENTERPRISE_SUMMARY_CACHE_PREFIX = 'enterprise-summary:'
 
 function useSummaryData<T extends Record<string, unknown>>(endpoint: string) {
-  const { t } = useTranslation('errors')
+  const { t } = useTranslation('cards')
   const { data, error } = useCache<T | null>({
     key: `${ENTERPRISE_SUMMARY_CACHE_PREFIX}${endpoint}`,
     category: 'rbac',
@@ -39,7 +38,7 @@ function useSummaryData<T extends Record<string, unknown>>(endpoint: string) {
 
   return {
     data,
-    error: error ? t('messages.loadFailed', { defaultValue: CARD_LOAD_ERROR }) : null,
+    error: error ? t('cards.failedToLoad') : null,
   }
 }
 
@@ -90,6 +89,7 @@ function MiniStat({ label, value, color = 'text-white' }: { label: string; value
 // ── HIPAA Card ──────────────────────────────────────────────────────────
 
 export function HIPAACard() {
+  const { t } = useTranslation('errors')
   const nav = useNavigate()
   const [data, setData] = useState<Record<string, number> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -99,7 +99,7 @@ export function HIPAACard() {
     authFetch('/api/compliance/hipaa/summary')
       .then(r => r.ok ? safeJson<Record<string, number>>(r) : null)
       .then(setData)
-      .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Failed to load'); console.error(err) })
+      .catch((err: unknown) => { setError(err instanceof Error ? err.message : t('messages.failedToLoad')); console.error(err) })
       .finally(() => setIsLoading(false))
   }, [])
   return (
