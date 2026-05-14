@@ -449,6 +449,9 @@ func getEnvKeyForProvider(provider string) string {
 // URL override (Claude/OpenAI/Gemini vendor HTTP APIs).
 func getBaseURLEnvKeyForProvider(provider string) string {
 	switch provider {
+	// Claude API via LiteLLM proxy or other gateways
+	case "claude", "anthropic":
+		return "ANTHROPIC_BASE_URL"
 	// Local LLM runners — see pkg/agent/provider_local_openai_compat.go
 	case "ollama":
 		return "OLLAMA_URL"

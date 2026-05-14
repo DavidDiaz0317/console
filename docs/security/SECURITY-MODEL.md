@@ -238,6 +238,12 @@ See `install-lm-studio` for the workstation setup walkthrough.
 If you already run a corporate LLM gateway that speaks the OpenAI API (Groq LPU for throughput, OpenRouter as a multi-model gateway, Open WebUI as a self-hosted frontend), point the corresponding base URL at it:
 
 ```bash
+# Claude via LiteLLM proxy or other gateway
+export ANTHROPIC_API_KEY=<your api key>
+export ANTHROPIC_BASE_URL=https://your-litellm-proxy.example.com/v1
+export CLAUDE_MODEL=aws/claude-opus-4-7
+./bin/kc-agent
+
 # Groq LPU gateway or an internal OpenAI-compatible gateway
 export GROQ_API_KEY=<your key>
 export GROQ_BASE_URL=https://llm-gateway.internal.example.com/v1
@@ -264,7 +270,7 @@ kc-agent reads API keys from two places, in this order of precedence:
 1. **Environment variables** (see `pkg/agent/config.go:130-135` — "Environment variable takes precedence").
 2. **`~/.kc/config.yaml`** — written by the Settings → API Keys modal in the UI. File permissions are forced to `0600` on save (`pkg/agent/config.go:16`).
 
-Base URLs (`GROQ_BASE_URL` etc.) are **environment-only** in the current build — there is no UI field for them. That is intentional for the moment: overriding a provider's base URL is an advanced, air-gap-flavored use case, and keeping it in env vars avoids a second place to audit.
+Base URLs (`ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GROQ_BASE_URL`, etc.) are **environment-only** in the current build — there is no UI field for them. That is intentional for the moment: overriding a provider's base URL is an advanced, air-gap-flavored use case, and keeping it in env vars avoids a second place to audit.
 
 ### What never leaves the machine
 
@@ -286,7 +292,9 @@ The provider request body is the system prompt, message history, and current pro
 | Variable | Consumer | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | kc-agent | Claude API key |
+| `ANTHROPIC_BASE_URL` | kc-agent | Override for Claude endpoint (use for LiteLLM proxy or other gateways) |
 | `OPENAI_API_KEY` | kc-agent | OpenAI API key |
+| `OPENAI_BASE_URL` | kc-agent | Override for OpenAI endpoint |
 | `GOOGLE_API_KEY` | kc-agent | Gemini API key (note: not `GEMINI_API_KEY`) |
 | `GROQ_API_KEY` | kc-agent | Groq API key |
 | `GROQ_BASE_URL` | kc-agent | Override for Groq endpoint (use for local OpenAI-compatible servers) |
