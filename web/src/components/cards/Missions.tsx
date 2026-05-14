@@ -254,12 +254,13 @@ export function Missions(_props: MissionsProps) {
   // AI Diagnose handler
   const handleDiagnose = (mission: DeployMission) => {
     checkKeyAndRun(() => {
-      const targetClustersStr = (mission.targetClusters || []).join(', ')
+      if (!mission.targetClusters?.length) return
+      const targetClustersStr = mission.targetClusters.join(', ')
       const failedClusterNames = (mission.clusterStatuses || [])
         .filter(cs => cs.status === 'failed')
         .map(cs => cs.cluster)
         .join(', ')
-      
+
       startMission({
         title: `Diagnose ${mission.workload}`,
         description: `Analyze failed deployment to ${mission.targetClusters.length} cluster(s)`,
@@ -290,7 +291,8 @@ Please:
   // AI Repair handler
   const handleRepair = (mission: DeployMission) => {
     checkKeyAndRun(() => {
-      const targetClustersStr = (mission.targetClusters || []).join(', ')
+      if (!mission.targetClusters?.length) return
+      const targetClustersStr = mission.targetClusters.join(', ')
       const failedClusterNames = (mission.clusterStatuses || [])
         .filter(cs => cs.status === 'failed')
         .map(cs => cs.cluster)
