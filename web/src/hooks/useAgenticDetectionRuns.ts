@@ -7,7 +7,6 @@
 import { createCachedHook } from '@/lib/cache'
 
 const FETCH_TIMEOUT_MS = 10_000
-const POLL_INTERVAL_MS = 300_000 // 5 minutes
 
 export interface DetectionRun {
   conclusion: string

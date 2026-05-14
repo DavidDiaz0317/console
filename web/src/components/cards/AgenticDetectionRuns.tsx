@@ -1,8 +1,6 @@
-import { useMemo } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react'
 import { useAgenticDetectionRuns, type DetectionRun } from '../../hooks/useAgenticDetectionRuns'
-import { useCardData } from '../../lib/cards/cardHooks'
-import { CardSearchInput } from '../../lib/cards/CardComponents'
+import { CardSearchInput, useCardData } from '../../lib/cards'
 import { CardControls } from '../ui/CardControls'
 import { Pagination } from '../ui/Pagination'
 import { useCardLoadingState } from './CardDataContext'
@@ -11,16 +9,16 @@ import { cn } from '../../lib/cn'
 
 const ITEMS_PER_PAGE = 10
 
+type SortByOption = 'conclusion' | 'reason' | 'commentedAt'
+
 interface AgenticDetectionRunsProps {
   config?: Record<string, unknown>
 }
 
-type SortByOption = 'conclusion' | 'reason' | 'commentedAt'
-
-const SORT_OPTIONS = [
-  { value: 'commentedAt' as const, label: 'Recent' },
-  { value: 'conclusion' as const, label: 'Conclusion' },
-  { value: 'reason' as const, label: 'Reason' },
+const SORT_OPTIONS: Array<{ value: SortByOption; label: string }> = [
+  { value: 'commentedAt', label: 'Recent' },
+  { value: 'conclusion', label: 'Conclusion' },
+  { value: 'reason', label: 'Reason' },
 ]
 
 const CONCLUSION_ORDER: Record<string, number> = {
@@ -58,7 +56,7 @@ function getConclusionColor(conclusion: string): string {
 function formatReason(reason: string): string {
   return reason
     .replace(/_/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase())
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function formatTimeAgo(date: string): string {
@@ -78,56 +76,58 @@ function formatTimeAgo(date: string): string {
 export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsProps) {
   const { t } = useTranslation(['cards', 'common'])
   const {
-    runs,
-    issueUrl,
-    totalCount,
-    isLoading,
+    data,
+    isLoading: isLoading && !hasData,
     isRefreshing,
-    isDemoData,
+    isDemoFallback,
     isFailed,
     consecutiveFailures,
+    lastRefresh,
   } = useAgenticDetectionRuns()
+  const { runs, issueUrl, totalCount } = data
+  const hasData = (runs || []).length > 0
 
   useCardLoadingState({
-    isLoading,
+    isLoading: isLoading && !hasData,
     isRefreshing,
-    isDemoData,
-    hasAnyData: (runs || []).length > 0,
+    isDemoData: isDemoFallback,
+    hasAnyData: hasData,
     isFailed,
     consecutiveFailures,
+    lastRefresh,
   })
-
-  const sortComparators: Record<SortByOption, (a: DetectionRun, b: DetectionRun) => number> = {
-    commentedAt: (a, b) => new Date(b.commentedAt).getTime() - new Date(a.commentedAt).getTime(),
-    conclusion: (a, b) => {
-      const orderA = CONCLUSION_ORDER[a.conclusion] ?? 999
-      const orderB = CONCLUSION_ORDER[b.conclusion] ?? 999
-      return orderA - orderB
-    },
-    reason: (a, b) => a.reason.localeCompare(b.reason),
-  }
 
   const {
-    filteredData,
-    currentPageData,
+    items,
+    totalItems,
     currentPage,
-    setCurrentPage,
     totalPages,
-    searchTerm,
-    setSearchTerm,
-    sortBy,
-    setSortBy,
-  } = useCardData<DetectionRun, SortByOption>({
-    data: runs || [],
-    comparators: sortComparators,
-    defaultSort: 'commentedAt',
-    searchFields: ['conclusion', 'reason'],
-    itemsPerPage: ITEMS_PER_PAGE,
+    itemsPerPage,
+    goToPage,
+    needsPagination,
+    setItemsPerPage,
+    filters,
+    sorting,
+    containerRef,
+    containerStyle,
+  } = useCardData<DetectionRun, SortByOption>(runs || [], {
+    filter: {
+      searchFields: ['conclusion', 'reason'] as Array<keyof DetectionRun>,
+      storageKey: 'agentic-detection-runs',
+    },
+    sort: {
+      defaultField: 'commentedAt',
+      defaultDirection: 'desc',
+      comparators: {
+        commentedAt: (a, b) => new Date(a.commentedAt).getTime() - new Date(b.commentedAt).getTime(),
+        conclusion: (a, b) => (CONCLUSION_ORDER[a.conclusion] ?? 999) - (CONCLUSION_ORDER[b.conclusion] ?? 999),
+        reason: (a, b) => a.reason.localeCompare(b.reason),
+      },
+    },
+    defaultLimit: ITEMS_PER_PAGE,
   })
 
-  const isEmpty = (runs || []).length === 0
-
-  if (isEmpty && !isLoading) {
+  if (!hasData && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-4">
         <CheckCircle className="h-12 w-12 text-green-400 mb-4" />
@@ -153,72 +153,86 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <CardControls
-        searchSlot={
-          <CardSearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder={t('cards:agenticDetectionRuns.searchPlaceholder')}
-          />
-        }
-        sortSlot={
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortByOption)}
-            className="px-3 py-1.5 text-sm bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        }
-      />
-
-      <div className="flex-1 overflow-auto">
-        <div className="space-y-2">
-          {(currentPageData || []).map((run, idx) => (
-            <div
-              key={`${run.runId}-${idx}`}
-              className="p-3 rounded-md border border-border hover:bg-secondary/50 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <div className="mt-0.5">{getConclusionIcon(run.conclusion)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={cn('font-medium text-sm', getConclusionColor(run.conclusion))}>
-                        {run.conclusion.toUpperCase()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-sm text-muted-foreground">{formatReason(run.reason)}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{formatTimeAgo(run.commentedAt)}</div>
-                  </div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  {run.workflowUrl && (
-                    <a
-                      href={run.workflowUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-                    >
-                      {t('cards:agenticDetectionRuns.viewRun')}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+    <div className="flex flex-col h-full min-h-card">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{t('cards:agenticDetectionRuns.viewAllIssue')}</span>
+          <span>•</span>
+          <span>{totalCount} total</span>
+          {filters.search && (
+            <>
+              <span>•</span>
+              <span>{totalItems} filtered</span>
+            </>
+          )}
         </div>
+        <CardControls
+          limit={itemsPerPage}
+          onLimitChange={setItemsPerPage}
+          sortBy={sorting.sortBy}
+          sortOptions={SORT_OPTIONS}
+          onSortChange={(value) => sorting.setSortBy(value as SortByOption)}
+          sortDirection={sorting.sortDirection}
+          onSortDirectionChange={sorting.setSortDirection}
+        />
       </div>
 
-      {totalPages > 1 && (
-        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      <CardSearchInput
+        value={filters.search}
+        onChange={filters.setSearch}
+        placeholder={t('cards:agenticDetectionRuns.searchPlaceholder')}
+        className="mb-2"
+      />
+
+      <div ref={containerRef} className="flex-1 overflow-auto space-y-2" style={containerStyle}>
+        {items.map((run: DetectionRun, idx: number) => (
+          <div
+            key={`${run.runId}-${idx}`}
+            className="p-3 rounded-md border border-border hover:bg-secondary/50 transition-colors"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="mt-0.5">{getConclusionIcon(run.conclusion)}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn('font-medium text-sm', getConclusionColor(run.conclusion))}>
+                      {run.conclusion.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-sm text-muted-foreground">{formatReason(run.reason)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{formatTimeAgo(run.commentedAt)}</div>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {run.workflowUrl && (
+                  <a
+                    href={run.workflowUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    {t('cards:agenticDetectionRuns.viewRun')}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {needsPagination && itemsPerPage !== 'unlimited' && (
+        <div className="pt-2 border-t border-border/50 mt-2">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={typeof itemsPerPage === 'number' ? itemsPerPage : ITEMS_PER_PAGE}
+            onPageChange={goToPage}
+            showItemsPerPage={false}
+          />
+        </div>
       )}
 
       {issueUrl && (
