@@ -54,6 +54,7 @@ export function FullDashboardApp({ liveLocation, children }: { liveLocation: Loc
       </Routes>
       </PageErrorBoundary>
       </ChunkErrorBoundary>
+      </AppErrorBoundary>
       </DrillDownProvider>
       </DashboardProvider>
       </AlertsProvider>
