@@ -17,13 +17,17 @@ const app = express();
 app.use(express.json());
 
 // Auth middleware — protect mutating endpoints with Bearer token
-const DASHBOARD_TOKEN = process.env.HIVE_DASHBOARD_TOKEN || '';
-if (!DASHBOARD_TOKEN && process.env.NODE_ENV === 'production') {
-  console.error('[SECURITY] HIVE_DASHBOARD_TOKEN is not set — all mutations are unauthenticated!');
-  process.exit(1);
+let DASHBOARD_TOKEN = process.env.HIVE_DASHBOARD_TOKEN || '';
+if (!DASHBOARD_TOKEN) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[SECURITY] HIVE_DASHBOARD_TOKEN is not set — refusing to start in production.');
+    process.exit(1);
+  }
+  DASHBOARD_TOKEN = crypto.randomBytes(24).toString('hex');
+  console.warn('[SECURITY] HIVE_DASHBOARD_TOKEN is not set; generated a temporary development token.');
+  console.warn(`[SECURITY] Use this Bearer token for dashboard mutations: ${DASHBOARD_TOKEN}`);
 }
 function requireAuth(req, res, next) {
-  if (!DASHBOARD_TOKEN) return next(); // no token configured — skip (local dev)
   const authHeader = req.headers.authorization || '';
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) return res.status(401).json({ error: 'Unauthorized' });
@@ -807,8 +811,9 @@ app.get('/api/timeline', (_req, res) => {
 // SSE stream
 // Tmux pane preview — last N lines of an agent's tmux session
 const TMUX_PREVIEW_LINES = 30;
-app.get('/api/pane/:agent', (req, res) => {
+app.get('/api/pane/:agent', requireAuth, (req, res) => {
   const agent = req.params.agent;
+  if (!validateAgentName(agent, res)) return;
   const session = getTmuxSession(agent);
   if (!session) return res.status(400).json({ error: `unknown agent: ${agent}` });
   execFile('tmux', ['capture-pane', '-t', session, '-p', '-S', `-${TMUX_PREVIEW_LINES}`],
@@ -850,6 +855,7 @@ app.get('/api/widget', (_req, res) => {
 // Map dashboard agent names to tmux session names — defaults to agent name
 const TMUX_SESSION_OVERRIDES = {};
 function getTmuxSession(agent) {
+  if (!VALID_AGENT_NAME.test(agent) || !ENABLED_AGENTS.includes(agent)) return null;
   return TMUX_SESSION_OVERRIDES[agent] || agent;
 }
 
@@ -1369,23 +1375,40 @@ function parseEnvFile(filePath) {
   const vars = {};
   for (const line of content.split('\n')) {
     const match = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)/);
-    if (match) vars[match[1]] = match[2].replace(/^["']|["']$/g, '');
+    if (!match) continue;
+    let value = match[2];
+    if (value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1).replace(/\\(["\\$`])/g, '$1');
+    } else {
+      value = value.replace(/^["']|["']$/g, '');
+    }
+    vars[match[1]] = value;
   }
   return vars;
 }
 
-function writeEnvVar(filePath, key, value) {
+function sanitizeEnvValue(value) {
+  return String(value ?? '').replace(/[\r\n]+/g, '');
+}
+
+function formatEnvAssignment(key, value) {
   if (!VALID_ENV_KEY.test(key)) throw new Error(`invalid env key: ${key}`);
+  const sanitizedValue = sanitizeEnvValue(value).replace(/["\\$`]/g, '\\$&');
+  return `${key}="${sanitizedValue}"`;
+}
+
+function writeEnvVar(filePath, key, value) {
+  const assignment = formatEnvAssignment(key, value);
   const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`^${escapedKey}=.*$`, 'm');
   let updated;
   if (regex.test(content)) {
-    updated = content.replace(regex, `${key}=${value}`);
+    updated = content.replace(regex, assignment);
   } else {
-    updated = content.trimEnd() + `\n${key}=${value}\n`;
+    updated = content.trimEnd() + `\n${assignment}\n`;
   }
-  const tmp = `/tmp/hive-env-${process.pid}-${Date.now()}`;
+  const tmp = path.join(__dirname, `.hive-env-${process.pid}-${Date.now()}`);
   fs.writeFileSync(tmp, updated, { mode: 0o644 });
   execSync(`sudo mv ${shellQuote(tmp)} ${shellQuote(filePath)}`);
 }
@@ -2430,15 +2453,18 @@ app.post('/api/nous/approve', (_req, res) => {
   try {
     const overlayLines = [
       '# Nous experiment overlay — approved from dashboard',
-      `NOUS_EXPERIMENT_ID=${pending.id || 'exp-approved'}`,
-      `NOUS_EXPERIMENT_START=${Math.floor(Date.now() / 1000)}`,
-      `NOUS_EXPERIMENT_TTL_SEC=${(pending.duration_hours || 4) * 3600}`,
-      `NOUS_FAST_FAIL_QUEUE_MAX=${(pending.fast_fail && pending.fast_fail.queue_max) || 30}`,
-      `NOUS_FAST_FAIL_MTTR_MAX=${(pending.fast_fail && pending.fast_fail.mttr_max) || 180}`,
+      formatEnvAssignment('NOUS_EXPERIMENT_ID', pending.id || 'exp-approved'),
+      formatEnvAssignment('NOUS_EXPERIMENT_START', Math.floor(Date.now() / 1000)),
+      formatEnvAssignment('NOUS_EXPERIMENT_TTL_SEC', (pending.duration_hours || 4) * 3600),
+      formatEnvAssignment('NOUS_FAST_FAIL_QUEUE_MAX', (pending.fast_fail && pending.fast_fail.queue_max) || 30),
+      formatEnvAssignment('NOUS_FAST_FAIL_MTTR_MAX', (pending.fast_fail && pending.fast_fail.mttr_max) || 180),
     ];
     if (pending.params) {
       for (const [k, v] of Object.entries(pending.params)) {
-        overlayLines.push(`${k}=${v}`);
+        if (!VALID_ENV_KEY.test(k) || !k.startsWith('NOUS_')) {
+          throw new Error(`invalid Nous env key: ${k}`);
+        }
+        overlayLines.push(formatEnvAssignment(k, v));
       }
     }
     fs.writeFileSync(NOUS_OVERLAY_PATH, overlayLines.join('\n') + '\n');
