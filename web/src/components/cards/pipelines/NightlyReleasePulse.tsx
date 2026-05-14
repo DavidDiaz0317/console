@@ -17,6 +17,7 @@ import {
   TrendingUp, TrendingDown, Minus, Loader2, Search, Stethoscope,
   ClipboardCheck,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDemoMode } from '../../../hooks/useDemoMode'
 import { useCardLoadingState } from '../CardDataContext'
 import {
@@ -279,6 +280,7 @@ function StandaloneRepoInput({ value, onChange }: { value: string; onChange: (v:
 // ---------------------------------------------------------------------------
 
 export function NightlyReleasePulse() {
+  const { t } = useTranslation('cards')
   const { startMission } = useMissions()
   const shared = usePipelineFilter()
   const [standaloneRepo, setStandaloneRepo] = useState('')

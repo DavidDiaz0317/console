@@ -37,17 +37,13 @@ function saveSet(storage: Storage, key: string, set: Set<string>, onError?: Erro
     storage.setItem(key, JSON.stringify(Array.from(set)))
   } catch (err: unknown) {
     console.error(`[useInsightActions] Failed to save ${key} to storage:`, err)
-    onError?.(SAVE_ERROR_MESSAGE)
+    if (onError) onError('')
   }
 }
 
 export function useInsightActions() {
   const { t } = useTranslation('cards')
   const { showToast } = useToast()
-
-  const onSaveError = (message: string) => {
-    showToast(message, 'error')
-  }
 
   const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(
     () => loadSet(localStorage, INSIGHT_ACKNOWLEDGE_KEY)
@@ -78,15 +74,11 @@ export function useInsightActions() {
     }
   }, [t, showToast]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onSaveErrorInside = (message: string) => {
-    showToast(message, 'error')
-  }
-
   const acknowledgeInsight = (id: string) => {
     setAcknowledgedIds(prev => {
       const next = new Set(prev)
       next.add(id)
-      saveSet(localStorage, INSIGHT_ACKNOWLEDGE_KEY, next, (msg) => onSaveErrorInside(t('insights.failedToSave')))
+      saveSet(localStorage, INSIGHT_ACKNOWLEDGE_KEY, next, () => showToast(t('insights.failedToSave'), 'error'))
       return next
     })
   }
@@ -95,7 +87,7 @@ export function useInsightActions() {
     setDismissedIds(prev => {
       const next = new Set(prev)
       next.add(id)
-      saveSet(sessionStorage, INSIGHT_DISMISS_KEY, next, (msg) => onSaveErrorInside(t('insights.failedToSave')))
+      saveSet(sessionStorage, INSIGHT_DISMISS_KEY, next, () => showToast(t('insights.failedToSave'), 'error'))
       return next
     })
   }
