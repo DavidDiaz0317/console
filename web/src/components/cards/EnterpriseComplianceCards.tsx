@@ -128,6 +128,7 @@ export function HIPAACard() {
 // ── GxP Card ────────────────────────────────────────────────────────────
 
 export function GxPCard() {
+  const { t } = useTranslation('errors')
   const nav = useNavigate()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -137,7 +138,7 @@ export function GxPCard() {
     authFetch('/api/compliance/gxp/summary')
       .then(r => r.ok ? safeJson<Record<string, unknown>>(r) : null)
       .then(setData)
-      .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Failed to load'); console.error(err) })
+      .catch((err: unknown) => { setError(err instanceof Error ? err.message : t('messages.failedToLoad')); console.error(err) })
       .finally(() => setIsLoading(false))
   }, [])
   return (
@@ -170,6 +171,7 @@ export function GxPCard() {
 // ── BAA Card ────────────────────────────────────────────────────────────
 
 export function BAACard() {
+  const { t } = useTranslation('errors')
   const nav = useNavigate()
   const [data, setData] = useState<Record<string, number> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -179,7 +181,7 @@ export function BAACard() {
     authFetch('/api/compliance/baa/summary')
       .then(r => r.ok ? safeJson<Record<string, number>>(r) : null)
       .then(setData)
-      .catch((err: unknown) => { setError(err instanceof Error ? err.message : 'Failed to load'); console.error(err) })
+      .catch((err: unknown) => { setError(err instanceof Error ? err.message : t('messages.failedToLoad')); console.error(err) })
       .finally(() => setIsLoading(false))
   }, [])
   return (
