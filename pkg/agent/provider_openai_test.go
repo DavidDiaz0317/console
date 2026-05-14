@@ -29,14 +29,8 @@ func TestOpenAIProvider_Chat(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Override URL
-	oldURL := openAIAPIURL
-	openAIAPIURL = server.URL
-	defer func() { openAIAPIURL = oldURL }()
-
-	// 2. Setup provider
-	os.Setenv("OPENAI_API_KEY", "test-key")
-	defer os.Unsetenv("OPENAI_API_KEY")
+	t.Setenv("OPENAI_API_KEY", "test-key")
+	t.Setenv("OPENAI_BASE_URL", server.URL)
 
 	p := NewOpenAIProvider()
 

@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	openAIAPIURL       = "https://api.openai.com/v1/chat/completions"
-	defaultOpenAIModel = "gpt-4-turbo"
+	openAIAPIURL              = "https://api.openai.com/v1/chat/completions"
+	openAIChatCompletionsPath = "/chat/completions"
+	defaultOpenAIModel        = "gpt-4-turbo"
 )
 
 // OpenAIProvider implements AIProvider for OpenAI GPT models
@@ -68,7 +69,7 @@ func (o *OpenAIProvider) Chat(ctx context.Context, req *ChatRequest) (*ChatRespo
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", openAIAPIURL, bytes.NewBuffer(jsonBody))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", o.getAPIURL(), bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -133,7 +134,7 @@ func (o *OpenAIProvider) StreamChat(ctx context.Context, req *ChatRequest, onChu
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", openAIAPIURL, bytes.NewBuffer(jsonBody))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", o.getAPIURL(), bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -235,6 +236,14 @@ func (o *OpenAIProvider) buildMessages(req *ChatRequest) []map[string]string {
 	})
 
 	return messages
+}
+
+func (o *OpenAIProvider) getAPIURL() string {
+	baseURL := GetConfigManager().GetBaseURL("openai")
+	if baseURL != "" {
+		return baseURL + openAIChatCompletionsPath
+	}
+	return openAIAPIURL
 }
 
 func (o *OpenAIProvider) setHeaders(req *http.Request) {
