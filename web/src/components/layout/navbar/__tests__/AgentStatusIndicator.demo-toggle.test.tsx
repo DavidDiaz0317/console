@@ -2,24 +2,35 @@ import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
-const mockToggleDemoMode = vi.fn()
-const mockHasApprovedAgents = vi.fn()
-const mockAgentFetch = vi.fn()
-const mockUseLocalAgent = vi.fn()
-const mockUseBackendHealth = vi.fn()
-const mockUseMissions = vi.fn()
-
-let mockIsDemoMode = true
-let mockIsDemoModeForced = false
+const {
+  demoModeState,
+  mockToggleDemoMode,
+  mockHasApprovedAgents,
+  mockAgentFetch,
+  mockUseLocalAgent,
+  mockUseBackendHealth,
+  mockUseMissions,
+} = vi.hoisted(() => ({
+  demoModeState: {
+    isDemoMode: true,
+    isDemoModeForced: false,
+  },
+  mockToggleDemoMode: vi.fn(),
+  mockHasApprovedAgents: vi.fn(),
+  mockAgentFetch: vi.fn(),
+  mockUseLocalAgent: vi.fn(),
+  mockUseBackendHealth: vi.fn(),
+  mockUseMissions: vi.fn(),
+}))
 
 vi.mock('../../../../hooks/useDemoMode', () => ({
   useDemoMode: () => ({
-    isDemoMode: mockIsDemoMode,
+    isDemoMode: demoModeState.isDemoMode,
     toggleDemoMode: mockToggleDemoMode,
     setDemoMode: vi.fn(),
   }),
-  getDemoMode: () => mockIsDemoMode,
-  isDemoModeForced: mockIsDemoModeForced,
+  getDemoMode: () => demoModeState.isDemoMode,
+  isDemoModeForced: demoModeState.isDemoModeForced,
 }))
 
 vi.mock('../../../../hooks/useLocalAgent', () => ({
@@ -60,8 +71,8 @@ import { AgentStatusIndicator } from '../AgentStatusIndicator'
 
 describe('AgentStatusIndicator demo mode transition', () => {
   beforeEach(() => {
-    mockIsDemoMode = true
-    mockIsDemoModeForced = false
+    demoModeState.isDemoMode = true
+    demoModeState.isDemoModeForced = false
     vi.clearAllMocks()
 
     mockHasApprovedAgents.mockReturnValue(false)
@@ -96,7 +107,7 @@ describe('AgentStatusIndicator demo mode transition', () => {
   })
 
   it('offers CLI agent authorization from the auth warning state instead', async () => {
-    mockIsDemoMode = false
+    demoModeState.isDemoMode = false
     mockUseLocalAgent.mockReturnValue({
       status: 'auth_error',
       health: { version: '1.2.3' },
