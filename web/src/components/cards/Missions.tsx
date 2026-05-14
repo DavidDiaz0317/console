@@ -227,7 +227,11 @@ export function Missions(_props: MissionsProps) {
     )
   }
 
-  const clearClusterFilter = () => persistClusterFilter([])
+  const clearClusterFilter = () => {
+    if (clusterFilter.length === 0) return
+    if (!window.confirm(t('missions.clearClusterFilterConfirm', { defaultValue: 'Clear the selected mission cluster filters?' }))) return
+    persistClusterFilter([])
+  }
 
   // Close dropdown on outside click
   useEffect(() => {

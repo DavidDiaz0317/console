@@ -999,7 +999,7 @@ Please:
           if (msg.type === 'error' || msg.payload?.exitCode !== 0) {
             setDeleteError(msg.payload?.error || 'Failed to delete pod')
           } else {
-            // Success - close the drill down
+            showToast(t('drilldown.status.deleteSuccess', 'Pod deletion requested successfully'), 'success')
             closeDrillDown()
           }
         }

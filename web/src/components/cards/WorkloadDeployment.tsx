@@ -688,7 +688,11 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
     )
   }
 
-  const clearClusterFilter = () => persistClusterFilter([])
+  const clearClusterFilter = () => {
+    if (localClusterFilter.length === 0) return
+    if (!window.confirm(t('workloads.clearClusterFilterConfirm', { defaultValue: 'Clear the selected workload cluster filters?' }))) return
+    persistClusterFilter([])
+  }
 
   // Close dropdown on outside click
   useEffect(() => {

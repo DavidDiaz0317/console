@@ -15,6 +15,7 @@ import {
   QUANTUM_STATUS_DEFAULT_POLL_MS,
   type QuantumSystemStatus,
 } from '../../../hooks/useCachedQuantum'
+import { useToast } from '../../../components/ui/Toast'
 
 interface ControlState {
   backend: string
@@ -50,6 +51,7 @@ export const QuantumControlPanel: React.FC = () => {
   const { t } = useTranslation('cards')
   const { isAuthenticated, login, isLoading: authIsLoading } = useAuth()
   const { open: openDrillDown, close: closeDrillDown } = useDrillDown()
+  const { showToast } = useToast()
   const [control, setControl] = useState<ControlState>(DEMO_DATA)
   const [mutationError, setMutationError] = useState<string | null>(null)
   const [showClearCredentialsDialog, setShowClearCredentialsDialog] = useState(false)
@@ -154,6 +156,7 @@ export const QuantumControlPanel: React.FC = () => {
 
       setMutationError(null)
       await refetchAuthStatus()
+      showToast(t('quantum.credentialsSaved', { defaultValue: 'IBM Quantum credentials saved' }), 'success')
     }
 
     openDrillDown({
@@ -165,7 +168,7 @@ export const QuantumControlPanel: React.FC = () => {
         onClose: closeDrillDown,
       },
     })
-  }, [ibmAuthenticated, openDrillDown, closeDrillDown, refetchAuthStatus])
+  }, [ibmAuthenticated, openDrillDown, closeDrillDown, refetchAuthStatus, showToast, t])
 
   // Clear IBM Quantum credentials
   const handleClearCredentials = useCallback(async () => {
@@ -189,13 +192,14 @@ export const QuantumControlPanel: React.FC = () => {
       await refetchAuthStatus()
       setShowClearCredentialsDialog(false)
       setMutationError(null)
+      showToast(t('quantum.credentialsCleared', { defaultValue: 'IBM Quantum credentials cleared' }), 'success')
     } catch (err) {
       console.error('Error clearing credentials:', err)
       setMutationError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setIsClearing(false)
     }
-  }, [refetchAuthStatus])
+  }, [refetchAuthStatus, showToast, t])
 
   useEffect(() => {
     if (!showClearCredentialsDialog || isClearing) return
@@ -261,6 +265,7 @@ export const QuantumControlPanel: React.FC = () => {
           timestamp: new Date().toISOString(),
       },
       }))
+      showToast(t('quantum.executionStarted', { defaultValue: 'Quantum job started successfully' }), 'success')
 
       // Fix #2: Immediately poll job status to catch rapid completions
       // Only update status, don't update shots to preserve user input
@@ -300,6 +305,9 @@ export const QuantumControlPanel: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, LOOP_MODE_STATUS_SYNC_DELAY_MS))
       await refetchStatus()
       setMutationError(null)
+      showToast(control.loop_mode
+        ? t('quantum.loopStopped', { defaultValue: 'Loop mode stopped successfully' })
+        : t('quantum.loopStarted', { defaultValue: 'Loop mode started successfully' }), 'success')
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : 'Failed to toggle loop mode')
     }
