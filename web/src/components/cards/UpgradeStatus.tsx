@@ -410,7 +410,7 @@ export function UpgradeStatus({ config: _config }: UpgradeStatusProps) {
   // Report state to CardWrapper for refresh animation
   const hasData = allClusters.length > 0
   useCardLoadingState({
-    isLoading: isLoading,
+    isLoading: isLoadingHook && !hasData,
     isRefreshing,
     hasAnyData: hasData,
     isDemoData: isDemoMode && !isLoadingHook,
