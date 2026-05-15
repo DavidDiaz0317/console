@@ -670,7 +670,7 @@ func (h *StellarHandler) ApproveAction(c *fiber.Ctx) error {
 			EntityType: "action",
 			EntityID:   actionID,
 			Cluster:    item.Cluster,
-			Detail:     fmt.Sprintf(`{"confirmToken":"%s"}`, req.ConfirmToken),
+			Detail:     marshalJSONString(map[string]string{"confirmToken": req.ConfirmToken}),
 		})
 	}
 	if h.broadcaster != nil {
@@ -1380,7 +1380,7 @@ func (h *StellarHandler) Ask(c *fiber.Ctx) error {
 			EntityType: "execution",
 			EntityID:   execution.ID,
 			Cluster:    body.Cluster,
-			Detail:     fmt.Sprintf(`{"provider":"%s","model":"%s"}`, generated.Provider, generated.Model),
+			Detail:     marshalJSONString(map[string]string{"provider": generated.Provider, "model": generated.Model}),
 		})
 	}
 
@@ -3412,4 +3412,14 @@ func (h *StellarHandler) autoCreateWatch(ctx context.Context, e IncomingEvent) {
 			"id": id, "cluster": e.Cluster,
 		}})
 	}
+}
+
+// marshalJSONString serializes v to a JSON string, returning "{}" on error.
+// Used for audit entry Detail fields to avoid fmt.Sprintf JSON injection.
+func marshalJSONString(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
 }
