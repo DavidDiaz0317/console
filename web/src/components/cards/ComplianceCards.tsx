@@ -29,6 +29,7 @@ import { ConfirmMissionPromptDialog } from '../missions/ConfirmMissionPromptDial
 import { CARD_INSTALL_MAP } from '../../lib/cards/cardInstallMap'
 import { CARD_UI_STRINGS } from './strings'
 import { buildComplianceScoreSummary } from '../../lib/complianceScore'
+import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
 
 interface CardConfig {
   config?: Record<string, unknown>
@@ -706,7 +707,7 @@ Please proceed step by step.`,
                     </span>
                     {info?.url && (
                       <a
-                        href={info.url}
+                        href={sanitizeUrl(info.url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
