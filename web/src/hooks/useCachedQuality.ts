@@ -39,7 +39,7 @@ export const useCachedQuality = createCachedHook<QualityStats>({
   demoData: DEMO,
   fetcher: async () => {
     if (isAgentUnavailable()) {
-      return INITIAL
+      throw new Error('agent unavailable')
     }
 
     try {

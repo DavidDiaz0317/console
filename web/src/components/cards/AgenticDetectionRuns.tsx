@@ -27,6 +27,23 @@ const CONCLUSION_ORDER: Record<string, number> = {
   success: 2,
 }
 
+/**
+ * Validates that a URL is safe to render as href.
+ * Only allows https:// URLs to github.com or kubestellar.io.
+ */
+function isSafeUrl(url: string | undefined | null): boolean {
+  if (!url || typeof url !== 'string') return false
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return false
+    const host = parsed.hostname
+    return host === 'github.com' || host.endsWith('.github.com') || 
+           host === 'kubestellar.io' || host.endsWith('.kubestellar.io')
+  } catch {
+    return false
+  }
+}
+
 function getConclusionIcon(conclusion: string) {
   switch (conclusion) {
     case 'success':
@@ -137,7 +154,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
         <p className="text-sm text-muted-foreground max-w-md">
           {t('cards:agenticDetectionRuns.noDetectionsDesc')}
         </p>
-        {issueUrl && (
+        {issueUrl && isSafeUrl(issueUrl) && (
           <a
             href={issueUrl}
             target="_blank"
@@ -205,7 +222,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
-                {run.workflowUrl && (
+                {run.workflowUrl && isSafeUrl(run.workflowUrl) && (
                   <a
                     href={run.workflowUrl}
                     target="_blank"
@@ -235,7 +252,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
         </div>
       )}
 
-      {issueUrl && (
+      {issueUrl && isSafeUrl(issueUrl) && (
         <div className="mt-3 pt-3 border-t border-border">
           <a
             href={issueUrl}
