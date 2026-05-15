@@ -100,333 +100,114 @@ const THREE_DAYS_MS = 3 * MS_PER_DAY
 // These are React hooks that can be safely registered
 // ============================================================================
 
-function useUnifiedPodIssues(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useCachedPodIssues(cluster, namespace)
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: () => { result.refetch() } }
+type ResourceArity = 'none' | 'cluster' | 'cluster+namespace'
+
+type UnifiedHookResult<TData, TExtra extends Record<string, unknown> = Record<string, never>> = {
+  data: TData
+  isLoading: boolean
+  error: Error | null
+  refetch: () => void | Promise<void>
+} & TExtra
+
+type HookResultBase = {
+  isLoading: boolean
+  error?: string | Error | null
+  refetch?: () => void | Promise<void>
+} & Record<string, unknown>
+
+function normalizeHookError(errorValue: unknown, fallbackMessage?: string): Error | null {
+  if (errorValue instanceof Error) return errorValue
+  if (typeof errorValue === 'string') return new Error(errorValue)
+  if (!errorValue) return null
+  return new Error(fallbackMessage ?? 'Failed to fetch data')
 }
 
-function useUnifiedEvents(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useCachedEvents(cluster, namespace)
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: () => { result.refetch() } }
+interface ResourceHookConfig<
+  TResult extends HookResultBase,
+  TDataField extends keyof TResult,
+  TExtra extends Record<string, unknown> = Record<string, never>,
+> {
+  useHook: (...args: unknown[]) => TResult
+  dataField: TDataField
+  arity: ResourceArity
+  extra?: (result: TResult) => TExtra
+  nullGuard?: boolean
 }
 
-function useUnifiedDeployments(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useCachedDeployments(cluster, namespace)
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: () => { result.refetch() } }
+function createUnifiedResourceHook<
+  TResult extends HookResultBase,
+  TDataField extends keyof TResult,
+  TExtra extends Record<string, unknown> = Record<string, never>,
+>(config: ResourceHookConfig<TResult, TDataField, TExtra>) {
+  return function useUnifiedResourceInstance(
+    params?: Record<string, unknown>
+  ): UnifiedHookResult<TResult[TDataField], TExtra> {
+    const cluster = config.arity !== 'none' ? params?.cluster as string | undefined : undefined
+    const namespace = config.arity === 'cluster+namespace' ? params?.namespace as string | undefined : undefined
+    const args: unknown[] = []
+
+    if (config.arity === 'cluster' || config.arity === 'cluster+namespace') {
+      args.push(cluster)
+    }
+
+    if (config.arity === 'cluster+namespace') {
+      args.push(namespace)
+    }
+
+    const result = config.useHook(...args)
+    const rawData = result[config.dataField]
+    const data = config.nullGuard ? (rawData ?? []) as TResult[TDataField] : rawData
+
+    return {
+      data,
+      isLoading: result.isLoading,
+      error: normalizeHookError(result.error),
+      refetch: result.refetch ?? (() => {}),
+      ...(config.extra ? config.extra(result) : {}),
+    }
+  }
 }
 
-function useUnifiedClusters() {
-  const result = useClusters()
-  return {
-    data: result.clusters,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedPVCs(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = usePVCs(cluster, namespace)
-  return {
-    data: result.pvcs,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedServices(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useServices(cluster, namespace)
-  return {
-    data: result.services,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedDeploymentIssues(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useCachedDeploymentIssues(cluster, namespace)
-  return {
-    data: result.issues || [],
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedOperators(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = useOperators(cluster)
-  return {
-    data: result.operators,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedHelmReleases(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = useHelmReleases(cluster)
-  return {
-    data: result.releases,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedConfigMaps(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useConfigMaps(cluster, namespace)
-  return {
-    data: result.configmaps,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedSecrets(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useSecrets(cluster, namespace)
-  return {
-    data: result.secrets,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedIngresses(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useIngresses(cluster, namespace)
-  return {
-    data: result.ingresses,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-    // Propagate demo-fallback state so UnifiedCard can show the Demo badge
-    // only for actual demo output (Issue 9357).
-    isDemoData: result.isDemoFallback }
-}
-
-function useUnifiedNodes(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = useNodes(cluster)
-  return {
-    data: result.nodes,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedJobs(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useJobs(cluster, namespace)
-  return {
-    data: result.jobs,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedCronJobs(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useCronJobs(cluster, namespace)
-  return {
-    data: result.cronJobs,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedStatefulSets(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useStatefulSets(cluster, namespace)
-  return {
-    data: result.statefulSets,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedDaemonSets(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useDaemonSets(cluster, namespace)
-  return {
-    data: result.daemonSets,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedHPAs(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useHPAs(cluster, namespace)
-  return {
-    data: result.hpas,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedReplicaSets(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useReplicaSets(cluster, namespace)
-  return {
-    data: result.replicaSets,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedPVs(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = usePVs(cluster)
-  return {
-    data: result.pvs,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedResourceQuotas(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useResourceQuotas(cluster, namespace)
-  return {
-    data: result.resourceQuotas,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-    // Propagate demo-fallback state so UnifiedCard can show the Demo badge
-    // only for actual demo output (Issue 9356).
-    isDemoData: result.isDemoFallback }
-}
-
-function useUnifiedLimitRanges(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useLimitRanges(cluster, namespace)
-  return {
-    data: result.limitRanges,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedNetworkPolicies(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useNetworkPolicies(cluster, namespace)
-  return {
-    data: result.networkpolicies,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedNamespaces(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = useNamespaces(cluster)
-  return {
-    data: result.namespaces,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedOperatorSubscriptions(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const result = useOperatorSubscriptions(cluster)
-  return {
-    data: result.subscriptions,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedServiceAccounts(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useServiceAccounts(cluster, namespace)
-  return {
-    data: result.serviceAccounts,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedK8sRoles(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useK8sRoles(cluster, namespace)
-  return {
-    data: result.roles,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedK8sRoleBindings(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useK8sRoleBindings(cluster, namespace)
-  return {
-    data: result.bindings,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedServiceExports(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useServiceExports(cluster, namespace)
-  return {
-    data: result.exports,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
-
-function useUnifiedServiceImports(params?: Record<string, unknown>) {
-  const cluster = params?.cluster as string | undefined
-  const namespace = params?.namespace as string | undefined
-  const result = useServiceImports(cluster, namespace)
-  return {
-    data: result.imports,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch }
-}
+const useUnifiedPodIssues = createUnifiedResourceHook({ useHook: useCachedPodIssues, dataField: 'data', arity: 'cluster+namespace' })
+const useUnifiedEvents = createUnifiedResourceHook({ useHook: useCachedEvents, dataField: 'data', arity: 'cluster+namespace' })
+const useUnifiedDeployments = createUnifiedResourceHook({ useHook: useCachedDeployments, dataField: 'data', arity: 'cluster+namespace' })
+const useUnifiedClusters = createUnifiedResourceHook({ useHook: useClusters, dataField: 'clusters', arity: 'none' })
+const useUnifiedPVCs = createUnifiedResourceHook({ useHook: usePVCs, dataField: 'pvcs', arity: 'cluster+namespace' })
+const useUnifiedServices = createUnifiedResourceHook({ useHook: useServices, dataField: 'services', arity: 'cluster+namespace' })
+const useUnifiedDeploymentIssues = createUnifiedResourceHook({ useHook: useCachedDeploymentIssues, dataField: 'issues', arity: 'cluster+namespace', nullGuard: true })
+const useUnifiedOperators = createUnifiedResourceHook({ useHook: useOperators, dataField: 'operators', arity: 'cluster' })
+const useUnifiedHelmReleases = createUnifiedResourceHook({ useHook: useHelmReleases, dataField: 'releases', arity: 'cluster' })
+const useUnifiedConfigMaps = createUnifiedResourceHook({ useHook: useConfigMaps, dataField: 'configmaps', arity: 'cluster+namespace' })
+const useUnifiedSecrets = createUnifiedResourceHook({ useHook: useSecrets, dataField: 'secrets', arity: 'cluster+namespace' })
+const useUnifiedIngresses = createUnifiedResourceHook({
+  useHook: useIngresses,
+  dataField: 'ingresses',
+  arity: 'cluster+namespace',
+  extra: (result) => ({ isDemoData: result.isDemoFallback }),
+})
+const useUnifiedNodes = createUnifiedResourceHook({ useHook: useNodes, dataField: 'nodes', arity: 'cluster' })
+const useUnifiedJobs = createUnifiedResourceHook({ useHook: useJobs, dataField: 'jobs', arity: 'cluster+namespace' })
+const useUnifiedCronJobs = createUnifiedResourceHook({ useHook: useCronJobs, dataField: 'cronJobs', arity: 'cluster+namespace' })
+const useUnifiedStatefulSets = createUnifiedResourceHook({ useHook: useStatefulSets, dataField: 'statefulSets', arity: 'cluster+namespace' })
+const useUnifiedDaemonSets = createUnifiedResourceHook({ useHook: useDaemonSets, dataField: 'daemonSets', arity: 'cluster+namespace' })
+const useUnifiedHPAs = createUnifiedResourceHook({ useHook: useHPAs, dataField: 'hpas', arity: 'cluster+namespace' })
+const useUnifiedReplicaSets = createUnifiedResourceHook({ useHook: useReplicaSets, dataField: 'replicaSets', arity: 'cluster+namespace' })
+const useUnifiedPVs = createUnifiedResourceHook({ useHook: usePVs, dataField: 'pvs', arity: 'cluster' })
+const useUnifiedResourceQuotas = createUnifiedResourceHook({
+  useHook: useResourceQuotas,
+  dataField: 'resourceQuotas',
+  arity: 'cluster+namespace',
+  extra: (result) => ({ isDemoData: result.isDemoFallback }),
+})
+const useUnifiedLimitRanges = createUnifiedResourceHook({ useHook: useLimitRanges, dataField: 'limitRanges', arity: 'cluster+namespace' })
+const useUnifiedNetworkPolicies = createUnifiedResourceHook({ useHook: useNetworkPolicies, dataField: 'networkpolicies', arity: 'cluster+namespace' })
+const useUnifiedNamespaces = createUnifiedResourceHook({ useHook: useNamespaces, dataField: 'namespaces', arity: 'cluster' })
+const useUnifiedOperatorSubscriptions = createUnifiedResourceHook({ useHook: useOperatorSubscriptions, dataField: 'subscriptions', arity: 'cluster' })
+const useUnifiedServiceAccounts = createUnifiedResourceHook({ useHook: useServiceAccounts, dataField: 'serviceAccounts', arity: 'cluster+namespace' })
+const useUnifiedK8sRoles = createUnifiedResourceHook({ useHook: useK8sRoles, dataField: 'roles', arity: 'cluster+namespace' })
+const useUnifiedK8sRoleBindings = createUnifiedResourceHook({ useHook: useK8sRoleBindings, dataField: 'bindings', arity: 'cluster+namespace' })
+const useUnifiedServiceExports = createUnifiedResourceHook({ useHook: useServiceExports, dataField: 'exports', arity: 'cluster+namespace' })
+const useUnifiedServiceImports = createUnifiedResourceHook({ useHook: useServiceImports, dataField: 'imports', arity: 'cluster+namespace' })
 
 // ============================================================================
 // Demo data hooks for cards that don't have real data hooks yet
@@ -912,101 +693,40 @@ function useRecentEvents(params?: Record<string, unknown>) {
 }
 
 // Demo hook factories
-function useClusterMetrics() {
-  return useDemoDataHook(DEMO_CLUSTER_METRICS)
+function createDemoHook<T>(demoData: T[] | T) {
+  return function useDemoHookInstance() {
+    return useDemoDataHook(Array.isArray(demoData) ? demoData : [demoData])
+  }
 }
 
-function useResourceUsage() {
-  return useDemoDataHook(DEMO_RESOURCE_USAGE)
-}
-
-function useEventsTimeline() {
-  return useDemoDataHook(DEMO_EVENTS_TIMELINE)
-}
-
-function useSecurityIssues() {
-  return useDemoDataHook(DEMO_SECURITY_ISSUES)
-}
-
-function useActiveAlerts() {
-  return useDemoDataHook(DEMO_ACTIVE_ALERTS)
-}
-
-function useStorageOverview() {
-  return useDemoDataHook([DEMO_STORAGE_OVERVIEW])
-}
-
-function useNetworkOverview() {
-  return useDemoDataHook([DEMO_NETWORK_OVERVIEW])
-}
-
-function useTopPods() {
-  return useDemoDataHook(DEMO_TOP_PODS)
-}
-
-function useGitOpsDrift() {
-  return useDemoDataHook(DEMO_GITOPS_DRIFT)
-}
-
-function usePodHealthTrend() {
-  return useDemoDataHook(DEMO_POD_HEALTH_TREND)
-}
-
-function useResourceTrend() {
-  return useDemoDataHook(DEMO_RESOURCE_TREND)
-}
-
-function useComputeOverview() {
-  return useDemoDataHook([DEMO_COMPUTE_OVERVIEW])
-}
+const useClusterMetrics = createDemoHook(DEMO_CLUSTER_METRICS)
+const useResourceUsage = createDemoHook(DEMO_RESOURCE_USAGE)
+const useEventsTimeline = createDemoHook(DEMO_EVENTS_TIMELINE)
+const useSecurityIssues = createDemoHook(DEMO_SECURITY_ISSUES)
+const useActiveAlerts = createDemoHook(DEMO_ACTIVE_ALERTS)
+const useStorageOverview = createDemoHook(DEMO_STORAGE_OVERVIEW)
+const useNetworkOverview = createDemoHook(DEMO_NETWORK_OVERVIEW)
+const useTopPods = createDemoHook(DEMO_TOP_PODS)
+const useGitOpsDrift = createDemoHook(DEMO_GITOPS_DRIFT)
+const usePodHealthTrend = createDemoHook(DEMO_POD_HEALTH_TREND)
+const useResourceTrend = createDemoHook(DEMO_RESOURCE_TREND)
+const useComputeOverview = createDemoHook(DEMO_COMPUTE_OVERVIEW)
 
 // ============================================================================
 // Batch 4 demo hooks - ArgoCD, Prow, GPU, ML, Policy cards
 // ============================================================================
 
-function useArgoCDApplications() {
-  return useDemoDataHook(DEMO_ARGOCD_APPLICATIONS)
-}
-
-function useGPUInventory() {
-  return useDemoDataHook(DEMO_GPU_INVENTORY)
-}
-
-function useProwJobs() {
-  return useDemoDataHook(DEMO_PROW_JOBS)
-}
-
-function useMLJobs() {
-  return useDemoDataHook(DEMO_ML_JOBS)
-}
-
-function useMLNotebooks() {
-  return useDemoDataHook(DEMO_ML_NOTEBOOKS)
-}
-
-function useOPAPolicies() {
-  return useDemoDataHook(DEMO_OPA_POLICIES)
-}
-
-function useKyvernoPolicies() {
-  return useDemoDataHook(DEMO_KYVERNO_POLICIES)
-}
-
-function useAlertRules() {
-  return useDemoDataHook(DEMO_ALERT_RULES)
-}
-
-function useChartVersions() {
-  return useDemoDataHook(DEMO_CHART_VERSIONS)
-}
-
-function useCRDHealth() {
-  return useDemoDataHook(DEMO_CRD_HEALTH)
-}
-
-function useComplianceScore() {
-  return useDemoDataHook([DEMO_COMPLIANCE_SCORE])
-}
+const useArgoCDApplications = createDemoHook(DEMO_ARGOCD_APPLICATIONS)
+const useGPUInventory = createDemoHook(DEMO_GPU_INVENTORY)
+const useProwJobs = createDemoHook(DEMO_PROW_JOBS)
+const useMLJobs = createDemoHook(DEMO_ML_JOBS)
+const useMLNotebooks = createDemoHook(DEMO_ML_NOTEBOOKS)
+const useOPAPolicies = createDemoHook(DEMO_OPA_POLICIES)
+const useKyvernoPolicies = createDemoHook(DEMO_KYVERNO_POLICIES)
+const useAlertRules = createDemoHook(DEMO_ALERT_RULES)
+const useChartVersions = createDemoHook(DEMO_CHART_VERSIONS)
+const useCRDHealth = createDemoHook(DEMO_CRD_HEALTH)
+const useComplianceScore = createDemoHook(DEMO_COMPLIANCE_SCORE)
 
 /** Maximum namespace events to return when no namespace filter is set */
 const MAX_NAMESPACE_EVENTS_UNFILTERED = 20
@@ -1030,33 +750,17 @@ function useNamespaceEvents(params?: Record<string, unknown>) {
     refetch: () => { result.refetch() } }
 }
 
-function useGPUWorkloads() {
-  return useDemoDataHook(DEMO_GPU_WORKLOADS)
-}
-
-function useDeploymentProgress() {
-  return useDemoDataHook(DEMO_DEPLOYMENT_PROGRESS)
-}
+const useGPUWorkloads = createDemoHook(DEMO_GPU_WORKLOADS)
+const useDeploymentProgress = createDemoHook(DEMO_DEPLOYMENT_PROGRESS)
 
 // ============================================================================
 // Batch 5 demo hooks - GitOps, Security, Status cards
 // ============================================================================
 
-function useArgoCDHealth() {
-  return useDemoDataHook([DEMO_ARGOCD_HEALTH])
-}
-
-function useArgoCDSyncStatus() {
-  return useDemoDataHook([DEMO_ARGOCD_SYNC_STATUS])
-}
-
-function useGatewayStatus() {
-  return useDemoDataHook(DEMO_GATEWAY_STATUS)
-}
-
-function useKustomizationStatus() {
-  return useDemoDataHook(DEMO_KUSTOMIZATION_STATUS)
-}
+const useArgoCDHealth = createDemoHook(DEMO_ARGOCD_HEALTH)
+const useArgoCDSyncStatus = createDemoHook(DEMO_ARGOCD_SYNC_STATUS)
+const useGatewayStatus = createDemoHook(DEMO_GATEWAY_STATUS)
+const useKustomizationStatus = createDemoHook(DEMO_KUSTOMIZATION_STATUS)
 
 function useUnifiedFluxStatus() {
   const result = useFluxStatus()
@@ -1094,415 +798,118 @@ function useUnifiedChaosMeshStatus() {
   }
 }
 
-function useUnifiedContainerdStatus() {
-  const result = useCachedContainerd()
-  return {
-    data: result.data.containers,
-    isLoading: result.isLoading,
-    error: result.isFailed ? new Error('Failed to fetch containerd status') : null,
-    refetch: () => { result.refetch() },
+interface CachedHookConfig<
+  TResult extends {
+    data?: Record<string, unknown>
+    isLoading?: boolean
+    showSkeleton?: boolean
+    isFailed?: boolean
+    error?: unknown
+    refetch?: () => void | Promise<void>
+  },
+> {
+  useCachedHook: () => TResult
+  dataField: string
+  errorMsg?: string
+  loadingField: 'isLoading' | 'showSkeleton'
+  errorField: 'isFailed' | 'error'
+  nullGuard?: boolean
+}
+
+function createUnifiedCachedHook<
+  TResult extends {
+    data?: Record<string, unknown>
+    isLoading?: boolean
+    showSkeleton?: boolean
+    isFailed?: boolean
+    error?: unknown
+    refetch?: () => void | Promise<void>
+  },
+>(config: CachedHookConfig<TResult>) {
+  return function useUnifiedCachedInstance() {
+    const result = config.useCachedHook()
+    const rawData = result.data?.[config.dataField]
+    const data = config.nullGuard ? rawData ?? [] : rawData
+    const isLoading = config.loadingField === 'showSkeleton'
+      ? Boolean(result.showSkeleton)
+      : Boolean(result.isLoading)
+
+    let error: Error | null = null
+
+    if (config.errorField === 'isFailed') {
+      error = result.isFailed ? new Error(config.errorMsg ?? 'Failed to fetch status') : null
+    } else if (result.error) {
+      error = config.errorMsg ? new Error(config.errorMsg) : normalizeHookError(result.error)
+    }
+
+    return {
+      data,
+      isLoading,
+      error,
+      refetch: () => { void result.refetch?.() },
+    }
   }
 }
 
-function useUnifiedCortexStatus() {
-  const result = useCachedCortex()
-  // Surface the component list as the primary row set for generic list renderers.
-  return {
-    data: result.data.components,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Cortex status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
+const useUnifiedBackstageStatus = createUnifiedCachedHook({ useCachedHook: useCachedBackstage, dataField: 'plugins', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedContainerdStatus = createUnifiedCachedHook({ useCachedHook: useCachedContainerd, dataField: 'containers', loadingField: 'isLoading', errorField: 'isFailed', errorMsg: 'Failed to fetch containerd status' })
+const useUnifiedCortexStatus = createUnifiedCachedHook({ useCachedHook: useCachedCortex, dataField: 'components', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Cortex status' })
+const useUnifiedDaprStatus = createUnifiedCachedHook({ useCachedHook: useCachedDapr, dataField: 'components', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Dapr status' })
+const useUnifiedDragonflyStatus = createUnifiedCachedHook({ useCachedHook: useCachedDragonfly, dataField: 'components', loadingField: 'isLoading', errorField: 'isFailed', errorMsg: 'Failed to fetch Dragonfly status' })
+const useUnifiedEnvoyStatus = createUnifiedCachedHook({ useCachedHook: useCachedEnvoy, dataField: 'listeners', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Envoy status' })
+const useUnifiedGrpcStatus = createUnifiedCachedHook({ useCachedHook: useCachedGrpc, dataField: 'services', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch gRPC status' })
+const useUnifiedKedaStatus = createUnifiedCachedHook({ useCachedHook: useCachedKeda, dataField: 'scaledObjects', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch KEDA status', nullGuard: true })
+const useUnifiedKserveStatus = createUnifiedCachedHook({ useCachedHook: useCachedKserve, dataField: 'services', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch KServe status', nullGuard: true })
+const useUnifiedLinkerdStatus = createUnifiedCachedHook({ useCachedHook: useCachedLinkerd, dataField: 'deployments', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Linkerd status' })
+const useUnifiedLonghornStatus = createUnifiedCachedHook({ useCachedHook: useCachedLonghorn, dataField: 'volumes', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedOtelStatus = createUnifiedCachedHook({ useCachedHook: useCachedOtel, dataField: 'collectors', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedTikvStatus = createUnifiedCachedHook({ useCachedHook: useCachedTikv, dataField: 'stores', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedTufStatus = createUnifiedCachedHook({ useCachedHook: useCachedTuf, dataField: 'roles', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedCloudCustodianStatus = createUnifiedCachedHook({ useCachedHook: useCachedCloudCustodian, dataField: 'policies', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedRookStatus = createUnifiedCachedHook({ useCachedHook: useCachedRook, dataField: 'clusters', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedSpiffeStatus = createUnifiedCachedHook({ useCachedHook: useCachedSpiffe, dataField: 'entries', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch SPIFFE status' })
+const useUnifiedCniStatus = createUnifiedCachedHook({ useCachedHook: useCachedCni, dataField: 'nodes', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch CNI status' })
+const useUnifiedOpenfeatureStatus = createUnifiedCachedHook({ useCachedHook: useCachedOpenfeature, dataField: 'flags', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch OpenFeature status' })
+const useUnifiedStrimziStatus = createUnifiedCachedHook({ useCachedHook: useCachedStrimzi, dataField: 'clusters', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Strimzi status' })
+const useUnifiedSpireStatus = createUnifiedCachedHook({ useCachedHook: useCachedSpire, dataField: 'serverPods', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedOpenfgaStatus = createUnifiedCachedHook({ useCachedHook: useCachedOpenfga, dataField: 'stores', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch OpenFGA status' })
+const useUnifiedKubeVelaStatus = createUnifiedCachedHook({ useCachedHook: useCachedKubevela, dataField: 'applications', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch KubeVela status' })
+const useUnifiedFlatcarStatus = createUnifiedCachedHook({ useCachedHook: useCachedFlatcar, dataField: 'nodes', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Flatcar status' })
+const useUnifiedVitessStatus = createUnifiedCachedHook({ useCachedHook: useCachedVitess, dataField: 'keyspaces', loadingField: 'isLoading', errorField: 'error' })
+const useUnifiedWasmcloudStatus = createUnifiedCachedHook({ useCachedHook: useCachedWasmcloud, dataField: 'hosts', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch wasmCloud status' })
+const useUnifiedVolcanoStatus = createUnifiedCachedHook({ useCachedHook: useCachedVolcano, dataField: 'jobs', loadingField: 'showSkeleton', errorField: 'error', errorMsg: 'Failed to fetch Volcano status' })
 
-function useUnifiedDragonflyStatus() {
-  const result = useCachedDragonfly()
-  // Surface the component list as the primary row set for generic list renderers.
-  return {
-    data: result.data.components,
-    isLoading: result.isLoading,
-    error: result.isFailed ? new Error('Failed to fetch Dragonfly status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedEnvoyStatus() {
-  const result = useCachedEnvoy()
-  // Surface the listener list as the primary row set for generic list renderers.
-  return {
-    data: result.data.listeners,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Envoy status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedDaprStatus() {
-  const result = useCachedDapr()
-  // Surface the component list as the primary row set for generic list renderers.
-  return {
-    data: result.data.components,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Dapr status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedGrpcStatus() {
-  const result = useCachedGrpc()
-  // Surface the service list as the primary row set for generic list renderers.
-  return {
-    data: result.data.services,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch gRPC status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedKedaStatus() {
-  const result = useCachedKeda()
-  // Surface the ScaledObject list as the primary row set for generic list
-  // renderers. `data.scaledObjects` can be undefined while the cache is
-  // hydrating, so guard defensively per CLAUDE.md array-safety rule.
-  return {
-    data: (result.data?.scaledObjects ?? []),
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch KEDA status') : null,
-    refetch: async () => {
-      // useKedaStatus doesn't expose refetch directly; the cache layer
-      // refreshes on its own schedule. This is a no-op placeholder that
-      // preserves the expected unified-hook shape.
-    },
-  }
-}
-
-function useUnifiedBackstageStatus() {
-  const result = useCachedBackstage()
-  // Surface the plugin list as the primary row set for generic list renderers.
-  return {
-    data: result.data.plugins,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedLinkerdStatus() {
-  const result = useCachedLinkerd()
-  // Surface the meshed deployment list as the primary row set for generic list renderers.
-  return {
-    data: result.data.deployments,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Linkerd status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedKserveStatus() {
-  const result = useCachedKserve()
-  // Surface the InferenceService list as the primary row set for generic list renderers.
-  // `services` can be undefined while the cache is hydrating — guard per CLAUDE.md.
-  return {
-    data: result.data.services ?? [],
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch KServe status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedLonghornStatus() {
-  const result = useCachedLonghorn()
-  // Surface the volume list as the primary row set for generic list renderers.
-  return {
-    data: result.data.volumes,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedOtelStatus() {
-  const result = useCachedOtel()
-  return {
-    data: result.data.collectors,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedTikvStatus() {
-  const result = useCachedTikv()
-  return {
-    data: result.data.stores,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedTufStatus() {
-  const result = useCachedTuf()
-  // Surface the TUF role list as the primary row set for generic list renderers.
-  return {
-    data: result.data.roles,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedCloudCustodianStatus() {
-  const result = useCachedCloudCustodian()
-  // Surface the policy list as the primary row set for generic list renderers.
-  return {
-    data: result.data.policies,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedRookStatus() {
-  const result = useCachedRook()
-  return {
-    data: result.data.clusters,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedSpiffeStatus() {
-  const result = useCachedSpiffe()
-  // Surface the registration entry list as the primary row set for generic list renderers.
-  return {
-    data: result.data.entries,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch SPIFFE status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedCniStatus() {
-  const result = useCachedCni()
-  // Surface the node list as the primary row set for generic list renderers.
-  return {
-    data: result.data.nodes,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch CNI status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedOpenfeatureStatus() {
-  const result = useCachedOpenfeature()
-  // Surface the feature-flag list as the primary row set for generic list renderers.
-  return {
-    data: result.data.flags,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch OpenFeature status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedStrimziStatus() {
-  const result = useCachedStrimzi()
-  // Surface the Kafka cluster list as the primary row set for generic list renderers.
-  return {
-    data: result.data.clusters,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Strimzi status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedSpireStatus() {
-  const result = useCachedSpire()
-  // Surface the SPIRE server pod list as the primary row set for generic
-  // list renderers.
-  return {
-    data: result.data.serverPods,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedOpenfgaStatus() {
-  const result = useCachedOpenfga()
-  // Surface the store list as the primary row set for generic list renderers.
-  return {
-    data: result.data.stores,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch OpenFGA status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedKubeVelaStatus() {
-  const result = useCachedKubevela()
-  // Surface the Application CR list as the primary row set for generic list renderers.
-  return {
-    data: result.data.applications,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch KubeVela status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedFlatcarStatus() {
-  const result = useCachedFlatcar()
-  // Surface the node list as the primary row set for generic list renderers.
-  return {
-    data: result.data.nodes,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Flatcar status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedVitessStatus() {
-  const result = useCachedVitess()
-  // Surface the keyspace list as the primary row set for generic list renderers.
-  return {
-    data: result.data.keyspaces,
-    isLoading: result.isLoading,
-    error: result.error ? new Error(result.error) : null,
-    refetch: result.refetch,
-  }
-}
-
-function useUnifiedWasmcloudStatus() {
-  const result = useCachedWasmcloud()
-  // Surface the host list as the primary row set for generic list renderers.
-  return {
-    data: result.data.hosts,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch wasmCloud status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-function useUnifiedVolcanoStatus() {
-  const result = useCachedVolcano()
-  // Surface the job list as the primary row set for generic list renderers.
-  return {
-    data: result.data.jobs,
-    isLoading: result.showSkeleton,
-    error: result.error ? new Error('Failed to fetch Volcano status') : null,
-    refetch: () => { result.refetch() },
-  }
-}
-
-
-function useProviderHealth() {
-  return useDemoDataHook(DEMO_PROVIDER_HEALTH)
-}
-
-function useUpgradeStatus() {
-  return useDemoDataHook(DEMO_UPGRADE_STATUS)
-}
-
-function useProwStatus() {
-  return useDemoDataHook([DEMO_PROW_STATUS])
-}
-
-function useProwHistory() {
-  return useDemoDataHook(DEMO_PROW_HISTORY)
-}
-
-function useHelmHistory() {
-  return useDemoDataHook(DEMO_HELM_HISTORY)
-}
-
-function useExternalSecrets() {
-  return useDemoDataHook([DEMO_EXTERNAL_SECRETS])
-}
-
-function useCertManager() {
-  return useDemoDataHook([DEMO_CERT_MANAGER])
-}
-
-function useVaultSecrets() {
-  return useDemoDataHook(DEMO_VAULT_SECRETS)
-}
-
-function useFalcoAlerts() {
-  return useDemoDataHook(DEMO_FALCO_ALERTS)
-}
-
-function useKubescapeScan() {
-  return useDemoDataHook([DEMO_KUBESCAPE_SCAN])
-}
-
-function useTrivyScan() {
-  return useDemoDataHook([DEMO_TRIVY_SCAN])
-}
-
-function useEventSummary() {
-  return useDemoDataHook([DEMO_EVENT_SUMMARY])
-}
-
-function useAppStatus() {
-  return useDemoDataHook(DEMO_APP_STATUS)
-}
-
-function useGPUStatus() {
-  return useDemoDataHook([DEMO_GPU_STATUS])
-}
-
-function useGPUUtilization() {
-  return useDemoDataHook(DEMO_GPU_UTILIZATION)
-}
-
-function useGPUUsageTrend() {
-  return useDemoDataHook(DEMO_GPU_USAGE_TREND)
-}
-
-function usePolicyViolations() {
-  return useDemoDataHook(DEMO_POLICY_VIOLATIONS)
-}
-
-function useNamespaceOverview() {
-  return useDemoDataHook([DEMO_NAMESPACE_OVERVIEW])
-}
-
-function useNamespaceQuotas() {
-  return useDemoDataHook(DEMO_NAMESPACE_QUOTAS)
-}
-
-function useNamespaceRBAC() {
-  return useDemoDataHook(DEMO_NAMESPACE_RBAC)
-}
-
-function useResourceCapacity() {
-  return useDemoDataHook([DEMO_RESOURCE_CAPACITY])
-}
+const useProviderHealth = createDemoHook(DEMO_PROVIDER_HEALTH)
+const useUpgradeStatus = createDemoHook(DEMO_UPGRADE_STATUS)
+const useProwStatus = createDemoHook(DEMO_PROW_STATUS)
+const useProwHistory = createDemoHook(DEMO_PROW_HISTORY)
+const useHelmHistory = createDemoHook(DEMO_HELM_HISTORY)
+const useExternalSecrets = createDemoHook(DEMO_EXTERNAL_SECRETS)
+const useCertManager = createDemoHook(DEMO_CERT_MANAGER)
+const useVaultSecrets = createDemoHook(DEMO_VAULT_SECRETS)
+const useFalcoAlerts = createDemoHook(DEMO_FALCO_ALERTS)
+const useKubescapeScan = createDemoHook(DEMO_KUBESCAPE_SCAN)
+const useTrivyScan = createDemoHook(DEMO_TRIVY_SCAN)
+const useEventSummary = createDemoHook(DEMO_EVENT_SUMMARY)
+const useAppStatus = createDemoHook(DEMO_APP_STATUS)
+const useGPUStatus = createDemoHook(DEMO_GPU_STATUS)
+const useGPUUtilization = createDemoHook(DEMO_GPU_UTILIZATION)
+const useGPUUsageTrend = createDemoHook(DEMO_GPU_USAGE_TREND)
+const usePolicyViolations = createDemoHook(DEMO_POLICY_VIOLATIONS)
+const useNamespaceOverview = createDemoHook(DEMO_NAMESPACE_OVERVIEW)
+const useNamespaceQuotas = createDemoHook(DEMO_NAMESPACE_QUOTAS)
+const useNamespaceRBAC = createDemoHook(DEMO_NAMESPACE_RBAC)
+const useResourceCapacity = createDemoHook(DEMO_RESOURCE_CAPACITY)
 
 // ============================================================================
 // Batch 6 demo hooks - Remaining compatible cards
 // ============================================================================
 
-function useGithubActivity() {
-  return useDemoDataHook(DEMO_GITHUB_ACTIVITY)
-}
-
-function useRSSFeed() {
-  return useDemoDataHook(DEMO_RSS_FEED)
-}
-
-function useKubecostOverview() {
-  return useDemoDataHook([DEMO_KUBECOST_OVERVIEW])
-}
-
-function useOpencostOverview() {
-  return useDemoDataHook([DEMO_OPENCOST_OVERVIEW])
-}
-
-function useClusterCosts() {
-  return useDemoDataHook(DEMO_CLUSTER_COSTS)
-}
+const useGithubActivity = createDemoHook(DEMO_GITHUB_ACTIVITY)
+const useRSSFeed = createDemoHook(DEMO_RSS_FEED)
+const useKubecostOverview = createDemoHook(DEMO_KUBECOST_OVERVIEW)
+const useOpencostOverview = createDemoHook(DEMO_OPENCOST_OVERVIEW)
+const useClusterCosts = createDemoHook(DEMO_CLUSTER_COSTS)
 
 // ============================================================================
 // Register all data hooks for use in unified cards
