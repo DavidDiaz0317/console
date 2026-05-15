@@ -643,9 +643,12 @@ export function StatsOverview({
       {(!collapsible || isExpanded) && (
         <div className={`grid ${gridCols} gap-4`}>
           {visibleBlocks.map(block => {
-            const data = effectiveIsLoading
-              ? { value: '-' as string | number, sublabel: undefined }
-              : (getStatValue(block.id) ?? { value: '-' as string | number, sublabel: t('statsOverview.notAvailable') })
+            const rawData = getStatValue(block.id)
+            const data: StatBlockValue = effectiveIsLoading
+              ? { value: '-', sublabel: undefined }
+              : rawData
+                ? { ...rawData, value: rawData.value ?? '-' }
+                : { value: '-', sublabel: t('statsOverview.notAvailable') }
             return (
               <StatBlock
                 key={block.id}
@@ -673,4 +676,3 @@ export function StatsOverview({
     </div>
   )
 }
-
