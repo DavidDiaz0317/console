@@ -110,20 +110,7 @@ func (s *SQLiteStore) scanDashboardRow(ctx context.Context, rows *sql.Rows) (*mo
 }
 
 func (s *SQLiteStore) CreateDashboard(ctx context.Context, dashboard *models.Dashboard) error {
-	if dashboard.ID == uuid.Nil {
-		dashboard.ID = uuid.New()
-	}
-	dashboard.CreatedAt = time.Now()
-
-	var layoutStr *string
-	if dashboard.Layout != nil {
-		str := string(dashboard.Layout)
-		layoutStr = &str
-	}
-
-	_, err := s.db.ExecContext(ctx, `INSERT INTO dashboards (id, user_id, name, layout, is_default, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		dashboard.ID.String(), dashboard.UserID.String(), dashboard.Name, layoutStr, boolToInt(dashboard.IsDefault), dashboard.CreatedAt)
-	return err
+	return insertDashboard(ctx, s.db, dashboard)
 }
 
 func (s *SQLiteStore) UpdateDashboard(ctx context.Context, dashboard *models.Dashboard) error {
@@ -240,24 +227,12 @@ func (s *SQLiteStore) scanCardRow(ctx context.Context, rows *sql.Rows) (*models.
 }
 
 func (s *SQLiteStore) CreateCard(ctx context.Context, card *models.Card) error {
-	if card.ID == uuid.Nil {
-		card.ID = uuid.New()
+	cards := []models.Card{*card}
+	if err := insertCards(ctx, s.db, cards); err != nil {
+		return err
 	}
-	card.CreatedAt = time.Now()
-
-	positionJSON, err := json.Marshal(card.Position)
-	if err != nil {
-		return fmt.Errorf("failed to marshal card position: %w", err)
-	}
-	var configStr *string
-	if card.Config != nil {
-		str := string(card.Config)
-		configStr = &str
-	}
-
-	_, err = s.db.ExecContext(ctx, `INSERT INTO cards (id, dashboard_id, card_type, config, position, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		card.ID.String(), card.DashboardID.String(), string(card.CardType), configStr, string(positionJSON), card.CreatedAt)
-	return err
+	*card = cards[0]
+	return nil
 }
 
 // CreateCardWithLimit atomically enforces a per-dashboard card limit and

@@ -78,15 +78,22 @@ func (h *OnboardingHandler) SaveResponses(c *fiber.Ctx) error {
 		}
 	}
 
+	batchedResponses := make([]models.OnboardingResponse, 0, len(responses))
 	for _, r := range responses {
-		response := &models.OnboardingResponse{
+		batchedResponses = append(batchedResponses, models.OnboardingResponse{
 			UserID:      userID,
 			QuestionKey: r.QuestionKey,
 			Answer:      r.Answer,
-		}
-		if err := h.store.SaveOnboardingResponse(c.UserContext(), response); err != nil {
+		})
+	}
+
+	if err := h.store.WithTransaction(c.UserContext(), func(tx store.TransactionStore) error {
+		if err := tx.SaveOnboardingResponses(c.UserContext(), batchedResponses); err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to save response")
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "saved": len(responses)})
@@ -111,27 +118,32 @@ func (h *OnboardingHandler) CompleteOnboarding(c *fiber.Ctx) error {
 		Name:      "My Dashboard",
 		IsDefault: true,
 	}
-	if err := h.store.CreateDashboard(c.UserContext(), dashboard); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create dashboard")
-	}
 
-	// Create cards
-	for i, card := range cards {
-		card.DashboardID = dashboard.ID
-		card.Position = models.CardPosition{
+	for i := range cards {
+		cards[i].Position = models.CardPosition{
 			X: (i % 3) * 4,
 			Y: (i / 3) * 3,
 			W: 4,
 			H: 3,
 		}
-		if err := h.store.CreateCard(c.UserContext(), &card); err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create card")
-		}
 	}
 
-	// Mark user as onboarded
-	if err := h.store.SetUserOnboarded(c.UserContext(), userID); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to complete onboarding")
+	if err := h.store.WithTransaction(c.UserContext(), func(tx store.TransactionStore) error {
+		if err := tx.CreateDashboard(c.UserContext(), dashboard); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create dashboard")
+		}
+		for i := range cards {
+			cards[i].DashboardID = dashboard.ID
+		}
+		if err := tx.CreateCards(c.UserContext(), cards); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to create card")
+		}
+		if err := tx.SetUserOnboarded(c.UserContext(), userID); err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to complete onboarding")
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return c.JSON(fiber.Map{

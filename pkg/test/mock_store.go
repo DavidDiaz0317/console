@@ -73,7 +73,14 @@ func (m *MockStore) CountUsersByRole(ctx context.Context) (int, int, int, error)
 	return 1, 0, 0, nil
 }
 
+func (m *MockStore) WithTransaction(ctx context.Context, fn func(store.TransactionStore) error) error {
+	return fn(m)
+}
+
 func (m *MockStore) SaveOnboardingResponse(ctx context.Context, response *models.OnboardingResponse) error {
+	return nil
+}
+func (m *MockStore) SaveOnboardingResponses(ctx context.Context, responses []models.OnboardingResponse) error {
 	return nil
 }
 func (m *MockStore) GetOnboardingResponses(ctx context.Context, userID uuid.UUID) ([]models.OnboardingResponse, error) {
@@ -93,6 +100,7 @@ func (m *MockStore) GetDefaultDashboard(ctx context.Context, userID uuid.UUID) (
 func (m *MockStore) CreateDashboard(ctx context.Context, dashboard *models.Dashboard) error {
 	return nil
 }
+func (m *MockStore) CreateCards(ctx context.Context, cards []models.Card) error { return nil }
 func (m *MockStore) UpdateDashboard(ctx context.Context, dashboard *models.Dashboard) error {
 	return nil
 }

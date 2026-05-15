@@ -512,6 +512,56 @@ func TestOnboarding(t *testing.T) {
 		require.Equal(t, "SRE", responses[0].Answer)
 	})
 
+	t.Run("SaveOnboardingResponses batches multiple upserts", func(t *testing.T) {
+		batchUser := createTestUser(t, store, "gh-onboard-batch", "batchuser")
+		responses := []models.OnboardingResponse{
+			{UserID: batchUser.ID, QuestionKey: "role", Answer: "SRE"},
+			{UserID: batchUser.ID, QuestionKey: "focus_layer", Answer: "Application"},
+		}
+		require.NoError(t, store.SaveOnboardingResponses(ctx, responses))
+
+		stored, err := store.GetOnboardingResponses(ctx, batchUser.ID)
+		require.NoError(t, err)
+		require.Len(t, stored, 2)
+	})
+
+	t.Run("WithTransaction rolls back dashboard inserts on card failure", func(t *testing.T) {
+		rollbackUser := createTestUser(t, store, "gh-onboard-rollback", "rollbackuser")
+		dashboard := &models.Dashboard{
+			UserID:    rollbackUser.ID,
+			Name:      "Rollback Dashboard",
+			IsDefault: true,
+		}
+
+		err := store.WithTransaction(ctx, func(tx TransactionStore) error {
+			if err := tx.CreateDashboard(ctx, dashboard); err != nil {
+				return err
+			}
+
+			return tx.CreateCards(ctx, []models.Card{
+				{
+					DashboardID: dashboard.ID,
+					CardType:    models.CardTypeClusterHealth,
+					Position:    models.CardPosition{X: 0, Y: 0, W: 4, H: 3},
+				},
+				{
+					DashboardID: uuid.New(),
+					CardType:    models.CardTypeAppStatus,
+					Position:    models.CardPosition{X: 4, Y: 0, W: 4, H: 3},
+				},
+			})
+		})
+		require.Error(t, err)
+
+		count, countErr := store.CountUserDashboards(ctx, rollbackUser.ID)
+		require.NoError(t, countErr)
+		require.Zero(t, count)
+
+		cards, cardsErr := store.GetDashboardCards(ctx, dashboard.ID)
+		require.NoError(t, cardsErr)
+		require.Empty(t, cards)
+	})
+
 	t.Run("SetUserOnboarded marks user as onboarded", func(t *testing.T) {
 		require.NoError(t, store.SetUserOnboarded(ctx, user.ID))
 

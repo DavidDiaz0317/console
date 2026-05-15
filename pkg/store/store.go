@@ -54,8 +54,18 @@ type AuditEntry struct {
 	Detail    string `json:"detail,omitempty"`
 }
 
+// TransactionStore exposes the subset of onboarding writes that can run inside
+// a single transaction.
+type TransactionStore interface {
+	SaveOnboardingResponses(ctx context.Context, responses []models.OnboardingResponse) error
+	CreateDashboard(ctx context.Context, dashboard *models.Dashboard) error
+	CreateCards(ctx context.Context, cards []models.Card) error
+	SetUserOnboarded(ctx context.Context, userID uuid.UUID) error
+}
+
 // Store defines the interface for data persistence
 type Store interface {
+	WithTransaction(ctx context.Context, fn func(TransactionStore) error) error
 	// Users
 	GetUser(ctx context.Context, id uuid.UUID) (*models.User, error)
 	GetUserByGitHubID(ctx context.Context, githubID string) (*models.User, error)
@@ -73,6 +83,7 @@ type Store interface {
 
 	// Onboarding
 	SaveOnboardingResponse(ctx context.Context, response *models.OnboardingResponse) error
+	SaveOnboardingResponses(ctx context.Context, responses []models.OnboardingResponse) error
 	GetOnboardingResponses(ctx context.Context, userID uuid.UUID) ([]models.OnboardingResponse, error)
 	SetUserOnboarded(ctx context.Context, userID uuid.UUID) error
 
@@ -86,6 +97,7 @@ type Store interface {
 	GetUserDashboards(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Dashboard, error)
 	GetDefaultDashboard(ctx context.Context, userID uuid.UUID) (*models.Dashboard, error)
 	CreateDashboard(ctx context.Context, dashboard *models.Dashboard) error
+	CreateCards(ctx context.Context, cards []models.Card) error
 	UpdateDashboard(ctx context.Context, dashboard *models.Dashboard) error
 	DeleteDashboard(ctx context.Context, id uuid.UUID) error
 
