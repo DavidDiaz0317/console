@@ -262,15 +262,23 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
         Icon: Box,
         title: t('agent.demoModeTitle'),
       }
-    : stableStatus === 'degraded' || (stableConnected && backendIssue)
+    : stableAuthError
       ? {
-          bg: 'bg-red-500/10 text-red-400 hover:bg-red-500/20',
-          dot: 'bg-red-400 animate-pulse',
-          label: dashboardHealth.message,
+          bg: 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20',
+          dot: 'bg-yellow-400 animate-pulse',
+          label: t('agent.authError'),
           Icon: Wifi,
-          title: degradedTooltip,
+          title: t('agent.authErrorTitle'),
         }
-      : dashboardHealth.status === 'warning'
+      : stableStatus === 'degraded' || (stableConnected && backendIssue)
+        ? {
+            bg: 'bg-red-500/10 text-red-400 hover:bg-red-500/20',
+            dot: 'bg-red-400 animate-pulse',
+            label: backendIssue ? t('agent.degraded') : dashboardHealth.message,
+            Icon: Wifi,
+            title: degradedTooltip,
+          }
+        : dashboardHealth.status === 'warning'
         ? {
             bg: 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20',
             dot: 'bg-yellow-400 animate-pulse',

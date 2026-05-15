@@ -35,6 +35,7 @@ vi.mock('../../../../hooks/useDemoMode', () => ({
 
 vi.mock('../../../../hooks/useLocalAgent', () => ({
   useLocalAgent: () => mockUseLocalAgent(),
+  wasAgentEverConnected: () => false,
 }))
 
 vi.mock('../../../../hooks/useMissions', () => ({
@@ -58,10 +59,13 @@ vi.mock('../../../setup/SetupInstructionsDialog', () => ({
   SetupInstructionsDialog: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div>setup-dialog</div> : null,
 }))
 
-vi.mock('@/hooks/mcp/shared', () => ({
-  agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
-  clusterCache: { clusters: [], isLoading: false, lastUpdated: null },
-}))
+vi.mock('@/hooks/mcp/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/mcp/shared')>()
+  return {
+    ...actual,
+    agentFetch: (...args: unknown[]) => mockAgentFetch(...args),
+  }
+})
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en', changeLanguage: vi.fn() } }),

@@ -9,6 +9,7 @@ const mockDrillToPod = vi.fn()
 const mockStartMission = vi.fn()
 const mockUseCardLoadingState = vi.fn()
 const mockHorseshoeGauge = vi.fn()
+const mockUseClusters = vi.fn()
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -90,6 +91,15 @@ vi.mock('../shared', () => ({
 describe('ConsoleHealthCheckCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseClusters.mockReturnValue({
+      deduplicatedClusters: [
+        { name: 'ctx-a', healthy: true, reachable: true, nodeCount: 2, podCount: 4 },
+        { name: 'ctx-b', healthy: false, reachable: true, nodeCount: 3, podCount: 5 },
+        { name: 'ctx-c', healthy: true, reachable: true, nodeCount: 1, podCount: 2 },
+      ],
+      isLoading: false,
+      isRefreshing: false,
+    })
   })
 
   it('opens the all-clusters drilldown for healthy and unhealthy stats', async () => {
@@ -106,6 +116,16 @@ describe('ConsoleHealthCheckCard', () => {
   })
 
   it('computes the horseshoe score from healthy clusters only', () => {
+    mockUseClusters.mockReturnValue({
+      deduplicatedClusters: [
+        { name: 'ctx-a', healthy: true, reachable: true, nodeCount: 2, podCount: 4 },
+        { name: 'ctx-b', healthy: true, reachable: true, nodeCount: 3, podCount: 5 },
+        { name: 'ctx-c', healthy: true, reachable: true, nodeCount: 1, podCount: 2 },
+      ],
+      isLoading: false,
+      isRefreshing: false,
+    })
+
     render(<ConsoleHealthCheckCard />)
 
     expect(mockHorseshoeGauge).toHaveBeenCalledWith(
