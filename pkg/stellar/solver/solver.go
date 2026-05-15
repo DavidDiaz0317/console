@@ -50,6 +50,11 @@ const (
 	// also sets this via context.WithTimeout; this constant is the canonical
 	// value referenced from the spec.
 	MaxWallClock = 3 * time.Minute
+
+	actionFailedMessage        = "See server logs for details."
+	actionOutcomeFailedMessage = "Action failed. See server logs for details."
+	clusterClientErrorMessage  = "Unable to access the cluster client."
+	deploymentReadErrorMessage = "Unable to read deployment state."
 )
 
 // AllowedActions lists the action types the solver is permitted to dispatch
@@ -149,7 +154,7 @@ func SolveLoop(
 		lastAction = actionType
 		lastOutcome = outcome
 		if err != nil {
-			broadcast("acting", fmt.Sprintf("%s failed: %s", actionType, err.Error()), actionsTaken)
+			broadcast("acting", fmt.Sprintf("%s failed. %s", actionType, actionFailedMessage), actionsTaken)
 			slog.Warn("solver: action dispatch failed",
 				"solve_id", input.SolveID, "action", actionType, "error", err)
 			continue
@@ -230,12 +235,22 @@ func dispatchAction(
 	status := "completed"
 	if dispatchErr != nil {
 		status = "failed"
-		outcome = dispatchErr.Error()
+		outcome = actionOutcomeFailedMessage
 	}
 	_ = storage.UpdateStellarActionStatus(ctx, action.ID, status, outcome, "")
 
 	completed := time.Now().UTC()
 	durationMs := int(completed.Sub(now).Milliseconds())
+	triggerDataJSON, err := json.Marshal(struct {
+		SolveID    string `json:"solveId"`
+		ActionType string `json:"actionType"`
+	}{
+		SolveID:    input.SolveID,
+		ActionType: actionType,
+	})
+	if err != nil {
+		return action.ID, outcome, fmt.Errorf("marshal trigger data: %w", err)
+	}
 	// Note: dedupe_key + solve_id are written via an explicit UPDATE because the
 	// generic CreateStellarExecution signature predates these columns. A future
 	// migration that adds them to the create-path will remove this follow-up.
@@ -243,7 +258,7 @@ func dispatchAction(
 		UserID:      input.UserID,
 		MissionID:   "solver",
 		TriggerType: "solve",
-		TriggerData: fmt.Sprintf(`{"solveId":"%s","actionType":"%s"}`, input.SolveID, actionType),
+		TriggerData: string(triggerDataJSON),
 		Status:      status,
 		RawInput:    fmt.Sprintf("Action %s on %s/%s/%s", actionType, input.Cluster, input.Namespace, name),
 		Output:      outcome,
@@ -267,11 +282,13 @@ func verifyResourceHealth(ctx context.Context, k8sClient *k8s.MultiClusterClient
 	}
 	client, err := k8sClient.GetClient(cluster)
 	if err != nil {
-		return false, fmt.Sprintf("cluster client error: %s", err.Error())
+		slog.Warn("solver: cluster client error", "cluster", cluster, "namespace", namespace, "deployment", deployment, "error", err)
+		return false, clusterClientErrorMessage
 	}
 	deploy, err := client.AppsV1().Deployments(namespace).Get(ctx, deployment, getOpts())
 	if err != nil {
-		return false, fmt.Sprintf("deployment read error: %s", err.Error())
+		slog.Warn("solver: deployment read error", "cluster", cluster, "namespace", namespace, "deployment", deployment, "error", err)
+		return false, deploymentReadErrorMessage
 	}
 	if deploy.Status.ReadyReplicas > 0 && deploy.Status.ReadyReplicas == deploy.Status.Replicas {
 		return true, fmt.Sprintf("%d/%d replicas ready.", deploy.Status.ReadyReplicas, deploy.Status.Replicas)

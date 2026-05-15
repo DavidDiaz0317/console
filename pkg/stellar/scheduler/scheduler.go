@@ -89,6 +89,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 	}
 }
 
+const scheduledActionFailedMessage = "Scheduled action failed. See server logs for details."
+
 func (s *Scheduler) executeAction(ctx context.Context, a store.StellarAction) {
 	_ = s.store.UpdateStellarActionStatus(ctx, a.ID, "running", "", "")
 	if a.IdempotencyKey != "" && s.store.ActionCompletedByIdempotencyKey(ctx, a.IdempotencyKey) {
@@ -104,13 +106,13 @@ func (s *Scheduler) executeAction(ctx context.Context, a store.StellarAction) {
 			_ = s.store.IncrementRetry(ctx, a.ID)
 			return
 		}
-		_ = s.store.UpdateStellarActionStatus(ctx, a.ID, "failed", "", err.Error())
+		_ = s.store.UpdateStellarActionStatus(ctx, a.ID, "failed", "", scheduledActionFailedMessage)
 		_ = s.store.CreateStellarNotification(ctx, &store.StellarNotification{
 			UserID:   a.UserID,
 			Type:     "action",
 			Severity: "warning",
 			Title:    "Scheduled action failed: " + a.Description,
-			Body:     fmt.Sprintf("Action on cluster %s failed: %s", a.Cluster, err.Error()),
+			Body:     fmt.Sprintf("Action on cluster %s failed. %s", a.Cluster, scheduledActionFailedMessage),
 			Cluster:  a.Cluster,
 		})
 		_ = s.store.CreateStellarMemoryEntry(ctx, &store.StellarMemoryEntry{
@@ -118,7 +120,7 @@ func (s *Scheduler) executeAction(ctx context.Context, a store.StellarAction) {
 			Cluster:    a.Cluster,
 			Namespace:  a.Namespace,
 			Category:   "action",
-			Summary:    "Failed action: " + a.Description + " — " + err.Error(),
+			Summary:    "Failed action: " + a.Description + " — " + scheduledActionFailedMessage,
 			Importance: 7,
 			ExpiresAt:  ptr(time.Now().AddDate(0, 0, 60)),
 		})
