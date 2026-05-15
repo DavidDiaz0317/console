@@ -2517,7 +2517,8 @@
       "minReadySeconds": "Min Ready Seconds:",
       "progressDeadline": "Progress Deadline:",
       "pod": "Pod:",
-      "deployment": "Deployment:"
+      "deployment": "Deployment:",
+      "replicaSet": "ReplicaSet"
     },
     "status": {
       "fetchingEvents": "Fetching events...",
@@ -2538,7 +2539,9 @@
       "backendUnavailableActions": "Backend unavailable — pod actions are disabled until the connection returns.",
       "willBeRecreated": "(will be recreated)",
       "nodeNotAccepting": "This node is not accepting new workloads",
-      "nodeNotHealthy": "Node is not healthy"
+      "nodeNotHealthy": "Node is not healthy",
+      "healthy": "Healthy",
+      "degraded": "Degraded"
     },
     "confirmDelete": {
       "managedPod": "Delete pod \"{{name}}\"? It will be recreated by its controller.",
@@ -2785,6 +2788,15 @@
       "totalEvents": "Total Events",
       "noEventsFoundFor": "No events found for {{name}}",
       "eventsExpiredHint": "Events may have expired or require authentication"
+    },
+    "errors": {
+      "invalidWsResponse": "{{context}} failed: received an invalid response from the agent.",
+      "failedToParseResponse": "Failed to parse response from agent",
+      "failedToDeletePod": "Failed to delete pod",
+      "failedToSaveLabels": "Failed to save labels",
+      "failedToSaveAnnotations": "Failed to save annotations",
+      "failedToParseWsResponse": "Failed to parse response",
+      "invalidPodResponse": "Failed to load pod details due to an invalid agent response."
     }
   },
   "pagination": {

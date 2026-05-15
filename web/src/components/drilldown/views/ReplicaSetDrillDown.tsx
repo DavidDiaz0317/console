@@ -141,11 +141,11 @@ export function ReplicaSetDrillDown({ data }: Props) {
   const isHealthy = readyReplicas === replicas && replicas > 0
 
   const TABS: { id: TabType; label: string; icon: typeof Info }[] = [
-    { id: 'overview', label: 'Overview', icon: Info },
-    { id: 'pods', label: `Pods (${pods.length})`, icon: Box },
-    { id: 'events', label: 'Events', icon: Zap },
-    { id: 'describe', label: 'Describe', icon: FileText },
-    { id: 'yaml', label: 'YAML', icon: Code },
+    { id: 'overview', label: t('drilldown.tabs.overview'), icon: Info },
+    { id: 'pods', label: `${t('drilldown.tabs.pods')} (${pods.length})`, icon: Box },
+    { id: 'events', label: t('drilldown.tabs.events'), icon: Zap },
+    { id: 'describe', label: t('drilldown.tabs.describe'), icon: FileText },
+    { id: 'yaml', label: t('drilldown.tabs.yaml'), icon: Code },
   ]
 
   return (
@@ -213,9 +213,9 @@ export function ReplicaSetDrillDown({ data }: Props) {
                   <StatusIndicator status={isHealthy ? 'healthy' : 'warning'} size="lg" />
                   <div>
                     <div className="text-lg font-semibold text-foreground">
-                      {isHealthy ? 'Healthy' : 'Degraded'}
+                      {isHealthy ? t('drilldown.status.healthy') : t('drilldown.status.degraded')}
                     </div>
-                    <div className="text-sm text-muted-foreground">ReplicaSet</div>
+                    <div className="text-sm text-muted-foreground">{t('drilldown.fields.replicaSet', 'ReplicaSet')}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -321,7 +321,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
               </div>
             ) : eventsOutput ? (
               <pre className="p-4 rounded-lg bg-black/50 border border-border overflow-auto max-h-[60vh] text-xs text-foreground font-mono whitespace-pre-wrap">
-                {eventsOutput.includes('No resources found') ? 'No events found for this ReplicaSet' : eventsOutput}
+                {eventsOutput.includes('No resources found') ? t('drilldown.empty.noEventsFound', { resource: t('drilldown.fields.replicaSet', 'ReplicaSet') }) : eventsOutput}
               </pre>
             ) : (
               <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-center">
