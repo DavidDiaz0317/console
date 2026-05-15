@@ -21,4 +21,15 @@ describe('shouldShowLiveBadge', () => {
       })
     ).toBe(true)
   })
+
+  it('hides live badge when there are refresh failures', () => {
+    expect(
+      shouldShowLiveBadge({
+        isLive: true,
+        showDemoIndicator: false,
+        isFailed: false,
+        consecutiveFailures: 1,
+      })
+    ).toBe(false)
+  })
 })

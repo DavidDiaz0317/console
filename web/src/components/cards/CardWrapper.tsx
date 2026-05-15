@@ -752,6 +752,7 @@ export const CardWrapper = memo(function CardWrapper({
                   isLive,
                   showDemoIndicator,
                   isFailed: effectiveIsFailed,
+                  consecutiveFailures: effectiveConsecutiveFailures,
                 }) && (
                   <span
                     role="status"

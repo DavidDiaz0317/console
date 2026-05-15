@@ -158,12 +158,6 @@ export function UnifiedStatsSection({
         </div>
 
         <div className="flex items-center gap-2">
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-
           {/* Configure button */}
           {config.showConfigButton !== false && isExpanded && (
             <Button
