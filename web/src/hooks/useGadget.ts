@@ -135,6 +135,50 @@ async function fetchGadgetTrace<T>(tool: string, args?: Record<string, unknown>)
 
 // Hooks
 
+interface GadgetTraceHookResult<T> {
+  data: T[]
+  isLoading: boolean
+  isRefreshing: boolean
+  isDemoData: boolean
+  isFailed: boolean
+  consecutiveFailures: number
+}
+
+/**
+ * Factory for gadget trace hooks. Eliminates duplication across trace types.
+ */
+function createGadgetTraceHook<T>(config: {
+  keyPrefix: string
+  traceTool: string
+  getDemoData: () => T[]
+}) {
+  return function useGadgetTraceHook(cluster?: string, namespace?: string): GadgetTraceHookResult<T> {
+    const key = `gadget:${config.keyPrefix}:${cluster || 'all'}:${namespace || 'all'}`
+
+    const result = useCache({
+      key,
+      category: 'realtime' as RefreshCategory,
+      initialData: [] as T[],
+      demoData: config.getDemoData(),
+      fetcher: async () => {
+        const args: Record<string, unknown> = {}
+        if (cluster) args.cluster = cluster
+        if (namespace) args.namespace = namespace
+        return fetchGadgetTrace<T[]>(config.traceTool, args)
+      },
+    })
+
+    return {
+      data: result.data,
+      isLoading: result.isLoading,
+      isRefreshing: result.isRefreshing,
+      isDemoData: result.isDemoFallback && !result.isLoading,
+      isFailed: result.isFailed,
+      consecutiveFailures: result.consecutiveFailures,
+    }
+  }
+}
+
 export function useGadgetStatus(): { status: GadgetStatus; isLoading: boolean } {
   const result = useCache({
     key: 'gadget:status',
@@ -156,83 +200,23 @@ export function useGadgetStatus(): { status: GadgetStatus; isLoading: boolean } 
   }
 }
 
-export function useCachedNetworkTraces(cluster?: string, namespace?: string) {
-  const key = `gadget:network:${cluster || 'all'}:${namespace || 'all'}`
+export const useCachedNetworkTraces = createGadgetTraceHook<NetworkTraceEntry>({
+  keyPrefix: 'network',
+  traceTool: 'trace_tcp',
+  getDemoData: getDemoNetworkTraces,
+})
 
-  const result = useCache({
-    key,
-    category: 'realtime' as RefreshCategory,
-    initialData: [] as NetworkTraceEntry[],
-    demoData: getDemoNetworkTraces(),
-    fetcher: async () => {
-      const args: Record<string, unknown> = {}
-      if (cluster) args.cluster = cluster
-      if (namespace) args.namespace = namespace
-      return fetchGadgetTrace<NetworkTraceEntry[]>('trace_tcp', args)
-    },
-  })
+export const useCachedDNSTraces = createGadgetTraceHook<DNSTraceEntry>({
+  keyPrefix: 'dns',
+  traceTool: 'trace_dns',
+  getDemoData: getDemoDNSTraces,
+})
 
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoData: result.isDemoFallback && !result.isLoading,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-  }
-}
-
-export function useCachedDNSTraces(cluster?: string, namespace?: string) {
-  const key = `gadget:dns:${cluster || 'all'}:${namespace || 'all'}`
-
-  const result = useCache({
-    key,
-    category: 'realtime' as RefreshCategory,
-    initialData: [] as DNSTraceEntry[],
-    demoData: getDemoDNSTraces(),
-    fetcher: async () => {
-      const args: Record<string, unknown> = {}
-      if (cluster) args.cluster = cluster
-      if (namespace) args.namespace = namespace
-      return fetchGadgetTrace<DNSTraceEntry[]>('trace_dns', args)
-    },
-  })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoData: result.isDemoFallback && !result.isLoading,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-  }
-}
-
-export function useCachedProcessTraces(cluster?: string, namespace?: string) {
-  const key = `gadget:process:${cluster || 'all'}:${namespace || 'all'}`
-
-  const result = useCache({
-    key,
-    category: 'realtime' as RefreshCategory,
-    initialData: [] as ProcessTraceEntry[],
-    demoData: getDemoProcessTraces(),
-    fetcher: async () => {
-      const args: Record<string, unknown> = {}
-      if (cluster) args.cluster = cluster
-      if (namespace) args.namespace = namespace
-      return fetchGadgetTrace<ProcessTraceEntry[]>('trace_exec', args)
-    },
-  })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isRefreshing,
-    isDemoData: result.isDemoFallback && !result.isLoading,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-  }
-}
+export const useCachedProcessTraces = createGadgetTraceHook<ProcessTraceEntry>({
+  keyPrefix: 'process',
+  traceTool: 'trace_exec',
+  getDemoData: getDemoProcessTraces,
+})
 
 export function useCachedSecurityAudit(cluster?: string, namespace?: string) {
   const key = `gadget:security:${cluster || 'all'}:${namespace || 'all'}`
