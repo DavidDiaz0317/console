@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { sanitizeUrl } from '../../../lib/utils/sanitizeUrl'
 import { useLocalAgent } from '../../../hooks/useLocalAgent'
 import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { useDrillDownActions, useDrillDown } from '../../../hooks/useDrillDown'
@@ -417,7 +418,7 @@ Please:
                     <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                       <ExternalLink className="w-3 h-3" />
                       <a
-                        href={repoURL}
+                        href={sanitizeUrl(repoURL)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hover:text-foreground truncate max-w-md"

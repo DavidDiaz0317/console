@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
 import { useAgenticDetectionRuns, type DetectionRun } from '../../hooks/useAgenticDetectionRuns'
 import { CardSearchInput, useCardData } from '../../lib/cards'
 import { CardControls } from '../ui/CardControls'
@@ -139,7 +140,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
         </p>
         {issueUrl && (
           <a
-            href={issueUrl}
+            href={sanitizeUrl(issueUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline"
@@ -207,7 +208,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
               <div className="flex gap-2 shrink-0">
                 {run.workflowUrl && (
                   <a
-                    href={run.workflowUrl}
+                    href={sanitizeUrl(run.workflowUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline inline-flex items-center gap-1"
@@ -238,7 +239,7 @@ export function AgenticDetectionRuns({ config: _config }: AgenticDetectionRunsPr
       {issueUrl && (
         <div className="mt-3 pt-3 border-t border-border">
           <a
-            href={issueUrl}
+            href={sanitizeUrl(issueUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1.5"

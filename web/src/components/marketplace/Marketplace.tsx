@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -300,7 +301,7 @@ function MarketplaceCard({ item, onInstall, onRemove, isInstalled }: {
           {/* Action button */}
           {isHelpWanted ? (
             <a
-              href={item.issueUrl || ISSUES_URL}
+              href={sanitizeUrl(item.issueUrl || ISSUES_URL)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-md transition-colors"
