@@ -186,14 +186,14 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
   } = useDrillDownWebSocket(cluster)
 
   const getInvalidWsResponseError = useCallback((context: string) => (
-    `${context} failed: received an invalid response from the agent.`
-  ), [])
+    t('drilldown.errors.invalidAgentResponse', { context })
+  ), [t])
 
   const parseWsMessage = useCallback((event: MessageEvent, context: string) => {
     const message = parseDrillDownWsMessage(event)
     if (!message) {
       console.error(`[PodDrillDown] Failed to parse ${context} WebSocket message.`)
-      showToast(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'), 'error')
+      showToast(t('drilldown.errors.invalidPodResponse'), 'error')
       return null
     }
     return message
@@ -232,8 +232,8 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
           if (ready && ready.includes('/')) {
             const [current, total] = ready.split('/')
             if (current !== total && total !== '0') {
-              const notReadyMsg = `${current}/${total} containers ready`
-              if (!allIssues.some(i => i.includes('containers ready'))) {
+              const notReadyMsg = t('drilldown.issues.containersReady', { current, total })
+              if (!allIssues.includes(notReadyMsg)) {
                 allIssues.push(notReadyMsg)
               }
             }
@@ -247,7 +247,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
     }
 
     return allIssues
-  }, [passedIssues, status, reason, podStatusOutput, podName])
+  }, [passedIssues, status, reason, podStatusOutput, podName, t])
 
   const podDiagnosis = useMemo(() => getPodDiagnosis({
     status,
@@ -283,9 +283,12 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
               ? line.substring(reasonIdx, messageIdx > reasonIdx ? messageIdx : reasonIdx + REASON_COLUMN_FALLBACK_WIDTH).trim()
               : ''
             const MAX_EVENT_MSG_LENGTH = 80
+            const truncatedMessage = message.substring(0, MAX_EVENT_MSG_LENGTH)
             const issueText = eventReason
-              ? `Warning: ${eventReason}${message ? ' — ' + message.substring(0, MAX_EVENT_MSG_LENGTH) : ''}`
-              : `Warning: ${message.substring(0, MAX_EVENT_MSG_LENGTH)}`
+              ? (truncatedMessage
+                  ? t('drilldown.issues.warningWithReason', { reason: eventReason, message: truncatedMessage })
+                  : t('drilldown.issues.warningReasonOnly', { reason: eventReason }))
+              : t('drilldown.issues.warningOnly', { message: truncatedMessage })
             if (!allIssues.some(i => i.toLowerCase() === issueText.toLowerCase())) {
               allIssues.push(issueText)
             }
@@ -295,7 +298,7 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
     }
 
     return filterPodIssuesForDiagnosis(allIssues, podDiagnosis?.kind)
-  }, [baseIssues, eventsOutput, podDiagnosis?.kind])
+  }, [baseIssues, eventsOutput, podDiagnosis?.kind, t])
 
   const diagnosisEvidence = useMemo(() => {
     if (!podDiagnosis) {
@@ -377,10 +380,10 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
           }
         }
       } else {
-        setDescribeError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+        setDescribeError(t('drilldown.errors.invalidPodResponse'))
       }
     } catch {
-      setDescribeError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+      setDescribeError(t('drilldown.errors.invalidPodResponse'))
     } finally {
       setDescribeLoading(false)
     }
@@ -399,10 +402,10 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
         setLogsOutput(output)
         setLogsError(null)
       } else {
-        setLogsError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+        setLogsError(t('drilldown.errors.invalidPodResponse'))
       }
     } catch {
-      setLogsError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+      setLogsError(t('drilldown.errors.invalidPodResponse'))
     } finally {
       setLogsLoading(false)
     }
@@ -421,10 +424,10 @@ export function PodDrillDown({ data }: { data: Record<string, unknown> }) {
         setEventsOutput(output)
         setEventsError(null)
       } else {
-        setEventsError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+        setEventsError(t('drilldown.errors.invalidPodResponse'))
       }
     } catch {
-      setEventsError(t('drilldown.errors.invalidPodResponse', 'Failed to load pod details due to an invalid agent response.'))
+      setEventsError(t('drilldown.errors.invalidPodResponse'))
     } finally {
       setEventsLoading(false)
     }
@@ -567,7 +570,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         if (!msg) {
           // #5945 — Even malformed WebSocket messages must be reported as a
           // failure so the user knows the analysis did not complete.
-          const errMsg = 'AI analysis failed: received an invalid response from the agent.'
+          const errMsg = t('drilldown.errors.aiAnalysisInvalidResponse')
           setAiAnalysisError(errMsg)
           setAiAnalysis(null)
           showToast(errMsg, 'error')
@@ -584,12 +587,12 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
           } else if (msg.payload?.error || msg.payload?.message) {
             // #5945 — Surface backend error via dedicated error state + toast
             // so the user sees a clear failure instead of a silent no-op.
-            const errMsg = `Analysis unavailable: ${msg.payload.error || msg.payload.message}`
+            const errMsg = t('drilldown.errors.analysisUnavailable', { detail: msg.payload.error || msg.payload.message })
             setAiAnalysisError(errMsg)
             setAiAnalysis(null)
             showToast(errMsg, 'error')
           } else {
-            setAiAnalysis('Analysis complete - no specific issues identified.')
+            setAiAnalysis(t('drilldown.ai.noSpecificIssuesIdentified'))
             setAiAnalysisError(null)
           }
         }
@@ -601,7 +604,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
         // #5945 — Previously this only set aiAnalysis to a plain string which
         // made the error look like a successful result. Now we route it to
         // the error state and also show a toast so the failure is visible.
-        const errMsg = 'Could not connect to AI analysis service. Please check that the agent is running and try again.'
+        const errMsg = t('drilldown.errors.aiAnalysisConnection')
         setAiAnalysisError(errMsg)
         setAiAnalysis(null)
         showToast(errMsg, 'error')
@@ -611,7 +614,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
     } catch (err: unknown) {
       // #5945 — Unexpected errors (kubectl failures, network issues, etc.)
       // must also be surfaced so the failure is not silent.
-      const errMsg = `Failed to perform AI analysis: ${err instanceof Error ? err.message : String(err)}`
+      const errMsg = t('drilldown.errors.aiAnalysisFailed', { detail: err instanceof Error ? err.message : String(err) })
       setAiAnalysisError(errMsg)
       setAiAnalysis(null)
       showToast(errMsg, 'error')
@@ -640,7 +643,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
       ws.onmessage = (event: MessageEvent) => {
         const msg = parseWsMessage(event, 'pod status')
         if (!msg) {
-          setPodStatusError(getInvalidWsResponseError('Pod status'))
+          setPodStatusError(getInvalidWsResponseError(t('drilldown.resources.podStatus')))
           setPodStatusLoading(false)
           ws.close()
           return
@@ -684,7 +687,7 @@ Be specific and reference actual values from the data. Keep response to 3-4 sent
       ws.onmessage = (event: MessageEvent) => {
         const msg = parseWsMessage(event, 'yaml')
         if (!msg) {
-          setYamlError(getInvalidWsResponseError('YAML'))
+          setYamlError(getInvalidWsResponseError(t('drilldown.tabs.yaml')))
           setYamlLoading(false)
           ws.close()
           return
@@ -856,7 +859,7 @@ Please:
       ws.onmessage = (event: MessageEvent) => {
         const msg = parseWsMessage(event, 'delete pod')
         if (!msg) {
-          setDeleteError('Failed to parse response from agent')
+          setDeleteError(t('drilldown.errors.parseAgentResponse'))
           setDeletingPod(false)
           ws.close()
           return
@@ -864,7 +867,7 @@ Please:
 
         if (msg.id === requestId) {
           if (msg.type === 'error' || msg.payload?.exitCode !== 0) {
-            setDeleteError(msg.payload?.error || 'Failed to delete pod')
+            setDeleteError(msg.payload?.error || t('drilldown.errors.deletePodFailed'))
           } else {
             // Success - close the drill down
             closeDrillDown()
@@ -875,12 +878,12 @@ Please:
       }
 
       ws.onerror = () => {
-        setDeleteError('Connection error')
+        setDeleteError(t('drilldown.errors.connectionError'))
         setDeletingPod(false)
         ws.close()
       }
     } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err.message : 'Unknown error')
+      setDeleteError(err instanceof Error ? err.message : t('drilldown.errors.unknownError'))
       setDeletingPod(false)
     }
   }
@@ -905,7 +908,7 @@ Please:
 
           const timeout = setTimeout(() => {
             ws.close()
-            resolve({ success: false, error: 'Command timed out' })
+            resolve({ success: false, error: t('drilldown.errors.commandTimedOut') })
           }, 10000)
 
           ws.onopen = () => {
@@ -920,7 +923,7 @@ Please:
             if (!msg) {
               clearTimeout(timeout)
               ws.close()
-              resolve({ success: false, error: 'Failed to parse response' })
+              resolve({ success: false, error: t('drilldown.errors.parseAgentResponse') })
               return
             }
 
@@ -930,14 +933,14 @@ Please:
               if (msg.payload?.exitCode === 0 || msg.payload?.output) {
                 resolve({ success: true })
               } else {
-                resolve({ success: false, error: msg.payload?.error || 'Unknown error' })
+                resolve({ success: false, error: msg.payload?.error || t('drilldown.errors.unknownError') })
               }
             }
           }
           ws.onerror = () => {
             clearTimeout(timeout)
             ws.close()
-            resolve({ success: false, error: 'Connection failed' })
+            resolve({ success: false, error: t('drilldown.errors.connectionFailed') })
           }
         })
       }
@@ -965,7 +968,7 @@ Please:
       if (labelArgs.length > 5) {
         const result = await runKubectl(labelArgs)
         if (!result.success) {
-          setLabelError(result.error || 'Failed to save labels')
+          setLabelError(result.error || t('drilldown.errors.saveLabelsFailed'))
           setLabelSaving(false)
           return
         }
@@ -996,7 +999,7 @@ Please:
       setNewLabelKey('')
       setNewLabelValue('')
     } catch (err: unknown) {
-      setLabelError(`Failed to save: ${err}`)
+      setLabelError(t('drilldown.errors.failedToSave', { detail: String(err) }))
     } finally {
       setLabelSaving(false)
     }
@@ -1043,7 +1046,7 @@ Please:
 
           const timeout = setTimeout(() => {
             ws.close()
-            resolve({ success: false, error: 'Command timed out' })
+            resolve({ success: false, error: t('drilldown.errors.commandTimedOut') })
           }, 10000)
 
           ws.onopen = () => {
@@ -1058,7 +1061,7 @@ Please:
             if (!msg) {
               clearTimeout(timeout)
               ws.close()
-              resolve({ success: false, error: 'Failed to parse response' })
+              resolve({ success: false, error: t('drilldown.errors.parseAgentResponse') })
               return
             }
 
@@ -1068,14 +1071,14 @@ Please:
               if (msg.payload?.exitCode === 0 || msg.payload?.output) {
                 resolve({ success: true })
               } else {
-                resolve({ success: false, error: msg.payload?.error || 'Unknown error' })
+                resolve({ success: false, error: msg.payload?.error || t('drilldown.errors.unknownError') })
               }
             }
           }
           ws.onerror = () => {
             clearTimeout(timeout)
             ws.close()
-            resolve({ success: false, error: 'Connection failed' })
+            resolve({ success: false, error: t('drilldown.errors.connectionFailed') })
           }
         })
       }
@@ -1103,7 +1106,7 @@ Please:
       if (annotateArgs.length > 5) {
         const result = await runKubectl(annotateArgs)
         if (!result.success) {
-          setAnnotationError(result.error || 'Failed to save annotations')
+          setAnnotationError(result.error || t('drilldown.errors.saveAnnotationsFailed'))
           setAnnotationSaving(false)
           return
         }
@@ -1134,7 +1137,7 @@ Please:
       setNewAnnotationKey('')
       setNewAnnotationValue('')
     } catch (err: unknown) {
-      setAnnotationError(`Failed to save: ${err}`)
+      setAnnotationError(t('drilldown.errors.failedToSave', { detail: String(err) }))
     } finally {
       setAnnotationSaving(false)
     }
@@ -1305,16 +1308,16 @@ Please:
     }
   }
 
-  const TABS: { id: TabType; label: string; icon: typeof Info }[] = [
+  const tabs = useMemo<{ id: TabType; label: string; icon: typeof Info }[]>(() => [
     { id: 'overview', label: t('drilldown.tabs.overview'), icon: Info },
     { id: 'labels', label: t('drilldown.tabs.labels'), icon: Tag },
     { id: 'related', label: t('drilldown.tabs.related'), icon: Layers },
     { id: 'describe', label: t('drilldown.tabs.describe'), icon: FileText },
     { id: 'logs', label: t('drilldown.tabs.logs'), icon: Terminal },
-    { id: 'exec', label: 'Exec', icon: TerminalSquare },
+    { id: 'exec', label: t('drilldown.tabs.exec'), icon: TerminalSquare },
     { id: 'events', label: t('drilldown.tabs.events'), icon: Zap },
     { id: 'yaml', label: t('drilldown.tabs.yaml'), icon: Code },
-  ]
+  ], [t])
 
   // Extract container names from YAML output for exec tab
   const containerNames = useMemo(() => {
@@ -1401,7 +1404,7 @@ Please:
       {/* Tabs */}
       <div className="border-b border-border px-6">
         <div className="flex gap-1">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const Icon = tab.icon
             return (
               <button
@@ -1587,12 +1590,12 @@ Please:
                     onClick={() => setActiveTab('events')}
                     className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
                   >
-                    View all
+                    {t('drilldown.actions.viewAll')}
                   </button>
                 </div>
                 <pre className="p-3 rounded-lg bg-muted border border-border overflow-x-auto text-xs text-foreground font-mono max-h-32 overflow-y-auto">
                   {eventsOutput.includes('No resources found')
-                    ? `No events found for pod ${podName}`
+                    ? t('drilldown.events.noEventsFoundFor', { name: `${t('drilldown.resources.pod')} ${podName}` })
                     : eventsOutput.split('\n').slice(0, 6).join('\n')}
                 </pre>
               </div>
@@ -1704,14 +1707,14 @@ Please:
               handleCopy={handleCopy}
               onRefresh={() => fetchLogs(true)}
               refreshIcon={Terminal}
-              refreshLabel="Refresh"
+              refreshLabel={t('actions.refresh')}
             />
           </Suspense>
         )}
 
         {activeTab === 'exec' && (
           <div className="h-[500px] rounded-lg overflow-hidden border border-border">
-            <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground"><Loader2 className="animate-spin mr-2 h-4 w-4" />Loading terminal…</div>}>
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground"><Loader2 className="animate-spin mr-2 h-4 w-4" />{t('drilldown.status.loadingTerminal')}</div>}>
               <PodExecTerminal
                 cluster={cluster}
                 namespace={namespace}
@@ -1735,11 +1738,11 @@ Please:
               kubectlComment={`# kubectl get events -n ${namespace} --field-selector involvedObject.name=${podName}`}
               loadingMessage={t('drilldown.status.fetchingEvents')}
               notConnectedMessage={t('drilldown.empty.connectAgentEvents')}
-              emptyMessage={t('drilldown.empty.noEventsFound', { resource: 'pod' })}
+              emptyMessage={t('drilldown.empty.noEventsFound', { resource: t('drilldown.resources.pod') })}
               handleCopy={handleCopy}
               onRefresh={() => fetchEvents(true)}
               refreshIcon={Zap}
-              refreshLabel="Refresh"
+              refreshLabel={t('actions.refresh')}
             />
           </Suspense>
         )}
@@ -1760,7 +1763,7 @@ Please:
               handleCopy={handleCopy}
               onRefresh={() => fetchYaml(true)}
               refreshIcon={Code}
-              refreshLabel="Refresh"
+              refreshLabel={t('actions.refresh')}
             />
           </Suspense>
         )}
@@ -1812,7 +1815,7 @@ Please:
         fallbackContent={
           eventsOutput && !eventsOutput.includes('No resources found') ? (
             <div>
-              <p className="text-xs font-medium text-foreground mb-1.5">Pod Events (non-AI troubleshooting):</p>
+              <p className="text-xs font-medium text-foreground mb-1.5">{t('drilldown.ai.nonAiTroubleshootingEvents', { resource: t('drilldown.resources.pod') })}</p>
               <pre className="text-[10px] text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">
                 {eventsOutput.split('\n').slice(0, 10).join('\n')}
               </pre>

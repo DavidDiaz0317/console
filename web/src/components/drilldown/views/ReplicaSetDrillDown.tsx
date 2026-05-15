@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLocalAgent } from '../../../hooks/useLocalAgent'
 import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { useDrillDownActions } from '../../../hooks/useDrillDown'
@@ -140,13 +140,13 @@ export function ReplicaSetDrillDown({ data }: Props) {
 
   const isHealthy = readyReplicas === replicas && replicas > 0
 
-  const TABS: { id: TabType; label: string; icon: typeof Info }[] = [
-    { id: 'overview', label: 'Overview', icon: Info },
-    { id: 'pods', label: `Pods (${pods.length})`, icon: Box },
-    { id: 'events', label: 'Events', icon: Zap },
-    { id: 'describe', label: 'Describe', icon: FileText },
-    { id: 'yaml', label: 'YAML', icon: Code },
-  ]
+  const tabs = useMemo<{ id: TabType; label: string; icon: typeof Info }[]>(() => [
+    { id: 'overview', label: t('drilldown.tabs.overview'), icon: Info },
+    { id: 'pods', label: `${t('drilldown.tabs.pods')} (${pods.length})`, icon: Box },
+    { id: 'events', label: t('drilldown.tabs.events'), icon: Zap },
+    { id: 'describe', label: t('drilldown.tabs.describe'), icon: FileText },
+    { id: 'yaml', label: t('drilldown.tabs.yaml'), icon: Code },
+  ], [pods.length, t])
 
   return (
     <div className="flex flex-col h-full -m-6">
@@ -181,7 +181,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
       {/* Tabs */}
       <div className="border-b border-border px-6">
         <div className="flex gap-1">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const Icon = tab.icon
             return (
               <button
@@ -213,9 +213,9 @@ export function ReplicaSetDrillDown({ data }: Props) {
                   <StatusIndicator status={isHealthy ? 'healthy' : 'warning'} size="lg" />
                   <div>
                     <div className="text-lg font-semibold text-foreground">
-                      {isHealthy ? 'Healthy' : 'Degraded'}
+                      {isHealthy ? t('labels.healthy') : t('drilldown.status.degraded')}
                     </div>
-                    <div className="text-sm text-muted-foreground">ReplicaSet</div>
+                    <div className="text-sm text-muted-foreground">{t('drilldown.resources.replicaSet')}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -235,7 +235,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
             {/* Owner Deployment */}
             {ownerDeployment && (
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-2">Owner Deployment</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-2">{t('drilldown.headings.ownerDeployment')}</h3>
                 <button
                   onClick={() => drillToDeployment(cluster, namespace, ownerDeployment)}
                   className="px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 flex items-center gap-2 text-sm group"
@@ -256,7 +256,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Tag className="w-4 h-4 text-blue-400" />
-                  Labels
+                  {t('drilldown.tabs.labels')}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(labels).slice(0, 8).map(([key, value]) => (
@@ -265,7 +265,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
                     </StatusBadge>
                   ))}
                   {Object.keys(labels).length > 8 && (
-                    <span className="text-xs text-muted-foreground">+{Object.keys(labels).length - 8} more</span>
+                    <span className="text-xs text-muted-foreground">{t('drilldown.tabs.more', { count: Object.keys(labels).length - 8 })}</span>
                   )}
                 </div>
               </div>
@@ -306,7 +306,7 @@ export function ReplicaSetDrillDown({ data }: Props) {
               ))
             ) : (
               <div className="p-4 rounded-lg bg-card/50 border border-border text-center text-muted-foreground">
-                No pods found for this ReplicaSet
+                {t('drilldown.empty.noPodsFoundForResource', { resource: t('drilldown.resources.replicaSet') })}
               </div>
             )}
           </div>
@@ -321,7 +321,9 @@ export function ReplicaSetDrillDown({ data }: Props) {
               </div>
             ) : eventsOutput ? (
               <pre className="p-4 rounded-lg bg-black/50 border border-border overflow-auto max-h-[60vh] text-xs text-foreground font-mono whitespace-pre-wrap">
-                {eventsOutput.includes('No resources found') ? 'No events found for this ReplicaSet' : eventsOutput}
+                {eventsOutput.includes('No resources found')
+                  ? t('drilldown.empty.noEventsFound', { resource: t('drilldown.resources.replicaSet') })
+                  : eventsOutput}
               </pre>
             ) : (
               <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-center">
@@ -344,7 +346,9 @@ export function ReplicaSetDrillDown({ data }: Props) {
                   onClick={() => handleCopy('describe', describeOutput)}
                   className="absolute top-2 right-2 px-2 py-1 rounded bg-secondary/50 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                 >
-                  {copiedField === 'describe' ? <><Check className="w-3 h-3 text-green-400" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                  {copiedField === 'describe'
+                    ? <><Check className="w-3 h-3 text-green-400" /> {t('actions.copied')}</>
+                    : <><Copy className="w-3 h-3" /> {t('actions.copy')}</>}
                 </button>
                 <pre className="p-4 rounded-lg bg-black/50 border border-border overflow-auto max-h-[60vh] text-xs text-foreground font-mono whitespace-pre-wrap">
                   {describeOutput}
@@ -371,7 +375,9 @@ export function ReplicaSetDrillDown({ data }: Props) {
                   onClick={() => handleCopy('yaml', yamlOutput)}
                   className="absolute top-2 right-2 px-2 py-1 rounded bg-secondary/50 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                 >
-                  {copiedField === 'yaml' ? <><Check className="w-3 h-3 text-green-400" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
+                  {copiedField === 'yaml'
+                    ? <><Check className="w-3 h-3 text-green-400" /> {t('actions.copied')}</>
+                    : <><Copy className="w-3 h-3" /> {t('actions.copy')}</>}
                 </button>
                 <pre className="p-4 rounded-lg bg-black/50 border border-border overflow-auto max-h-[60vh] text-xs text-foreground font-mono whitespace-pre-wrap">
                   {yamlOutput}

@@ -2314,6 +2314,7 @@
       "labels": "Labels",
       "related": "Related",
       "logs": "Logs",
+      "exec": "Exec",
       "data": "Data",
       "conditions": "Conditions",
       "rules": "Rules",
@@ -2379,7 +2380,9 @@
       "poweredBy": "// powered by KubeStellar",
       "aiAssistant": "AI Assistant",
       "resourceUnreachable": "Resource is unreachable. AI actions are limited.",
-      "connectAgentAI": "Connect the local agent to enable AI features. Configure →"
+      "connectAgentAI": "Connect the local agent to enable AI features. Configure →",
+      "noSpecificIssuesIdentified": "Analysis complete - no specific issues identified.",
+      "nonAiTroubleshootingEvents": "{{resource}} Events (non-AI troubleshooting):"
     },
     "diagnosis": {
       "title": "Crash diagnosis",
@@ -2530,9 +2533,11 @@
       "analyzing": "Analyzing...",
       "deleting": "Deleting...",
       "podHealthy": "Pod is healthy",
+      "degraded": "Degraded",
       "noIssuesDetected": "No issues detected",
       "analyzingPodHealth": "Analyzing pod health...",
       "fetchingPodStatus": "Fetching pod status...",
+      "loadingTerminal": "Loading terminal…",
       "loadingLabels": "Loading labels and annotations...",
       "discoveringRelated": "Discovering related resources...",
       "backendUnavailableActions": "Backend unavailable — pod actions are disabled until the connection returns.",
@@ -2558,6 +2563,7 @@
       "refreshAllPodData": "Refresh all pod data",
       "aiDiagnose": "AI Diagnose",
       "viewEvents": "View Events",
+      "viewAll": "View all",
       "investigateCordoned": "Investigate Why Cordoned",
       "guideSafeUncordon": "Guide: Safe Uncordon",
       "quickCommands": "Quick Commands",
@@ -2596,6 +2602,7 @@
     },
     "empty": {
       "noPodsFound": "No pods found for this Deployment",
+      "noPodsFoundForResource": "No pods found for this {{resource}}",
       "noEventsFound": "No events found for this {{resource}}",
       "noLabels": "No labels",
       "noAnnotations": "No annotations",
@@ -2629,6 +2636,37 @@
       "noIssuesDetected": "No issues detected",
       "noRelatedResourcesDiscovered": "No related resources discovered",
       "noBindingsFound": "No bindings found"
+    },
+    "headings": {
+      "ownerDeployment": "Owner Deployment"
+    },
+    "resources": {
+      "pod": "pod",
+      "podStatus": "Pod status",
+      "replicaSet": "ReplicaSet"
+    },
+    "issues": {
+      "containersReady": "{{current}}/{{total}} containers ready",
+      "warningWithReason": "Warning: {{reason}} — {{message}}",
+      "warningReasonOnly": "Warning: {{reason}}",
+      "warningOnly": "Warning: {{message}}"
+    },
+    "errors": {
+      "invalidPodResponse": "Failed to load pod details due to an invalid agent response.",
+      "invalidAgentResponse": "{{context}} failed: received an invalid response from the agent.",
+      "analysisUnavailable": "Analysis unavailable: {{detail}}",
+      "aiAnalysisInvalidResponse": "AI analysis failed: received an invalid response from the agent.",
+      "aiAnalysisConnection": "Could not connect to AI analysis service. Please check that the agent is running and try again.",
+      "aiAnalysisFailed": "Failed to perform AI analysis: {{detail}}",
+      "parseAgentResponse": "Failed to parse response from agent",
+      "deletePodFailed": "Failed to delete pod",
+      "connectionError": "Connection error",
+      "connectionFailed": "Connection failed",
+      "unknownError": "Unknown error",
+      "commandTimedOut": "Command timed out",
+      "saveLabelsFailed": "Failed to save labels",
+      "saveAnnotationsFailed": "Failed to save annotations",
+      "failedToSave": "Failed to save: {{detail}}"
     },
     "rbac": {
       "bindingsTab": "Bindings ({{count}})",
