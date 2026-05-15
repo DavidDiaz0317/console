@@ -228,6 +228,11 @@ type Server struct {
 
 	// Event processor callback for Stellar integration
 	eventProcessor EventProcessor
+
+	// stellarClient is a reusable HTTP client for forwarding events to the
+	// backend's Stellar ingestion endpoint. Shared transport avoids ephemeral
+	// port exhaustion under burst event load (#13965).
+	stellarClient *http.Client
 }
 
 // NewServer creates a new agent server
@@ -345,6 +350,11 @@ func NewServer(cfg Config) (*Server, error) {
 		dryRunSessions:     make(map[string]bool),
 		resourceRetryState: make(map[string]clusterResourceRetryState),
 		sessionTokenQuota:  sessionQuota,
+	}
+
+	server.stellarClient = &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: &http.Transport{MaxIdleConnsPerHost: 2},
 	}
 
 	server.upgrader = websocket.Upgrader{
