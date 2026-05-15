@@ -10,6 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestParseCRItemIncludesKind(t *testing.T) {
+	item := parseCRItem(map[string]interface{}{
+		"kind": "PodChaos",
+		"metadata": map[string]interface{}{
+			"name":      "pod-kill",
+			"namespace": "chaos-testing",
+		},
+		"status": map[string]interface{}{"phase": "Running"},
+	}, "cluster-a")
+
+	assert.Equal(t, "PodChaos", item.Kind)
+	assert.Equal(t, "pod-kill", item.Name)
+	assert.Equal(t, "chaos-testing", item.Namespace)
+	assert.Equal(t, "cluster-a", item.Cluster)
+}
+
 func TestMCPHandlers_GetCustomResources(t *testing.T) {
 	app := fiber.New()
 	// Using empty mock store and nil clients for demo mode test
