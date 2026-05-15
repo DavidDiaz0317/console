@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLocalAgent } from '../../../hooks/useLocalAgent'
-import { LOCAL_AGENT_WS_URL } from '../../../lib/constants'
-import { appendWsAuthToken } from '../../../lib/utils/wsAuth'
+import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { useDrillDownActions } from '../../../hooks/useDrillDown'
 import { useCanI } from '../../../hooks/usePermissions'
 import { ClusterBadge } from '../../ui/ClusterBadge'
@@ -12,7 +11,6 @@ import { StatusIndicator } from '../../charts/StatusIndicator'
 import { Gauge } from '../../charts/Gauge'
 import { useTranslation } from 'react-i18next'
 import { copyToClipboard } from '../../../lib/clipboard'
-import { useToast } from '../../ui/Toast'
 
 /** Maximum replicas allowed via the UI scale widget. Kubernetes itself supports
  *  up to 2^31-1 but most real deployments won't exceed a few hundred. */
@@ -130,7 +128,6 @@ function buildLabelSelector(
 
 export function DeploymentDrillDown({ data }: Props) {
   const { t } = useTranslation()
-  const { showToast } = useToast()
   const cluster = (data.cluster as string) || ''
   const namespace = (data.namespace as string) || ''
   const deploymentName = (data.deployment as string) || ''
@@ -175,52 +172,7 @@ export function DeploymentDrillDown({ data }: Props) {
   const [liveReason, setLiveReason] = useState<string | undefined>(data.reason as string | undefined)
   const [liveMessage, setLiveMessage] = useState<string | undefined>(data.message as string | undefined)
 
-  // Helper to run kubectl commands
-  const runKubectl = async (args: string[]): Promise<string> => {
-    let wsUrl: string
-    try {
-      wsUrl = await appendWsAuthToken(LOCAL_AGENT_WS_URL)
-    } catch {
-      return ''
-    }
-    return new Promise((resolve) => {
-      const ws = new WebSocket(wsUrl)
-      const requestId = `kubectl-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      let output = ''
-
-      const timeout = setTimeout(() => {
-        ws.close()
-        resolve(output || '')
-      }, 10000)
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          id: requestId,
-          type: 'kubectl',
-          payload: { context: cluster, args }
-        }))
-      }
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data)
-          if (msg.id === requestId && msg.payload?.output) {
-            output = msg.payload.output
-          }
-        } catch (err) {
-          console.error('[DeploymentDrillDown] Non-JSON WebSocket message:', event.data)
-          showToast(t('drilldown.errors.invalidDeploymentResponse', 'Failed to load deployment details due to an invalid agent response.'), 'error')
-        }
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output)
-      }
-      ws.onerror = () => {
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output || '')
-      }
-    })
-  }
+  const { runKubectl } = useDrillDownWebSocket(cluster)
 
   // Fetch Deployment data
   const fetchData = async () => {

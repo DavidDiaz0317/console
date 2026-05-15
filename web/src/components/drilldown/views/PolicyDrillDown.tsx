@@ -11,8 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 import { StatusBadge } from '../../ui/StatusBadge'
-import { LOCAL_AGENT_WS_URL } from '../../../lib/constants'
-import { appendWsAuthToken } from '../../../lib/utils/wsAuth'
+import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { ConsoleAIIcon } from '../../ui/ConsoleAIIcon'
 import {
   AIActionBar,
@@ -124,47 +123,7 @@ export function PolicyDrillDown({ data }: Props) {
     },
   })
 
-  // Helper to run kubectl commands
-  const runKubectl = async (args: string[]): Promise<string> => {
-    let wsUrl: string
-    try {
-      wsUrl = await appendWsAuthToken(LOCAL_AGENT_WS_URL)
-    } catch {
-      return ''
-    }
-    return new Promise((resolve) => {
-      const ws = new WebSocket(wsUrl)
-      const requestId = `kubectl-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      let output = ''
-
-      const timeout = setTimeout(() => {
-        ws.close()
-        resolve(output || '')
-      }, 15000)
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          id: requestId,
-          type: 'kubectl',
-          payload: { context: cluster, args }
-        }))
-      }
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
-        if (msg.id === requestId && msg.payload?.output) {
-          output = msg.payload.output
-        }
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output)
-      }
-      ws.onerror = () => {
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output || '')
-      }
-    })
-  }
+  const { runKubectl } = useDrillDownWebSocket(cluster)
 
   // Fetch violations
   const fetchViolations = async () => {
@@ -176,7 +135,7 @@ export function PolicyDrillDown({ data }: Props) {
         // For Kyverno, fetch policy reports
         output = await runKubectl([
           'get', 'policyreport,clusterpolicyreport', '-A', '-o', 'json'
-        ])
+        ], 15_000)
         if (output) {
           const data = JSON.parse(output)
           const items = data.items || []
@@ -206,7 +165,7 @@ export function PolicyDrillDown({ data }: Props) {
         // For OPA Gatekeeper, fetch constraint status
         output = await runKubectl([
           'get', policyKind.toLowerCase(), policyName, '-o', 'json'
-        ])
+        ], 15_000)
         if (output) {
           const constraint = JSON.parse(output)
           const statusViolations = constraint.status?.violations || []
@@ -233,11 +192,11 @@ export function PolicyDrillDown({ data }: Props) {
       if (policyType === 'kyverno') {
         const resource = namespace ? `policy/${policyName}` : `clusterpolicy/${policyName}`
         const nsArgs = namespace ? ['-n', namespace] : []
-        output = await runKubectl(['get', resource, ...nsArgs, '-o', 'json'])
+        output = await runKubectl(['get', resource, ...nsArgs, '-o', 'json'], 15_000)
       } else {
         output = await runKubectl([
           'get', policyKind.toLowerCase(), policyName, '-o', 'json'
-        ])
+        ], 15_000)
       }
 
       if (output) {

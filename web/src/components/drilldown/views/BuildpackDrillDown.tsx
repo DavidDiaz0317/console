@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocalAgent } from '../../../hooks/useLocalAgent'
+import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { useDrillDownActions, useDrillDown } from '../../../hooks/useDrillDown'
 import { useMissions } from '../../../hooks/useMissions'
 import { ClusterBadge } from '../../ui/ClusterBadge'
@@ -7,8 +8,6 @@ import type { BuildpackStatus } from '../../cards/buildpacks-status/BuildpacksSt
 import { Package, Layers, Server, Clock, FileText, History, Loader2, Stethoscope, Box, RefreshCw, GitBranch, AlertCircle, Check, Copy } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../../lib/constants/network'
-import { LOCAL_AGENT_WS_URL } from '../../../lib/constants'
-import { appendWsAuthToken } from '../../../lib/utils/wsAuth'
 import { ConsoleAIIcon } from '../../ui/ConsoleAIIcon'
 import {
   AIActionBar,
@@ -144,48 +143,7 @@ export function BuildpackDrillDown({ data }: Props) {
     issues,
   })
 
-  const runKubectl = async (args: string[]): Promise<string> => {
-    let wsUrl: string
-    try {
-      wsUrl = await appendWsAuthToken(LOCAL_AGENT_WS_URL)
-    } catch {
-      return ''
-    }
-    return new Promise((resolve) => {
-      const ws = new WebSocket(wsUrl)
-      const requestId = `kubectl-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      let output = ''
-
-      const timeout = setTimeout(() => {
-        ws.close()
-        resolve(output || '')
-      }, 15000) // 15 seconds timeout (same as runHelm)
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          id: requestId,
-          type: 'kubectl',
-          payload: { context: cluster, args }
-        }))
-      }
-
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
-        if (msg.id === requestId && msg.payload?.output) {
-          output = msg.payload.output
-        }
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output)
-      }
-
-      ws.onerror = () => {
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output || '')
-      }
-    })
-  }
+  const { runKubectl } = useDrillDownWebSocket(cluster)
 
   const fetchImageInfo = async () => {
     if (!agentConnected) return
@@ -199,7 +157,7 @@ export function BuildpackDrillDown({ data }: Props) {
         namespace,
         '-o',
         'json',
-      ])
+      ], 15_000)
       if (output) {
         const parsed = JSON.parse(output)
         setImageInfo(parsed)
@@ -223,7 +181,7 @@ export function BuildpackDrillDown({ data }: Props) {
         namespace,
         '-o',
         'yaml',
-      ])
+      ], 15_000)
       setImageYAML(output || 'No YAML available')
     } catch {
       setImageYAML('Error fetching YAML')
@@ -244,7 +202,7 @@ export function BuildpackDrillDown({ data }: Props) {
         `image.kpack.io/image=${name}`,
         '-o',
         'json',
-      ])
+      ], 15_000)
       if (output) {
         const parsed = JSON.parse(output)
         setBuilds(parsed.items || [])
@@ -274,7 +232,7 @@ export function BuildpackDrillDown({ data }: Props) {
           `image.kpack.io/image=${name}`,
           '-o',
           'json',
-        ])
+        ], 15_000)
         if (output) {
           const parsed = JSON.parse(output)
           currentBuilds = parsed.items || []
@@ -299,7 +257,7 @@ export function BuildpackDrillDown({ data }: Props) {
           '-n',
           namespace,
           '--all-containers',
-        ])
+        ], 15_000)
         setLogs(output || 'No logs available')
       } else {
         setLogs('No builds found for this image')

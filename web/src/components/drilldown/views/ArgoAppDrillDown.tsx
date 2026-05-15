@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocalAgent } from '../../../hooks/useLocalAgent'
+import { useDrillDownWebSocket } from '../../../hooks/useDrillDownWebSocket'
 import { useDrillDownActions, useDrillDown } from '../../../hooks/useDrillDown'
 import { useMissions } from '../../../hooks/useMissions'
 import { useArgoCDTriggerSync } from '../../../hooks/useArgoCD'
@@ -12,8 +13,6 @@ import {
 } from 'lucide-react'
 import { cn } from '../../../lib/cn'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../../lib/constants/network'
-import { LOCAL_AGENT_WS_URL } from '../../../lib/constants'
-import { appendWsAuthToken } from '../../../lib/utils/wsAuth'
 import { ConsoleAIIcon } from '../../ui/ConsoleAIIcon'
 import {
   AIActionBar,
@@ -157,47 +156,7 @@ export function ArgoAppDrillDown({ data }: Props) {
       path,
       project } })
 
-  // Helper to run kubectl commands
-  const runKubectl = async (args: string[]): Promise<string> => {
-    let wsUrl: string
-    try {
-      wsUrl = await appendWsAuthToken(LOCAL_AGENT_WS_URL)
-    } catch {
-      return ''
-    }
-    return new Promise((resolve) => {
-      const ws = new WebSocket(wsUrl)
-      const requestId = `kubectl-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      let output = ''
-
-      const timeout = setTimeout(() => {
-        ws.close()
-        resolve(output || '')
-      }, 15000)
-
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          id: requestId,
-          type: 'kubectl',
-          payload: { context: cluster, args }
-        }))
-      }
-      ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data)
-        if (msg.id === requestId && msg.payload?.output) {
-          output = msg.payload.output
-        }
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output)
-      }
-      ws.onerror = () => {
-        clearTimeout(timeout)
-        ws.close()
-        resolve(output || '')
-      }
-    })
-  }
+  const { runKubectl } = useDrillDownWebSocket(cluster)
 
   // Fetch app resources
   const fetchResources = async () => {
@@ -206,7 +165,7 @@ export function ArgoAppDrillDown({ data }: Props) {
     try {
       const output = await runKubectl([
         'get', 'application.argoproj.io', appName, '-n', namespace, '-o', 'json'
-      ])
+      ], 15_000)
       if (output) {
         const app = JSON.parse(output)
         const resources = app.status?.resources || []
@@ -231,7 +190,7 @@ export function ArgoAppDrillDown({ data }: Props) {
     try {
       const output = await runKubectl([
         'get', 'application.argoproj.io', appName, '-n', namespace, '-o', 'json'
-      ])
+      ], 15_000)
       if (output) {
         const app = JSON.parse(output)
         const history = app.status?.history || []
@@ -255,7 +214,7 @@ export function ArgoAppDrillDown({ data }: Props) {
       // Try to get diff using argocd CLI if available, otherwise show app manifest
       const output = await runKubectl([
         'get', 'application.argoproj.io', appName, '-n', namespace, '-o', 'yaml'
-      ])
+      ], 15_000)
       setDiffOutput(output || 'No diff available')
     } catch {
       setDiffOutput('Error fetching diff')
