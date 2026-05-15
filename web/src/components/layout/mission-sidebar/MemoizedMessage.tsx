@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeSanitize from 'rehype-sanitize'
 import { cn } from '../../../lib/cn'
+import { sanitizeUrl } from '../../../lib/utils/sanitizeUrl'
 import { AgentIcon } from '../../agent/AgentIcon'
 import { buildReleaseNotesComponents } from '../../../lib/markdown/releaseNotesComponents'
 import {
@@ -35,8 +36,7 @@ export const MemoizedMessage = memo(function MemoizedMessage({ msg, missionAgent
   const markdownComponents = useMemo(() => ({
     ...buildReleaseNotesComponents(fontSize),
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
-      // Block javascript: and other dangerous URI schemes to prevent XSS (#5808)
-      const safeHref = href && /^(https?:|\/|mailto:|#)/i.test(href) ? href : undefined
+      const safeHref = href ? sanitizeUrl(href) : undefined
       if (safeHref?.startsWith('/')) {
         return (
           <Link to={safeHref} className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-700 dark:text-yellow-300 border border-yellow-500/30 rounded text-xs font-medium transition-colors no-underline">

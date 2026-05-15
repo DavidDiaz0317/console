@@ -7,6 +7,7 @@ import { checkOAuthConfiguredWithRetry } from '../../lib/api'
 import { ROUTES } from '../../config/routes'
 import { useTranslation } from 'react-i18next'
 import { emitLogin } from '../../lib/analytics'
+import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
 import { LogoWithStar } from '../ui/LogoWithStar'
 import { useBranding } from '../../hooks/useBranding'
 import { UI_FEEDBACK_TIMEOUT_MS } from '../../lib/constants/network'
@@ -459,7 +460,7 @@ export function Login() {
                           <span className="text-muted-foreground">
                             {idx + 1}. {step.label}{' '}
                             <a
-                              href={step.link}
+                              href={sanitizeUrl(step.link)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-400 hover:text-blue-300 underline"

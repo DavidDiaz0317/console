@@ -6,6 +6,7 @@ import { isClusterUnreachable, isClusterHealthy } from './utils'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useMissions } from '../../hooks/useMissions'
 import { emitClusterAction } from '../../lib/analytics'
+import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
 import { Gauge } from '../charts/Gauge'
 import { NodeListItem } from './NodeListItem'
 import { NodeDetailPanel } from './NodeDetailPanel'
@@ -302,7 +303,7 @@ After I approve, help me execute the repairs step by step.`,
                 <>
                   {consoleUrl ? (
                     <a
-                      href={consoleUrl}
+                      href={sanitizeUrl(consoleUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${providerInfo.bgColor} ${providerInfo.color} hover:opacity-80 transition-opacity`}
