@@ -73,6 +73,12 @@ import { ROUTES } from '../../config/routes'
 // not part of the initial bundle — they only load when the sidebar is first rendered.
 const MissionSidebar = safeLazy(() => import('./mission-sidebar'), 'MissionSidebar')
 const MissionSidebarToggle = safeLazy(() => import('./mission-sidebar'), 'MissionSidebarToggle')
+const StellarSidebar = safeLazy(() => import('../stellar'), 'StellarSidebar')
+// StellarToastBridge is loaded EAGERLY (not lazy) so it mounts before SSE
+// starts delivering notifications. A lazy bridge had a startup race where
+// every initial event was marked "already seen" and no toast fired.
+import { StellarToastBridge } from '../stellar/StellarToastBridge'
+import { StellarMissionBridge } from '../stellar/StellarMissionBridge'
 
 // Module-level constant — computed once, never changes on re-render.
 // Prevents star field from flickering when Layout re-renders due to hooks.
@@ -828,6 +834,13 @@ export function Layout({ children: _children }: LayoutProps) {
           className="relative flex-1 p-4 pb-8 pb-[calc(2rem+env(safe-area-inset-bottom))] md:p-6 md:pb-8 md:pb-[calc(2rem+env(safe-area-inset-bottom))] overflow-y-auto overflow-x-hidden scroll-enhanced min-w-0"
           data-transition-margin="true"
         >
+          {/* Spacer pushes scrollable content below the open navbar filter
+              panel.  It lives INSIDE <main> (the scroll container) so the
+              offset actually moves content in the viewport. (issue 12767) */}
+          <div
+            aria-hidden
+            style={{ height: `var(${NAVBAR_FILTER_PANEL_OFFSET_CSS_VAR}, 0px)` }}
+          />
           <NavigationProgress />
           {/*
             Key the Outlet by location.pathname so route changes are a clean
@@ -845,6 +858,11 @@ export function Layout({ children: _children }: LayoutProps) {
             <Outlet />
           </div>
         </main>
+        <Suspense fallback={null}>
+          <StellarSidebar />
+        </Suspense>
+        <StellarToastBridge />
+        <StellarMissionBridge />
       </div>
 
           {/* AI Mission sidebar — lazy loaded to keep react-markdown out of initial bundle */}

@@ -571,6 +571,156 @@ func (s *SQLiteStore) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_ce_cluster_time ON cluster_events(cluster_name, last_seen DESC);
 	CREATE INDEX IF NOT EXISTS idx_ce_uid ON cluster_events(event_uid);
 
+	-- Stellar assistant user preferences. Keeps assistant behavior sticky
+	-- across reconnects/restarts.
+	CREATE TABLE IF NOT EXISTS stellar_preferences (
+		user_id TEXT PRIMARY KEY,
+		default_provider TEXT NOT NULL DEFAULT 'auto',
+		execution_mode TEXT NOT NULL DEFAULT 'hybrid',
+		timezone TEXT NOT NULL DEFAULT 'UTC',
+		proactive_mode INTEGER NOT NULL DEFAULT 1,
+		pinned_clusters TEXT NOT NULL DEFAULT '[]',
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_preferences_updated ON stellar_preferences(updated_at);
+
+	-- Stellar mission registry. Stores user-authored long-running/scheduled
+	-- assistant tasks and their runtime metadata.
+	CREATE TABLE IF NOT EXISTS stellar_missions (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		goal TEXT NOT NULL,
+		schedule TEXT NOT NULL DEFAULT '',
+		trigger_type TEXT NOT NULL DEFAULT 'manual',
+		provider_policy TEXT NOT NULL DEFAULT 'auto',
+		memory_scope TEXT NOT NULL DEFAULT 'user',
+		enabled INTEGER NOT NULL DEFAULT 1,
+		tool_bindings TEXT NOT NULL DEFAULT '[]',
+		last_run_at DATETIME,
+		next_run_at DATETIME,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_missions_user ON stellar_missions(user_id, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_stellar_missions_next_run ON stellar_missions(enabled, next_run_at);
+
+	-- Stellar mission execution history
+	CREATE TABLE IF NOT EXISTS stellar_executions (
+		id TEXT PRIMARY KEY,
+		mission_id TEXT NOT NULL,
+		user_id TEXT NOT NULL,
+		trigger_type TEXT NOT NULL,
+		trigger_data TEXT NOT NULL DEFAULT '{}',
+		status TEXT NOT NULL DEFAULT 'running',
+		raw_input TEXT,
+		enriched_input TEXT,
+		output TEXT,
+		actions_taken TEXT NOT NULL DEFAULT '[]',
+		tokens_input INTEGER NOT NULL DEFAULT 0,
+		tokens_output INTEGER NOT NULL DEFAULT 0,
+		duration_ms INTEGER NOT NULL DEFAULT 0,
+		started_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		completed_at DATETIME
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_executions_user_started ON stellar_executions(user_id, started_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_stellar_executions_mission ON stellar_executions(mission_id, started_at DESC);
+
+	-- Stellar long-term memory entries
+	CREATE TABLE IF NOT EXISTS stellar_memory_entries (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		cluster TEXT NOT NULL,
+		namespace TEXT NOT NULL DEFAULT '',
+		category TEXT NOT NULL,
+		summary TEXT NOT NULL,
+		raw_content TEXT NOT NULL DEFAULT '',
+		tags TEXT NOT NULL DEFAULT '[]',
+		mission_id TEXT NOT NULL DEFAULT '',
+		execution_id TEXT NOT NULL DEFAULT '',
+		expires_at DATETIME,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_memory_user_created ON stellar_memory_entries(user_id, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_stellar_memory_cluster_created ON stellar_memory_entries(user_id, cluster, created_at DESC);
+
+	-- Stellar scheduled actions
+	CREATE TABLE IF NOT EXISTS stellar_actions (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		description TEXT NOT NULL,
+		action_type TEXT NOT NULL,
+		parameters TEXT NOT NULL DEFAULT '{}',
+		cluster TEXT NOT NULL,
+		namespace TEXT NOT NULL DEFAULT '',
+		scheduled_at DATETIME,
+		cron_expr TEXT NOT NULL DEFAULT '',
+		status TEXT NOT NULL DEFAULT 'pending_approval',
+		approved_by TEXT NOT NULL DEFAULT '',
+		approved_at DATETIME,
+		executed_at DATETIME,
+		outcome TEXT NOT NULL DEFAULT '',
+		reject_reason TEXT NOT NULL DEFAULT '',
+		created_by TEXT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_actions_user_created ON stellar_actions(user_id, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_stellar_actions_status_due ON stellar_actions(status, scheduled_at);
+
+	-- Stellar notification feed for persistent side panel
+	CREATE TABLE IF NOT EXISTS stellar_notifications (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		type TEXT NOT NULL,
+		severity TEXT NOT NULL DEFAULT 'info',
+		title TEXT NOT NULL,
+		body TEXT NOT NULL,
+		cluster TEXT NOT NULL DEFAULT '',
+		namespace TEXT NOT NULL DEFAULT '',
+		mission_id TEXT NOT NULL DEFAULT '',
+		action_id TEXT NOT NULL DEFAULT '',
+		dedupe_key TEXT NOT NULL DEFAULT '',
+		read INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_notifications_user_created ON stellar_notifications(user_id, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_stellar_notifications_unread ON stellar_notifications(user_id, read, created_at DESC);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_stellar_notifications_user_dedupe ON stellar_notifications(user_id, dedupe_key);
+
+	-- Durable stellar task graph.
+	CREATE TABLE IF NOT EXISTS stellar_tasks (
+		id           TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+		session_id   TEXT NOT NULL,
+		user_id      TEXT NOT NULL,
+		cluster      TEXT NOT NULL DEFAULT '',
+		title        TEXT NOT NULL,
+		description  TEXT NOT NULL DEFAULT '',
+		status       TEXT NOT NULL DEFAULT 'open',
+		priority     INTEGER NOT NULL DEFAULT 5,
+		source       TEXT NOT NULL DEFAULT 'user',
+		parent_id    TEXT,
+		due_at       DATETIME,
+		completed_at DATETIME,
+		context_json TEXT NOT NULL DEFAULT '{}',
+		created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_tasks_user_status ON stellar_tasks(user_id, status, priority);
+
+	-- Stellar observer journal.
+	CREATE TABLE IF NOT EXISTS stellar_observations (
+		id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+		cluster       TEXT NOT NULL DEFAULT '',
+		kind          TEXT NOT NULL,
+		summary       TEXT NOT NULL,
+		detail        TEXT NOT NULL DEFAULT '',
+		ref_type      TEXT NOT NULL DEFAULT '',
+		ref_id        TEXT NOT NULL DEFAULT '',
+		shown_to_user INTEGER NOT NULL DEFAULT 0,
+		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_stellar_obs_cluster_ts ON stellar_observations(cluster, created_at DESC);
+
 	-- OAuth credentials persisted by the GitHub App Manifest one-click flow.
 	-- Single-row table (CHECK constraint) so only one app registration exists.
 	CREATE TABLE IF NOT EXISTS oauth_credentials (
@@ -606,6 +756,180 @@ func (s *SQLiteStore) migrate() error {
 		// persisted — the column, INSERT, and SELECT all omitted it, causing
 		// webhook/close/update operations to route docs issues to the wrong repo.
 		"ALTER TABLE feature_requests ADD COLUMN target_repo TEXT NOT NULL DEFAULT 'console'",
+		// Ensure stellar notification dedupe metadata exists for watcher/scheduler
+		// generated feed events in older databases.
+		"ALTER TABLE stellar_notifications ADD COLUMN dedupe_key TEXT NOT NULL DEFAULT ''",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_stellar_notifications_user_dedupe ON stellar_notifications(user_id, dedupe_key)",
+		"ALTER TABLE stellar_notifications ADD COLUMN read_at DATETIME",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_notif_read ON stellar_notifications(read, created_at DESC)",
+
+		"ALTER TABLE stellar_memory_entries ADD COLUMN embedding BLOB",
+		"ALTER TABLE stellar_memory_entries ADD COLUMN importance INTEGER NOT NULL DEFAULT 5",
+		"ALTER TABLE stellar_memory_entries ADD COLUMN incident_id TEXT",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_mem_cluster ON stellar_memory_entries(cluster, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_mem_expires ON stellar_memory_entries(expires_at)",
+
+		"ALTER TABLE stellar_actions ADD COLUMN approved_by TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE stellar_actions ADD COLUMN approved_at DATETIME",
+		"ALTER TABLE stellar_actions ADD COLUMN rejected_by TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE stellar_actions ADD COLUMN rejected_at DATETIME",
+		"ALTER TABLE stellar_actions ADD COLUMN rejection_reason TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE stellar_actions ADD COLUMN started_at DATETIME",
+		"ALTER TABLE stellar_actions ADD COLUMN completed_at DATETIME",
+		"ALTER TABLE stellar_actions ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE stellar_actions ADD COLUMN max_retries INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE stellar_actions ADD COLUMN audit_log TEXT NOT NULL DEFAULT '[]'",
+		"ALTER TABLE stellar_actions ADD COLUMN idempotency_key TEXT",
+		"ALTER TABLE stellar_actions ADD COLUMN confirm_token TEXT",
+		"ALTER TABLE stellar_actions ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_stellar_actions_idempotency ON stellar_actions(idempotency_key) WHERE idempotency_key IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_actions_due ON stellar_actions(status, scheduled_at)",
+
+		"ALTER TABLE stellar_executions ADD COLUMN provider TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE stellar_executions ADD COLUMN model TEXT NOT NULL DEFAULT ''",
+
+		`CREATE TABLE IF NOT EXISTS stellar_provider_configs (
+			id           TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			user_id      TEXT NOT NULL,
+			provider     TEXT NOT NULL,
+			display_name TEXT NOT NULL DEFAULT '',
+			base_url     TEXT NOT NULL DEFAULT '',
+			model        TEXT NOT NULL DEFAULT '',
+			api_key_enc  BLOB NOT NULL DEFAULT '',
+			is_default   INTEGER NOT NULL DEFAULT 0,
+			is_active    INTEGER NOT NULL DEFAULT 1,
+			last_tested  TEXT,
+			last_latency INTEGER DEFAULT 0,
+			created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+		)`,
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_stellar_provider_user_default ON stellar_provider_configs(user_id) WHERE is_default = 1",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_provider_user ON stellar_provider_configs(user_id, is_active)",
+
+		`CREATE TABLE IF NOT EXISTS stellar_audit_log (
+			id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			ts          TEXT NOT NULL DEFAULT (datetime('now')),
+			user_id     TEXT NOT NULL,
+			action      TEXT NOT NULL,
+			entity_type TEXT NOT NULL,
+			entity_id   TEXT NOT NULL,
+			cluster     TEXT NOT NULL DEFAULT '',
+			detail      TEXT NOT NULL DEFAULT '{}'
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_audit_user_ts ON stellar_audit_log(user_id, ts DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_audit_entity ON stellar_audit_log(entity_type, entity_id)",
+		`CREATE TABLE IF NOT EXISTS stellar_tasks (
+			id           TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			session_id   TEXT NOT NULL,
+			user_id      TEXT NOT NULL,
+			cluster      TEXT NOT NULL DEFAULT '',
+			title        TEXT NOT NULL,
+			description  TEXT NOT NULL DEFAULT '',
+			status       TEXT NOT NULL DEFAULT 'open',
+			priority     INTEGER NOT NULL DEFAULT 5,
+			source       TEXT NOT NULL DEFAULT 'user',
+			parent_id    TEXT,
+			due_at       DATETIME,
+			completed_at DATETIME,
+			context_json TEXT NOT NULL DEFAULT '{}',
+			created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_stellar_tasks_user_status ON stellar_tasks(user_id, status, priority)",
+		`CREATE TABLE IF NOT EXISTS stellar_observations (
+			id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			cluster       TEXT NOT NULL DEFAULT '',
+			kind          TEXT NOT NULL,
+			summary       TEXT NOT NULL,
+			detail        TEXT NOT NULL DEFAULT '',
+			ref_type      TEXT NOT NULL DEFAULT '',
+			ref_id        TEXT NOT NULL DEFAULT '',
+			shown_to_user INTEGER NOT NULL DEFAULT 0,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_stellar_obs_cluster_ts ON stellar_observations(cluster, created_at DESC)",
+		`CREATE TABLE IF NOT EXISTS stellar_watches (
+			id            TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			user_id       TEXT NOT NULL,
+			cluster       TEXT NOT NULL,
+			namespace     TEXT NOT NULL DEFAULT '',
+			resource_kind TEXT NOT NULL,
+			resource_name TEXT NOT NULL,
+			reason        TEXT NOT NULL DEFAULT '',
+			status        TEXT NOT NULL DEFAULT 'active',
+			last_checked  DATETIME,
+			last_update   TEXT NOT NULL DEFAULT '',
+			resolved_at   DATETIME,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_stellar_watches_active ON stellar_watches(user_id, status, cluster) WHERE status = 'active'",
+
+		// Sprint 5: stellar_user_sessions for catch-up summary (away detection)
+		`CREATE TABLE IF NOT EXISTS stellar_user_sessions (
+			user_id         TEXT PRIMARY KEY,
+			last_seen_at    TEXT NOT NULL DEFAULT (datetime('now')),
+			last_digest_at  TEXT
+		)`,
+
+		// Sprint 5: reasoning column on stellar_observations for trust layer
+		"ALTER TABLE stellar_observations ADD COLUMN reasoning TEXT NOT NULL DEFAULT ''",
+
+		// Sprint 5: snooze support — last_checked already exists on stellar_watches
+
+		// Stellar v2: solve sessions (headless solve loop). Each row tracks one
+		// end-to-end attempt by Stellar to resolve an event without user input.
+		`CREATE TABLE IF NOT EXISTS stellar_solves (
+			id            TEXT PRIMARY KEY,
+			event_id      TEXT NOT NULL,
+			user_id       TEXT NOT NULL,
+			cluster       TEXT NOT NULL DEFAULT '',
+			namespace     TEXT NOT NULL DEFAULT '',
+			workload      TEXT NOT NULL DEFAULT '',
+			status        TEXT NOT NULL DEFAULT 'running',
+			actions_taken INTEGER NOT NULL DEFAULT 0,
+			limit_hit     TEXT NOT NULL DEFAULT '',
+			summary       TEXT NOT NULL DEFAULT '',
+			error         TEXT NOT NULL DEFAULT '',
+			started_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			ended_at      DATETIME
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_stellar_solves_event ON stellar_solves(event_id, started_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_solves_user_status ON stellar_solves(user_id, status, started_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_solves_dedupe ON stellar_solves(cluster, namespace, workload, started_at DESC)",
+
+		// Solve attempt → execution linkage + per-workload dedupe key for
+		// attempt history surfacing on watch cards.
+		"ALTER TABLE stellar_executions ADD COLUMN solve_id TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE stellar_executions ADD COLUMN dedupe_key TEXT NOT NULL DEFAULT ''",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_executions_solve ON stellar_executions(solve_id)",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_executions_dedupe ON stellar_executions(dedupe_key, started_at DESC)",
+
+		// Stale approval re-evaluation: bumping a pending approval to the top
+		// when its event has been re-triggered.
+		"ALTER TABLE stellar_actions ADD COLUMN bumped_at DATETIME",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_actions_bumped ON stellar_actions(status, bumped_at DESC)",
+
+		// Stellar activity log: Stellar's first-person record of what it did and
+		// why. Distinct from stellar_audit_log (operator-facing legal trail) and
+		// stellar_notifications (the inbox). This is the "junior engineer's
+		// commit log" the operator scans to verify Stellar is being reasonable.
+		`CREATE TABLE IF NOT EXISTS stellar_activity (
+			id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+			user_id     TEXT NOT NULL DEFAULT 'system',
+			ts          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			kind        TEXT NOT NULL,
+			event_id    TEXT NOT NULL DEFAULT '',
+			solve_id    TEXT NOT NULL DEFAULT '',
+			cluster     TEXT NOT NULL DEFAULT '',
+			namespace   TEXT NOT NULL DEFAULT '',
+			workload    TEXT NOT NULL DEFAULT '',
+			title       TEXT NOT NULL,
+			detail      TEXT NOT NULL DEFAULT '',
+			severity    TEXT NOT NULL DEFAULT 'info'
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_stellar_activity_ts ON stellar_activity(ts DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_stellar_activity_user_ts ON stellar_activity(user_id, ts DESC)",
 	}
 	for i, migration := range migrations {
 		if _, err := s.db.ExecContext(ctx, migration); err != nil {

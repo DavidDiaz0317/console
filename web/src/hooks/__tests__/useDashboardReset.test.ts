@@ -36,6 +36,10 @@ describe('useDashboardReset', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('reports not customized when no localStorage key exists', () => {
     const { result } = renderHook(() => useDashboardReset({
       storageKey: STORAGE_KEY,
