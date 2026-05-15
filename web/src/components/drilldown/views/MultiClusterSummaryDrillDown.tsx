@@ -7,6 +7,7 @@ import { useCachedAllNodes, useCachedPVCs } from '../../../hooks/useCachedData'
 import { useAlerts } from '../../../hooks/useAlerts'
 import { useTranslation } from 'react-i18next'
 import { formatTimeAgo } from '../../../lib/formatters'
+import { getClusterHealthState } from '../../clusters/utils'
 
 interface MultiClusterSummaryDrillDownProps {
   data: Record<string, unknown>
@@ -265,7 +266,7 @@ export function MultiClusterSummaryDrillDown({ data, viewType }: MultiClusterSum
           ...c,
           name: c.name,
           cluster: c.name,
-          status: c.healthy ? 'healthy' : 'unhealthy' }))
+          status: getClusterHealthState(c) }))
       case 'all-namespaces':
         // Flatten namespaces across all clusters
         return clusters.flatMap(c =>
