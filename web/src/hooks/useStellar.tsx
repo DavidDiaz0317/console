@@ -80,30 +80,38 @@ function useStellarSource() {
       setTimeout(() => reconnectRef.current(), delay)
     }
     es.addEventListener('notification', (e) => {
-      const notif: StellarNotification = JSON.parse((e as MessageEvent).data)
-      if (notif.read) {
-        return
-      }
-      setNotifications(prev => (prev.some(n => n.id === notif.id) ? prev : sortNotificationsByCreatedAt([notif, ...prev])))
+      try {
+        const notif: StellarNotification = JSON.parse((e as MessageEvent).data)
+        if (notif.read) {
+          return
+        }
+        setNotifications(prev => (prev.some(n => n.id === notif.id) ? prev : sortNotificationsByCreatedAt([notif, ...prev])))
+      } catch { /* malformed SSE event */ }
     })
     es.addEventListener('state', (e) => {
-      const payload = JSON.parse((e as MessageEvent).data) as { clustersWatching: string[]; unreadCount: number; pendingActionCount: number }
-      setState(prev => prev ? { ...prev, clustersWatching: payload.clustersWatching } : prev)
+      try {
+        const payload = JSON.parse((e as MessageEvent).data) as { clustersWatching: string[]; unreadCount: number; pendingActionCount: number }
+        setState(prev => prev ? { ...prev, clustersWatching: payload.clustersWatching } : prev)
+      } catch { /* malformed SSE event */ }
     })
     es.addEventListener('action_updated', (e) => {
-      const payload = JSON.parse((e as MessageEvent).data) as { id: string; status: string }
-      setPendingActions(prev => prev.filter(a => !(a.id === payload.id && payload.status !== 'pending_approval')))
+      try {
+        const payload = JSON.parse((e as MessageEvent).data) as { id: string; status: string }
+        setPendingActions(prev => prev.filter(a => !(a.id === payload.id && payload.status !== 'pending_approval')))
+      } catch { /* malformed SSE event */ }
     })
     es.addEventListener('observation', (e) => {
-      const payload = JSON.parse((e as MessageEvent).data) as { id: string; summary: string; suggest?: string }
-      setNudge({
-        id: payload.id,
-        summary: payload.summary,
-        suggest: payload.suggest,
-        ts: new Date().toISOString(),
-      })
-      // Refresh watches when observer fires — lastUpdate may have changed
-      stellarApi.getWatches().then(setWatches).catch(() => {/* ignore */})
+      try {
+        const payload = JSON.parse((e as MessageEvent).data) as { id: string; summary: string; suggest?: string }
+        setNudge({
+          id: payload.id,
+          summary: payload.summary,
+          suggest: payload.suggest,
+          ts: new Date().toISOString(),
+        })
+        // Refresh watches when observer fires — lastUpdate may have changed
+        stellarApi.getWatches().then(setWatches).catch(() => {/* ignore */})
+      } catch { /* malformed SSE event */ }
     })
     es.addEventListener('initial_batch', (e) => {
       try {
@@ -120,8 +128,10 @@ function useStellarSource() {
       } catch { /* malformed batch */ }
     })
     es.addEventListener('watches', (e) => {
-      const updated: StellarWatch[] = JSON.parse((e as MessageEvent).data)
-      setWatches(updated || [])
+      try {
+        const updated: StellarWatch[] = JSON.parse((e as MessageEvent).data)
+        setWatches(updated || [])
+      } catch { /* malformed SSE event */ }
     })
     es.addEventListener('watch_update', (e) => {
       try {

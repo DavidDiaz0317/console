@@ -461,7 +461,10 @@ export function useStackDiscovery(clusters: string[]) {
           }
 
           // Parse pods
-          const podsData = podsResponse.exitCode === 0 ? JSON.parse(podsResponse.output) : { items: [] }
+          let podsData: { items: PodResource[] } = { items: [] }
+          try {
+            if (podsResponse.exitCode === 0) podsData = JSON.parse(podsResponse.output)
+          } catch { /* malformed kubectl output */ }
           const pods = (podsData.items || []) as PodResource[]
           const podsByNamespace = new Map<string, PodResource[]>()
           for (const pod of (pods || [])) {
@@ -471,7 +474,10 @@ export function useStackDiscovery(clusters: string[]) {
           }
 
           // Parse InferencePools
-          const poolsData = poolsResponse.exitCode === 0 ? JSON.parse(poolsResponse.output) : { items: [] }
+          let poolsData: { items: InferencePoolResource[] } = { items: [] }
+          try {
+            if (poolsResponse.exitCode === 0) poolsData = JSON.parse(poolsResponse.output)
+          } catch { /* malformed kubectl output */ }
           const pools = (poolsData.items || []) as InferencePoolResource[]
           const poolsByNamespace = new Map(pools.map(p => [p.metadata.namespace, p]))
 
@@ -489,12 +495,18 @@ export function useStackDiscovery(clusters: string[]) {
           }
 
           // Parse Gateways
-          const gwData = gwResponse.exitCode === 0 ? JSON.parse(gwResponse.output) : { items: [] }
+          let gwData: { items: GatewayResource[] } = { items: [] }
+          try {
+            if (gwResponse.exitCode === 0) gwData = JSON.parse(gwResponse.output)
+          } catch { /* malformed kubectl output */ }
           const gateways = (gwData.items || []) as GatewayResource[]
           const gatewayByNamespace = new Map(gateways.map(g => [g.metadata.namespace, g]))
 
           // Parse HPAs
-          const hpaData = hpaResponse.exitCode === 0 ? JSON.parse(hpaResponse.output) : { items: [] }
+          let hpaData: { items: HPAResource[] } = { items: [] }
+          try {
+            if (hpaResponse.exitCode === 0) hpaData = JSON.parse(hpaResponse.output)
+          } catch { /* malformed kubectl output */ }
           const hpas = (hpaData.items || []) as HPAResource[]
           const hpaByNamespace = new Map<string, HPAResource>()
           for (const hpa of (hpas || [])) {
@@ -502,7 +514,10 @@ export function useStackDiscovery(clusters: string[]) {
           }
 
           // Parse WVA (VariantAutoscaling)
-          const wvaData = wvaResponse.exitCode === 0 ? JSON.parse(wvaResponse.output) : { items: [] }
+          let wvaData: { items: WVAResource[] } = { items: [] }
+          try {
+            if (wvaResponse.exitCode === 0) wvaData = JSON.parse(wvaResponse.output)
+          } catch { /* malformed kubectl output */ }
           const wvas = (wvaData.items || []) as WVAResource[]
           const wvaByNamespace = new Map<string, WVAResource>()
           const wvaByTargetNamespace = new Map<string, WVAResource>()
@@ -515,7 +530,10 @@ export function useStackDiscovery(clusters: string[]) {
           }
 
           // Parse VPA
-          const vpaData = vpaResponse.exitCode === 0 ? JSON.parse(vpaResponse.output) : { items: [] }
+          let vpaData: { items: VPAResource[] } = { items: [] }
+          try {
+            if (vpaResponse.exitCode === 0) vpaData = JSON.parse(vpaResponse.output)
+          } catch { /* malformed kubectl output */ }
           const vpas = (vpaData.items || []) as VPAResource[]
           const vpaByNamespace = new Map<string, VPAResource>()
           for (const vpa of (vpas || [])) { vpaByNamespace.set(vpa.metadata.namespace, vpa) }

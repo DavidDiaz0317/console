@@ -673,8 +673,10 @@ export function useTokenUsage() {
     const handleSettingsChange = () => {
       const settings = localStorage.getItem(SETTINGS_KEY)
       if (settings) {
-        const parsedSettings = JSON.parse(settings)
-        updateSharedUsage(parsedSettings)
+        try {
+          const parsedSettings = JSON.parse(settings)
+          updateSharedUsage(parsedSettings)
+        } catch { /* malformed localStorage entry */ }
       }
     }
     window.addEventListener(SETTINGS_CHANGED_EVENT, handleSettingsChange)
