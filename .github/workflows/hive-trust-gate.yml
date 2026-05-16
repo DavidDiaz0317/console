@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          MIN_PRIOR_PULL_REQUESTS=1
+          MIN_PRIOR_PULL_REQUESTS=3
           TRUSTED=false
           TRUST_REASON='untrusted'
           USER_LOWER=$(printf '%s' "$TRUSTED_USER" | tr '[:upper:]' '[:lower:]')
@@ -92,7 +92,7 @@ jobs:
               TRUSTED=true
               TRUST_REASON='owners-file'
             else
-              PRIOR_PULL_REQUEST_COUNT=$(gh api "search/issues" -f q="repo:$REPO is:pr author:$TRUSTED_USER" --jq '.total_count' 2>/dev/null || echo '0')
+              PRIOR_PULL_REQUEST_COUNT=$(gh api "search/issues" -f q="repo:$REPO is:pr is:merged author:$TRUSTED_USER" --jq '.total_count' 2>/dev/null || echo '0')
               if [ "${PRIOR_PULL_REQUEST_COUNT:-0}" -ge "$MIN_PRIOR_PULL_REQUESTS" ]; then
                 TRUSTED=true
                 TRUST_REASON='prior-pr'
