@@ -301,33 +301,26 @@ function useStellarSource() {
   const unreadCount = useMemo(() => notifications.filter(item => !item.read).length, [notifications])
 
   const acknowledgeNotification = useCallback(async (id: string) => {
-    let removed: StellarNotification | null = null
+    const removed = notifications.find(notification => notification.id === id) || null
     // Remove immediately so dismiss feels instant.
-    setNotifications(prev => {
-      removed = prev.find(n => n.id === id) || null
-      return prev.filter(n => n.id !== id)
-    })
+    setNotifications(prev => prev.filter(notification => notification.id !== id))
     try {
       await stellarApi.acknowledgeNotification(id)
     } catch (error) {
       if (removed) {
-        const itemToRestore: StellarNotification = removed
         setNotifications(prev => (
-          prev.some(item => item.id === itemToRestore.id)
+          prev.some(item => item.id === removed.id)
             ? prev
-            : sortNotificationsByCreatedAt([itemToRestore, ...prev])
+            : sortNotificationsByCreatedAt([removed, ...prev])
         ))
       }
       throw error
     }
-  }, [])
+  }, [notifications])
 
   const dismissAllNotifications = useCallback(async () => {
-    let snapshot: StellarNotification[] = []
-    setNotifications(prev => {
-      snapshot = prev.slice()
-      return []
-    })
+    const snapshot = notifications.slice()
+    setNotifications([])
     if (snapshot.length === 0) {
       return
     }
@@ -347,7 +340,7 @@ function useStellarSource() {
       setNotifications(prev => sortNotificationsByCreatedAt([...(prev || []), ...failedItems]))
       throw new Error('Failed to dismiss some notifications')
     }
-  }, [])
+  }, [notifications])
 
   const approveAction = useCallback(async (id: string, confirmToken?: string) => {
     await stellarApi.approveAction(id, confirmToken)

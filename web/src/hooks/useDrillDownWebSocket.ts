@@ -37,11 +37,22 @@ export function useDrillDownWebSocket(cluster: string) {
   const openTrackedWs = useCallback(async (): Promise<WebSocket> => {
     const ws = new WebSocket(await appendWsAuthToken(LOCAL_AGENT_WS_URL))
     activeWsRef.current.add(ws)
-    const origClose = ws.close.bind(ws)
-    ws.close = (...args: Parameters<WebSocket['close']>) => {
+
+    let consumerOnClose = ws.onclose
+    const trackedOnClose: typeof ws.onclose = (event) => {
       activeWsRef.current.delete(ws)
-      origClose(...args)
+      consumerOnClose?.call(ws, event)
     }
+
+    Object.defineProperty(ws, 'onclose', {
+      configurable: true,
+      enumerable: true,
+      get: () => trackedOnClose,
+      set: (handler: typeof ws.onclose) => {
+        consumerOnClose = handler
+      },
+    })
+
     return ws
   }, [])
 
