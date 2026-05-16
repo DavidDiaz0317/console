@@ -36,7 +36,6 @@ import {
 import {
   runPreflightCheck,
   runToolPreflightCheck,
-  type PreflightError,
   type PreflightResult,
 } from '../lib/missions/preflightCheck'
 import { kubectlProxy } from '../lib/kubectlProxy'
@@ -72,7 +71,6 @@ import {
   shouldAllowMissingToolWarning,
   shouldSkipClusterPreflight,
   getMissingTools,
-  getMissionContextTools,
   resolveMissionToolRequirements,
   buildMissingToolWarning,
   buildMissionToolUnavailableError,
@@ -80,7 +78,6 @@ import {
   KAGENTI_NO_AGENTS_DISCOVERED_EVENT,
   buildKagentiDiscoveryErrorMessage,
 } from './useMissions.helpers'
-import i18n from '../lib/i18n'
 
 interface MissionContextValue {
   missions: Mission[]
