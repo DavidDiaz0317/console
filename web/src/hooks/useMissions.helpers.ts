@@ -17,6 +17,17 @@ export function getMissionMessages(messages?: MissionMessage[]): MissionMessage[
   return messages || []
 }
 
+const MISSION_CONTEXT_TOOL_KEYS = ['requiredLocalTools', 'requiredTools', 'requiredMissionTools'] as const
+
+export function getMissionContextTools(context?: Record<string, unknown>): string[] {
+  return MISSION_CONTEXT_TOOL_KEYS.flatMap((key) => {
+    const value = context?.[key]
+    return Array.isArray(value)
+      ? value.filter((tool): tool is string => typeof tool === 'string')
+      : []
+  })
+}
+
 // ─── Agent Disconnect Detection ──────────────────────────────────────────────
 
 /** Returns true when a MissionMessage is a stale agent-disconnect error. */

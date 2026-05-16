@@ -68,6 +68,7 @@ import {
 } from './useMissionPromptBuilder'
 import {
   getMissionMessages,
+  getMissionContextTools,
   isStaleAgentErrorMessage,
   KAGENTI_PROVIDER_UNAVAILABLE_EVENT,
   KAGENTI_NO_AGENTS_DISCOVERED_EVENT,
@@ -165,7 +166,6 @@ const OPTIONAL_MISSION_TOOL_PATTERNS = {
   gh: /\bgh\b|\bgithub\s+cli\b/i,
   helm: /\bhelm\b/i,
 } as const
-const MISSION_CONTEXT_TOOL_KEYS = ['requiredLocalTools', 'requiredTools', 'requiredMissionTools'] as const
 const MISSING_TOOL_WARNING_HEADING = `**${i18n.t('missions.preflight.toolWarning.heading')}**`
 const MISSING_TOOL_WARNING_SUFFIX = i18n.t('missions.preflight.toolWarning.suffix')
 
@@ -182,15 +182,6 @@ function getMissingTools(error: PreflightError, fallbackTools: string[]): string
   return Array.isArray(missingTools) && missingTools.every(tool => typeof tool === 'string')
     ? missingTools
     : fallbackTools
-}
-
-function getMissionContextTools(context?: Record<string, unknown>): string[] {
-  return MISSION_CONTEXT_TOOL_KEYS.flatMap((key) => {
-    const value = context?.[key]
-    return Array.isArray(value)
-      ? value.filter((tool): tool is string => typeof tool === 'string')
-      : []
-  })
 }
 
 function resolveMissionToolRequirements({
