@@ -104,7 +104,7 @@ type ResourceArity = 'none' | 'cluster' | 'cluster+namespace'
 /** Base shape returned by resource hooks registered with the unified system. */
 interface HookResult {
   isLoading: boolean
-  error?: string
+  error?: string | null
   refetch: () => void
   [key: string]: unknown
 }
