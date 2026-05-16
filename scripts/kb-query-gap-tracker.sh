@@ -40,10 +40,12 @@ echo "Common Kubernetes operations without dedicated missions:" >> "$OUTPUT"
 echo "" >> "$OUTPUT"
 
 COMMON_OPS=("disaster-recovery" "certificate-rotation" "etcd-backup" "node-drain" "cluster-upgrade" "storage-migration" "network-policy" "rbac-audit")
+CRITICAL_COUNT=0
 for op in "${COMMON_OPS[@]}"; do
   exists=$(gh api "repos/$KB_REPO/git/trees/main?recursive=1" --jq "[.tree[].path | select(test(\"$op\"))] | length" 2>/dev/null || echo "0")
   if [ "$exists" = "0" ]; then
     echo "- ❌ $op — no mission found" >> "$OUTPUT"
+    CRITICAL_COUNT=$((CRITICAL_COUNT + 1))
   else
     echo "- ✅ $op — $exists file(s)" >> "$OUTPUT"
   fi
@@ -58,6 +60,11 @@ echo "3. Validate all existing install missions against latest CNCF project vers
 
 echo ""
 echo "Report written to: $OUTPUT"
+echo "CRITICAL_GAPS=$CRITICAL_COUNT"
+
+if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  exit 1
+fi
 
 # 4. Preflight error KB coverage
 # Cross-references every PreflightErrorCode from preflightCheck.ts against

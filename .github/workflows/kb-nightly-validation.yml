@@ -6,9 +6,11 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   validate-kb:
+    if: github.repository == 'kubestellar/console'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.2.2
@@ -17,7 +19,7 @@ jobs:
         run: |
           chmod +x scripts/validate-missions.sh
           ./scripts/validate-missions.sh 2>&1 | tee validation-results.txt
-          
+
       - name: Run KB gap tracker
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -27,13 +29,66 @@ jobs:
 
       - name: Check for regressions
         run: |
+          FAILED=0
+
           # Fail if mission pass rate drops below 90%
           if grep -q "PASS_RATE=" validation-results.txt; then
             RATE=$(grep -oP 'PASS_RATE=\K\d+' validation-results.txt | head -1)
             if [ "${RATE:-100}" -lt 90 ]; then
               echo "::error::Mission validation pass rate dropped below 90% (currently ${RATE}%)"
-              exit 1
+              FAILED=1
             fi
+          fi
+
+          # Fail if critical KB gaps were found
+          if grep -q "CRITICAL_GAPS=" gap-results.txt; then
+            GAPS=$(grep -oP 'CRITICAL_GAPS=\K\d+' gap-results.txt | head -1)
+            if [ "${GAPS:-0}" -gt 0 ]; then
+              echo "::error::${GAPS} critical KB gap(s) detected — see kb-gap-report.md"
+              FAILED=1
+            fi
+          fi
+
+          exit $FAILED
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## KB Nightly Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f validation-results.txt ]; then
+            echo "### Mission Validation" >> "$GITHUB_STEP_SUMMARY"
+            cat validation-results.txt >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f kb-gap-report.md ]; then
+            echo "### KB Gap Report" >> "$GITHUB_STEP_SUMMARY"
+            cat kb-gap-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: File issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TITLE="KB Validation: critical gaps detected $(date -u +%Y-%m-%d)"
+
+          EXISTING=$(gh issue list \
+            --state open \
+            --label "kb-gap" \
+            --search "in:title \"KB Validation: critical gaps\"" \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" \
+              --body "Still failing as of $(date -u +%Y-%m-%d). [Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          else
+            gh label create "kb-gap" --color "B60205" \
+              --description "KB coverage gap detected by nightly validation" 2>/dev/null || true
+            gh issue create \
+              --title "$TITLE" \
+              --label "kb-gap,triage/needed,help wanted" \
+              --body-file kb-gap-report.md
           fi
 
       - name: Upload reports
