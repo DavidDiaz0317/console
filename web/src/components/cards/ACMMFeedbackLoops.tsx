@@ -18,6 +18,7 @@ import type { Criterion, SourceId } from '../../lib/acmm/sources/types'
 import { detectionLabel, singleCriterionPrompt, levelCompletionPrompt, cumulativeLevelUpPrompt } from '../../lib/acmm/missionPrompts'
 import { emitACMMMissionLaunched, emitACMMLevelMissionLaunched } from '../../lib/analytics'
 import { sanitizeUrl } from '../../lib/utils/sanitizeUrl'
+import { buildGitHubIssueUrl } from '../../lib/githubUrls'
 
 type StatusFilter = 'all' | 'detected' | 'missing'
 
@@ -43,7 +44,8 @@ const SOURCE_FILES: Record<SourceId, string> = {
   'claude-reflect': 'web/src/lib/acmm/sources/claude-reflect.ts',
 }
 
-const CONSOLE_REPO = 'kubestellar/console'
+const CONSOLE_REPO_OWNER = 'kubestellar'
+const CONSOLE_REPO_NAME = 'console'
 /** Mirrors the badge-function threshold: a level is "earned" once 70% of
  *  its criteria are detected. Anything above earnedLevel is locked
  *  (gamification — finish what you're on before the next level opens). */
@@ -99,16 +101,21 @@ const CROSS_CUTTING_LABELS = {
 } as const
 
 function proposeChangeUrl(c: Criterion): string {
-  const title = encodeURIComponent(`ACMM criterion fix: ${c.id}`)
-  const body = encodeURIComponent(
+  const body =
     `**Criterion:** \`${c.id}\` (${SOURCE_LABELS[c.source]})\n` +
-      `**Name:** ${c.name}\n` +
-      `**Current detection (${c.detection.type}):** \`${detectionLabel(c.detection)}\`\n\n` +
-      `**What's wrong with the current criteria?**\n<!-- e.g. missed files in my repo, over-matches, wrong level -->\n\n` +
-      `**Suggested detection pattern:**\n<!-- e.g. include additional paths, switch to glob, etc. -->\n\n` +
-      `**Source file:** \`${SOURCE_FILES[c.source]}\``,
-  )
-  return `https://github.com/${CONSOLE_REPO}/issues/new?title=${title}&body=${body}&labels=acmm,criterion-feedback`
+    `**Name:** ${c.name}\n` +
+    `**Current detection (${c.detection.type}):** \`${detectionLabel(c.detection)}\`\n\n` +
+    `**What's wrong with the current criteria?**\n<!-- e.g. missed files in my repo, over-matches, wrong level -->\n\n` +
+    `**Suggested detection pattern:**\n<!-- e.g. include additional paths, switch to glob, etc. -->\n\n` +
+    `**Source file:** \`${SOURCE_FILES[c.source]}\``
+
+  return buildGitHubIssueUrl({
+    owner: CONSOLE_REPO_OWNER,
+    repo: CONSOLE_REPO_NAME,
+    title: `ACMM criterion fix: ${c.id}`,
+    body,
+    labels: ['acmm', 'criterion-feedback'],
+  })
 }
 
 export function ACMMFeedbackLoops() {

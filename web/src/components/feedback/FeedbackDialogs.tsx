@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import { useRef, useEffect } from 'react'
 import { sanitizeUrl } from '@/lib/utils/sanitizeUrl'
+import { buildGitHubIssueUrl } from '@/lib/githubUrls'
 
 // ── Discard / Save Draft confirmation dialog ──
 
@@ -101,11 +102,12 @@ export function LoginPromptDialog({
   const lines = trimmed ? trimmed.split('\n') : []
   const title = lines[0]?.trim().substring(0, 256) || ''
   const body = lines.length > 1 ? lines.slice(1).join('\n').trim() : ''
-  const params = new URLSearchParams()
-  if (title) params.set('title', title)
-  if (body) params.set('body', body)
-  const query = params.toString()
-  const githubIssueUrl = `https://github.com/kubestellar/${repoName}/issues/new${query ? `?${query}` : ''}`
+  const githubIssueUrl = buildGitHubIssueUrl({
+    owner: 'kubestellar',
+    repo: repoName,
+    title,
+    body,
+  })
   return (
     <>
       <div

@@ -19,10 +19,13 @@ import type { Resolution } from '../../hooks/useResolutions'
 import type { MissionExport, MissionClass, FileScanResult } from '../../lib/missions/types'
 import { fullScan } from '../../lib/missions/scanner/index'
 import { cn } from '../../lib/cn'
+import { buildGitHubIssueUrl, buildGitHubNewFileUrl } from '../../lib/githubUrls'
 import { BaseModal } from '../../lib/modals/BaseModal'
 
 /** GitHub repo for the knowledge base */
-const CONSOLE_KB_REPO = 'kubestellar/console-kb'
+const CONSOLE_KB_OWNER = 'kubestellar'
+const CONSOLE_KB_REPO = 'console-kb'
+const CONSOLE_KB_REPOSITORY = `${CONSOLE_KB_OWNER}/${CONSOLE_KB_REPO}`
 
 /** Default branch for new file PRs */
 const CONSOLE_KB_BRANCH = 'master'
@@ -203,25 +206,6 @@ function generateFilename(title: string, missionClass: MissionClass): string {
   return `${prefix}-${slug}.json`
 }
 
-/** Build the GitHub "new file" URL that opens the file creation UI */
-function buildGitHubNewFileUrl(
-  filepath: string,
-  content: string,
-  description: string,
-): string {
-  // GitHub new file URL: /new/{branch}/{path}?filename=...&value=...&message=...
-  const directory = filepath.includes('/') ? filepath.substring(0, filepath.lastIndexOf('/')) : 'fixes'
-  const filename = filepath.includes('/') ? filepath.substring(filepath.lastIndexOf('/') + 1) : filepath
-
-  const params = new URLSearchParams({
-    filename,
-    value: content,
-    message: `Add ${filename}: ${description}`,
-    description: `Submitted from KubeStellar Console resolution history.\n\n${description}` })
-
-  return `https://github.com/${CONSOLE_KB_REPO}/new/${CONSOLE_KB_BRANCH}/${directory}?${params.toString()}`
-}
-
 export function SubmitToKBDialog({ resolution, isOpen, onClose }: SubmitToKBDialogProps) {
   const [missionClass, setMissionClass] = useState<MissionClass>('fixer')
   const [cncfProject, setCncfProject] = useState('')
@@ -274,33 +258,48 @@ export function SubmitToKBDialog({ resolution, isOpen, onClose }: SubmitToKBDial
 
   const handleSubmit = () => {
     const description = resolution.resolution.summary || resolution.title
-    const url = buildGitHubNewFileUrl(fullPath, jsonString, description)
+    const pathSegments = fullPath.split('/')
+    const filePath = pathSegments.slice(0, -1).join('/') || 'fixes'
+    const targetFilename = pathSegments[pathSegments.length - 1] || filename
+    const url = buildGitHubNewFileUrl({
+      owner: CONSOLE_KB_OWNER,
+      repo: CONSOLE_KB_REPO,
+      branch: CONSOLE_KB_BRANCH,
+      path: filePath,
+      filename: targetFilename,
+      content: jsonString,
+      message: `Add ${targetFilename}: ${description}`,
+      description: `Submitted from KubeStellar Console resolution history.\n\n${description}`,
+    })
 
     // Check URL length — GitHub has limits
     if (url.length > MAX_GITHUB_URL_LENGTH) {
       // Fall back to opening an issue with the content instead
-      const issueParams = new URLSearchParams({
-        title: `New ${missionClass}: ${resolution.title}`,
-        body: [
-          `## New ${missionClass === 'install' ? 'Install Mission' : 'Solution'}`,
-          '',
-          `**Title:** ${resolution.title}`,
-          `**Issue Type:** ${resolution.issueSignature.type}`,
-          cncfProject ? `**CNCF Project:** ${cncfProject}` : '',
-          '',
-          '## Mission JSON',
-          '',
-          '```json',
-          jsonString,
-          '```',
-          '',
-          '---',
-          '_Submitted from KubeStellar Console resolution history._',
-        ].filter(Boolean).join('\n'),
-        labels: ['new-mission', missionClass].join(',') })
+      const issueBody = [
+        `## New ${missionClass === 'install' ? 'Install Mission' : 'Solution'}`,
+        '',
+        `**Title:** ${resolution.title}`,
+        `**Issue Type:** ${resolution.issueSignature.type}`,
+        cncfProject ? `**CNCF Project:** ${cncfProject}` : '',
+        '',
+        '## Mission JSON',
+        '',
+        '```json',
+        jsonString,
+        '```',
+        '',
+        '---',
+        '_Submitted from KubeStellar Console resolution history._',
+      ].filter(Boolean).join('\n')
 
       window.open(
-        `https://github.com/${CONSOLE_KB_REPO}/issues/new?${issueParams.toString()}`,
+        buildGitHubIssueUrl({
+          owner: CONSOLE_KB_OWNER,
+          repo: CONSOLE_KB_REPO,
+          title: `New ${missionClass}: ${resolution.title}`,
+          body: issueBody,
+          labels: ['new-mission', missionClass],
+        }),
         '_blank',
         'noopener,noreferrer',
       )
@@ -436,7 +435,7 @@ export function SubmitToKBDialog({ resolution, isOpen, onClose }: SubmitToKBDial
 
       <BaseModal.Footer showKeyboardHints={false}>
         <p className="text-2xs text-muted-foreground">
-          Opens a PR on {CONSOLE_KB_REPO}
+          Opens a PR on {CONSOLE_KB_REPOSITORY}
         </p>
         <div className="flex items-center gap-2 ml-auto">
           <button

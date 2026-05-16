@@ -11,6 +11,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { buildGitHubIssueUrl } from '../../lib/githubUrls'
 import { BaseModal } from '../../lib/modals/BaseModal'
 import type { MissionExport } from '../../lib/missions/types'
 
@@ -24,6 +25,9 @@ const IMPROVEMENT_CATEGORIES = [
 ] as const
 
 type SectionName = 'install' | 'uninstall' | 'upgrade' | 'troubleshooting' | 'general'
+
+const CONSOLE_KB_OWNER = 'kubestellar'
+const CONSOLE_KB_REPO = 'console-kb'
 
 interface ImproveMissionDialogProps {
   mission: MissionExport
@@ -65,15 +69,15 @@ function buildIssueUrl(
     `_Mission file: \`fixes/cncf-install/install-${(mission.cncfProject || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json\`_`,
   ].filter(Boolean).join('\n')
 
-  const labels = ['ai-mission', 'community-improvement', section !== 'general' ? section : ''].filter(Boolean).join(',')
+  const labels = ['ai-mission', 'community-improvement', section !== 'general' ? section : ''].filter(Boolean)
 
-  const params = new URLSearchParams({
+  return buildGitHubIssueUrl({
+    owner: CONSOLE_KB_OWNER,
+    repo: CONSOLE_KB_REPO,
     title,
     body,
     labels,
   })
-
-  return `https://github.com/kubestellar/console-kb/issues/new?${params.toString()}`
 }
 
 export function ImproveMissionDialog({

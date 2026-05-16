@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useBackendHealth } from '../../hooks/useBackendHealth'
 import { useKagentBackend } from '../../hooks/useKagentBackend'
 import { sanitizeUrl } from '@/lib/utils/sanitizeUrl'
+import { buildGitHubIssueUrl } from '@/lib/githubUrls'
 
 import { LazyMarkdown as ReactMarkdown } from '../ui/LazyMarkdown'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
@@ -121,6 +122,8 @@ const DESCRIPTION_EDITOR_HEIGHT_CLASS = 'h-56'
 const DESCRIPTION_EXAMPLE_MAX_HEIGHT_CLASS = 'max-h-56'
 const SCROLL_EDGE_TOLERANCE_PX = 1
 
+const KUBESTELLAR_GITHUB_OWNER = 'kubestellar'
+
 type SubmitErrorAction = 'reauthenticate' | 'setup' | null
 
 interface SubmitErrorDetails {
@@ -142,11 +145,13 @@ function splitDraftForIssue(description: string): { title: string; body: string 
 function buildDirectIssueUrl(targetRepo: TargetRepo, description: string): string {
   const repoName = targetRepo === 'docs' ? 'docs' : 'console'
   const { title, body } = splitDraftForIssue(description)
-  const params = new URLSearchParams()
-  if (title) params.set('title', title)
-  if (body) params.set('body', body)
-  const query = params.toString()
-  return `https://github.com/kubestellar/${repoName}/issues/new${query ? `?${query}` : ''}`
+
+  return buildGitHubIssueUrl({
+    owner: KUBESTELLAR_GITHUB_OWNER,
+    repo: repoName,
+    title,
+    body,
+  })
 }
 
 function getSubmitErrorDetails(
