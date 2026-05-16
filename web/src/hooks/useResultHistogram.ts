@@ -1,8 +1,9 @@
+import { useCallback, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
 import { useCache } from '../lib/cache'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import { isQuantumForcedToDemo } from '../lib/demoMode'
-import { isGlobalQuantumPollingPaused } from '../lib/quantum/pollingContext'
+import { subscribeToPatternChanges } from '../lib/quantum/patternChangeEmitter'
 
 export type HistogramSort = 'count' | 'pattern'
 
@@ -153,7 +154,7 @@ async function fetchHistogram(sortBy: HistogramSort): Promise<HistogramData> {
 
 export function useResultHistogram(
   sortBy: HistogramSort = DEFAULT_SORT,
-  pollInterval: number = DEFAULT_POLL_MS,
+  _pollInterval: number = DEFAULT_POLL_MS,
 ): UseResultHistogramResult {
   const { isAuthenticated } = useAuth()
   const isQuantumDemoOnly = isQuantumForcedToDemo()
@@ -161,8 +162,9 @@ export function useResultHistogram(
   const result = useCache<HistogramData>({
     key: `quantum-result-histogram:${sortBy}`,
     category: 'realtime',
-    refreshInterval: pollInterval,
-    autoRefresh: !isGlobalQuantumPollingPaused(),
+    // Pattern-change trigger is primary; polling is disabled (event-driven refresh only)
+    refreshInterval: 0,
+    autoRefresh: false,
     enabled: isAuthenticated && !isQuantumDemoOnly,
     initialData: EMPTY_HISTOGRAM_DATA,
     demoData: {
@@ -174,6 +176,19 @@ export function useResultHistogram(
     },
     fetcher: () => fetchHistogram(sortBy),
   })
+
+  // Memoize refetch so it stays stable across renders
+  const handlePatternChange = useCallback(() => {
+    result.refetch().catch(err => {
+      console.debug('Pattern-triggered histogram refresh failed:', err)
+    })
+  }, [result.refetch])
+
+  // Trigger histogram refresh when qubit pattern changes
+  useEffect(() => {
+    const unsubscribe = subscribeToPatternChanges(handlePatternChange)
+    return unsubscribe
+  }, [handlePatternChange])
 
   if (!isAuthenticated) {
     return {
