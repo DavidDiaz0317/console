@@ -6,6 +6,7 @@ import { CardWrapper } from '../cards/CardWrapper'
 import { CARD_COMPONENTS, DEMO_DATA_CARDS, LIVE_DATA_CARDS } from '../cards/cardRegistry'
 import { useCardCollapse } from '../../lib/cards/cardHooks'
 import { formatCardTitle } from '../../lib/formatCardTitle'
+import { useInViewport } from '../../hooks/useInViewport'
 import type { Card } from './dashboardUtils'
 
 /**
@@ -107,6 +108,11 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
   const { isCollapsed } = useCardCollapse(card.id)
   const effectiveRowSpan = isCollapsed ? COLLAPSED_CARD_ROW_SPAN : posH
 
+  // Lazy mounting: only render card content when near viewport (#14054)
+  // Cards being dragged must always be fully rendered
+  const [viewportRef, hasBeenInViewport] = useInViewport<HTMLDivElement>()
+  const shouldRenderContent = hasBeenInViewport || isDragging
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -147,7 +153,14 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el)
+        // TypeScript expects RefObject but we have RefObject<HTMLDivElement>
+        // This is safe since el will be HTMLDivElement or null
+        if (viewportRef) {
+          (viewportRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+        }
+      }}
       style={style}
       className="relative group/card h-full"
       role="row"
@@ -169,52 +182,61 @@ export const SortableCard = memo(function SortableCard({ card, onConfigure, onRe
           +
         </button>
       )}
-      <div
-        ref={registerRef}
-        className="h-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:rounded-xl"
-        tabIndex={0}
-        role="gridcell"
-        aria-label={formatCardTitle(card.card_type)}
-        onKeyDown={onKeyDown}
-      >
-        <CardWrapper
-          cardId={card.id}
-          cardType={card.card_type}
-          lastSummary={card.last_summary}
-          title={card.title}
-          isDemoData={DEMO_DATA_CARDS.has(card.card_type)}
-          isLive={LIVE_DATA_CARDS.has(card.card_type)}
-          cardWidth={card.position?.w || 4}
-          cardHeight={card.position?.h || 2}
-          isRefreshing={isRefreshing}
-          onRefresh={onRefresh}
-          lastUpdated={lastUpdated}
-          onConfigure={onConfigure}
-          onRemove={onRemove}
-          onWidthChange={onWidthChange}
-          onHeightChange={onHeightChange}
-          registerExpandTrigger={registerExpandTrigger}
-          dragHandle={
-            <button
-              ref={setActivatorNodeRef}
-              {...attributes}
-              {...listeners}
-              className="p-1 rounded hover:bg-secondary cursor-grab active:cursor-grabbing"
-              title="Drag to reorder"
-            >
-              <GripVertical className="w-4 h-4 text-muted-foreground" />
-            </button>
-          }
+      {shouldRenderContent ? (
+        <div
+          ref={registerRef}
+          className="h-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:rounded-xl"
+          tabIndex={0}
+          role="gridcell"
+          aria-label={formatCardTitle(card.card_type)}
+          onKeyDown={onKeyDown}
         >
-          {CardComponent ? (
-            <CardComponent config={card.config ?? {}} />
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p>Card type: {card.card_type}</p>
-            </div>
-          )}
-        </CardWrapper>
-      </div>
+          <CardWrapper
+            cardId={card.id}
+            cardType={card.card_type}
+            lastSummary={card.last_summary}
+            title={card.title}
+            isDemoData={DEMO_DATA_CARDS.has(card.card_type)}
+            isLive={LIVE_DATA_CARDS.has(card.card_type)}
+            cardWidth={card.position?.w || 4}
+            cardHeight={card.position?.h || 2}
+            isRefreshing={isRefreshing}
+            onRefresh={onRefresh}
+            lastUpdated={lastUpdated}
+            onConfigure={onConfigure}
+            onRemove={onRemove}
+            onWidthChange={onWidthChange}
+            onHeightChange={onHeightChange}
+            registerExpandTrigger={registerExpandTrigger}
+            dragHandle={
+              <button
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                className="p-1 rounded hover:bg-secondary cursor-grab active:cursor-grabbing"
+                title="Drag to reorder"
+              >
+                <GripVertical className="w-4 h-4 text-muted-foreground" />
+              </button>
+            }
+          >
+            {CardComponent ? (
+              <CardComponent config={card.config ?? {}} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>Card type: {card.card_type}</p>
+              </div>
+            )}
+          </CardWrapper>
+        </div>
+      ) : (
+        // Placeholder with same dimensions to prevent layout shift
+        <div
+          className="glass rounded-lg h-full"
+          role="gridcell"
+          aria-label={`Loading ${formatCardTitle(card.card_type)}`}
+        />
+      )}
     </div>
   )
 }, (prevProps, nextProps) => {
