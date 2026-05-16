@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   X, Bug, Loader2, ExternalLink, Bell, Check, Clock,
   GitPullRequest, GitMerge, Eye, RefreshCw, MessageSquare,
@@ -143,6 +143,17 @@ export function UpdatesTab({
     return searchableText.includes(normalizedSearchQuery)
   })
 
+  const listScrollRef = useRef<HTMLDivElement>(null)
+
+  // Scroll the results list back to the top whenever the search query changes so
+  // that the filtered items are immediately visible rather than hidden below the
+  // user's previous scroll position.
+  useEffect(() => {
+    if (listScrollRef.current) {
+      listScrollRef.current.scrollTop = 0
+    }
+  }, [searchQuery])
+
   const handleRequestUpdate = async (requestId: string) => {
     try {
       setActionLoading(requestId)
@@ -268,33 +279,36 @@ export function UpdatesTab({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* Your Requests section */}
-        <div className="border-b border-border/50 shrink-0">
-          <div className="p-2">
-            <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wider">
-              Your Requests ({normalizedSearchQuery ? `${filteredRequests.length}/${(requests || []).length}` : (requests || []).length})
-            </span>
-          </div>
-          {(requests || []).length > 0 && (
-            <div className="px-2 pb-2">
-              <label className="relative block">
-                <Search className={cn(
-                  'pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground transition-colors',
-                  normalizedSearchQuery && 'text-foreground',
-                )} />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={t('feedback.searchUpdates')}
-                  aria-label={t('feedback.searchUpdates')}
-                  className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </label>
-            </div>
-          )}
+      {/* Your Requests header — lives outside the scroll area so that
+          the search input and result count remain visible at all times and
+          the scroll position can reset to reveal filtered items. */}
+      <div className="border-b border-border/50 shrink-0">
+        <div className="p-2">
+          <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wider">
+            Your Requests ({normalizedSearchQuery ? `${filteredRequests.length}/${(requests || []).length}` : (requests || []).length})
+          </span>
         </div>
+        {(requests || []).length > 0 && (
+          <div className="px-2 pb-2">
+            <label className="relative block">
+              <Search className={cn(
+                'pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground transition-colors',
+                normalizedSearchQuery && 'text-foreground',
+              )} />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t('feedback.searchUpdates')}
+                aria-label={t('feedback.searchUpdates')}
+                className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div ref={listScrollRef} className="flex-1 min-h-0 overflow-y-auto">
         {requestsLoading && (requests || []).length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
