@@ -1,3 +1,5 @@
+import { Activity, Bell, ClipboardList, MessageSquare, Sparkles } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStellar } from '../../hooks/useStellar'
 import {
@@ -9,6 +11,16 @@ import {
 } from './navigation'
 
 import '../../styles/stellar.css'
+
+const STELLAR_ICON_SIZE_PX = 14
+
+const STELLAR_RAIL_ICONS: Record<string, LucideIcon> = {
+  overview: Sparkles,
+  activity: Activity,
+  events: Bell,
+  chat: MessageSquare,
+  audit: ClipboardList,
+}
 
 const STELLAR_RAIL_WIDTH_PX = 40
 const STELLAR_RAIL_PADDING_TOP_PX = 12
@@ -105,7 +117,12 @@ export function StellarSidebar() {
               placeItems: 'center',
             }}
           >
-            <span aria-hidden>{item.glyph}</span>
+            {(() => {
+              const Icon = STELLAR_RAIL_ICONS[item.key]
+              return Icon
+                ? <Icon aria-hidden size={STELLAR_ICON_SIZE_PX} strokeWidth={2} />
+                : <span aria-hidden>{item.glyph}</span>
+            })()}
             {showUnreadBadge && (
               <span
                 aria-hidden
