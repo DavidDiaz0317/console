@@ -115,10 +115,9 @@ interface CachedHookResult {
   data: any
   isLoading?: boolean
   showSkeleton?: boolean
-  error?: string | boolean
+  error?: string | null | boolean
   isFailed?: boolean
   refetch?: () => void | Promise<void>
-  [key: string]: unknown
 }
 
 interface ResourceHookConfig<TResult extends HookResult = HookResult> {
