@@ -108,6 +108,11 @@ func TestValidateKubeContext(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "starts with dash",
+			value:   "--flag",
+			wantErr: true,
+		},
+		{
 			name:    "contains path traversal",
 			value:   "../context",
 			wantErr: true,

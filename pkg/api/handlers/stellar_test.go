@@ -22,6 +22,11 @@ import (
 const stellarTestFiberTimeoutMs = 5000
 
 func newStellarTestApp(t *testing.T) (*fiber.App, store.Store) {
+	app, sqlStore, _ := newStellarTestAppWithUser(t)
+	return app, sqlStore
+}
+
+func newStellarTestAppWithUser(t *testing.T) (*fiber.App, store.Store, uuid.UUID) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "stellar-test.db")
 	sqlStore, err := store.NewSQLiteStore(dbPath)
@@ -30,6 +35,7 @@ func newStellarTestApp(t *testing.T) (*fiber.App, store.Store) {
 	testUserID := uuid.New()
 	require.NoError(t, sqlStore.CreateUser(context.Background(), &models.User{
 		ID:          testUserID,
+		GitHubID:    "stellar-test-user-id",
 		GitHubLogin: "stellar-test-user",
 		Role:        models.UserRoleAdmin,
 	}))
@@ -74,8 +80,10 @@ func newStellarTestApp(t *testing.T) (*fiber.App, store.Store) {
 	app.Get("/api/stellar/watches", h.ListWatches)
 	app.Post("/api/stellar/watches", h.CreateWatch)
 	app.Post("/api/stellar/watches/:id/resolve", h.ResolveWatch)
+	app.Post("/api/stellar/watches/:id/dismiss", h.DismissWatch)
+	app.Post("/api/stellar/watches/:id/snooze", h.SnoozeWatch)
 
-	return app, sqlStore
+	return app, sqlStore, testUserID
 }
 
 func TestStellarPreferencesRoundTrip(t *testing.T) {
@@ -244,4 +252,98 @@ func TestStellarResolveWatchReturnsJSON(t *testing.T) {
 	assert.Equal(t, watchID, resolved["id"])
 	assert.Equal(t, "resolved", resolved["status"])
 	assert.NotNil(t, resolved["inactivityTimeoutMs"])
+}
+
+func TestStellarWatchActionsRequireOwnership(t *testing.T) {
+	app, sqlStore, userID := newStellarTestAppWithUser(t)
+	ctx := context.Background()
+	otherUserID := uuid.New()
+	require.NoError(t, sqlStore.CreateUser(ctx, &models.User{
+		ID:          otherUserID,
+		GitHubID:    "stellar-other-user-id",
+		GitHubLogin: "stellar-other-user",
+		Role:        models.UserRoleViewer,
+	}))
+
+	watchCreator := sqlStore.(interface {
+		CreateWatch(ctx context.Context, w *store.StellarWatch) (string, error)
+	})
+	watchID, err := watchCreator.CreateWatch(ctx, &store.StellarWatch{
+		UserID:       otherUserID.String(),
+		Cluster:      "prod-a",
+		Namespace:    "default",
+		ResourceKind: "Deployment",
+		ResourceName: "api",
+		Reason:       "recurring failures",
+		Status:       "active",
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		path   string
+		body   []byte
+		assert func(t *testing.T)
+	}{
+		{
+			name: "resolve",
+			path: "/api/stellar/watches/" + watchID + "/resolve",
+			body: []byte(`{}`),
+			assert: func(t *testing.T) {
+				watch, getErr := sqlStore.(interface {
+					GetWatchByResource(ctx context.Context, userID, cluster, namespace, kind, name string) (*store.StellarWatch, error)
+				}).GetWatchByResource(ctx, otherUserID.String(), "prod-a", "default", "Deployment", "api")
+				require.NoError(t, getErr)
+				require.NotNil(t, watch)
+				assert.Equal(t, "active", watch.Status)
+			},
+		},
+		{
+			name: "dismiss",
+			path: "/api/stellar/watches/" + watchID + "/dismiss",
+			body: []byte(`{}`),
+			assert: func(t *testing.T) {
+				watches, getErr := sqlStore.(interface {
+					GetActiveWatches(ctx context.Context, userID string) ([]store.StellarWatch, error)
+				}).GetActiveWatches(ctx, otherUserID.String())
+				require.NoError(t, getErr)
+				assert.Len(t, watches, 1)
+			},
+		},
+		{
+			name: "snooze",
+			path: "/api/stellar/watches/" + watchID + "/snooze",
+			body: []byte(`{"minutes":30}`),
+			assert: func(t *testing.T) {
+				watch, getErr := sqlStore.(interface {
+					GetWatchByResource(ctx context.Context, userID, cluster, namespace, kind, name string) (*store.StellarWatch, error)
+				}).GetWatchByResource(ctx, otherUserID.String(), "prod-a", "default", "Deployment", "api")
+				require.NoError(t, getErr)
+				require.NotNil(t, watch)
+				assert.Equal(t, otherUserID.String(), watch.UserID)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, reqErr := http.NewRequest(http.MethodPost, tt.path, bytes.NewReader(tt.body))
+			require.NoError(t, reqErr)
+			req.Header.Set("Content-Type", "application/json")
+			resp, respErr := app.Test(req, stellarTestFiberTimeoutMs)
+			require.NoError(t, respErr)
+			require.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+			assert.Equal(t, "watch not found", body["error"])
+			tt.assert(t)
+		})
+	}
+
+	watches, err := sqlStore.(interface {
+		GetActiveWatches(ctx context.Context, userID string) ([]store.StellarWatch, error)
+	}).GetActiveWatches(ctx, userID.String())
+	require.NoError(t, err)
+	assert.Empty(t, watches)
 }

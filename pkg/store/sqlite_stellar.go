@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -20,6 +21,8 @@ const (
 	stellarWatchInactivityTimeout      = 30 * time.Minute
 	stellarWatchAutoResolvedLastUpdate = "Automatically resolved after watch inactivity timeout"
 )
+
+var ErrStellarWatchNotFound = errors.New("stellar watch not found")
 
 func (s *SQLiteStore) GetStellarPreferences(ctx context.Context, userID string) (*StellarPreferences, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT user_id, default_provider, execution_mode, timezone, proactive_mode, pinned_clusters, updated_at FROM stellar_preferences WHERE user_id = ?`, userID)
@@ -990,15 +993,35 @@ func (s *SQLiteStore) GetActiveWatchesForCluster(ctx context.Context, cluster st
 	return out, rows.Err()
 }
 
-func (s *SQLiteStore) UpdateWatchStatus(ctx context.Context, id, status, lastUpdate string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE stellar_watches SET status = ?, last_update = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		status, lastUpdate, id)
-	return err
+func (s *SQLiteStore) UpdateWatchStatus(ctx context.Context, id, userID, status, lastUpdate string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE stellar_watches SET status = ?, last_update = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+		status, lastUpdate, id, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrStellarWatchNotFound
+	}
+	return nil
 }
 
-func (s *SQLiteStore) ResolveWatch(ctx context.Context, id string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE stellar_watches SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, id)
-	return err
+func (s *SQLiteStore) ResolveWatch(ctx context.Context, id, userID string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE stellar_watches SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`, id, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrStellarWatchNotFound
+	}
+	return nil
 }
 
 func (s *SQLiteStore) TouchWatch(ctx context.Context, id, lastUpdate string, ts time.Time) error {
@@ -1628,11 +1651,21 @@ func (s *SQLiteStore) GetWatchByResource(ctx context.Context, userID, cluster, n
 
 // ─── Sprint 5: Watch snooze ───────────────────────────────────────────────────
 
-func (s *SQLiteStore) SnoozeWatch(ctx context.Context, id string, until time.Time) error {
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE stellar_watches SET last_checked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		until.UTC(), id)
-	return err
+func (s *SQLiteStore) SnoozeWatch(ctx context.Context, id, userID string, until time.Time) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE stellar_watches SET last_checked = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+		until.UTC(), id, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrStellarWatchNotFound
+	}
+	return nil
 }
 
 // ─── Sprint 5: GetWatchesSince ────────────────────────────────────────────────

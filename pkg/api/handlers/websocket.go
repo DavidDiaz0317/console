@@ -37,6 +37,8 @@ const (
 	// Connections that exceed this without sending a ping are closed to prevent DoS via
 	// exhausted file descriptors.
 	wsIdleTimeout = 90 * time.Second
+	// wsMaxIncomingBytes caps inbound client frames to prevent oversized message DoS.
+	wsMaxIncomingBytes = 256 * 1024 // 256 KB
 	// wsMaxBroadcastBytes is the maximum serialized size of a single broadcast message.
 	// Messages exceeding this limit are dropped to prevent memory spikes.
 	wsMaxBroadcastBytes = 1 * 1024 * 1024 // 1 MB
@@ -492,6 +494,7 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 	var wg sync.WaitGroup
 
 	// Set read deadline for authentication message (5 seconds)
+	conn.SetReadLimit(wsMaxIncomingBytes)
 	conn.SetReadDeadline(time.Now().Add(wsReadDeadline))
 
 	// Read first message which should contain authentication token

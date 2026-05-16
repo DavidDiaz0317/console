@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // dns1123LabelRegex matches valid Kubernetes DNS-1123 label names:
@@ -43,6 +44,9 @@ func validateKubeContext(value string) error {
 	}
 	if len(value) > 253 {
 		return fmt.Errorf("context name exceeds 253 characters")
+	}
+	if strings.HasPrefix(value, "-") {
+		return fmt.Errorf("context %q must not start with '-'", value)
 	}
 	if unsafeContextChars.MatchString(value) {
 		return fmt.Errorf("context %q contains invalid characters", value)

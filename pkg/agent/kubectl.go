@@ -418,6 +418,13 @@ func (k *KubectlProxy) reloadLocked() {
 // RenameContext renames a kubeconfig context.
 // Uses context timeout to prevent hanging on unreachable clusters (#7279).
 func (k *KubectlProxy) RenameContext(oldName, newName string) error {
+	if err := validateKubeContext(oldName); err != nil {
+		return fmt.Errorf("invalid old context name: %w", err)
+	}
+	if err := validateKubeContext(newName); err != nil {
+		return fmt.Errorf("invalid new context name: %w", err)
+	}
+
 	cmdArgs := []string{"config", "rename-context", oldName, newName}
 	if k.kubeconfig != "" {
 		cmdArgs = append([]string{"--kubeconfig", k.kubeconfig}, cmdArgs...)
@@ -646,9 +653,9 @@ type AddClusterRequest struct {
 	ServerURL     string `json:"serverUrl"`
 	AuthType      string `json:"authType"` // "token", "certificate"
 	Token         string `json:"token,omitempty"`
-	CertData      string `json:"certData,omitempty"`  // base64 PEM
-	KeyData       string `json:"keyData,omitempty"`   // base64 PEM
-	CAData        string `json:"caData,omitempty"`    // base64 PEM CA cert
+	CertData      string `json:"certData,omitempty"` // base64 PEM
+	KeyData       string `json:"keyData,omitempty"`  // base64 PEM
+	CAData        string `json:"caData,omitempty"`   // base64 PEM CA cert
 	SkipTLSVerify bool   `json:"skipTlsVerify,omitempty"`
 	Namespace     string `json:"namespace,omitempty"` // default namespace
 }

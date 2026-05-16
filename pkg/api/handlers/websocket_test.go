@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -9,7 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
 
 	fasthttpws "github.com/fasthttp/websocket"
 	"github.com/gofiber/contrib/websocket"
@@ -81,7 +81,7 @@ func TestHubRegistration(t *testing.T) {
 	assert.Equal(t, 0, h.GetTotalConnectionsCount())
 }
 
-// 2. Non-blocking Broadcasts: Verify that h.Broadcast does not block the entire server 
+// 2. Non-blocking Broadcasts: Verify that h.Broadcast does not block the entire server
 func TestHubNonBlockingBroadcast(t *testing.T) {
 	// 2a. Test h.Broadcast returning immediately when h.broadcast is full
 	h := NewHub()
@@ -260,7 +260,7 @@ func TestSessionLimits(t *testing.T) {
 		// So we do a non-blocking short read to see if an error follows.
 		conn.UnderlyingConn().SetReadDeadline(time.Now().Add(50 * time.Millisecond))
 		_, msg2, err2 := conn.ReadMessage()
-		conn.UnderlyingConn().SetReadDeadline(time.Time{}) // Reset 
+		conn.UnderlyingConn().SetReadDeadline(time.Time{}) // Reset
 		if err2 == nil {
 			var resp2 Message
 			json.Unmarshal(msg2, &resp2)
@@ -268,7 +268,7 @@ func TestSessionLimits(t *testing.T) {
 				return conn, fmt.Errorf("server error: %v", resp2.Data)
 			}
 		}
-		
+
 		return conn, nil
 	}
 
@@ -288,5 +288,50 @@ func TestSessionLimits(t *testing.T) {
 	assert.Contains(t, err.Error(), "server at capacity")
 	if conn3 != nil {
 		conn3.Close()
+	}
+}
+
+func TestHandleConnectionRejectsOversizedAuthMessage(t *testing.T) {
+	h := NewHub()
+	h.SetDevMode(true)
+	go h.Run()
+	defer h.Close()
+
+	app := fiber.New(fiber.Config{DisableStartupMessage: true})
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if c.Get("Upgrade") != "websocket" {
+			return fiber.ErrUpgradeRequired
+		}
+		return c.Next()
+	})
+	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		h.HandleConnection(c)
+	}))
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	go func() {
+		_ = app.Listener(ln)
+	}()
+	defer app.Shutdown()
+
+	conn, _, err := fasthttpws.DefaultDialer.Dial(fmt.Sprintf("ws://%s/ws", ln.Addr().String()), nil)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	overLimit := bytes.Repeat([]byte("a"), wsMaxIncomingBytes)
+	authMsg := append([]byte(`{"type":"auth","token":"demo-token","padding":"`), overLimit...)
+	authMsg = append(authMsg, []byte(`"}`)...)
+	require.Greater(t, len(authMsg), wsMaxIncomingBytes)
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, authMsg))
+
+	_ = conn.UnderlyingConn().SetReadDeadline(time.Now().Add(time.Second))
+	_, msg, readErr := conn.ReadMessage()
+	if readErr == nil {
+		var resp Message
+		require.NoError(t, json.Unmarshal(msg, &resp))
+		assert.NotEqual(t, "authenticated", resp.Type)
+	} else {
+		assert.Error(t, readErr)
 	}
 }

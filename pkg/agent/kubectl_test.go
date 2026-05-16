@@ -171,10 +171,10 @@ func TestKubectlProxy_ValidateArgs(t *testing.T) {
 		{[]string{"scale", "sts/foo", "--replicas=3"}, true},
 		{[]string{"scale", "--replicas=3", "deployment", "foo"}, true},
 		{[]string{"scale", "--replicas=3", "deploy/foo"}, true},
-		{[]string{"scale", "--replicas=3", "secrets", "mysecret"}, false},  // Issue #3649: flags-first bypass
-		{[]string{"scale", "--replicas=3", "configmap", "mycm"}, false},    // Issue #3649: flags-first bypass
-		{[]string{"scale", "secret", "mysecret", "--replicas=3"}, false},   // Non-scalable resource
-		{[]string{"scale", "--replicas=3"}, false},                          // No resource type
+		{[]string{"scale", "--replicas=3", "secrets", "mysecret"}, false}, // Issue #3649: flags-first bypass
+		{[]string{"scale", "--replicas=3", "configmap", "mycm"}, false},   // Issue #3649: flags-first bypass
+		{[]string{"scale", "secret", "mysecret", "--replicas=3"}, false},  // Non-scalable resource
+		{[]string{"scale", "--replicas=3"}, false},                        // No resource type
 		{[]string{"delete", "pod", "foo"}, true},
 
 		// Blocked cases
@@ -259,7 +259,18 @@ func TestKubectlProxy_RenameContext(t *testing.T) {
 		t.Errorf("RenameContext failed: %v", err)
 	}
 
-	// 2. Failed rename
+	// 2. Reject invalid context names before invoking kubectl
+	err = proxy.RenameContext("--help", "new-ctx")
+	if err == nil {
+		t.Error("RenameContext should reject invalid old context names")
+	}
+
+	err = proxy.RenameContext("old-ctx", "--help")
+	if err == nil {
+		t.Error("RenameContext should reject invalid new context names")
+	}
+
+	// 3. Failed rename
 	mockExitCode = 1
 	mockStderr = "error: context not found"
 	err = proxy.RenameContext("missing-ctx", "new-ctx")
