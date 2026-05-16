@@ -36,12 +36,14 @@ CARD_INSTALL_MAP_FILE="web/src/lib/cards/cardInstallMap.ts"
 
 VERBOSE=false
 LOCAL_DIR=""
+SCHEMA_FILE=""
 
 # ── Argument parsing ────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --verbose|-v) VERBOSE=true; shift ;;
     --local)      LOCAL_DIR="$2"; shift 2 ;;
+    --schema)     SCHEMA_FILE="$2"; shift 2 ;;
     --help|-h)
       sed -n '2,/^$/s/^# //p' "$0"
       exit 0
@@ -57,6 +59,17 @@ for cmd in jq curl; do
     exit 2
   fi
 done
+
+if [[ -n "$SCHEMA_FILE" ]]; then
+  if [[ ! -f "$SCHEMA_FILE" ]]; then
+    echo "ERROR: Schema file not found: $SCHEMA_FILE" >&2
+    exit 2
+  fi
+  if ! command -v ajv &>/dev/null; then
+    echo -e "${YELLOW:-}WARNING: --schema given but 'ajv' not found; schema validation skipped (run 'npm install -g ajv-cli ajv-formats').${RESET:-}"
+    SCHEMA_FILE=""
+  fi
+fi
 
 # ── Color helpers (disabled if not a terminal) ──────────────────────
 if [[ -t 1 ]]; then
@@ -207,6 +220,21 @@ validate_mission() {
   # Just report versions found — can't determine staleness without a live check
   if [[ -n "$version_refs" ]] && $VERBOSE; then
     mission_issues+=("INFO: Version references found: $(echo $version_refs | tr '\n' ' ')")
+  fi
+
+  # ── JSON Schema validation via ajv-cli ────────────────────────
+  if [[ -n "$SCHEMA_FILE" ]] && command -v ajv &>/dev/null; then
+    local tmp_json
+    tmp_json=$(mktemp /tmp/mission-XXXXXX.json)
+    echo "$normalized" > "$tmp_json"
+    local ajv_out
+    if ! ajv_out=$(ajv validate --spec=draft7 -s "$SCHEMA_FILE" -d "$tmp_json" -c ajv-formats 2>&1); then
+      local ajv_err
+      ajv_err=$(echo "$ajv_out" | grep -v '^$' | head -3 | tr '\n' ' ')
+      mission_issues+=("CRITICAL: Schema validation failed — ${ajv_err}")
+      has_critical=true
+    fi
+    rm -f "$tmp_json"
   fi
 
   # ── Tally results ─────────────────────────────────────────────
