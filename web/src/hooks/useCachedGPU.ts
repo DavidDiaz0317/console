@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import { useCache, type RefreshCategory, type CachedHookResult } from '../lib/cache'
+import { createCachedHook, useCache, type RefreshCategory, type CachedHookResult } from '@/lib/cache'
 import { fetchBackendAPI, fetchFromAllClustersViaBackend, fetchViaSSE, fetchViaBackendSSE, getToken, getClusterFetcher, AGENT_HTTP_TIMEOUT_MS } from '../lib/cache/fetcherUtils'
 import { settledWithConcurrency } from '../lib/utils/concurrency'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
@@ -33,6 +33,8 @@ import type { GPUNode, GPUNodeHealthStatus, ClusterEvent, GPUHealthCronJobStatus
 // ============================================================================
 // Hardware health types (canonical definitions)
 // ============================================================================
+
+const CACHE_KEY_HARDWARE_HEALTH = 'hardware-health'
 
 /** Device alert from agent */
 export interface DeviceAlert {
@@ -384,30 +386,17 @@ export function useGPUHealthCronJob(cluster?: string) {
  * Hook for fetching hardware health data (device alerts + inventory) with caching.
  * Uses IndexedDB persistence so data survives navigation.
  */
-export function useCachedHardwareHealth(): CachedHookResult<HardwareHealthData> & { retryFetch: () => Promise<void> } {
-  const result = useCache({
-    key: 'hardware-health',
-    category: 'pods', // 30-second refresh
-    initialData: HW_INITIAL_DATA,
-    demoData: HW_DEMO_DATA,
-    persist: true,
-    // Don't gate on isAgentUnavailable() — the agent may connect after the hook
-    // mounts and `enabled` is only read once. The fetcher handles unavailability
-    // internally by throwing, which useCache tracks as consecutive failures.
-    fetcher: fetchHardwareHealth })
-
-  return {
-    data: result.data,
-    isLoading: result.isLoading,
-    isRefreshing: result.isDemoFallback ? false : result.isRefreshing,
-    isDemoFallback: result.isDemoFallback && !result.isLoading,
-    error: result.error,
-    isFailed: result.isFailed,
-    consecutiveFailures: result.consecutiveFailures,
-    lastRefresh: result.lastRefresh,
-    refetch: result.refetch,
-    retryFetch: result.retryFetch }
-}
+export const useCachedHardwareHealth = createCachedHook<HardwareHealthData>({
+  key: CACHE_KEY_HARDWARE_HEALTH,
+  category: 'pods',
+  initialData: HW_INITIAL_DATA,
+  demoData: HW_DEMO_DATA,
+  persist: true,
+  // Don't gate on isAgentUnavailable() — the agent may connect after the hook
+  // mounts and `enabled` is only read once. The fetcher handles unavailability
+  // internally by throwing, which useCache tracks as consecutive failures.
+  fetcher: fetchHardwareHealth,
+})
 
 /**
  * Hook for fetching warning events with caching and SSE streaming.
