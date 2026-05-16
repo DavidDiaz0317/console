@@ -111,7 +111,8 @@ interface HookResult {
 
 /** Base shape returned by cached status hooks. */
 interface CachedHookResult {
-  data: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any
   isLoading?: boolean
   showSkeleton?: boolean
   error?: string | boolean
@@ -173,7 +174,7 @@ function createUnifiedCachedHook(config: CachedStatusHookConfig) {
       ? (result.data?.[config.dataField] ?? [])
       : result.data[config.dataField]
 
-    const isLoading = result[config.loadingField]
+    const isLoading = result[config.loadingField] ?? false
 
     let error: Error | null = null
     if (config.errorMode === 'message') {
