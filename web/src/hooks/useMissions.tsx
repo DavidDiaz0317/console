@@ -78,6 +78,7 @@ import {
   KAGENTI_NO_AGENTS_DISCOVERED_EVENT,
   buildKagentiDiscoveryErrorMessage,
 } from './useMissions.helpers'
+import i18n from '../lib/i18n'
 
 interface MissionContextValue {
   missions: Mission[]
