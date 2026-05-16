@@ -58,3 +58,50 @@ echo "3. Validate all existing install missions against latest CNCF project vers
 
 echo ""
 echo "Report written to: $OUTPUT"
+
+# 4. Preflight error KB coverage
+# Cross-references every PreflightErrorCode from preflightCheck.ts against
+# console-kb mission paths to find which error remediation paths have no KB coverage.
+echo "" >> "$OUTPUT"
+echo "## Preflight Error KB Coverage" >> "$OUTPUT"
+echo "" >> "$OUTPUT"
+echo "Maps each \`PreflightErrorCode\` from \`preflightCheck.ts\` to KB mission coverage." >> "$OUTPUT"
+echo "" >> "$OUTPUT"
+echo "| Error Code | Search Terms | Missions Found |" >> "$OUTPUT"
+echo "|------------|-------------|----------------|" >> "$OUTPUT"
+
+# Defined in explicit order so report output is stable across runs.
+# Each entry is "ERROR_CODE:search terms" — terms are OR-joined into a jq regex.
+# 7 additional gh API calls; well within the 5000/hr token rate limit.
+PREFLIGHT_ENTRIES=(
+  "MISSING_CREDENTIALS:kubeconfig credentials setup"
+  "EXPIRED_CREDENTIALS:certificate rotation renewal"
+  "RBAC_DENIED:rbac permissions rolebinding clusterrole"
+  "CONTEXT_NOT_FOUND:kubeconfig context cluster"
+  "CLUSTER_UNREACHABLE:cluster connectivity network troubleshoot"
+  "MISSING_TOOLS:kubectl helm tool prerequisites install"
+  "UNKNOWN_EXECUTION_FAILURE:troubleshoot debug error recovery"
+)
+
+PREFLIGHT_UNCOVERED=0
+for entry in "${PREFLIGHT_ENTRIES[@]}"; do
+  code="${entry%%:*}"
+  terms="${entry#*:}"
+  jq_pattern=$(echo "$terms" | tr ' ' '|')
+  count=$(gh api "repos/$KB_REPO/git/trees/main?recursive=1" \
+    --jq "[.tree[].path | select(test(\"${jq_pattern}\"; \"i\"))] | length" \
+    2>/dev/null || echo "0")
+  if [ "$count" = "0" ]; then
+    echo "| \`$code\` | $terms | ❌ none |" >> "$OUTPUT"
+    PREFLIGHT_UNCOVERED=$((PREFLIGHT_UNCOVERED + 1))
+  else
+    echo "| \`$code\` | $terms | ✅ $count |" >> "$OUTPUT"
+  fi
+done
+
+echo "" >> "$OUTPUT"
+if [ "$PREFLIGHT_UNCOVERED" -gt 0 ]; then
+  echo "⚠️  **$PREFLIGHT_UNCOVERED preflight error code(s) have no KB coverage.**" >> "$OUTPUT"
+fi
+
+echo "PREFLIGHT_UNCOVERED=$PREFLIGHT_UNCOVERED"
