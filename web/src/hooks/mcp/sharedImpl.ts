@@ -589,7 +589,7 @@ export function updateSingleClusterInCache(clusterName: string, updates: Partial
   // Share metrics between clusters pointing to the same server
   // This ensures aliases (like "prow") get metrics from their full-context counterparts
   // Include nodeCount and podCount to ensure all health data is shared
-  if (updates.nodeCount || updates.podCount || updates.cpuCores || updates.memoryGB || updates.storageGB || updates.cpuRequestsCores || updates.memoryRequestsGB) {
+  if (updates.nodeCount !== undefined || updates.podCount !== undefined || updates.cpuCores !== undefined || updates.memoryGB !== undefined || updates.storageGB !== undefined || updates.cpuRequestsCores !== undefined || updates.memoryRequestsGB !== undefined) {
     updatedClusters = shareMetricsBetweenSameServerClusters(updatedClusters)
   }
 

@@ -1038,7 +1038,7 @@ describe('updateSingleClusterInCache — shareMetrics triggers', () => {
     updateClusterCache({
       clusters: [
         makeCluster({ name: 'store-src', server: 'https://shared-store', storageGB: undefined, nodeCount: 3 }),
-        makeCluster({ name: 'store-dst', server: 'https://shared-store', storageGB: undefined, nodeCount: 0 }),
+        makeCluster({ name: 'store-dst', server: 'https://shared-store', storageGB: undefined, nodeCount: undefined }),
       ],
       isLoading: false,
     })
@@ -1055,7 +1055,7 @@ describe('updateSingleClusterInCache — shareMetrics triggers', () => {
     updateClusterCache({
       clusters: [
         makeCluster({ name: 'mem-src', server: 'https://shared-mem2', memoryGB: undefined, nodeCount: 3 }),
-        makeCluster({ name: 'mem-dst', server: 'https://shared-mem2', memoryGB: undefined, nodeCount: 0 }),
+        makeCluster({ name: 'mem-dst', server: 'https://shared-mem2', memoryGB: undefined, nodeCount: undefined }),
       ],
       isLoading: false,
     })
@@ -1071,8 +1071,8 @@ describe('updateSingleClusterInCache — shareMetrics triggers', () => {
     const POD_COUNT = 150
     updateClusterCache({
       clusters: [
-        makeCluster({ name: 'pod-src', server: 'https://shared-pod', podCount: 0, nodeCount: 3 }),
-        makeCluster({ name: 'pod-dst', server: 'https://shared-pod', podCount: 0, nodeCount: 0 }),
+        makeCluster({ name: 'pod-src', server: 'https://shared-pod', podCount: undefined, nodeCount: 3 }),
+        makeCluster({ name: 'pod-dst', server: 'https://shared-pod', podCount: undefined, nodeCount: undefined }),
       ],
       isLoading: false,
     })
@@ -1082,6 +1082,30 @@ describe('updateSingleClusterInCache — shareMetrics triggers', () => {
 
     const dst = clusterCache.clusters.find(c => c.name === 'pod-dst')!
     expect(dst.podCount).toBe(POD_COUNT)
+  })
+
+  it('does not skip shareMetrics when all metric updates are zero (scaled-to-zero cluster)', () => {
+    // Regression for #13913: falsy || check treated 0 as "no update", so
+    // shareMetricsBetweenSameServerClusters was never called and the alias
+    // cluster never received cpuCores from the same-server peer.
+    const CPU_CORES = 8
+    updateClusterCache({
+      clusters: [
+        makeCluster({ name: 'metric-src', server: 'https://shared-zero', nodeCount: 3, cpuCores: CPU_CORES }),
+        makeCluster({ name: 'metric-dst', server: 'https://shared-zero', nodeCount: 0, cpuCores: undefined }),
+      ],
+      isLoading: false,
+    })
+
+    // Only a zero value in the update — the bug caused the guard to skip shareMetrics entirely
+    updateSingleClusterInCache('metric-dst', { nodeCount: 0 })
+    vi.advanceTimersByTime(CLUSTER_NOTIFY_DEBOUNCE_MS)
+
+    const dst = clusterCache.clusters.find(c => c.name === 'metric-dst')!
+    // shareMetrics must have run and copied cpuCores from metric-src
+    expect(dst.cpuCores).toBe(CPU_CORES)
+    // nodeCount 0 must not be overwritten with metric-src's value
+    expect(dst.nodeCount).toBe(0)
   })
 
   it('does NOT trigger shareMetrics when non-metric keys are updated', () => {
