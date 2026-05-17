@@ -75,7 +75,27 @@ export default async (request: Request): Promise<Response> => {
   const projectParam = url.searchParams.get("project");
   const idParam = url.searchParams.get("id");
 
-  // Check for demo mode
+  // Input validation: reject excessively long or malformed params (#14500).
+  const MAX_PARAM_LENGTH = 200;
+  if ((projectParam && projectParam.length > MAX_PARAM_LENGTH) ||
+      (idParam && idParam.length > MAX_PARAM_LENGTH)) {
+    return jsonResponse(corsHeaders, { error: "invalid parameter length" }, 400);
+  }
+  // project must be a simple slug (lowercase, digits, hyphens)
+  const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+  if (projectParam && !SLUG_RE.test(projectParam)) {
+    return jsonResponse(corsHeaders, { error: "invalid project format" }, 400);
+  }
+  // id must be a filename-safe string (alphanumeric, hyphens, dots, underscores)
+  const ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}(\.json)?$/;
+  if (idParam && !ID_RE.test(idParam)) {
+    return jsonResponse(corsHeaders, { error: "invalid id format" }, 400);
+  }
+
+  // X-Demo-Mode header is intentionally checked WITHOUT authentication (#14500).
+  // The demo data is static/harmless (canned mission examples) and does not bypass
+  // any real auth logic. This allows testing clients to verify API response shape
+  // without requiring GitHub tokens.
   if (request.headers.get("X-Demo-Mode") === "true") {
     if (projectParam && idParam) {
       return jsonResponse(corsHeaders, {

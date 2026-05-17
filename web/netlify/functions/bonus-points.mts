@@ -106,6 +106,16 @@ export default async (req: Request) => {
     );
   }
 
+  // Validate GitHub username format: 1-39 alphanumeric chars or hyphens,
+  // must start with alphanumeric (#14500).
+  const GITHUB_LOGIN_RE = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})?$/;
+  if (!GITHUB_LOGIN_RE.test(login)) {
+    return new Response(
+      JSON.stringify({ error: "Invalid GitHub username format" }),
+      { status: 400, headers }
+    );
+  }
+
   try {
     // Check cache
     if (!cache || Date.now() - cache.fetchedAt > CACHE_TTL_MS) {
