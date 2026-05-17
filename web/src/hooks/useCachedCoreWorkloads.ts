@@ -62,6 +62,37 @@ import type { Workload } from './useWorkloads'
 // Shared types
 // ============================================================================
 
+/**
+ * Minimal Kubernetes Pod type for security scanning
+ */
+interface KubernetesPod {
+  metadata?: {
+    name?: string
+    namespace?: string
+  }
+  spec?: {
+    containers?: Array<{
+      name?: string
+      securityContext?: {
+        privileged?: boolean
+        allowPrivilegeEscalation?: boolean
+        runAsNonRoot?: boolean
+        readOnlyRootFilesystem?: boolean
+        capabilities?: {
+          add?: string[]
+        }
+      }
+    }>
+    securityContext?: {
+      runAsNonRoot?: boolean
+      runAsUser?: number
+    }
+    hostNetwork?: boolean
+    hostPID?: boolean
+    hostIPC?: boolean
+  }
+}
+
 // ============================================================================
 // Private: Security kubectl scanner
 // ============================================================================
@@ -89,7 +120,7 @@ async function fetchSecurityIssuesViaKubectl(cluster?: string, namespace?: strin
 
       if (response.exitCode !== 0) return []
 
-      let data: { items?: unknown[] }
+      let data: { items?: KubernetesPod[] }
       try {
         data = JSON.parse(response.output)
       } catch {
