@@ -1,0 +1,5 @@
+./argocd_types.go
+./console_types.go
+./gateway_types.go
+./mcs_types.go
+./workload_types.go
