@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kubestellar/console/pkg/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1004,6 +1006,48 @@ func TestGetMissionScore_UpstreamError(t *testing.T) {
 	assert.Equal(t, http.StatusBadGateway, resp.StatusCode)
 }
 
+// ---------- GetKBGaps ----------
+
+func TestGetKBGaps_NoStore_ReturnsDisabled(t *testing.T) {
+	// Handler created without a store — gaps endpoint returns disabled source
+	app, _ := setupMissionsTest()
+
+	req, err := http.NewRequest("GET", "/api/missions/gaps", nil)
+	require.NoError(t, err)
+	resp, err := app.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, "disabled", body["source"])
+}
+
+func TestGetKBGaps_WithStore_ReturnsGaps(t *testing.T) {
+	app := fiber.New()
+	handler := NewMissionsHandler().WithStore(&stubKBGapStore{
+		gaps: []store.KBQueryGap{
+			{Path: "fixes/istio", HitCount: 3, LastSeen: "2026-05-01T00:00:00Z"},
+			{Path: "fixes/cert-manager", HitCount: 1, LastSeen: "2026-05-02T00:00:00Z"},
+		},
+	})
+	handler.RegisterRoutes(app.Group("/api/missions"))
+	handler.RegisterPublicRoutes(app.Group("/api/missions"))
+
+	req, err := http.NewRequest("GET", "/api/missions/gaps?limit=5", nil)
+	require.NoError(t, err)
+	resp, err := app.Test(req, 5000)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body map[string]interface{}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, float64(2), body["count"])
+	gaps := body["gaps"].([]interface{})
+	require.Len(t, gaps, 2)
+	assert.Equal(t, "fixes/istio", gaps[0].(map[string]interface{})["path"])
+}
+
 // ---------- Helpers ----------
 
 // mockTransport is a http.RoundTripper that delegates to a handler function.
@@ -1013,4 +1057,15 @@ type mockTransport struct {
 
 func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.handler(req)
+}
+
+// stubKBGapStore satisfies the kbGapStore interface for handler tests.
+type stubKBGapStore struct {
+	gaps []store.KBQueryGap
+}
+
+func (s *stubKBGapStore) RecordKBGap(_ context.Context, _ string) error { return nil }
+
+func (s *stubKBGapStore) ListTopKBGaps(_ context.Context, _ int) ([]store.KBQueryGap, error) {
+	return s.gaps, nil
 }

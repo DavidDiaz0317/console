@@ -283,6 +283,13 @@ type StellarAuditEntry struct {
 	Detail     string    `json:"detail"`
 }
 
+// KBQueryGap represents one row in the kb_query_gaps table.
+type KBQueryGap struct {
+	Path      string `json:"path"`
+	HitCount  int    `json:"hitCount"`
+	LastSeen  string `json:"lastSeen"`
+}
+
 // AuditEntry represents a single row in the audit_log table (#8670 Phase 3).
 type AuditEntry struct {
 	ID        int64  `json:"id"`
@@ -513,6 +520,13 @@ type Store interface {
 	SaveClusterGroup(ctx context.Context, name string, data []byte) error
 	DeleteClusterGroup(ctx context.Context, name string) error
 	ListClusterGroups(ctx context.Context) (map[string][]byte, error)
+
+	// KB Query Gaps — records browse paths that returned zero results so
+	// maintainers can identify missing knowledge-base content.
+	RecordKBGap(ctx context.Context, path string) error
+	// ListTopKBGaps returns the n most-queried zero-result paths, sorted by
+	// hit count descending.
+	ListTopKBGaps(ctx context.Context, n int) ([]KBQueryGap, error)
 
 	// Cluster Events — cross-cluster event journal (#9967 Phase 1).
 	// InsertOrUpdateEvent upserts an event keyed by event_uid.

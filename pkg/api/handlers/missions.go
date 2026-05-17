@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"github.com/kubestellar/console/pkg/api/audit"
 	"github.com/kubestellar/console/pkg/client"
 	"github.com/kubestellar/console/pkg/settings"
+	"github.com/kubestellar/console/pkg/store"
 )
 
 const (
@@ -396,6 +398,16 @@ func sanitizeRef(ref string) (string, error) {
 	return ref, nil
 }
 
+// kbGapsDefaultLimit is the default number of gap entries returned by GetKBGaps.
+const kbGapsDefaultLimit = 20
+
+// kbGapStore is the minimal store interface required by MissionsHandler.
+// *store.SQLiteStore satisfies this automatically (duck typing).
+type kbGapStore interface {
+	RecordKBGap(ctx context.Context, path string) error
+	ListTopKBGaps(ctx context.Context, n int) ([]store.KBQueryGap, error)
+}
+
 // MissionsHandler handles mission-related API endpoints (knowledge base browsing,
 // validation, sharing).
 type MissionsHandler struct {
@@ -403,6 +415,7 @@ type MissionsHandler struct {
 	githubAPIURL string // defaults to "https://api.github.com"
 	githubRawURL string // defaults to "https://raw.githubusercontent.com"
 	cache        *missionsResponseCache
+	store        kbGapStore // optional; nil disables gap tracking
 }
 
 // NewMissionsHandler creates a new MissionsHandler with default settings.
@@ -415,11 +428,19 @@ func NewMissionsHandler() *MissionsHandler {
 	}
 }
 
+// WithStore attaches a store for KB query gap tracking and returns the handler
+// for chaining. Safe to omit — gap tracking is a no-op when store is nil.
+func (h *MissionsHandler) WithStore(s kbGapStore) *MissionsHandler {
+	h.store = s
+	return h
+}
+
 // RegisterRoutes registers all mission routes on the given Fiber router group.
 func (h *MissionsHandler) RegisterRoutes(g fiber.Router) {
 	g.Post("/validate", h.ValidateMission)
 	g.Post("/share/slack", h.ShareToSlack)
 	g.Post("/share/github", h.ShareToGitHub)
+	g.Get("/gaps", h.GetKBGaps)
 }
 
 // RegisterPublicRoutes registers unauthenticated browse/file routes (proxies to public GitHub repo).
@@ -725,8 +746,38 @@ func (h *MissionsHandler) BrowseConsoleKB(c *fiber.Ctx) error {
 		slog.Info("[missions] cache MISS, stored (browse)", "path", path)
 	}
 
+	// Record zero-result browse paths for the KB gap tracker.
+	// Fires asynchronously so it never delays the response.
+	if len(entries) == 0 && h.store != nil {
+		go func() {
+			if err := h.store.RecordKBGap(context.Background(), path); err != nil {
+				slog.Warn("[missions] failed to record KB gap", "path", path, "error", err)
+			}
+		}()
+	}
+
 	c.Set("X-Cache", "MISS")
 	return c.JSON(entries)
+}
+
+// GetKBGaps returns the top zero-result KB browse paths, ordered by hit count.
+// GET /api/missions/gaps?limit=20
+func (h *MissionsHandler) GetKBGaps(c *fiber.Ctx) error {
+	if h.store == nil {
+		return c.JSON(fiber.Map{"gaps": []store.KBQueryGap{}, "source": "disabled"})
+	}
+
+	limit := c.QueryInt("limit", kbGapsDefaultLimit)
+	gaps, err := h.store.ListTopKBGaps(c.Context(), limit)
+	if err != nil {
+		slog.Error("[missions] failed to list KB gaps", "error", err)
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to retrieve KB gaps")
+	}
+
+	return c.JSON(fiber.Map{
+		"gaps":  gaps,
+		"count": len(gaps),
+	})
 }
 
 // ---------- Get a single file ----------

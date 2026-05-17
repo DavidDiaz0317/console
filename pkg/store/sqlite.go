@@ -939,6 +939,15 @@ func (s *SQLiteStore) migrate() error {
 		)`,
 		"CREATE INDEX IF NOT EXISTS idx_stellar_activity_ts ON stellar_activity(ts DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_stellar_activity_user_ts ON stellar_activity(user_id, ts DESC)",
+		// KB query gap tracker — records zero-result browse paths so maintainers
+		// know which KB content is missing from the knowledge base.
+		`CREATE TABLE IF NOT EXISTS kb_query_gaps (
+			id        INTEGER PRIMARY KEY AUTOINCREMENT,
+			path      TEXT NOT NULL,
+			queried_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		"CREATE INDEX IF NOT EXISTS idx_kb_query_gaps_path ON kb_query_gaps(path)",
+		"CREATE INDEX IF NOT EXISTS idx_kb_query_gaps_ts  ON kb_query_gaps(queried_at DESC)",
 	}
 	for i, migration := range migrations {
 		if _, err := s.db.ExecContext(ctx, migration); err != nil {
