@@ -392,21 +392,18 @@ func (uc *UpdateChecker) executeBinaryUpdate(release *githubReleaseInfo) {
 		return
 	}
 
-	// Download to temp file — use unique temp file for race-free isolation (#14380).
-	// Sanitize TagName to prevent path traversal (#14382).
-	safeTag := sanitizeTagName(release.TagName)
-	tmpF, err := os.CreateTemp(os.TempDir(), fmt.Sprintf("kc-update-%s-*.tar.gz", safeTag))
-	if err != nil {
-		uc.recordError(fmt.Sprintf("failed to create temp file: %v", err))
+	// Download to temp file — use os.TempDir() for cross-platform support (#7239).
+	safeName := filepath.Base(release.TagName)
+	if safeName != release.TagName || strings.ContainsAny(safeName, `/\`) {
+		uc.recordError(fmt.Sprintf("invalid tag name: %s", release.TagName))
 		uc.broadcast("update_progress", UpdateProgressPayload{
 			Status:  "failed",
-			Message: "Failed to create temp file",
-			Error:   "check server logs for details",
+			Message: "Invalid release tag name",
+			Error:   "tag name contains path separators",
 		})
 		return
 	}
-	tmpFile := tmpF.Name()
-	tmpF.Close()
+	tmpFile := filepath.Join(os.TempDir(), fmt.Sprintf("kc-update-%d-%s.tar.gz", os.Getpid(), safeName))
 	if err := downloadFile(assetURL, tmpFile); err != nil {
 		uc.recordError(fmt.Sprintf("download failed: %v", err))
 		uc.broadcast("update_progress", UpdateProgressPayload{
@@ -423,17 +420,18 @@ func (uc *UpdateChecker) executeBinaryUpdate(release *githubReleaseInfo) {
 		Progress: 50,
 	})
 
-	// Extract to staging directory — use os.MkdirTemp for race-free isolation (#14380).
-	stagingDir, err := os.MkdirTemp(os.TempDir(), "kc-update-staging-*")
+	// Extract to staging directory — use unique temp dir to prevent cross-process races.
+	stagingDir, err := os.MkdirTemp("", "kc-update-staging-*")
 	if err != nil {
 		uc.recordError(fmt.Sprintf("failed to create staging dir: %v", err))
 		uc.broadcast("update_progress", UpdateProgressPayload{
 			Status:  "failed",
-			Message: "Failed to prepare staging directory",
+			Message: "Failed to create staging directory",
 			Error:   "check server logs for details",
 		})
 		return
 	}
+	defer os.RemoveAll(stagingDir)
 
 	// extractTimeout bounds the tar extraction to prevent hanging on corrupt
 	// archives or stalled I/O (#7241). Use uc.updateCtx as the parent so
@@ -1020,15 +1018,9 @@ func downloadFile(url, dest string) error {
 	}
 	defer f.Close()
 
-	limited := io.LimitReader(resp.Body, maxDownloadBytes+1)
-	n, err := io.Copy(f, limited)
-	if err != nil {
-		return err
-	}
-	if n > maxDownloadBytes {
-		return fmt.Errorf("download exceeds maximum allowed size (%d bytes)", maxDownloadBytes)
-	}
-	return nil
+	const maxDownloadSize = 500 * 1024 * 1024 // 500 MB
+	_, err = io.Copy(f, io.LimitReader(resp.Body, maxDownloadSize))
+	return err
 }
 
 func (f writerFunc) Write(p []byte) (int, error) { return f(p) }

@@ -89,11 +89,11 @@ async function fetchSecurityIssuesViaKubectl(cluster?: string, namespace?: strin
 
       if (response.exitCode !== 0) return []
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let data: { items?: any[] }
+      let data: { items?: unknown[] }
       try {
         data = JSON.parse(response.output)
       } catch {
+        console.error('[useCachedCoreWorkloads] Failed to parse kubectl output')
         return []
       }
       const issues: SecurityIssue[] = []
