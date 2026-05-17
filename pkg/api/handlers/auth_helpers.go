@@ -83,21 +83,7 @@ func requireAdmin(c *fiber.Ctx, s store.Store) error {
 // privileges are not required. Called from gitops mutation handlers to gate
 // sync, helm upgrade/uninstall/rollback, and ArgoCD sync (#6022).
 func requireEditorOrAdmin(c *fiber.Ctx, s store.Store) error {
-	if s == nil {
-		return nil
-	}
-	userID := middleware.GetUserID(c)
-	user, err := s.GetUser(c.UserContext(), userID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "Failed to verify user role")
-	}
-	if user == nil {
-		return fiber.NewError(fiber.StatusForbidden, "User not found")
-	}
-	if user.Role != models.UserRoleAdmin && user.Role != models.UserRoleEditor {
-		return fiber.NewError(fiber.StatusForbidden, "Editor or admin role required")
-	}
-	return nil
+	return middleware.RequireEditorOrAdmin(c, s)
 }
 
 // requireViewerOrAbove verifies the current request's user has at least the
