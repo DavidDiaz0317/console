@@ -144,18 +144,33 @@ export function Cost() {
     }
 
     switch (blockId) {
-      case 'total_cost':
-        return { value: `$${Math.round(costStats.totalMonthly).toLocaleString()}`, sublabel: 'est. monthly', onClick: () => drillToCostType('total'), isClickable: costStats.totalMonthly > 0 }
-      case 'cpu_cost':
-        return { value: `$${Math.round(costStats.cpuMonthly).toLocaleString()}`, sublabel: `${costStats.totalCPU} cores`, onClick: () => drillToCostType('cpu'), isClickable: costStats.cpuMonthly > 0 }
-      case 'memory_cost':
-        return { value: `$${Math.round(costStats.memoryMonthly).toLocaleString()}`, sublabel: formatMemoryStat(costStats.totalMemoryGB), onClick: () => drillToCostType('memory'), isClickable: costStats.memoryMonthly > 0 }
-      case 'storage_cost':
-        return { value: `$${Math.round(costStats.storageMonthly).toLocaleString()}`, sublabel: formatMemoryStat(costStats.totalStorageGB), onClick: () => drillToCostType('storage'), isClickable: costStats.storageMonthly > 0 }
+      case 'total_cost': {
+        const monthlyCost = Math.round(costStats.totalMonthly)
+        const displayValue = monthlyCost === 0 ? '$0' : `$${monthlyCost.toLocaleString()}`
+        return { value: displayValue, sublabel: 'est. monthly', onClick: () => drillToCostType('total'), isClickable: costStats.totalMonthly > 0 }
+      }
+      case 'cpu_cost': {
+        const cpuCost = Math.round(costStats.cpuMonthly)
+        const displayValue = cpuCost === 0 ? '$0' : `$${cpuCost.toLocaleString()}`
+        return { value: displayValue, sublabel: `${costStats.totalCPU} cores`, onClick: () => drillToCostType('cpu'), isClickable: costStats.cpuMonthly > 0 }
+      }
+      case 'memory_cost': {
+        const memCost = Math.round(costStats.memoryMonthly)
+        const displayValue = memCost === 0 ? '$0' : `$${memCost.toLocaleString()}`
+        return { value: displayValue, sublabel: formatMemoryStat(costStats.totalMemoryGB), onClick: () => drillToCostType('memory'), isClickable: costStats.memoryMonthly > 0 }
+      }
+      case 'storage_cost': {
+        const storageCost = Math.round(costStats.storageMonthly)
+        const displayValue = storageCost === 0 ? '$0' : `$${storageCost.toLocaleString()}`
+        return { value: displayValue, sublabel: formatMemoryStat(costStats.totalStorageGB), onClick: () => drillToCostType('storage'), isClickable: costStats.storageMonthly > 0 }
+      }
       case 'network_cost':
         return { value: '$0', sublabel: 'not tracked', isClickable: false }
-      case 'gpu_cost':
-        return { value: `$${Math.round(costStats.gpuMonthly).toLocaleString()}`, sublabel: `${costStats.totalGPUs} GPUs`, onClick: () => drillToCostType('gpu'), isClickable: costStats.gpuMonthly > 0 }
+      case 'gpu_cost': {
+        const gpuCost = Math.round(costStats.gpuMonthly)
+        const displayValue = gpuCost === 0 ? '$0' : `$${gpuCost.toLocaleString()}`
+        return { value: displayValue, sublabel: `${costStats.totalGPUs} GPUs`, onClick: () => drillToCostType('gpu'), isClickable: costStats.gpuMonthly > 0 }
+      }
       default:
         return { value: 0 }
     }
