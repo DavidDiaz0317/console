@@ -2,15 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 const mockUseCache = vi.fn()
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
     useCache: (args: Record<string, unknown>) => mockUseCache(args),
     createCachedHook: (_config: unknown) => () => mockUseCache(_config),
 }))
 
 const mockIsDemoMode = vi.fn(() => false)
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
     useDemoMode: () => ({ isDemoMode: mockIsDemoMode() }),
     isDemoModeForced: () => false,
     canToggleDemoMode: () => true,

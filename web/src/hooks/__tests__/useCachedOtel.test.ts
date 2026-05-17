@@ -10,7 +10,7 @@ const { mockUseCache, mockAuthFetch } = vi.hoisted(() => ({
   mockAuthFetch: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
   createCachedHook: (config: Record<string, unknown>) => {
     return () => {

@@ -62,7 +62,7 @@ vi.mock('../../../lib/modeTransition', () => ({
   triggerAllRefetches: mockTriggerAllRefetches,
 }))
 
-vi.mock('../../../lib/cache', () => ({
+vi.mock('../lib/cache/cacheCore', () => ({
   resetFailuresForCluster: mockResetFailuresForCluster,
   resetAllCacheFailures: mockResetAllCacheFailures,
   createCachedHook: vi.fn((_config: unknown) => () => ({})),

@@ -7,16 +7,14 @@ import { renderHook } from '@testing-library/react'
 
 const mockAuthFetch = vi.fn()
 vi.mock('../../lib/api', () => ({
-    createCachedHook: vi.fn(), authFetch: (...args: unknown[]) => mockAuthFetch(...args) }))
+    authFetch: (...args: unknown[]) => mockAuthFetch(...args) }))
 
 vi.mock('../../lib/constants/network', () => ({
-    createCachedHook: vi.fn(),
   FETCH_DEFAULT_TIMEOUT_MS: 5000,
   LOCAL_AGENT_HTTP_URL: 'http://localhost:8585',
 }))
 
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
   useDemoMode: () => ({ isDemoMode: false }),
   isDemoModeForced: () => false,
   canToggleDemoMode: () => true,
@@ -40,13 +38,11 @@ const mockUseCache = vi.fn(() => ({
   refetch: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
 }))
 
 vi.mock('../../components/cards/CardDataContext', () => ({
-    createCachedHook: vi.fn(),
   useCardLoadingState: vi.fn(() => ({ showSkeleton: false, showEmptyState: false })),
   useCardDemoState: vi.fn(),
 }))

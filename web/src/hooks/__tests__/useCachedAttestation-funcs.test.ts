@@ -26,7 +26,7 @@ const { mockFetch, mockUseCache } = vi.hoisted(() => ({
   })),
 }))
 vi.stubGlobal('fetch', mockFetch)
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
     createCachedHook: (config: Record<string, unknown>) => {
         return () => {
             const result = mockUseCache(config)
@@ -47,12 +47,10 @@ vi.mock('../../lib/cache', () => ({
 }))
 
 vi.mock('../../lib/constants/network', () => ({
-    createCachedHook: vi.fn(),
   FETCH_DEFAULT_TIMEOUT_MS: 5000,
 }))
 
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
   useDemoMode: () => ({ isDemoMode: false }),
   isDemoModeForced: () => false,
   canToggleDemoMode: () => true,

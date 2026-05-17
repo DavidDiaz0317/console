@@ -9,20 +9,17 @@ const { mockUseCache } = vi.hoisted(() => ({
   mockUseCache: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
 }))
 
 vi.mock('../../lib/cache/fetcherUtils', () => ({
-    createCachedHook: vi.fn(),
   fetchGitOpsAPI: vi.fn(),
   fetchViaGitOpsSSE: vi.fn(),
   fetchRbacAPI: vi.fn(),
 }))
 
 vi.mock('../useCachedData/demoData', () => ({
-    createCachedHook: vi.fn(),
   getDemoHelmReleases: () => [],
   getDemoHelmHistory: () => [],
   getDemoHelmValues: () => ({ values: {} }),

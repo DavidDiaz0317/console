@@ -18,7 +18,7 @@ const { mockUseCacheFn } = vi.hoisted(() => {
     return { mockUseCacheFn }
 })
 
-vi.mock('@/lib/cache', async (importOriginal) => {
+vi.mock('@/lib/cache/cacheCore', async (importOriginal) => {
     const actual = await importOriginal() as Record<string, unknown>
     return {
         ...actual,

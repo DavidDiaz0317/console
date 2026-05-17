@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: vi.fn(() => ({
     data: { guides: [], isDemo: true },
     isLoading: false,
@@ -15,14 +14,12 @@ vi.mock('../../lib/cache', () => ({
 }))
 
 vi.mock('../../lib/demoMode', () => ({
-    createCachedHook: vi.fn(),
   isNetlifyDeployment: false,
   isDemoMode: () => true,
   getDemoMode: () => true,
 }))
 
 vi.mock('../../lib/llmd/nightlyE2EDemoData', () => ({
-    createCachedHook: vi.fn(),
   generateDemoNightlyData: () => [],
 }))
 

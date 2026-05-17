@@ -53,7 +53,7 @@ vi.mock('../mcp/clusters', () => ({
   useClusters: () => ({ clusters: mockClusters, deduplicatedClusters: mockClusters }),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (opts: { fetcher: () => Promise<unknown>; demoWhenEmpty?: boolean }) => {
     capturedFetcher = opts.fetcher
     capturedDemoWhenEmpty = opts.demoWhenEmpty

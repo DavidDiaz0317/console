@@ -2,14 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
 const mockUseCache = vi.fn()
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
     useCache: (args: Record<string, unknown>) => mockUseCache(args),
 }))
 
 const mockIsDemoMode = vi.fn(() => false)
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
     useDemoMode: () => ({ isDemoMode: mockIsDemoMode() }),
     isDemoModeForced: () => false,
     canToggleDemoMode: () => true,
@@ -22,12 +20,10 @@ vi.mock('../useDemoMode', () => ({
 }))
 
 vi.mock('../../components/cards/CardDataContext', () => ({
-    createCachedHook: vi.fn(),
     useCardLoadingState: () => ({ showSkeleton: false, showEmptyState: false }),
 }))
 
 vi.mock('../../lib/api', () => ({
-    createCachedHook: vi.fn(),
     authFetch: vi.fn(),
 }))
 
@@ -40,7 +36,6 @@ vi.mock('../../lib/constants', async (importOriginal) => {
 })
 
 vi.mock('../../lib/constants/network', () => ({
-    createCachedHook: vi.fn(),
     LOCAL_AGENT_HTTP_URL: 'http://localhost:8585',
 }))
 

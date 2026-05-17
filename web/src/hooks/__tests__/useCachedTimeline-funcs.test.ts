@@ -7,20 +7,17 @@ import { renderHook } from '@testing-library/react'
 
 const mockAuthFetch = vi.fn()
 vi.mock('../../lib/api', () => ({
-    createCachedHook: vi.fn(), authFetch: (...args: unknown[]) => mockAuthFetch(...args) }))
+    authFetch: (...args: unknown[]) => mockAuthFetch(...args) }))
 
 vi.mock('../../lib/constants/network', () => ({
-    createCachedHook: vi.fn(),
   FETCH_DEFAULT_TIMEOUT_MS: 5000,
 }))
 
 vi.mock('../../lib/constants/time', () => ({
-    createCachedHook: vi.fn(),
   MS_PER_DAY: 86400000,
 }))
 
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
   useDemoMode: () => ({ isDemoMode: false }),
   isDemoModeForced: () => false,
   canToggleDemoMode: () => true,
@@ -33,7 +30,6 @@ vi.mock('../useDemoMode', () => ({
 }))
 
 vi.mock('../../components/cards/change_timeline/demoData', () => ({
-    createCachedHook: vi.fn(),
   getDemoTimelineEvents: () => [
     { timestamp: '2024-01-01T00:00:00Z', kind: 'Deployment', name: 'demo', action: 'created', namespace: 'default' },
   ],
@@ -51,8 +47,7 @@ const mockUseCache = vi.fn(() => ({
   refetch: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
 }))
 

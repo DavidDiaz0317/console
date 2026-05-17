@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 
-vi.mock('../../lib/cache', () => ({ useCache: vi.fn() }))
+vi.mock('../../lib/cache/cacheCore', () => ({ useCache: vi.fn() }))
 vi.mock('../../lib/quantum/pollingContext', () => ({
   isGlobalQuantumPollingPaused: vi.fn().mockReturnValue(false),
 }))

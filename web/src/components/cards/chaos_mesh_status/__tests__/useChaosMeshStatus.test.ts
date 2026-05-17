@@ -4,7 +4,7 @@ import { renderHook } from '@testing-library/react'
 const mockUseCache = vi.fn()
 const mockUseCardLoadingState = vi.fn()
 
-vi.mock('../../../../lib/cache', () => ({
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: (args: Record<string, unknown>) => mockUseCache(args),
 }))
 

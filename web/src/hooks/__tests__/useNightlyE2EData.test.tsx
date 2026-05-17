@@ -7,8 +7,7 @@ import { renderHook } from '@testing-library/react'
 
 const lastCacheArgs: { current: Record<string, unknown> | null } = { current: null }
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: (args: Record<string, unknown>) => {
     lastCacheArgs.current = args
     return {
@@ -25,18 +24,15 @@ vi.mock('../../lib/cache', () => ({
   },
 }))
 vi.mock('../../lib/llmd/nightlyE2EDemoData', () => ({
-    createCachedHook: vi.fn(),
   generateDemoNightlyData: () => [{ guide: 'demo', acronym: 'DM', platform: 'test', runs: [] }],
 }))
 vi.mock('../../lib/demoMode', () => ({
-    createCachedHook: vi.fn(),
   isNetlifyDeployment: false,
 }))
 vi.mock('../../lib/constants', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    createCachedHook: vi.fn(),
     STORAGE_KEY_TOKEN: 'token',
   }
 })
@@ -44,7 +40,6 @@ vi.mock('../../lib/constants/network', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    createCachedHook: vi.fn(),
     FETCH_DEFAULT_TIMEOUT_MS: 30000,
   }
 })

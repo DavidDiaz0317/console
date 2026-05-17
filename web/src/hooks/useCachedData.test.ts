@@ -23,7 +23,7 @@ const {
 // Module mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../lib/cache', () => ({
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
   // createCachedHook is a factory that returns a React hook. Hooks that use it
   // are re-exported through useCachedData.ts; this stub prevents load failures

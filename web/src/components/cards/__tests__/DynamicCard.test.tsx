@@ -10,7 +10,7 @@ import type { DynamicCardDefinition, DynamicCardDefinition_T1 } from '../../../l
 
 // Mock useCache to avoid shared CacheStore state between tests.
 // This provides a minimal implementation that calls the fetcher immediately.
-vi.mock('../../../lib/cache', () => {
+vi.mock('../lib/cache/cacheCore', () => {
   const React = require('react')
   return {
     useCache: ({ fetcher, initialData, enabled = true }: { fetcher: () => Promise<unknown>; initialData: unknown; enabled?: boolean; [k: string]: unknown }) => {

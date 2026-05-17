@@ -24,7 +24,7 @@ vi.mock('../../../lib/modeTransition', () => ({
   registerRefetch: vi.fn(),
 }))
 
-vi.mock('../../../lib/cache', () => ({
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: vi.fn().mockReturnValue({
     data: [], isLoading: false, isRefreshing: false,
     error: null, isFailed: false, consecutiveFailures: 0,

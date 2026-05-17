@@ -7,7 +7,7 @@ import {
 } from '../useCachedQuantum'
 import { useCache } from '../../lib/cache'
 
-vi.mock('../../lib/cache', () => ({ useCache: vi.fn() }))
+vi.mock('../../lib/cache/cacheCore', () => ({ useCache: vi.fn() }))
 vi.mock('../../lib/quantum/pollingContext', () => ({
   isGlobalQuantumPollingPaused: vi.fn().mockReturnValue(false),
 }))

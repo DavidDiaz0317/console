@@ -41,7 +41,7 @@ vi.mock('../useGlobalFilters', () => ({
 // For useArgoApplicationSets, the threshold-based fallback reads result.isFailed
 // (set here after FAILURE_THRESHOLD=3 failures). For useArgoCDApplications etc.,
 // the immediate fallback reads result.error !== null.
-vi.mock('../../lib/cache', () => {
+vi.mock('../../lib/cache/cacheCore', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react')
   const FAILURE_THRESHOLD = 3

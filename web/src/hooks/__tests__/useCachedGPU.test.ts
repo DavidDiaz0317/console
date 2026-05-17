@@ -10,13 +10,12 @@ const { mockUseCache, mockCreateCachedHook } = vi.hoisted(() => ({
   mockCreateCachedHook: vi.fn((config: Record<string, unknown>) => () => mockUseCache(config)),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   createCachedHook: (...args: unknown[]) => mockCreateCachedHook(...args),
   useCache: (...args: unknown[]) => mockUseCache(...args),
 }))
 
 vi.mock('../../lib/cache/fetcherUtils', () => ({
-    createCachedHook: vi.fn(),
   fetchAPI: vi.fn(),
   fetchFromAllClusters: vi.fn(),
   fetchViaSSE: vi.fn(),
@@ -35,7 +34,6 @@ vi.mock('../../lib/constants/network', async (importOriginal) => {
 })
 
 vi.mock('../useCachedData/demoData', () => ({
-    createCachedHook: vi.fn(),
   getDemoGPUNodes: () => [],
   getDemoCachedGPUNodeHealth: () => [],
   getDemoCachedWarningEvents: () => [],
@@ -44,13 +42,11 @@ vi.mock('../useCachedData/demoData', () => ({
 }))
 
 vi.mock('../../lib/schemas', () => ({
-    createCachedHook: vi.fn(),
   GPUNodesResponseSchema: {},
   GPUNodeHealthResponseSchema: {},
 }))
 
 vi.mock('../../lib/schemas/validate', () => ({
-    createCachedHook: vi.fn(),
   validateArrayResponse: vi.fn((_, raw: unknown) => raw),
 }))
 

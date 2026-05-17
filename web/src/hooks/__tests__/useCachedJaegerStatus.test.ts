@@ -38,7 +38,7 @@ const mockUseCache = vi.fn(() => ({
   clearAndRefetch: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
   createCachedHook: (config: { key: string; initialData: unknown; fetcher: () => Promise<unknown> }) => {
     return () => {

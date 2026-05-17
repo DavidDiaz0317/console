@@ -26,7 +26,7 @@ const mockCreateCachedHook = vi.fn((config: Record<string, unknown>) => () => mo
 const mockKubectlProxy = { exec: vi.fn() }
 const mockSettledWithConcurrency = vi.fn()
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   createCachedHook: (...args: unknown[]) => mockCreateCachedHook(...args),
   useCache: (...args: unknown[]) => mockUseCache(...args),
   REFRESH_RATES: {
@@ -39,7 +39,6 @@ vi.mock('../../lib/cache', () => ({
 }))
 
 vi.mock('../../lib/kubectlProxy', () => ({
-    createCachedHook: vi.fn(),
   kubectlProxy: mockKubectlProxy,
 }))
 
@@ -49,7 +48,6 @@ vi.mock('../../lib/constants/network', async (importOriginal) => {
 })
 
 vi.mock('../../lib/utils/concurrency', () => ({
-    createCachedHook: vi.fn(),
   settledWithConcurrency: async (...args: unknown[]) => {
     const result = await mockSettledWithConcurrency(...args)
     const onSettled = args[2] as ((r: PromiseSettledResult<unknown>, i: number) => void) | undefined

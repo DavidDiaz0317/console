@@ -42,7 +42,7 @@ vi.mock('../shared', () => ({
 }))
 
 // Mock useCache to return controllable values
-vi.mock('../../../lib/cache', () => ({
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: (opts: { key: string; initialData: unknown; demoData: unknown }) => mockUseCache(opts),
   resetFailuresForCluster: vi.fn(),
   createCachedHook: vi.fn((_config: unknown) => () => ({})),

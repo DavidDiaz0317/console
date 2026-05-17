@@ -26,7 +26,7 @@ vi.mock('../../lib/demoMode', () => ({
 // Capture the fetcher passed to useCache so we can invoke it directly.
 let capturedFetcher: (() => Promise<unknown>) | null = null
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: vi.fn((config: { fetcher?: () => Promise<unknown> }) => {
     if (config.fetcher) capturedFetcher = config.fetcher
     return {

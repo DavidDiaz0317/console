@@ -7,7 +7,7 @@ const { mockAgentFetch, mockUseCache, mockIsAgentUnavailable } = vi.hoisted(() =
   mockIsAgentUnavailable: vi.fn(() => false),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   createCachedHook: (_config: unknown) => () => mockUseCache(_config),
 }))
 

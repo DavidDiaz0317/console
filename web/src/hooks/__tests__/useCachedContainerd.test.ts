@@ -11,7 +11,7 @@ const { mockUseCache, mockUseDemoMode, mockAgentFetch } = vi.hoisted(() => ({
   mockAgentFetch: vi.fn(),
 }))
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: (...args: unknown[]) => mockUseCache(...args),
 }))
 

@@ -14,19 +14,16 @@ import { renderHook } from '@testing-library/react'
 const mockUseCache = vi.fn()
 const mockUseCachedKubectl = vi.fn()
 
-vi.mock('../../lib/cache', () => ({
-    createCachedHook: vi.fn(),
+vi.mock('../lib/cache/cacheCore', () => ({
   useCache: (args: Record<string, unknown>) => mockUseCache(args),
   REFRESH_RATES: { default: 120000 },
 }))
 
 vi.mock('../useCachedKubectlMulti', () => ({
-    createCachedHook: vi.fn(),
   useCachedKubectlMulti: (...a: unknown[]) => mockUseCachedKubectl(...a),
 }))
 
 vi.mock('../useDemoMode', () => ({
-    createCachedHook: vi.fn(),
   getDemoMode: () => true,
   useDemoMode: () => ({ isDemoMode: true }),
   isDemoModeForced: false,
@@ -39,7 +36,6 @@ vi.mock('../useDemoMode', () => ({
 }))
 
 vi.mock('../../lib/demoMode', () => ({
-    createCachedHook: vi.fn(),
   isDemoMode: () => true,
   getDemoMode: () => true,
   setDemoMode: vi.fn(),
@@ -55,13 +51,11 @@ vi.mock('../../lib/demoMode', () => ({
 }))
 
 vi.mock('../../lib/modeTransition', () => ({
-    createCachedHook: vi.fn(),
   registerCacheReset: vi.fn(),
   registerRefetch: vi.fn(),
 }))
 
 vi.mock('../useClusterContext', () => ({
-    createCachedHook: vi.fn(),
   useClusterContext: () => ({
     clusters: [{ name: 'demo-cluster', context: 'demo-ctx' }],
     selectedCluster: 'demo-cluster',

@@ -10,7 +10,7 @@ vi.mock('../../lib/constants/network', async (importOriginal) => {
   return { ...actual }
 })
 
-vi.mock('../../lib/cache', () => ({
+vi.mock('../../lib/cache/cacheCore', () => ({
   useCache: vi.fn(() => ({
     data: null,
     isLoading: false,
