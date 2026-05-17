@@ -232,7 +232,7 @@ export function ClusterFilterPanel({ showLabel = false }: ClusterFilterPanelProp
           <div
             id={FILTER_PANEL_ID}
             data-testid="navbar-cluster-filter-dropdown"
-            className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-toast max-h-[80vh] overflow-y-auto"
+            className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-toast max-h-64 overflow-y-auto"
             role="dialog"
             aria-label={t('navbar.clusterFilter')}
             onKeyDown={(e) => {
