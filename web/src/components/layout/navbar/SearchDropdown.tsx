@@ -24,6 +24,7 @@ import { useFeatureHints } from '../../../hooks/useFeatureHints'
 import { FeatureHintTooltip } from '../../ui/FeatureHintTooltip'
 import { emitGlobalSearchOpened, emitGlobalSearchQueried, emitGlobalSearchSelected, emitGlobalSearchAskAI } from '../../../lib/analytics'
 import { useModalState } from '../../../lib/modals'
+import { cn } from '../../../lib/cn'
 
 /** Routes for dashboards that are discoverable but not shown by default in the sidebar */
 const DISCOVERABLE_ROUTES = new Set(DISCOVERABLE_DASHBOARDS.map(d => d.href))
@@ -128,7 +129,11 @@ function SearchResultsPanel({
                           <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                         )}
                       </div>
-                      <span className="text-2xs px-1.5 py-0.5 rounded bg-secondary text-muted-foreground/70 shrink-0">
+                      <span className={cn(
+                        'text-xs px-2 py-1 rounded-md shrink-0',
+                        'bg-primary/10 text-primary',
+                        'border border-primary/20'
+                      )}>
                         {config.label.toLowerCase()}
                       </span>
                     </button>
