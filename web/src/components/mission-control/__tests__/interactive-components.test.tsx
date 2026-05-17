@@ -309,7 +309,6 @@ describe('LaunchSequence', () => {
     expect(onUpdateProgress).toHaveBeenCalled()
   })
 
-<<<<<<< HEAD
   it('shows deployment counts from the actual launch plan', async () => {
     const onUpdateProgress = vi.fn()
     const kyvernoProject: PayloadProject = {

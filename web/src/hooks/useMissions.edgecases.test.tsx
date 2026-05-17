@@ -877,7 +877,7 @@ describe('interactive result transitions', () => {
     expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('failed')
 
     const sendCallCount = MockWebSocket.lastInstance?.send.mock.calls.length ?? 0
-    act(() => {
+    await act(async () => {
       result.current.sendMessage(missionId, 'Retry the rollback and tell me what to do next')
     })
 
