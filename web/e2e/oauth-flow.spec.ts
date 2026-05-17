@@ -202,6 +202,74 @@ test.describe('OAuth flow - frontend (mocked backend)', () => {
     await expect(errorBanner).toContainText('Authentication Error')
     await expect(errorBanner).toContainText('some_brand_new_error_code_we_have_not_mapped')
   })
+
+  test('access_denied error shows Access Denied UI', async ({ page }) => {
+    await page.goto('/login?error=access_denied')
+    await page.waitForLoadState('domcontentloaded')
+
+    const errorBanner = page.getByTestId('oauth-error-banner')
+    await expect(errorBanner).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    await expect(errorBanner).toContainText('Access Denied')
+    await expect(page).toHaveURL(/\/login/)
+  })
+
+  test('restores pre-auth route via getLastRoute after OAuth callback', async ({ page }, testInfo) => {
+    if (testInfo.project.name === 'mobile-safari') {
+      test.skip()
+    }
+
+    await page.addInitScript(() => {
+      localStorage.setItem('kubestellar-last-route', '/clusters')
+    })
+
+    await page.route('**/auth/github', (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: '' })
+    )
+
+    const callbackRedirectUrl = `/auth/callback?onboarded=true#kc_x=${encodeURIComponent(FAKE_ACCESS_TOKEN)}`
+    await page.route('**/auth/github/callback*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: `<html><head><meta http-equiv="refresh" content="0;url=${callbackRedirectUrl}"></head><body><script>window.location.href="${callbackRedirectUrl}";</script></body></html>`,
+      })
+    )
+
+    await page.route('**/auth/refresh', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ refreshed: true, onboarded: true }),
+      })
+    )
+
+    await page.route('**/api/agent/token', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token: 'fake-agent-token' }),
+      })
+    )
+
+    await page.context().addCookies([
+      {
+        name: 'kc_auth',
+        value: 'fake-jwt-cookie-value',
+        domain: 'localhost',
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Strict',
+      },
+    ])
+
+    await page.goto(
+      `/auth/github/callback?code=${FAKE_OAUTH_CODE}&state=${FAKE_OAUTH_STATE}`
+    )
+
+    await page.waitForURL(/\/(clusters|auth\/callback)/, { timeout: NAV_INTERCEPT_TIMEOUT_MS })
+    await expect(page).toHaveURL(/\/clusters/, { timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+  })
 })
 
 test.describe('OAuth flow - real backend', () => {
