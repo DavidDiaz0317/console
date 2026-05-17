@@ -306,12 +306,6 @@ type workflowRunRaw struct {
 	} `json:"head_commit"`
 }
 
-// ghpMaxPerPage is the GitHub API maximum for per_page.
-const ghpMaxPerPage = 100
-
-// ghpMaxPages caps pagination depth to avoid runaway API calls.
-const ghpMaxPages = 5
-
 type ghpAllPayload struct {
 	Pulse    any `json:"pulse"`
 	Matrix   any `json:"matrix"`
