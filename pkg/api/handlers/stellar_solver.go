@@ -453,10 +453,6 @@ func (h *StellarHandler) CompleteAutoMission(c *fiber.Ctx) error {
 		body.Summary = "AI mission completed."
 	}
 	ctx := c.UserContext()
-	userID := resolveStellarUserID(c)
-	if userID == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
-	}
 	solve, err := full.GetSolveByID(ctx, body.SolveID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load solve"})
@@ -561,7 +557,6 @@ func (h *StellarHandler) StartSolve(c *fiber.Ctx) error {
 	notif, err := full.GetNotificationByID(ctx, eventID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load event"})
-	}
 	if notif == nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "event not found"})
 	}
