@@ -80,14 +80,6 @@ var cardProxyClient = &http.Client{
 	},
 }
 
-// cgnatNet is RFC 6598 carrier-grade NAT (100.64.0.0/10), not covered by
-// net.IP.IsPrivate(). Cloud providers sometimes use this range for internal
-// metadata or service endpoints.
-var cgnatNet = &net.IPNet{
-	IP:   net.ParseIP("100.64.0.0"),
-	Mask: net.CIDRMask(10, 32),
-}
-
 // isBlockedIP returns true if the IP is in a non-public range.
 // Covers standard private ranges plus CGNAT, cloud metadata, and IETF ranges.
 func isBlockedIP(ip net.IP) bool {
