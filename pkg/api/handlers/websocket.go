@@ -684,6 +684,9 @@ func (h *Hub) HandleConnection(conn *websocket.Conn) {
 		wg.Wait()
 	}()
 
+	// SECURITY: Limit inbound message size to prevent memory exhaustion (#14239)
+	conn.SetReadLimit(wsMaxBroadcastBytes)
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {

@@ -136,8 +136,8 @@ type StellarStore interface {
 	GetActiveWatchesForCluster(ctx context.Context, cluster string) ([]store.StellarWatch, error)
 	GetActiveWatches(ctx context.Context, userID string) ([]store.StellarWatch, error)
 	CreateWatch(ctx context.Context, w *store.StellarWatch) (string, error)
-	UpdateWatchStatus(ctx context.Context, id, status, lastUpdate string) error
-	ResolveWatch(ctx context.Context, id string) error
+	UpdateWatchStatus(ctx context.Context, id, userID, status, lastUpdate string) error
+	ResolveWatch(ctx context.Context, id, userID string) error
 	SetWatchLastChecked(ctx context.Context, id string, ts time.Time) error
 	GetRecentMemoryEntries(ctx context.Context, userID, cluster string, limit int) ([]store.StellarMemoryEntry, error)
 
@@ -156,7 +156,7 @@ type StellarStore interface {
 	GetUserLastSeen(ctx context.Context, userID string) (*time.Time, error)
 	SetUserLastDigest(ctx context.Context, userID string) error
 	GetWatchByResource(ctx context.Context, userID, cluster, namespace, kind, name string) (*store.StellarWatch, error)
-	SnoozeWatch(ctx context.Context, id string, until time.Time) error
+	SnoozeWatch(ctx context.Context, id, userID string, until time.Time) error
 	GetWatchesSince(ctx context.Context, userID string, since time.Time, status string) ([]store.StellarWatch, error)
 	ListStellarAuditLog(ctx context.Context, limit int) ([]store.StellarAuditEntry, error)
 
@@ -2618,8 +2618,8 @@ func (h *StellarHandler) ResolveWatch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "id is required"})
 	}
 	if err := h.store.(interface {
-		ResolveWatch(ctx context.Context, id string) error
-	}).ResolveWatch(c.UserContext(), watchID); err != nil {
+		ResolveWatch(ctx context.Context, id, userID string) error
+	}).ResolveWatch(c.UserContext(), watchID, userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to resolve watch"})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -2635,8 +2635,8 @@ func (h *StellarHandler) DismissWatch(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "id is required"})
 	}
 	if err := h.store.(interface {
-		UpdateWatchStatus(ctx context.Context, id, status, lastUpdate string) error
-	}).UpdateWatchStatus(c.UserContext(), watchID, "dismissed", ""); err != nil {
+		UpdateWatchStatus(ctx context.Context, id, userID, status, lastUpdate string) error
+	}).UpdateWatchStatus(c.UserContext(), watchID, userID, "dismissed", ""); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to dismiss watch"})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
@@ -2660,7 +2660,7 @@ func (h *StellarHandler) SnoozeWatch(c *fiber.Ctx) error {
 		body.Minutes = 60
 	}
 	until := time.Now().Add(time.Duration(body.Minutes) * time.Minute)
-	if err := h.store.SnoozeWatch(c.UserContext(), watchID, until); err != nil {
+	if err := h.store.SnoozeWatch(c.UserContext(), watchID, userID, until); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to snooze watch"})
 	}
 	return c.JSON(fiber.Map{"id": watchID, "snoozedUntil": until.UTC().Format(time.RFC3339)})

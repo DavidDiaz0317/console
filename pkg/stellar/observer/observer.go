@@ -30,8 +30,8 @@ type ObserverStore interface {
 	GetRecentMemoryEntries(ctx context.Context, userID, cluster string, limit int) ([]store.StellarMemoryEntry, error)
 	GetActiveWatchesForCluster(ctx context.Context, cluster string) ([]store.StellarWatch, error)
 	GetActiveWatches(ctx context.Context, userID string) ([]store.StellarWatch, error)
-	UpdateWatchStatus(ctx context.Context, id, status, lastUpdate string) error
-	ResolveWatch(ctx context.Context, id string) error
+	UpdateWatchStatus(ctx context.Context, id, userID, status, lastUpdate string) error
+	ResolveWatch(ctx context.Context, id, userID string) error
 	SetWatchLastChecked(ctx context.Context, id string, ts time.Time) error
 	CreateStellarNotification(ctx context.Context, notification *store.StellarNotification) error
 
@@ -611,7 +611,7 @@ func (o *Observer) checkWatch(ctx context.Context, w store.StellarWatch) {
 	switch {
 	case strings.HasPrefix(content, "RESOLVED:"):
 		msg := strings.TrimSpace(strings.TrimPrefix(content, "RESOLVED:"))
-		_ = o.store.ResolveWatch(ctx, w.ID)
+		_ = o.store.ResolveWatch(ctx, w.ID, w.UserID)
 		_ = o.store.CreateStellarNotification(ctx, &store.StellarNotification{
 			Type:      "system",
 			Severity:  "info",
@@ -646,7 +646,7 @@ func (o *Observer) checkWatch(ctx context.Context, w store.StellarWatch) {
 			slog.Debug("stellar/observer: state change filtered",
 				"namespace", w.Namespace, "resource", w.ResourceName,
 				"severity", eval.Severity, "reasoning", eval.Reasoning)
-			_ = o.store.UpdateWatchStatus(ctx, w.ID, "active", msg)
+			_ = o.store.UpdateWatchStatus(ctx, w.ID, w.UserID, "active", msg)
 			break
 		}
 
@@ -654,7 +654,7 @@ func (o *Observer) checkWatch(ctx context.Context, w store.StellarWatch) {
 		if eval != nil && eval.Severity != "" && eval.Severity != "ignore" {
 			severity = eval.Severity
 		}
-		_ = o.store.UpdateWatchStatus(ctx, w.ID, "active", msg)
+		_ = o.store.UpdateWatchStatus(ctx, w.ID, w.UserID, "active", msg)
 		_, _ = o.store.CreateObservation(ctx, &store.StellarObservation{
 			Cluster: w.Cluster,
 			Kind:    "noticed",
@@ -668,7 +668,7 @@ func (o *Observer) checkWatch(ctx context.Context, w store.StellarWatch) {
 
 	case strings.HasPrefix(content, "UNCHANGED:"):
 		// Just update last_checked timestamp
-		_ = o.store.UpdateWatchStatus(ctx, w.ID, "active", w.LastUpdate)
+		_ = o.store.UpdateWatchStatus(ctx, w.ID, w.UserID, "active", w.LastUpdate)
 		slog.Debug("stellar/observer: watch UNCHANGED", "namespace", w.Namespace, "resource", w.ResourceName)
 	}
 
