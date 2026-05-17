@@ -48,6 +48,44 @@ func TestFeatureRequestCRUD(t *testing.T) {
 		require.Equal(t, "Issue Feature", got.Title)
 	})
 
+	t.Run("GetFeatureRequestsByIssueNumbers batches lookups", func(t *testing.T) {
+		issueNumOne := 234
+		issueNumTwo := 345
+		reqOne := &models.FeatureRequest{
+			UserID:            user.ID,
+			Title:             "First batched issue",
+			Description:       "Batch one",
+			RequestType:       models.RequestTypeFeature,
+			GitHubIssueNumber: &issueNumOne,
+		}
+		reqTwo := &models.FeatureRequest{
+			UserID:            user.ID,
+			Title:             "Second batched issue",
+			Description:       "Batch two",
+			RequestType:       models.RequestTypeFeature,
+			GitHubIssueNumber: &issueNumTwo,
+		}
+		require.NoError(t, s.CreateFeatureRequest(ctx, reqOne))
+		require.NoError(t, s.CreateFeatureRequest(ctx, reqTwo))
+
+		got, err := s.GetFeatureRequestsByIssueNumbers(ctx, []int{issueNumTwo, 999, issueNumOne})
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+
+		titlesByIssue := make(map[int]string, len(got))
+		for _, request := range got {
+			require.NotNil(t, request)
+			require.NotNil(t, request.GitHubIssueNumber)
+			titlesByIssue[*request.GitHubIssueNumber] = request.Title
+		}
+		require.Equal(t, reqOne.Title, titlesByIssue[issueNumOne])
+		require.Equal(t, reqTwo.Title, titlesByIssue[issueNumTwo])
+
+		empty, err := s.GetFeatureRequestsByIssueNumbers(ctx, nil)
+		require.NoError(t, err)
+		require.Empty(t, empty)
+	})
+
 	t.Run("GetUserFeatureRequests returns page of requests", func(t *testing.T) {
 		for i := 0; i < 3; i++ {
 			require.NoError(t, s.CreateFeatureRequest(ctx, &models.FeatureRequest{

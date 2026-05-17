@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,6 +40,49 @@ func (s *SQLiteStore) GetFeatureRequest(ctx context.Context, id uuid.UUID) (*mod
 func (s *SQLiteStore) GetFeatureRequestByIssueNumber(ctx context.Context, issueNumber int) (*models.FeatureRequest, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT id, user_id, title, description, request_type, target_repo, github_issue_number, status, pr_number, pr_url, copilot_session_url, netlify_preview_url, closed_by_user, latest_comment, created_at, updated_at FROM feature_requests WHERE github_issue_number = ?`, issueNumber)
 	return s.scanFeatureRequest(row)
+}
+
+func (s *SQLiteStore) GetFeatureRequestsByIssueNumbers(ctx context.Context, numbers []int) ([]*models.FeatureRequest, error) {
+	requests := make([]*models.FeatureRequest, 0)
+	if len(numbers) == 0 {
+		return requests, nil
+	}
+
+	for start := 0; start < len(numbers); start += sqliteMaxVars {
+		end := start + sqliteMaxVars
+		if end > len(numbers) {
+			end = len(numbers)
+		}
+		chunk := numbers[start:end]
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(chunk)), ",")
+		args := make([]interface{}, len(chunk))
+		for i, number := range chunk {
+			args[i] = number
+		}
+
+		rows, err := s.db.QueryContext(ctx,
+			fmt.Sprintf(`SELECT id, user_id, title, description, request_type, target_repo, github_issue_number, status, pr_number, pr_url, copilot_session_url, netlify_preview_url, closed_by_user, latest_comment, created_at, updated_at FROM feature_requests WHERE github_issue_number IN (%s)`, placeholders),
+			args...,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			request, err := s.scanFeatureRequestRow(ctx, rows)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+			requests = append(requests, request)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
+	return requests, nil
 }
 
 func (s *SQLiteStore) GetFeatureRequestByPRNumber(ctx context.Context, prNumber int) (*models.FeatureRequest, error) {
