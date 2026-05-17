@@ -3,13 +3,6 @@ import { Bookmark, Eye, Play, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Mission } from '../../../hooks/useMissions'
 
-interface MissionSidebarSavedMissionsProps {
-  savedMissions: Mission[]
-  onViewMission: (mission: Mission) => void
-  onRunMission: (missionId: string) => void
-  onRemoveMission: (missionId: string) => void
-}
-
 export function useSavedMissionItems(
   savedMissions: Mission[],
   onViewMission: (mission: Mission) => void,

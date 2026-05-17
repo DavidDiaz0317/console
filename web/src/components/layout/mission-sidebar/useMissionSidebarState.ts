@@ -1,24 +1,15 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
-import { useMissions, isActiveMission, type Mission } from '../../../hooks/useMissions'
-import { useResolutions, detectIssueSignature, type Resolution } from '../../../hooks/useResolutions'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMissions } from '../../../hooks/useMissions'
+import { useResolutions, detectIssueSignature } from '../../../hooks/useResolutions'
 import type { MissionExport, OrbitResourceFilter } from '../../../lib/missions/types'
 import {
-  MISSIONS_PAGE_SIZE,
-  HISTORY_PANEL_KEY,
-  matchesMissionSearch,
-  getMissionAttentionCount,
   BACKGROUND_EXECUTION_STATUSES,
   BACKGROUND_MISSION_PREVIEW_LIMIT,
-  MISSION_BROWSER_QUERY_KEY,
-  MISSION_BROWSER_QUERY_VALUE,
-  MISSION_DEEP_LINK_QUERY_KEY,
-  MISSION_VIEW_QUERY_KEY,
-  MISSION_CHAT_VIEW,
-  MISSION_BROWSER_HISTORY_STATE_KEY,
+  getMissionAttentionCount,
+  HISTORY_PANEL_KEY,
+  MISSIONS_PAGE_SIZE,
+  matchesMissionSearch,
 } from './missionSidebarConstants'
-import { ROUTES } from '../../../config/routes'
-import { SAVED_TOAST_MS } from '../../../lib/constants/network'
 
 export function useMissionSidebarState() {
   const {
@@ -51,7 +42,10 @@ export function useMissionSidebarState() {
   const [pendingKubaraChart, setPendingKubaraChart] = useState<string | undefined>(undefined)
   const [pendingReviewPlan, setPendingReviewPlan] = useState<string | undefined>(undefined)
   const [showOrbitDialog, setShowOrbitDialog] = useState(false)
-  const [orbitDialogPrefill, setOrbitDialogPrefill] = useState<{ clusters?: string[]; resourceFilters?: Record<string, OrbitResourceFilter[]> } | undefined>(undefined)
+  const [orbitDialogPrefill, setOrbitDialogPrefill] = useState<{
+    clusters?: string[]
+    resourceFilters?: Record<string, OrbitResourceFilter[]>
+  } | undefined>(undefined)
   const [newMissionPrompt, setNewMissionPrompt] = useState('')
   const [showSavedToast, setShowSavedToast] = useState<string | null>(null)
   const [toastCountdown, setToastCountdown] = useState(0)
@@ -66,7 +60,9 @@ export function useMissionSidebarState() {
   const [showHistoryPanel, setShowHistoryPanel] = useState(() => {
     try {
       return localStorage.getItem(HISTORY_PANEL_KEY) === 'true'
-    } catch { return false }
+    } catch {
+      return false
+    }
   })
   const [lastPanelView, setLastPanelView] = useState<'dashboard' | 'history'>(
     showHistoryPanel ? 'history' : 'dashboard'
@@ -76,16 +72,12 @@ export function useMissionSidebarState() {
   const toastIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const browserHistoryEntryRef = useRef(false)
 
-  const [searchParams, setSearchParams] = useSearchParams()
-  const location = useLocation()
-  const navigate = useNavigate()
-
   const { findSimilarResolutions, allResolutions } = useResolutions()
 
-  // Reset save resolution dialog when active mission changes
-  useEffect(() => { setShowSaveResolutionDialog(false) }, [activeMission?.id])
+  useEffect(() => {
+    setShowSaveResolutionDialog(false)
+  }, [activeMission?.id])
 
-  // Clean up toast interval on unmount
   useEffect(() => {
     return () => {
       if (toastIntervalRef.current) {
@@ -95,25 +87,28 @@ export function useMissionSidebarState() {
     }
   }, [])
 
-  // Reset pagination when search query changes
   useEffect(() => {
     setVisibleMissionCount(MISSIONS_PAGE_SIZE)
   }, [missionSearchQuery])
 
-  // Toggle history panel
   const toggleHistoryPanel = () => {
-    setShowHistoryPanel(prev => {
-      const next = !prev
-      try { localStorage.setItem(HISTORY_PANEL_KEY, String(next)) } catch { /* ignore */ }
-      if (!next) setMissionSearchQuery('')
+    setShowHistoryPanel((previous) => {
+      const next = !previous
+      try {
+        localStorage.setItem(HISTORY_PANEL_KEY, String(next))
+      } catch {
+        // ignore storage errors
+      }
+      if (!next) {
+        setMissionSearchQuery('')
+      }
       return next
     })
   }
 
-  // Toggle mission collapse
   const toggleMissionCollapse = (missionId: string) => {
-    setCollapsedMissions(prev => {
-      const next = new Set(prev)
+    setCollapsedMissions((previous) => {
+      const next = new Set(previous)
       if (next.has(missionId)) {
         next.delete(missionId)
       } else {
@@ -123,15 +118,14 @@ export function useMissionSidebarState() {
     })
   }
 
-  // Split missions into saved and active
   const normalizedMissionSearchQuery = missionSearchQuery.trim().toLowerCase()
   const savedMissions = useMemo(
-    () => (missions || []).filter(m => m.status === 'saved' && matchesMissionSearch(m, normalizedMissionSearchQuery)),
+    () => (missions || []).filter((mission) => mission.status === 'saved' && matchesMissionSearch(mission, normalizedMissionSearchQuery)),
     [missions, normalizedMissionSearchQuery]
   )
   const activeMissions = useMemo(
     () => (missions || [])
-      .filter(m => m.status !== 'saved' && matchesMissionSearch(m, normalizedMissionSearchQuery))
+      .filter((mission) => mission.status !== 'saved' && matchesMissionSearch(mission, normalizedMissionSearchQuery))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     [missions, normalizedMissionSearchQuery]
   )
@@ -142,33 +136,36 @@ export function useMissionSidebarState() {
   const needsAttention = getMissionAttentionCount(missions)
 
   const runningMissions = missions
-    .filter(mission => BACKGROUND_EXECUTION_STATUSES.has(mission.status))
+    .filter((mission) => BACKGROUND_EXECUTION_STATUSES.has(mission.status))
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
   const runningMissionPreview = runningMissions.slice(0, BACKGROUND_MISSION_PREVIEW_LIMIT)
-  const runningCount = missions.filter(m => m.status === 'running').length
+  const runningCount = missions.filter((mission) => mission.status === 'running').length
 
-  // Related resolutions
-  const relatedResolutions = (() => {
-    if (!activeMission) return []
+  const relatedResolutions = useMemo(() => {
+    if (!activeMission) {
+      return []
+    }
+
     const content = [
       activeMission.title,
       activeMission.description,
-      ...(activeMission.messages || []).slice(0, 3).map(m => m.content),
+      ...(activeMission.messages || []).slice(0, 3).map((message) => message.content),
     ].join('\n')
     const signature = detectIssueSignature(content)
-    if (!signature.type || signature.type === 'Unknown') return []
-    return findSimilarResolutions(signature as { type: string }, { minSimilarity: 0.4, limit: 5 })
-  })()
+    if (!signature.type || signature.type === 'Unknown') {
+      return []
+    }
 
-  // Auto-open history when missions need attention
+    return findSimilarResolutions(signature as { type: string }, { minSimilarity: 0.4, limit: 5 })
+  }, [activeMission, findSimilarResolutions])
+
   useEffect(() => {
     if (needsAttention > 0 && !showHistoryPanel && !activeMission) {
       setShowHistoryPanel(true)
     }
-  }, [needsAttention]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeMission, needsAttention, showHistoryPanel])
 
   return {
-    // Mission context
     missions,
     activeMission,
     isSidebarOpen,
@@ -187,8 +184,6 @@ export function useMissionSidebarState() {
     runSavedMission,
     openSidebar,
     sendMessage,
-
-    // Local state
     collapsedMissions,
     toggleMissionCollapse,
     visibleMissionCount,
@@ -236,25 +231,11 @@ export function useMissionSidebarState() {
     toggleHistoryPanel,
     lastPanelView,
     setLastPanelView,
-
-    // Refs
     newMissionInputRef,
     toastIntervalRef,
     browserHistoryEntryRef,
-
-    // Router
-    searchParams,
-    setSearchParams,
-    location,
-    navigate,
-
-    // Resolutions
-    findSimilarResolutions,
     allResolutions,
     relatedResolutions,
-
-    // Computed values
-    normalizedMissionSearchQuery,
     savedMissions,
     activeMissions,
     visibleActiveMissions,

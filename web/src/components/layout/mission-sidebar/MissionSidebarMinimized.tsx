@@ -1,7 +1,6 @@
 import { PanelRightOpen, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { LogoWithStar } from '../../ui/LogoWithStar'
-import type { Mission } from '../../../hooks/useMissions'
 import { cn } from '../../../lib/cn'
 
 interface MissionSidebarMinimizedProps {

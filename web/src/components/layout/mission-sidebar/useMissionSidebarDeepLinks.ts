@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type RefObject } from 'react'
-import { useSearchParams, useLocation, useNavigate, type NavigateFunction } from 'react-router-dom'
+import { useEffect, type MutableRefObject } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import type { Mission } from '../../../hooks/useMissions'
 import type { MissionExport } from '../../../lib/missions/types'
 import {
@@ -16,10 +16,12 @@ import {
 import { ROUTES } from '../../../config/routes'
 import { MISSION_FILE_FETCH_TIMEOUT_MS } from '../../missions/browser/missionCache'
 
+type SetSearchParams = (params: URLSearchParams, options?: { replace?: boolean }) => void
+
 export function useMissionBrowserDeepLink(
   showBrowser: boolean,
   setShowBrowser: (show: boolean) => void,
-  browserHistoryEntryRef: RefObject<boolean>,
+  browserHistoryEntryRef: MutableRefObject<boolean>,
   missions: Mission[],
   setActiveMission: (id: string | null) => void,
   openSidebar: () => void,
@@ -35,9 +37,10 @@ export function useMissionBrowserDeepLink(
   const isMissionBrowserRoute = location.pathname === ROUTES.MISSIONS
   const isMissionChatView = missionViewParam === MISSION_CHAT_VIEW
   const fullScreenMissionFromUrl = isMissionChatView && deepLinkMission
-    ? missions.find(mission => mission.id === deepLinkMission) || null
+    ? missions.find((mission) => mission.id === deepLinkMission) || null
     : null
-  const isMissionBrowserDeepLink = !isMissionChatView && (Boolean(deepLinkMission) || browseParam === MISSION_BROWSER_QUERY_VALUE || isMissionBrowserRoute)
+  const isMissionBrowserDeepLink = !isMissionChatView
+    && (Boolean(deepLinkMission) || browseParam === MISSION_BROWSER_QUERY_VALUE || isMissionBrowserRoute)
 
   const getMissionBrowserSearchParams = () => {
     const nextParams = new URLSearchParams(searchParams)
@@ -78,16 +81,16 @@ export function useMissionBrowserDeepLink(
     setShowBrowser(false)
   }
 
-  // Open browser on deep link
   useEffect(() => {
     if (isMissionBrowserDeepLink) {
       setShowBrowser(true)
     }
   }, [isMissionBrowserDeepLink, setShowBrowser])
 
-  // Hydrate fullscreen chat from URL
   useEffect(() => {
-    if (!isMissionChatView) return
+    if (!isMissionChatView) {
+      return
+    }
 
     if (!fullScreenMissionFromUrl) {
       if (deepLinkMission) {
@@ -113,13 +116,12 @@ export function useMissionBrowserDeepLink(
     setSearchParams,
   ])
 
-  // Sync URL with fullscreen state
   useEffect(() => {
-    const activeMission = missions.find(m => m.id === deepLinkMission)
+    const activeMission = missions.find((mission) => mission.id === deepLinkMission)
     const nextParams = new URLSearchParams(searchParams)
-    const isFullScreen = fullScreenMissionFromUrl !== null
+    const isFullScreenMission = fullScreenMissionFromUrl !== null
 
-    if (isFullScreen && activeMission) {
+    if (isFullScreenMission && activeMission) {
       nextParams.set(MISSION_DEEP_LINK_QUERY_KEY, activeMission.id)
       nextParams.set(MISSION_VIEW_QUERY_KEY, MISSION_CHAT_VIEW)
     } else if (searchParams.get(MISSION_VIEW_QUERY_KEY) === MISSION_CHAT_VIEW) {
@@ -136,35 +138,39 @@ export function useMissionBrowserDeepLink(
     }
   }, [fullScreenMissionFromUrl, missions, deepLinkMission, searchParams, setSearchParams])
 
-  // Handle browser back button
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') {
+      return
+    }
 
     const handlePopState = () => {
-      if (!showBrowser) return
+      if (!showBrowser) {
+        return
+      }
       browserHistoryEntryRef.current = false
       setShowBrowser(false)
     }
 
     window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [showBrowser, setShowBrowser])
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [browserHistoryEntryRef, setShowBrowser, showBrowser])
 
   return {
     openMissionBrowser,
     closeMissionBrowser,
     deepLinkMission,
-    isMissionBrowserDeepLink,
   }
 }
 
 export function useMissionControlDeepLink(
   searchParams: URLSearchParams,
-  setSearchParams: (params: URLSearchParams, options?: { replace?: boolean }) => void,
+  setSearchParams: SetSearchParams,
   openFreshMissionControl: () => void,
   setPendingKubaraChart: (chart: string | undefined) => void,
   setPendingReviewPlan: (plan: string | undefined) => void,
-  setMissionControlFreshSessionToken: (token: number | undefined) => void,
+  setMissionControlFreshSessionToken: (token: number | ((previous: number | undefined) => number) | undefined) => void,
   setShowMissionControl: (show: boolean) => void
 ) {
   const missionControlParam = searchParams.get(MISSION_CONTROL_QUERY_KEY)
@@ -203,35 +209,34 @@ export function useMissionControlDeepLink(
 export function useDirectImport(
   directImportSlug: string | null,
   searchParams: URLSearchParams,
-  setSearchParams: (params: URLSearchParams, options?: { replace?: boolean }) => void,
+  setSearchParams: SetSearchParams,
   prefetchedMission: MissionExport | undefined,
   setIsDirectImporting: (importing: boolean) => void,
   handleImportMission: (mission: MissionExport) => void,
   openMissionBrowser: () => void
 ) {
   useEffect(() => {
-    if (!directImportSlug) return
+    if (!directImportSlug) {
+      return
+    }
 
-    // Clear the param immediately to prevent re-triggering
     const newParams = new URLSearchParams(searchParams)
     newParams.delete(MISSION_IMPORT_QUERY_KEY)
     setSearchParams(newParams, { replace: true })
 
-    // Fast path: use prefetched mission if available
     if (prefetchedMission) {
       handleImportMission(prefetchedMission)
       window.history.replaceState({}, '')
       return
     }
 
-    // Slow path: fetch mission by racing all known directories
-    const KB_DIRS = [
+    const knowledgeBaseDirs = [
       'cncf-install', 'cncf-generated', 'security', 'platform-install',
       'llm-d', 'multi-cluster', 'troubleshoot', 'troubleshooting',
       'cost-optimization', 'networking', 'observability', 'workloads',
     ]
     const paths = [
-      ...KB_DIRS.map(dir => `fixes/${dir}/${directImportSlug}.json`),
+      ...knowledgeBaseDirs.map((dir) => `fixes/${dir}/${directImportSlug}.json`),
       `fixes/${directImportSlug}.json`,
     ]
 
@@ -241,14 +246,19 @@ export function useDirectImport(
       let found: MissionExport | null = null
       try {
         found = await Promise.any(paths.map(async (path) => {
-          const res = await fetch(`/api/missions/file?path=${encodeURIComponent(path)}`, {
-            signal: controller.signal })
-          if (!res.ok) throw new Error('not found')
-          const raw = await res.text()
+          const response = await fetch(`/api/missions/file?path=${encodeURIComponent(path)}`, {
+            signal: controller.signal,
+          })
+          if (!response.ok) {
+            throw new Error('not found')
+          }
+          const raw = await response.text()
           const parsed = JSON.parse(raw)
           const { validateMissionExport } = await import('../../../lib/missions/types')
           const result = validateMissionExport(parsed)
-          if (!result.valid) throw new Error('invalid')
+          if (!result.valid) {
+            throw new Error('invalid')
+          }
           controller.abort()
           return result.data
         }))
@@ -260,21 +270,22 @@ export function useDirectImport(
         return
       }
 
-      // Fallback: search index.json
       try {
-        const res = await fetch('/api/missions/file?path=fixes/index.json', {
-          signal: AbortSignal.timeout(MISSION_FILE_FETCH_TIMEOUT_MS) })
-        if (res.ok) {
-          const index = await res.json() as { missions?: Array<{ path: string }> }
-          const match = (index.missions || []).find(m => {
-            const filename = (m.path || '').split('/').pop() || ''
+        const response = await fetch('/api/missions/file?path=fixes/index.json', {
+          signal: AbortSignal.timeout(MISSION_FILE_FETCH_TIMEOUT_MS),
+        })
+        if (response.ok) {
+          const index = await response.json() as { missions?: Array<{ path: string }> }
+          const match = (index.missions || []).find((mission) => {
+            const filename = (mission.path || '').split('/').pop() || ''
             return filename.replace('.json', '') === directImportSlug
           })
           if (match) {
-            const fileRes = await fetch(`/api/missions/file?path=${encodeURIComponent(match.path)}`, {
-              signal: AbortSignal.timeout(MISSION_FILE_FETCH_TIMEOUT_MS) })
-            if (fileRes.ok) {
-              const raw = await fileRes.text()
+            const fileResponse = await fetch(`/api/missions/file?path=${encodeURIComponent(match.path)}`, {
+              signal: AbortSignal.timeout(MISSION_FILE_FETCH_TIMEOUT_MS),
+            })
+            if (fileResponse.ok) {
+              const raw = await fileResponse.text()
               const parsed = JSON.parse(raw)
               const { validateMissionExport } = await import('../../../lib/missions/types')
               const result = validateMissionExport(parsed)
@@ -286,13 +297,12 @@ export function useDirectImport(
           }
         }
       } catch {
-        // Index fallback failed
+        // ignore index fallback errors
       }
 
-      // Last resort: open the browser
       openMissionBrowser()
     }
 
     tryImport().finally(() => setIsDirectImporting(false))
-  }, [directImportSlug]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [directImportSlug, handleImportMission, openMissionBrowser, prefetchedMission, searchParams, setIsDirectImporting, setSearchParams])
 }
