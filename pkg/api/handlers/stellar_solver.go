@@ -427,6 +427,11 @@ type CompleteAutoMissionRequest struct {
 // the loop on a mission Stellar triggered. The frontend bridge calls this when
 // the mission reports done (or when the user manually marks it resolved).
 func (h *StellarHandler) CompleteAutoMission(c *fiber.Ctx) error {
+	userID := resolveStellarUserID(c)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "not authenticated"})
+	}
+
 	full, ok := h.fullStore()
 	if !ok {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "store unavailable"})
@@ -453,14 +458,16 @@ func (h *StellarHandler) CompleteAutoMission(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 	solve, err := full.GetSolveByID(ctx, body.SolveID)
-	if err != nil || solve == nil {
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to load solve"})
+	}
+	if solve == nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "solve not found"})
 	}
 	if solve.UserID != userID {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "forbidden"})
 	}
 	_ = full.UpdateSolveStatus(ctx, body.SolveID, body.Status, body.Summary, "", "")
-
 	kind := "solve_" + body.Status
 	severity := "info"
 	if body.Status == "escalated" || body.Status == "exhausted" {
