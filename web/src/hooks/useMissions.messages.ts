@@ -437,6 +437,8 @@ export function createMissionMessageHandler(
           }
         }
 
+        const isExplicitAgentUnavailable = payload.code === 'no_agent' || payload.code === 'agent_unavailable'
+
         if (isToolMissingError) {
           emitMissionToolMissing(mission.type, missingTool, payload.message)
         } else {
@@ -489,7 +491,7 @@ export function createMissionMessageHandler(
         }
 
         const isDisconnectPattern = AGENT_DISCONNECT_ERROR_PATTERNS.some(pattern => combinedErrorText.includes(pattern))
-        if (isDisconnectPattern && mission.status === 'running' && (Date.now() - new Date(mission.updatedAt).getTime()) <= MISSION_RECONNECT_MAX_AGE_MS) {
+        if (!isExplicitAgentUnavailable && isDisconnectPattern && mission.status === 'running' && (Date.now() - new Date(mission.updatedAt).getTime()) <= MISSION_RECONNECT_MAX_AGE_MS) {
           return {
             ...mission,
             currentStep: 'Reconnecting...',

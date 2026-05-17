@@ -16,12 +16,12 @@ export function shareMetricsBetweenSameServerClusters(clusters: ClusterInfo[]): 
     if (!cluster.server) continue
     const existing = serverMetrics.get(cluster.server)
     // Prefer cluster with: nodeCount > 0, then capacity, then request data
-    const clusterHasNodes = cluster.nodeCount && cluster.nodeCount > 0
-    const clusterHasCapacity = !!cluster.cpuCores
-    const clusterHasRequests = !!cluster.cpuRequestsCores
-    const existingHasNodes = existing?.nodeCount && existing.nodeCount > 0
-    const existingHasCapacity = !!existing?.cpuCores
-    const existingHasRequests = !!existing?.cpuRequestsCores
+    const clusterHasNodes = cluster.nodeCount !== undefined && cluster.nodeCount > 0
+    const clusterHasCapacity = cluster.cpuCores != null || cluster.memoryGB != null || cluster.storageGB != null
+    const clusterHasRequests = cluster.cpuRequestsCores != null || cluster.memoryRequestsGB != null
+    const existingHasNodes = existing?.nodeCount !== undefined && existing.nodeCount > 0
+    const existingHasCapacity = existing?.cpuCores != null || existing?.memoryGB != null || existing?.storageGB != null
+    const existingHasRequests = existing?.cpuRequestsCores != null || existing?.memoryRequestsGB != null
 
     // Score: 4 points for nodes, 2 points for capacity, 1 point for requests
     const clusterScore = (clusterHasNodes ? 4 : 0) + (clusterHasCapacity ? 2 : 0) + (clusterHasRequests ? 1 : 0)
@@ -39,39 +39,52 @@ export function shareMetricsBetweenSameServerClusters(clusters: ClusterInfo[]): 
     const source = serverMetrics.get(cluster.server)
     if (!source) return cluster
 
-    // Check if we need to copy anything - include nodeCount, podCount, and capacity/requests
-    const needsNodes = cluster.nodeCount === undefined && source.nodeCount !== undefined && source.nodeCount > 0
-    const needsPods = cluster.podCount === undefined && source.podCount !== undefined && source.podCount > 0
-    const needsCapacity = !cluster.cpuCores && source.cpuCores
-    const needsRequests = !cluster.cpuRequestsCores && source.cpuRequestsCores
+    const needsNodes = (cluster.nodeCount === undefined || cluster.nodeCount === 0) && source.nodeCount !== undefined && source.nodeCount > 0
+    const needsPods = (cluster.podCount === undefined || cluster.podCount === 0) && source.podCount !== undefined && source.podCount > 0
+    const needsCpuCapacity = cluster.cpuCores == null && source.cpuCores != null
+    const needsMemoryCapacity = cluster.memoryGB == null && source.memoryGB != null
+    const needsStorageCapacity = cluster.storageGB == null && source.storageGB != null
+    const needsCpuRequests = cluster.cpuRequestsCores == null && source.cpuRequestsCores != null
+    const needsMemoryRequests = cluster.memoryRequestsGB == null && source.memoryRequestsGB != null
+    const needsCpuUsage = cluster.cpuUsageCores == null && source.cpuUsageCores != null
+    const needsMemoryUsage = cluster.memoryUsageGB == null && source.memoryUsageGB != null
+    const needsMetricsAvailable = cluster.metricsAvailable == null && source.metricsAvailable != null
 
-    if (!needsNodes && !needsPods && !needsCapacity && !needsRequests) return cluster
+    if (
+      !needsNodes &&
+      !needsPods &&
+      !needsCpuCapacity &&
+      !needsMemoryCapacity &&
+      !needsStorageCapacity &&
+      !needsCpuRequests &&
+      !needsMemoryRequests &&
+      !needsCpuUsage &&
+      !needsMemoryUsage &&
+      !needsMetricsAvailable
+    ) {
+      return cluster
+    }
 
-    // Copy all health metrics from the source cluster (node/pod counts, capacity, requests)
     return {
       ...cluster,
-      // Node and pod counts - critical for dashboard display
       nodeCount: needsNodes ? source.nodeCount : cluster.nodeCount,
       podCount: needsPods ? source.podCount : cluster.podCount,
-      // Also copy healthy and reachable flags when we copy node data
       healthy: needsNodes ? source.healthy : cluster.healthy,
       reachable: needsNodes ? source.reachable : cluster.reachable,
-      // CPU metrics
-      cpuCores: cluster.cpuCores ?? source.cpuCores,
-      cpuRequestsMillicores: cluster.cpuRequestsMillicores ?? source.cpuRequestsMillicores,
-      cpuRequestsCores: cluster.cpuRequestsCores ?? source.cpuRequestsCores,
-      cpuUsageCores: cluster.cpuUsageCores ?? source.cpuUsageCores,
-      // Memory metrics
-      memoryBytes: cluster.memoryBytes ?? source.memoryBytes,
-      memoryGB: cluster.memoryGB ?? source.memoryGB,
-      memoryRequestsBytes: cluster.memoryRequestsBytes ?? source.memoryRequestsBytes,
-      memoryRequestsGB: cluster.memoryRequestsGB ?? source.memoryRequestsGB,
-      memoryUsageGB: cluster.memoryUsageGB ?? source.memoryUsageGB,
-      // Storage metrics
-      storageBytes: cluster.storageBytes ?? source.storageBytes,
-      storageGB: cluster.storageGB ?? source.storageGB,
-      // Availability flags
-      metricsAvailable: cluster.metricsAvailable ?? source.metricsAvailable,
+      cpuCores: needsCpuCapacity ? source.cpuCores : cluster.cpuCores,
+      cpuRequestsMillicores: needsCpuRequests ? source.cpuRequestsMillicores : cluster.cpuRequestsMillicores,
+      cpuRequestsCores: needsCpuRequests ? source.cpuRequestsCores : cluster.cpuRequestsCores,
+      cpuUsageMillicores: needsCpuUsage ? source.cpuUsageMillicores : cluster.cpuUsageMillicores,
+      cpuUsageCores: needsCpuUsage ? source.cpuUsageCores : cluster.cpuUsageCores,
+      memoryBytes: needsMemoryCapacity ? source.memoryBytes : cluster.memoryBytes,
+      memoryGB: needsMemoryCapacity ? source.memoryGB : cluster.memoryGB,
+      memoryRequestsBytes: needsMemoryRequests ? source.memoryRequestsBytes : cluster.memoryRequestsBytes,
+      memoryRequestsGB: needsMemoryRequests ? source.memoryRequestsGB : cluster.memoryRequestsGB,
+      memoryUsageBytes: needsMemoryUsage ? source.memoryUsageBytes : cluster.memoryUsageBytes,
+      memoryUsageGB: needsMemoryUsage ? source.memoryUsageGB : cluster.memoryUsageGB,
+      storageBytes: needsStorageCapacity ? source.storageBytes : cluster.storageBytes,
+      storageGB: needsStorageCapacity ? source.storageGB : cluster.storageGB,
+      metricsAvailable: needsMetricsAvailable ? source.metricsAvailable : cluster.metricsAvailable,
     }
   })
 }

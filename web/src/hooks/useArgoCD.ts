@@ -66,9 +66,13 @@ export interface ArgoSyncData {
 // ============================================================================
 
 function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem(STORAGE_KEY_TOKEN)
   const headers: Record<string, string> = { 'Accept': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  try {
+    const token = localStorage.getItem(STORAGE_KEY_TOKEN)
+    if (token) headers['Authorization'] = `Bearer ${token}`
+  } catch {
+    // Ignore storage access failures and fall back to unauthenticated headers.
+  }
   return headers
 }
 
@@ -516,17 +520,22 @@ async function fetchArgoApplicationSets(): Promise<ArgoApplicationSet[]> {
   const ctrl = new AbortController()
   const tid = setTimeout(() => ctrl.abort(), FETCH_DEFAULT_TIMEOUT_MS)
   try {
-    const res = await fetch('/api/gitops/argocd/applicationsets', {
-      signal: ctrl.signal,
-      headers: authHeaders() })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      if (body.isDemoData) throw new Error('Demo data indicator from API')
-      throw new Error(`API ${res.status}: ${body.error || res.statusText}`)
+    try {
+      const res = await fetch('/api/gitops/argocd/applicationsets', {
+        signal: ctrl.signal,
+        headers: authHeaders() })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        if (body.isDemoData) throw new Error('Demo data indicator from API')
+        throw new Error(`API ${res.status}: ${body.error || res.statusText}`)
+      }
+      const data = await res.json()
+      if (data.isDemoData === true) throw new Error('Demo data indicator from API')
+      return (data.items || []) as ArgoApplicationSet[]
+    } catch (error) {
+      if (error instanceof Error) throw error
+      throw new Error('Failed to fetch ApplicationSets')
     }
-    const data = await res.json()
-    if (data.isDemoData === true) throw new Error('Demo data indicator from API')
-    return (data.items || []) as ArgoApplicationSet[]
   } finally {
     clearTimeout(tid)
   }
