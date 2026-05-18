@@ -112,8 +112,7 @@ func TestListStellarExecutions_Empty(t *testing.T) {
 
 func TestListStellarExecutions_FilterByMission(t *testing.T) {
 	s := newTestStore(t)
-	for i, mID := range []string{"m-1", "m-1", "m-2"} {
-		_ = i
+	for _, mID := range []string{"m-1", "m-1", "m-2"} {
 		exec := &StellarExecution{
 			UserID:      "user-1",
 			MissionID:   mID,
