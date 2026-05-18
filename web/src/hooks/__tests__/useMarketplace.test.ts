@@ -48,6 +48,45 @@ vi.mock('../../components/cards/cardRegistry', () => ({
   isCardTypeRegistered: (t: string) => mockIsCardTypeRegistered(t),
 }))
 
+vi.mock('@/lib/cache', async () => {
+  const React = await import('react')
+  return {
+    createCachedHook: <T>(config: { fetcher: () => Promise<T>; initialData: T }) => {
+      const { fetcher, initialData } = config
+      return function useMockCachedHook() {
+        const [state, setState] = React.useState<{
+          data: T; isLoading: boolean; error: string | null
+        }>({ data: initialData, isLoading: true, error: null })
+        const refetch = React.useCallback(async () => {
+          setState(s => ({ ...s, isLoading: true, error: null }))
+          try {
+            const data = await fetcher()
+            setState({ data, isLoading: false, error: null })
+          } catch (e) {
+            setState(s => ({
+              ...s,
+              isLoading: false,
+              error: e instanceof Error ? e.message : 'Failed to load marketplace',
+            }))
+          }
+        }, []) // eslint-disable-line react-hooks/exhaustive-deps
+        React.useEffect(() => { void refetch() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+        return {
+          data: state.data,
+          isLoading: state.isLoading,
+          error: state.error,
+          refetch,
+          isDemoData: false,
+          isRefreshing: false,
+          isFailed: false,
+          consecutiveFailures: 0,
+          lastRefresh: null,
+        }
+      }
+    },
+  }
+})
+
 import { useMarketplace, useAuthorProfile } from '../useMarketplace'
 import type { MarketplaceItem } from '../useMarketplace'
 
@@ -55,7 +94,6 @@ import type { MarketplaceItem } from '../useMarketplace'
 // Helpers
 // ---------------------------------------------------------------------------
 
-const CACHE_KEY = 'kc-marketplace-registry'
 const INSTALLED_KEY = 'kc-marketplace-installed'
 
 function makeItem(overrides: Partial<MarketplaceItem> = {}): MarketplaceItem {
@@ -83,10 +121,10 @@ function makeRegistry(items: MarketplaceItem[], presets?: MarketplaceItem[]) {
 }
 
 function seedCache(items: MarketplaceItem[], presets?: MarketplaceItem[]) {
-  localStorage.setItem(CACHE_KEY, JSON.stringify({
-    data: makeRegistry(items, presets),
-    fetchedAt: Date.now(),
-  }))
+  vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve(makeRegistry(items, presets)),
+  } as Response)
 }
 
 function seedInstalledItems(map: Record<string, unknown>) {
@@ -146,7 +184,7 @@ describe('useMarketplace', () => {
 
   // ──────────────────────── Cache behaviour ────────────────────────
 
-  it('loads items from valid localStorage cache without fetching', async () => {
+  it('loads items via fetch on mount', async () => {
     const items = [makeItem({ id: 'cached-1', name: 'Cached Dashboard' })]
     seedCache(items)
 
@@ -157,23 +195,12 @@ describe('useMarketplace', () => {
     })
     expect(result.current.allItems.length).toBe(1)
     expect(result.current.allItems[0].name).toBe('Cached Dashboard')
-    // fetch should not have been called because cache was valid
-    expect(globalThis.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 
-  it('ignores expired cache and fetches fresh data', async () => {
-    // Seed an expired cache entry (2 hours ago)
-    const TWO_HOURS_AGO = Date.now() - 2 * 60 * 60 * 1000
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      data: makeRegistry([makeItem({ id: 'stale' })]),
-      fetchedAt: TWO_HOURS_AGO,
-    }))
-
+  it('fetches fresh data from network on mount', async () => {
     const freshItems = [makeItem({ id: 'fresh-1', name: 'Fresh' })]
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(makeRegistry(freshItems)),
-    } as Response)
+    seedCache(freshItems)
 
     const { result } = renderHook(() => useMarketplace())
 
@@ -183,9 +210,8 @@ describe('useMarketplace', () => {
     expect(result.current.allItems[0].id).toBe('fresh-1')
   })
 
-  it('handles malformed cache JSON gracefully', async () => {
-    localStorage.setItem(CACHE_KEY, '<<invalid json>>')
-
+  it('recovers and loads items after a failed initial fetch', async () => {
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('transient'))
     const items = [makeItem({ id: 'recovered' })]
     vi.mocked(globalThis.fetch).mockResolvedValueOnce({
       ok: true,
@@ -197,8 +223,15 @@ describe('useMarketplace', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
+    expect(result.current.error).toBe('transient')
+
+    act(() => { result.current.refresh() })
+    await waitFor(() => {
+      expect(result.current.allItems.length).toBe(1)
+    })
     expect(result.current.allItems[0].id).toBe('recovered')
   })
+
 
   // ──────────────────────── Network fetch ────────────────────────
 
@@ -256,29 +289,14 @@ describe('useMarketplace', () => {
     expect(result.current.error).toBe('Failed to load marketplace')
   })
 
-  it('caches successful fetch response in localStorage', async () => {
-    const items = [makeItem({ id: 'to-cache' })]
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(makeRegistry(items)),
-    } as Response)
-
-    const { result } = renderHook(() => useMarketplace())
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
-    })
-
-    const stored = JSON.parse(localStorage.getItem(CACHE_KEY)!)
-    expect(stored.data.items[0].id).toBe('to-cache')
-    expect(stored.fetchedAt).toBeDefined()
-  })
 
   // ──────────────────────── Refresh (skipCache) ────────────────────────
 
-  it('refresh() clears cache and re-fetches', async () => {
-    // Seed valid cache
-    seedCache([makeItem({ id: 'old' })])
+  it('refresh() re-fetches and updates items', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(makeRegistry([makeItem({ id: 'old' })])),
+    } as Response)
 
     const { result } = renderHook(() => useMarketplace())
 
@@ -287,7 +305,6 @@ describe('useMarketplace', () => {
     })
     expect(result.current.allItems[0].id).toBe('old')
 
-    // Now set up fetch to return new data and call refresh
     vi.mocked(globalThis.fetch).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(makeRegistry([makeItem({ id: 'refreshed' })])),
@@ -296,9 +313,8 @@ describe('useMarketplace', () => {
     act(() => { result.current.refresh() })
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false)
+      expect(result.current.allItems[0].id).toBe('refreshed')
     })
-    expect(result.current.allItems[0].id).toBe('refreshed')
   })
 
   // ──────────────────────── Merge items + presets ────────────────────────
