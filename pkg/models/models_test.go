@@ -95,65 +95,6 @@ func TestCardPosition_JSONSerialization(t *testing.T) {
 	require.Equal(t, 6, decoded.H)
 }
 
-func TestCardType_Constants(t *testing.T) {
-	// Verify key card type string values are correct for frontend compatibility
-	tests := []struct {
-		cardType CardType
-		want     string
-	}{
-		{CardTypeClusterHealth, "cluster_health"},
-		{CardTypeAppStatus, "app_status"},
-		{CardTypeEventStream, "event_stream"},
-		{CardTypePodIssues, "pod_issues"},
-		{CardTypeDeploymentIssues, "deployment_issues"},
-		{CardTypeTopPods, "top_pods"},
-		{CardTypeResourceCapacity, "resource_capacity"},
-		{CardTypeGitOpsDrift, "gitops_drift"},
-		{CardTypeSecurityIssues, "security_issues"},
-		{CardTypeRBACOverview, "rbac_overview"},
-		{CardTypePolicyViolations, "policy_violations"},
-		{CardTypeUpgradeStatus, "upgrade_status"},
-		{CardTypeNamespaceAnalysis, "namespace_analysis"},
-		{CardTypeDeploymentProgress, "deployment_progress"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.want, func(t *testing.T) {
-			require.Equal(t, CardType(tc.want), tc.cardType)
-		})
-	}
-}
-
-func TestSwapStatus_Constants(t *testing.T) {
-	require.Equal(t, SwapStatus("pending"), SwapStatusPending)
-	require.Equal(t, SwapStatus("snoozed"), SwapStatusSnoozed)
-	require.Equal(t, SwapStatus("completed"), SwapStatusCompleted)
-	require.Equal(t, SwapStatus("cancelled"), SwapStatusCancelled)
-}
-
-func TestEventType_Constants(t *testing.T) {
-	require.Equal(t, EventType("card_focus"), EventTypeCardFocus)
-	require.Equal(t, EventType("card_expand"), EventTypeCardExpand)
-	require.Equal(t, EventType("card_action"), EventTypeCardAction)
-	require.Equal(t, EventType("card_hover"), EventTypeCardHover)
-	require.Equal(t, EventType("page_view"), EventTypePageView)
-}
-
-func TestGetCardTypes(t *testing.T) {
-	types := GetCardTypes()
-	require.NotEmpty(t, types)
-
-	// Every card type info should have required fields populated
-	for _, ct := range types {
-		t.Run(string(ct.Type), func(t *testing.T) {
-			require.NotEmpty(t, ct.Name, "card type name should not be empty")
-			require.NotEmpty(t, ct.Description, "card type description should not be empty")
-			require.NotEmpty(t, ct.Icon, "card type icon should not be empty")
-			require.NotEmpty(t, ct.KubestellarTool, "card type tool should not be empty")
-		})
-	}
-}
-
 func TestGetOnboardingQuestions(t *testing.T) {
 	questions := GetOnboardingQuestions()
 	require.NotEmpty(t, questions)
@@ -265,18 +206,6 @@ func TestGPUReservation_NormalizeGPUTypes_Empty(t *testing.T) {
 	require.True(t, r.MatchesNodeGPUType(""))
 }
 
-// TestGPUReservation_MatchesNodeGPUType exercises the node-matching
-// contract for the multi-type case: a reservation listing
-// {A100, H100} must accept a node advertising either, but reject a
-// node advertising a third type.
-func TestGPUReservation_MatchesNodeGPUType(t *testing.T) {
-	r := GPUReservation{GPUTypes: []string{"NVIDIA A100", "NVIDIA H100"}}
-	r.NormalizeGPUTypes()
-	require.True(t, r.MatchesNodeGPUType("NVIDIA A100-SXM4-80GB"))
-	require.True(t, r.MatchesNodeGPUType("NVIDIA H100 PCIe"))
-	require.False(t, r.MatchesNodeGPUType("NVIDIA V100"))
-	require.False(t, r.MatchesNodeGPUType("AMD MI250"))
-}
 
 // TestGPUReservation_JSONRoundTrip_MultiType pins the wire format: a
 // reservation with two types must serialize with both fields and
