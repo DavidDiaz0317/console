@@ -564,6 +564,10 @@ var apiKeyValidationClient = &http.Client{Timeout: 30 * time.Second}
 // to avoid hammering all providers at once.
 const maxConcurrentValidations = 5
 
+// consoleHealthResponseBytes caps io.Copy when draining statuspage health-check responses.
+// Defense-in-depth hardening against excessive data within the consoleHealthTimeout window (#14599).
+const consoleHealthResponseBytes = 10 * 1024 * 1024 // 10 MiB
+
 // ValidateAllKeys validates all configured API keys and caches results.
 // Validations run in parallel (bounded by maxConcurrentValidations) to avoid
 // sequential delays on startup when many providers are configured.
@@ -885,7 +889,7 @@ func checkStatuspageHealth(client *http.Client, apiURL string) string {
 		return "unknown"
 	}
 	defer func() {
-		io.Copy(io.Discard, resp.Body)
+		io.Copy(io.Discard, io.LimitReader(resp.Body, consoleHealthResponseBytes))
 		resp.Body.Close()
 	}()
 

@@ -27,6 +27,11 @@ const argocdSyncTimeout = 15 * time.Second
 // Matches the backend hardcoded value in TriggerArgoSync.
 const argocdCLITimeoutSeconds = "30"
 
+// argocdMaxResponseBytes caps io.Copy when draining ArgoCD sync responses.
+// Defense-in-depth against a compromised ArgoCD endpoint streaming excessive
+// data within the argocdSyncTimeout window (#14598).
+const argocdMaxResponseBytes = 10 * 1024 * 1024 // 10 MiB
+
 // argocdInsecureWarning ensures the TLS skip warning is logged only once per
 // kc-agent process when ARGOCD_TLS_INSECURE=true is set.
 var argocdInsecureWarning sync.Once
@@ -257,7 +262,7 @@ func tryArgoRESTSync(ctx context.Context, argoServerURL, argoToken, appName stri
 	// Drain the response body before closing to avoid HTTP connection pool
 	// exhaustion from partially-read bodies (#7746).
 	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, argocdMaxResponseBytes))
 		resp.Body.Close()
 	}()
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
