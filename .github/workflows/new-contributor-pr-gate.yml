@@ -23,17 +23,30 @@ jobs:
         run: |
           MIN_ACCOUNT_AGE_DAYS=30
 
-          # Skip bots and known automation
+          # Skip bots and known automation (before validation — bot logins contain [])
           if [[ "$AUTHOR" == *"[bot]"* ]] || [[ "$AUTHOR" == "dependabot"* ]]; then
             echo "Bot account — skipping gate."
             exit 0
           fi
 
-          # Check if author has any prior merged PRs or issues to this repo
-          MERGED_PRS=$(gh api "repos/${REPO}/pulls?state=closed&per_page=100" \
-            --jq "[.[] | select(.user.login == \"${AUTHOR}\" and .merged_at != null)] | length" 2>/dev/null || echo "0")
+          # Validate author login against GitHub username constraints
+          if [[ ! "$AUTHOR" =~ ^[a-zA-Z0-9-]+$ ]]; then
+            echo "Invalid author login format" >&2
+            exit 1
+          fi
 
-          PRIOR_ISSUES=$(gh api "repos/${REPO}/issues?state=all&creator=${AUTHOR}&per_page=10" \
+          # Check if author has any prior merged PRs or issues to this repo
+          MERGED_PRS=$(gh api "repos/${REPO}/pulls" \
+            --method GET \
+            -f state=closed \
+            -f per_page=100 \
+            --jq '[.[] | select(.user.login == env.AUTHOR and .merged_at != null)] | length' 2>/dev/null || echo "0")
+
+          PRIOR_ISSUES=$(gh api "repos/${REPO}/issues" \
+            --method GET \
+            -f state=all \
+            -f creator="$AUTHOR" \
+            -f per_page=10 \
             --jq '[.[] | select(.pull_request == null)] | length' 2>/dev/null || echo "0")
 
           if [ "$MERGED_PRS" != "0" ] || [ "$PRIOR_ISSUES" != "0" ]; then
