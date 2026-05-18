@@ -68,7 +68,7 @@ export function useMissionSidebarState() {
     showHistoryPanel ? 'history' : 'dashboard'
   )
 
-  const newMissionInputRef = useRef<HTMLTextAreaElement>(null)
+  const newMissionInputRef = useRef<HTMLTextAreaElement>(null!)
   const toastIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const browserHistoryEntryRef = useRef(false)
 

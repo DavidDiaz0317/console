@@ -94,7 +94,7 @@ export function handleImportMission(
     cncfProject: mission.cncfProject,
     steps: mission.steps?.map(s => ({ title: s.title, description: s.description })),
     tags: mission.tags,
-    initialPrompt: mission.resolution?.summary || mission.description })
+    initialPrompt: mission.resolution?.summary || mission.description || '' })
 
   openSidebar()
   setActiveMission(missionId)
@@ -111,7 +111,7 @@ export function handleImportMission(
       clearInterval(toastIntervalRef.current)
     }
     toastIntervalRef.current = setInterval(() => {
-      setToastCountdown((prev) => {
+      setToastCountdown((prev: number) => {
         if (prev <= 1) {
           if (toastIntervalRef.current) {
             clearInterval(toastIntervalRef.current)

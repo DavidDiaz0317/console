@@ -34,7 +34,7 @@ interface MissionSidebarExpandedProps {
   resolutionProps: Parameters<typeof MissionResolution>[0]
   resizeHandleProps: Parameters<typeof SidebarResizeHandle>[0]
   runningBannerProps: Parameters<typeof MissionSidebarRunningBanner>[0] | null
-  selectedAgent: string
+  selectedAgent: string | null
   showHistoryPanel: boolean
   showNewMission: boolean
   showSavedToast: string | null
