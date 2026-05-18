@@ -130,6 +130,7 @@ function VerticalCard({ sectionId, title, items, onNavigate }: {
           <button
             key={item.href}
             onClick={() => onNavigate(item.href)}
+            aria-label={item.label}
             className="w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors group"
           >
             <span>{item.label}</span>
@@ -237,6 +238,7 @@ export default function EnterprisePortal() {
         {/* Add More tile */}
         <button
           onClick={handleAddMore}
+          aria-label="Add more dashboards, cards, or widgets"
           className="rounded-xl border-2 border-dashed border-border hover:border-purple-500/50 bg-card/30 hover:bg-purple-500/5 p-5 flex flex-col items-center justify-center gap-3 transition-all group min-h-[200px]"
         >
           <div className="p-3 rounded-full bg-secondary group-hover:bg-purple-500/20 transition-colors">

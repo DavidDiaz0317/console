@@ -87,6 +87,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
             </p>
             <button
               onClick={this.handleReload}
+              aria-label="Reload page"
               className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors"
             >
               {i18next.t('common:chunkError.reloadPage')}

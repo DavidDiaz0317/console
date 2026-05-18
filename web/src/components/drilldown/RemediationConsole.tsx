@@ -448,6 +448,7 @@ Labels:       app=${resourceName.split('-')[0]}
         <div className="flex border-b border-border">
           <button
             onClick={() => setActiveTab('ai')}
+            aria-label={t('remediation.aiAnalysis')}
             className={cn(
               'flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors',
               activeTab === 'ai'
@@ -463,6 +464,7 @@ Labels:       app=${resourceName.split('-')[0]}
               setActiveTab('shell')
               setTimeout(() => shellInputRef.current?.focus(), FOCUS_DELAY_MS)
             }}
+            aria-label={t('remediation.shell')}
             className={cn(
               'flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors',
               activeTab === 'shell'
@@ -555,6 +557,7 @@ Labels:       app=${resourceName.split('-')[0]}
                     key={i}
                     onClick={() => executeCommand(qc.cmd)}
                     disabled={isExecuting}
+                    aria-label={qc.label}
                     className="px-3 py-1 text-xs rounded bg-card/50 border border-border text-muted-foreground hover:text-foreground hover:border-green-500/50 transition-colors disabled:opacity-50"
                   >
                     {qc.label}
@@ -609,6 +612,7 @@ Labels:       app=${resourceName.split('-')[0]}
                       executeCommand(lastFailedCommand)
                     }}
                     disabled={isExecuting}
+                    aria-label={t('remediation.retryCommand')}
                     className="flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isExecuting ? 'animate-spin' : ''}`} />
@@ -633,6 +637,7 @@ Labels:       app=${resourceName.split('-')[0]}
               <button
                 onClick={() => executeCommand(shellCommand)}
                 disabled={isExecuting || !shellCommand.trim()}
+                aria-label="Send command"
                 className="p-2 rounded hover:bg-card/50 text-muted-foreground hover:text-green-400 disabled:opacity-50"
               >
                 <Send className="w-4 h-4" />
@@ -649,6 +654,7 @@ Labels:       app=${resourceName.split('-')[0]}
                 {!isRunning && !isComplete && (
                   <button
                     onClick={startRemediation}
+                    aria-label={t('remediation.startRemediation')}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600 text-foreground transition-colors"
                   >
                     <Play className="w-4 h-4" />
@@ -659,6 +665,7 @@ Labels:       app=${resourceName.split('-')[0]}
                   <>
                     <button
                       onClick={() => setIsPaused(!isPaused)}
+                      aria-label={isPaused ? t('remediation.resume') : t('remediation.pause')}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-foreground transition-colors"
                     >
                       {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
@@ -666,6 +673,7 @@ Labels:       app=${resourceName.split('-')[0]}
                     </button>
                     <button
                       onClick={stopRemediation}
+                      aria-label={t('remediation.stop')}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-foreground transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -692,6 +700,7 @@ Labels:       app=${resourceName.split('-')[0]}
             <button
               onClick={copyLogs}
               disabled={logs.length === 0}
+              aria-label={t('remediation.copyLogs')}
               className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50"
               title={t('remediation.copyLogs')}
             >
@@ -700,6 +709,7 @@ Labels:       app=${resourceName.split('-')[0]}
             <button
               onClick={downloadLogs}
               disabled={logs.length === 0}
+              aria-label={t('remediation.downloadLogs')}
               className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50"
               title={t('remediation.downloadLogs')}
             >

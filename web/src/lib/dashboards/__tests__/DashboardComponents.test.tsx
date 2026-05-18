@@ -93,7 +93,7 @@ describe('DashboardHeader', () => {
   })
 
   it('renders extra controls when provided', () => {
-    render(<DashboardHeader title="T" icon="Server" extra={<button>Custom</button>} />)
+    render(<DashboardHeader title="T" icon="Server" extra={<button aria-label="Custom">Custom</button>} />)
     expect(screen.getByText('Custom')).toBeDefined()
   })
 })

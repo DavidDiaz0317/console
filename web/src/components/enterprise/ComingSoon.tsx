@@ -22,6 +22,7 @@ export default function ComingSoon() {
         </p>
         <button
           onClick={() => navigate(ROUTES.ENTERPRISE)}
+          aria-label="Back to Enterprise Portal"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-primary-foreground text-sm transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
