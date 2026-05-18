@@ -24,27 +24,36 @@
  */
 import { getStore } from "@netlify/blobs";
 import { enforceSimpleRateLimit } from "./_shared/rate-limit";
+import {
+  type Conclusion,
+  type Status,
+  type PullRequestRef,
+  type WorkflowRun,
+  type Job,
+  type JobStep,
+  type HistoryBlob,
+  STORE_NAME,
+  CACHE_TTL_MS,
+  MS_PER_DAY,
+  gh,
+  isValidRepo,
+  normalizeRun,
+  corsOrigin,
+  jsonResponse,
+  readCache,
+  writeCache,
+  readHistory,
+  writeHistory,
+  mergeIntoHistory,
+} from "./_shared/github-pipelines";
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants (route-specific)
 // ---------------------------------------------------------------------------
-
-const GITHUB_API = "https://api.github.com";
-
-/** Netlify Blobs store for all cached pipeline views */
-const STORE_NAME = "github-pipelines-cache";
-
-/** Blob key for the rolling 90-day history (outlives GitHub's retention) */
-const HISTORY_KEY = "history-v1";
-
-/** Cache TTL for view responses */
-const CACHE_TTL_MS = 120_000; // 2 min
 
 /** Matrix defaults */
 const MATRIX_DEFAULT_DAYS = 14;
 const MATRIX_MAX_DAYS = 90;
-/** History is capped at this many days on every write */
-const HISTORY_RETENTION_DAYS = 90;
 
 /** Failures view: max runs returned to client */
 const FAILURES_LIMIT = 10;
@@ -73,10 +82,7 @@ const DEFAULT_REPOS = [
 /**
  * Repos scanned by the pipelines dashboard. Centralized: set the
  * PIPELINE_REPOS env var to a comma-separated list of owner/repo strings
- * to override (e.g. "myorg/myrepo" for a single-repo install, or
- * "org/a,org/b,org/c" for multi-repo). If unset, defaults to the 6
- * KubeStellar repos above. The repo list is returned in every API
- * response so the frontend never hardcodes it.
+ * to override. If unset, defaults to the 6 KubeStellar repos above.
  */
 function getRepos(): string[] {
   const env = process.env.PIPELINE_REPOS;
@@ -95,292 +101,6 @@ const RELEASE_OVERFETCH = 10;
 
 /** Matches nightly release tags like "v0.3.21-nightly.20260417" */
 const NIGHTLY_TAG_RE = /nightly/i;
-
-/** Extracts PR number from merge-commit messages like "feat: something (#8673)" */
-const PR_FROM_COMMIT_RE = /\(#(\d+)\)\s*$/;
-
-/** ms per day — used in matrix date math */
-const MS_PER_DAY = 86_400_000;
-
-const ALLOWED_ORIGINS = [
-  "https://console.kubestellar.io",
-  "https://kubestellar.io",
-  "https://www.kubestellar.io",
-];
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type Conclusion =
-  | "success"
-  | "failure"
-  | "cancelled"
-  | "skipped"
-  | "timed_out"
-  | "action_required"
-  | "neutral"
-  | "stale"
-  | null;
-
-type Status = "queued" | "in_progress" | "completed" | "waiting" | "pending";
-
-interface PullRequestRef {
-  number: number;
-  url: string;
-}
-
-interface WorkflowRun {
-  id: number;
-  repo: string;
-  name: string;
-  workflowId: number;
-  headBranch: string;
-  status: Status;
-  conclusion: Conclusion;
-  event: string;
-  runNumber: number;
-  htmlUrl: string;
-  createdAt: string;
-  updatedAt: string;
-  pullRequests?: PullRequestRef[];
-}
-
-interface JobStep {
-  name: string;
-  status: Status;
-  conclusion: Conclusion;
-  number: number;
-  startedAt?: string;
-  completedAt?: string;
-}
-
-interface Job {
-  id: number;
-  name: string;
-  status: Status;
-  conclusion: Conclusion;
-  startedAt: string | null;
-  completedAt: string | null;
-  htmlUrl: string;
-  steps: JobStep[];
-}
-
-interface CachedView<T> {
-  payload: T;
-  fetchedAt: number;
-}
-
-/** Rolling long-term history, keyed by repo → workflow → YYYY-MM-DD */
-interface HistoryBlob {
-  /** ISO string of the most recent write — used for cache-coherence */
-  updatedAt: string;
-  /** repo/owner → workflow name → date → summary */
-  days: Record<string, Record<string, Record<string, HistoryDay>>>;
-}
-
-interface HistoryDay {
-  runId: number;
-  conclusion: Conclusion;
-  htmlUrl: string;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function corsOrigin(origin: string | null): string {
-  if (!origin) return ALLOWED_ORIGINS[0];
-  if (ALLOWED_ORIGINS.includes(origin)) return origin;
-  try {
-    const host = new URL(origin).hostname.toLowerCase();
-    if (host === "kubestellar.io" || host.endsWith(".kubestellar.io")) {
-      return origin;
-    }
-    if (host === "localhost") return origin;
-  } catch {
-    // Malformed origin — fall through to default
-  }
-  return ALLOWED_ORIGINS[0];
-}
-
-function jsonResponse(
-  body: unknown,
-  init: { status?: number; headers?: Record<string, string> } = {}
-): Response {
-  return new Response(JSON.stringify(body), {
-    status: init.status ?? 200,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
-}
-
-/** GitHub API fetch with auth + typed error */
-const GH_RETRY_MAX_ATTEMPTS = 3;
-const GH_RETRY_BASE_DELAY_MS = 1_000;
-
-async function gh(path: string, token: string, init: RequestInit = {}): Promise<Response> {
-  const url = path.startsWith("http") ? path : `${GITHUB_API}${path}`;
-  const headers = {
-    Accept: "application/vnd.github.v3+json",
-    Authorization: `Bearer ${token}`,
-    ...(init.headers ?? {}),
-  };
-  for (let attempt = 0; attempt < GH_RETRY_MAX_ATTEMPTS; attempt++) {
-    const resp = await fetch(url, { ...init, headers, signal: AbortSignal.timeout(10_000) });
-    if (resp.status !== 429 && resp.status !== 403) return resp;
-    if (attempt === GH_RETRY_MAX_ATTEMPTS - 1) {
-      console.warn(`[github-pipelines] retries exhausted for ${path}, status=${resp.status}`);
-      return resp;
-    }
-    const retryAfter = resp.headers.get("Retry-After");
-    const waitMs = retryAfter
-      ? Math.min(parseInt(retryAfter, 10) * 1000, 10_000)
-      : GH_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-    await new Promise((r) => setTimeout(r, waitMs));
-  }
-}
-
-/** Matches `owner/repo` format — allows any valid GitHub repo, not just
- * preconfigured PIPELINE_REPOS. The token's access controls what's fetchable. */
-const VALID_REPO_PATTERN = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
-
-function isValidRepo(repo: string | null): boolean {
-  return !!repo && VALID_REPO_PATTERN.test(repo);
-}
-
-/** YYYY-MM-DD in UTC */
-function dayKey(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-/** Map GitHub's workflow_run shape to our WorkflowRun type */
-function normalizeRun(r: Record<string, unknown>, repo: string): WorkflowRun {
-  let rawPRs = Array.isArray(r.pull_requests)
-    ? (r.pull_requests as Array<{ number?: number; url?: string }>)
-      .filter((pr) => typeof pr.number === "number")
-      .map((pr) => ({ number: pr.number!, url: String(pr.url ?? "") }))
-    : undefined;
-  // For push events (merge commits), the pull_requests array is empty.
-  // Extract the PR number from the commit message pattern "feat: … (#1234)".
-  if ((!rawPRs || rawPRs.length === 0) && r.event === "push") {
-    const headCommit = r.head_commit as { message?: string } | undefined;
-    const msg = headCommit?.message ?? "";
-    const m = PR_FROM_COMMIT_RE.exec(msg);
-    if (m) {
-      const num = Number(m[1]);
-      if (num > 0) {
-        rawPRs = [{ number: num, url: `https://github.com/${repo}/pull/${num}` }];
-      }
-    }
-  }
-  return {
-    id: Number(r.id),
-    repo,
-    name: String(r.name ?? ""),
-    workflowId: Number(r.workflow_id ?? 0),
-    headBranch: String(r.head_branch ?? ""),
-    status: (r.status as Status) ?? "completed",
-    conclusion: (r.conclusion as Conclusion) ?? null,
-    event: String(r.event ?? ""),
-    runNumber: Number(r.run_number ?? 0),
-    htmlUrl: String(r.html_url ?? ""),
-    createdAt: String(r.created_at ?? ""),
-    updatedAt: String(r.updated_at ?? ""),
-    pullRequests: rawPRs?.length ? rawPRs : undefined,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Cache helpers
-// ---------------------------------------------------------------------------
-
-async function readCache<T>(
-  store: ReturnType<typeof getStore>,
-  key: string
-): Promise<CachedView<T> | null> {
-  try {
-    const raw = await store.get(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedView<T>;
-    if (Date.now() - parsed.fetchedAt > CACHE_TTL_MS) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-async function writeCache<T>(
-  store: ReturnType<typeof getStore>,
-  key: string,
-  payload: T
-): Promise<void> {
-  const entry: CachedView<T> = { payload, fetchedAt: Date.now() };
-  await store.set(key, JSON.stringify(entry));
-}
-
-// ---------------------------------------------------------------------------
-// History blob
-// ---------------------------------------------------------------------------
-
-async function readHistory(
-  store: ReturnType<typeof getStore>
-): Promise<HistoryBlob> {
-  try {
-    const raw = await store.get(HISTORY_KEY);
-    if (!raw) return { updatedAt: new Date(0).toISOString(), days: {} };
-    return JSON.parse(raw) as HistoryBlob;
-  } catch {
-    return { updatedAt: new Date(0).toISOString(), days: {} };
-  }
-}
-
-async function writeHistory(
-  store: ReturnType<typeof getStore>,
-  history: HistoryBlob
-): Promise<void> {
-  // Trim to retention window
-  const cutoff = new Date(Date.now() - HISTORY_RETENTION_DAYS * MS_PER_DAY)
-    .toISOString()
-    .slice(0, 10);
-  for (const repo of Object.keys(history.days)) {
-    for (const wf of Object.keys(history.days[repo])) {
-      for (const d of Object.keys(history.days[repo][wf])) {
-        if (d < cutoff) delete history.days[repo][wf][d];
-      }
-    }
-  }
-  history.updatedAt = new Date().toISOString();
-  await store.set(HISTORY_KEY, JSON.stringify(history));
-}
-
-/** Merge a batch of runs into the history blob. Newest run per day wins. */
-function mergeIntoHistory(history: HistoryBlob, runs: WorkflowRun[]): void {
-  for (const run of runs) {
-    const day = dayKey(run.createdAt);
-    if (!day) continue;
-    const byRepo = (history.days[run.repo] ??= {});
-    const byWf = (byRepo[run.name] ??= {});
-    const existing = byWf[day];
-    // When conclusion is null but status indicates activity, surface
-    // "in_progress" so the matrix renders a blue dot, not grey.
-    const conclusion: Conclusion =
-      run.conclusion === null && (run.status === "in_progress" || run.status === "queued")
-        ? "in_progress" as Conclusion
-        : run.conclusion;
-    // Newer run wins (higher ID ≈ newer). Failure trumps success for the same day
-    // if one of the runs failed — CI health signal matters more than "latest".
-    if (!existing || run.id > existing.runId) {
-      byWf[day] = {
-        runId: run.id,
-        conclusion,
-        htmlUrl: run.htmlUrl,
-      };
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Pulse view
