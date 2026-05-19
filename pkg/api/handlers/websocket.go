@@ -391,9 +391,18 @@ func (h *Hub) RecordDemoSession(sessionID string) bool {
 		return true
 	}
 
-	// Reject new sessions if at capacity
+	// Evict expired sessions before capacity check
 	if len(h.demoSessions) >= maxDemoSessions {
-		return false
+		cutoff := time.Now().Add(-wsInactiveCutoff)
+		for id, lastSeen := range h.demoSessions {
+			if !lastSeen.After(cutoff) {
+				delete(h.demoSessions, id)
+			}
+		}
+		// Re-check capacity after eviction
+		if len(h.demoSessions) >= maxDemoSessions {
+			return false
+		}
 	}
 
 	h.demoSessions[sessionID] = time.Now()
