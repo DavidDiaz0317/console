@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { StellarNotification, StellarSolve, StellarWatch } from '../../types/stellar'
 import type { PendingAction } from './EventCard'
@@ -84,6 +84,8 @@ export function WatchDetailModal({
   onSnooze,
   onAction,
 }: WatchDetailModalProps) {
+  const titleId = useId()
+  const [currentTime] = useState(() => Date.now())
   const attemptSummary = useMemo(() => getWatchAttemptSummary(watch, solves), [watch, solves])
   // Esc to close
   useEffect(() => {
@@ -106,14 +108,14 @@ export function WatchDetailModal({
   // Stats
   const totalEvents = relatedEvents.length
   const last24h = useMemo(() => {
-    const cutoff = Date.now() - FREQUENCY_WINDOW_HOURS * 3600_000
+    const cutoff = currentTime - FREQUENCY_WINDOW_HOURS * 3600_000
     return relatedEvents.filter(n => new Date(n.createdAt).getTime() >= cutoff).length
-  }, [relatedEvents])
+  }, [currentTime, relatedEvents])
   const criticalCount = relatedEvents.filter(n => n.severity === 'critical').length
   const warningCount = relatedEvents.filter(n => n.severity === 'warning').length
 
-  const watchAgeMs = Date.now() - new Date(watch.createdAt).getTime()
-  const isStale = watch.lastChecked && (Date.now() - new Date(watch.lastChecked).getTime() > STALE_THRESHOLD_MS)
+  const watchAgeMs = currentTime - new Date(watch.createdAt).getTime()
+  const isStale = watch.lastChecked && (currentTime - new Date(watch.lastChecked).getTime() > STALE_THRESHOLD_MS)
   const isRecurring = totalEvents >= RECURRING_EVENT_THRESHOLD
 
   // Pick a dominant color based on highest severity of recent events
@@ -133,6 +135,9 @@ export function WatchDetailModal({
   return (
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0, 0, 0, 0.6)',
@@ -162,7 +167,7 @@ export function WatchDetailModal({
               <div style={{ fontSize: 10, fontFamily: 'var(--s-mono)', color: 'var(--s-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
                 Watch · {watch.resourceKind} · watching for {formatDuration(watchAgeMs)}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3 }}>
+              <div id={titleId} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3 }}>
                 {watch.namespace}/{watch.resourceName}
               </div>
               <div style={{ fontSize: 11, fontFamily: 'var(--s-mono)', color: 'var(--s-text-muted)', marginTop: 4 }}>

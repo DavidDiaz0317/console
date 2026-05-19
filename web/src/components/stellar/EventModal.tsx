@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useId, useMemo } from 'react'
 import type { StellarAction, StellarNotification, StellarSolve } from '../../types/stellar'
 import type { PendingAction } from './EventCard'
 import { countSolveAttempts } from './lib/derive'
@@ -156,7 +156,7 @@ function deriveRecommendations(n: StellarNotification): DerivedRecommendation[] 
   return hints.map(h => {
     const confidence = HINT_CONFIDENCE[h] ?? 60
     let label = h.charAt(0).toUpperCase() + h.slice(1)
-    let rationale = ''
+    let rationale: string
     if (h === 'restart') {
       label = 'Restart the deployment'
       rationale = "A rollout restart cycles every pod through a fresh image pull and a clean process — clears most transient crash loops and config caches."
@@ -201,6 +201,8 @@ function formatRelative(iso: string): string {
 }
 
 export function EventModal({ notification, allNotifications, pendingActions, solveStatus, solves, onClose, onAction }: EventModalProps) {
+  const titleId = useId()
+
   // Solve-derived attempt count for this workload. Mirrors the badge on the
   // card so the modal's header agrees with the list view.
   const solveAttemptCount = useMemo(
@@ -292,6 +294,9 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
   return (
     <div
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0, 0, 0, 0.6)',
@@ -321,7 +326,7 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
               <div style={{ fontSize: 10, fontFamily: 'var(--s-mono)', color: 'var(--s-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
                 {notification.severity} · {notification.type} · {formatRelative(notification.createdAt)}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3 }}>{notification.title}</div>
+              <div id={titleId} style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3 }}>{notification.title}</div>
               {(notification.cluster || notification.namespace || resourceName) && (
                 <div style={{ fontSize: 11, fontFamily: 'var(--s-mono)', color: 'var(--s-text-muted)', marginTop: 4 }}>
                   {notification.cluster}{notification.namespace ? ` / ${notification.namespace}` : ''}{resourceName ? ` / ${resourceName}` : ''}
