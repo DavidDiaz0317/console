@@ -401,7 +401,7 @@ export function IframeEmbed({ config }: { config?: IframeEmbedConfig }) {
                       onClick={handleRefresh}
                       className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                       {t('cards:iframeEmbed.retryButton')}
                     </button>
                     <button
