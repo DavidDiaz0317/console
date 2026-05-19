@@ -151,13 +151,25 @@ for script in "${ALL_SCRIPTS[@]}"; do
   echo -e "  ${BOLD}▶ ${SUITE_NAME}${NC}"
 
   # Run the script and capture output + exit code + duration.
-  # Cap at 1200s (20 min): unit-test routinely takes ~800s; other non-Playwright
-  # suites are well under 5 minutes. This guard prevents a truly hung suite from
-  # blocking the entire run while still allowing healthy suites to complete.
+  # Default cap: 1200s (20 min) for most suites. Per-suite overrides below
+  # allow longer-running suites (e.g. unit-test) to grow without raising the
+  # global cap. This prevents a truly hung suite from blocking the entire run.
+  #
+  # Per-suite timeout overrides (seconds). Only list suites that need MORE time
+  # than the default 1200s:
+  #   unit-test: was ~800s with 766 test files (May 2026); grew to 1500+s as
+  #     512+ new files were added. 1800s gives headroom for continued growth
+  #     while CI runners stay on 2-core/7GB (maxWorkers=1, sequential).
+  declare -A FAST_SUITE_TIMEOUT_OVERRIDES=(
+    ["unit-test"]=1800
+  )
+  SUITE_TIMEOUT_SECS="${FAST_SUITE_TIMEOUT_OVERRIDES[$SUITE_NAME]:-1200}"
+  SUITE_TIMEOUT_MINS=$((SUITE_TIMEOUT_SECS / 60))
+
   SUITE_START=$(date +%s)
   SUITE_OUTPUT="/tmp/suite-${SUITE_NAME}.log"
   SUITE_EXIT=0
-  timeout 1200s bash "$script" > "$SUITE_OUTPUT" 2>&1 || SUITE_EXIT=$?
+  timeout "${SUITE_TIMEOUT_SECS}s" bash "$script" > "$SUITE_OUTPUT" 2>&1 || SUITE_EXIT=$?
   SUITE_END=$(date +%s)
   SUITE_DURATION=$((SUITE_END - SUITE_START))
 
@@ -167,11 +179,11 @@ for script in "${ALL_SCRIPTS[@]}"; do
     SUITE_STATUS["$SUITE_NAME"]="pass"
     RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"pass\",\"duration\":${SUITE_DURATION}},"
   elif [ "$SUITE_EXIT" -eq 124 ]; then
-    echo -e "    ${YELLOW}⏰ TIMEOUT${NC}  (${SUITE_DURATION}s) — 20 minute limit exceeded"
+    echo -e "    ${YELLOW}⏰ TIMEOUT${NC}  (${SUITE_DURATION}s) — ${SUITE_TIMEOUT_MINS} minute limit exceeded"
     FAILED_SUITES=$((FAILED_SUITES + 1))
     FAILED_NAMES+=("$SUITE_NAME")
     SUITE_STATUS["$SUITE_NAME"]="fail"
-    RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"fail\",\"duration\":${SUITE_DURATION},\"failure_reason\":\"Test timed out after 20 minutes\"},"
+    RESULTS="${RESULTS}{\"suite\":\"${SUITE_NAME}\",\"status\":\"fail\",\"duration\":${SUITE_DURATION},\"failure_reason\":\"Test timed out after ${SUITE_TIMEOUT_MINS} minutes\"},"
   else
     echo -e "    ${RED}❌ FAIL${NC}  (${SUITE_DURATION}s)"
     # Show last few lines of output for failed suites
