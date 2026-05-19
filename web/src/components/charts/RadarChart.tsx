@@ -38,6 +38,10 @@ export function RadarChart({
   title,
 }: RadarChartProps) {
   const option = useMemo(() => {
+    if (data.length === 0) {
+      return null
+    }
+
     const maxVal = Math.max(...data.map(d => {
       const v = d[dataKey]
       return typeof v === 'number' ? v : 0
@@ -92,12 +96,14 @@ export function RadarChart({
         <h4 className="text-sm font-medium text-muted-foreground mb-2">{title}</h4>
       )}
       <div style={{ minHeight: size, width: '100%' }}>
-        <ReactECharts
-          option={option}
-          style={{ height: size, width: '100%' }}
-          notMerge={true}
-          opts={{ renderer: 'svg' }}
-        />
+        {option && (
+          <ReactECharts
+            option={option}
+            style={{ height: size, width: '100%' }}
+            notMerge={true}
+            opts={{ renderer: 'svg' }}
+          />
+        )}
       </div>
     </div>
   )
@@ -126,6 +132,10 @@ export function MultiRadarChart({
   title,
 }: MultiRadarChartProps) {
   const option = useMemo(() => {
+    if (data.length === 0) {
+      return null
+    }
+
     const maxVals = data.map(d => {
       let max = 0
       for (const s of series) {
@@ -186,12 +196,14 @@ export function MultiRadarChart({
         <h4 className="text-sm font-medium text-muted-foreground mb-2">{title}</h4>
       )}
       <div style={{ minHeight: size, width: '100%' }}>
-        <ReactECharts
-          option={option}
-          style={{ height: size, width: '100%' }}
-          notMerge={true}
-          opts={{ renderer: 'svg' }}
-        />
+        {option && (
+          <ReactECharts
+            option={option}
+            style={{ height: size, width: '100%' }}
+            notMerge={true}
+            opts={{ renderer: 'svg' }}
+          />
+        )}
       </div>
     </div>
   )
