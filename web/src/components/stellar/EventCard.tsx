@@ -3,6 +3,9 @@ import type { StellarNotification } from '../../types/stellar'
 import { countRelated, deriveImportance, deriveShortReason, deriveTags, importanceColor, type SolveStatus } from './lib/derive'
 import { formatRelativeTime } from './lib/time'
 
+// Loose translator type for dynamic key lookup in action config.
+type TranslateFn = (key: string, opts?: Record<string, unknown>) => string
+
 export interface PendingAction {
   prompt: string
   actionType: string
@@ -47,11 +50,11 @@ function buildRollbackPrompt(notification: StellarNotification): string {
   return `Undo the last action on ${notification.cluster}`
 }
 
-const ACTION_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
-  investigate: { label: 'Investigate', icon: '🔍', color: 'var(--s-info)' },
-  restart: { label: 'Restart', icon: '↻', color: 'var(--s-warning)' },
-  scale: { label: 'Scale', icon: '↕', color: 'var(--s-info)' },
-  solve: { label: 'Solve', icon: '✦', color: 'var(--s-success)' },
+const ACTION_CONFIG: Record<string, { labelKey: string; icon: string; color: string }> = {
+  investigate: { labelKey: 'stellar.eventCard.actions.investigate', icon: '🔍', color: 'var(--s-info)' },
+  restart: { labelKey: 'stellar.eventCard.actions.restart', icon: '↻', color: 'var(--s-warning)' },
+  scale: { labelKey: 'stellar.eventCard.actions.scale', icon: '↕', color: 'var(--s-info)' },
+  solve: { labelKey: 'stellar.eventCard.actions.solve', icon: '✦', color: 'var(--s-success)' },
 }
 
 function buildActionPrompt(hint: string, notification: StellarNotification): string {
@@ -130,7 +133,8 @@ export function EventCard({
   onAction?: (prompt: string, action?: PendingAction) => void
   onOpenDetail?: (n: StellarNotification) => void
 }) {
-  const { t } = useTranslation()
+  const { t: tTyped } = useTranslation()
+  const t = tTyped as unknown as TranslateFn
   const color = { critical: 'var(--s-critical)', warning: 'var(--s-warning)', info: 'var(--s-info)' }[notification.severity] ?? 'var(--s-text-muted)'
   const showRollback = isCompletedReversibleAction(notification)
   const hints = deriveActionHints(notification)
@@ -170,7 +174,7 @@ export function EventCard({
         </div>
         <div className="flex items-baseline justify-end gap-2">
           {!notification.read && (
-            <span className="text-[9px] font-mono" title={`importance score: ${importance.score}`} style={{
+            <span className="text-[9px] font-mono" title={t('stellar.eventCard.importanceScore', { score: importance.score })} style={{
               fontWeight: 700,
               letterSpacing: '0.05em', textTransform: 'uppercase',
               color: importanceCol, border: `1px solid ${importanceCol}`,
@@ -178,7 +182,7 @@ export function EventCard({
             }}>{importance.label}</span>
           )}
           {onOpenDetail && (
-            <span className="text-[10px] font-mono" style={{ color: 'var(--s-text-dim)', flexShrink: 0 }}>details →</span>
+            <span className="text-[10px] font-mono" style={{ color: 'var(--s-text-dim)', flexShrink: 0 }}>{t('stellar.eventCard.details')}</span>
           )}
           {relativeCreatedAt && (
             <span className="text-[10px] text-muted-foreground" style={{ flexShrink: 0 }}>{relativeCreatedAt}</span>
@@ -242,7 +246,7 @@ export function EventCard({
           paddingBottom: 1,
           background: 'var(--s-surface)', border: '1px solid var(--s-border-muted)',
         }}>
-          <span>✦ Stellar tried {attemptCount}× — see details</span>
+          <span>{t('stellar.eventCard.attemptCount', { count: attemptCount })}</span>
         </div>
       ) : null}
       <div className="mt-1 text-xs" style={{ color: 'var(--s-text-muted)', lineHeight: 1.55 }}>{notification.body}</div>
@@ -277,14 +281,14 @@ export function EventCard({
               onClick={() => onRollback(buildRollbackPrompt(notification))}
               style={{ background: 'none', border: '1px solid var(--s-border-muted)', borderRadius: 'var(--s-rs)', color: 'var(--s-text-muted)', cursor: 'pointer' }}
             >
-              ↩ Undo this
+              ↩ {t('stellar.eventCard.undoThis')}
             </button>
           )}
           {isEscalated && onSolve && (
             <button
               className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px]"
               onClick={() => { void onSolve(notification.id) }}
-              title="Escalate to an AI mission on your connected agent"
+              title={t('stellar.eventCard.tryAiMissionTitle')}
               style={{
                 background: 'rgba(227,179,65,0.1)',
                 border: '1px solid var(--s-warning)',
@@ -297,7 +301,8 @@ export function EventCard({
             </button>
           )}
           {!hideManualActions && !isEscalated && hints.map(hint => {
-            const cfg = ACTION_CONFIG[hint] ?? { label: hint.charAt(0).toUpperCase() + hint.slice(1), icon: '→', color: 'var(--s-text-muted)' }
+            const cfg = ACTION_CONFIG[hint] ?? { labelKey: '', icon: '→', color: 'var(--s-text-muted)' }
+            const actionLabel = cfg.labelKey ? t(cfg.labelKey) : hint.charAt(0).toUpperCase() + hint.slice(1)
             const isSolveActive = hint === 'solve' && solveStatus?.isActive
             return (
               <button
@@ -322,7 +327,7 @@ export function EventCard({
                   }
                   onAction?.(prompt, action)
                 }}
-                title={isSolveActive ? 'Solve already in progress' : `${cfg.label}: ${notification.title}`}
+                title={isSolveActive ? t('stellar.eventCard.solveAlreadyInProgress') : t('stellar.eventCard.actionTitle', { action: actionLabel, title: notification.title })}
                 style={{
                   gap: 3,
                   background: 'none',
@@ -334,7 +339,7 @@ export function EventCard({
                 }}
               >
                 <span>{cfg.icon}</span>
-                <span>{isSolveActive ? 'Solving…' : cfg.label}</span>
+                <span>{isSolveActive ? t('stellar.eventCard.solving') : actionLabel}</span>
               </button>
             )
           })}
@@ -343,7 +348,7 @@ export function EventCard({
               color: 'var(--s-text-dim)',
               fontStyle: 'italic', alignSelf: 'center',
             }}>
-              Stellar is handling this — no input needed.
+              {t('stellar.eventCard.autoHandling')}
             </span>
           )}
         </div>
