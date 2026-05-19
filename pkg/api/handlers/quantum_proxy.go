@@ -186,7 +186,10 @@ func (h *QuantumProxyHandler) ProxyResultHistogram(c *fiber.Ctx) error {
 	return c.Send(body)
 }
 
-// ProxyPostRequest handles POST requests to quantum endpoints
+// ProxyPostRequest handles POST requests to quantum endpoints.
+// NOTE: This handler is already protected by JWT auth at the route-group level
+// (see routes_auth.go: api group). The path validation below provides
+// defense-in-depth against path traversal.
 func (h *QuantumProxyHandler) ProxyPostRequest(c *fiber.Ctx) error {
 	endpoint := c.Params("*")
 

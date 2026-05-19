@@ -1,5 +1,6 @@
 import type { Context } from "@netlify/functions";
 import { enforceSimpleRateLimit } from "./_shared/rate-limit";
+import { unauthorizedResponse } from "./_shared/errorResponse";
 
 const RATE_LIMIT_STORE_NAME = "quantum-proxy-rate-limit";
 const QUANTUM_PROXY_RATE_LIMIT_MAX_REQUESTS = 500;
@@ -80,6 +81,45 @@ const ALLOWED_PATHS = new Set([
 
 const PROXY_TIMEOUT_MS = 15_000;
 const ALLOWED_METHODS = new Set(["GET", "POST"]);
+const QUANTUM_MUTATE_AUTH_TOKEN_ENV = "QUANTUM_MUTATE_AUTH_TOKEN";
+
+// Mutation paths that require authentication
+const MUTATION_PATHS = new Set([
+  "/execute",
+  "/loop/start",
+  "/loop/stop",
+  "/auth/save",
+  "/auth/clear",
+  "/qasm/file",
+]);
+
+function requirePostAuth(req: Request, path: string): Response | null {
+  // Only enforce auth on POST to mutation endpoints
+  if (req.method !== "POST" || !MUTATION_PATHS.has(path)) {
+    return null;
+  }
+
+  const expectedToken = process.env[QUANTUM_MUTATE_AUTH_TOKEN_ENV] ?? "";
+  if (!expectedToken) {
+    // If no auth token is configured, mutations are disabled
+    return new Response(
+      JSON.stringify({ error: "Quantum mutations disabled on this deployment" }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const authHeader = req.headers.get("authorization")?.trim();
+  if (!authHeader?.startsWith("Bearer ")) {
+    return unauthorizedResponse("Authentication required for quantum mutations");
+  }
+
+  const bearerToken = authHeader.slice("Bearer ".length).trim();
+  if (bearerToken !== expectedToken) {
+    return unauthorizedResponse("Invalid authentication token");
+  }
+
+  return null;
+}
 
 function isAllowedPath(path: string): boolean {
   // Reject path traversal attempts
@@ -117,6 +157,12 @@ export default async (req: Request, context: Context): Promise<Response> => {
         headers: { "Content-Type": "application/json" },
       }
     );
+  }
+
+  // SECURITY: Require auth for POST mutation endpoints
+  const authError = requirePostAuth(req, path);
+  if (authError) {
+    return authError;
   }
 
   const clientIp =
