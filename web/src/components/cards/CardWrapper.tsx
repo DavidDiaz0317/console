@@ -315,16 +315,16 @@ export const CardWrapper = memo(function CardWrapper({
 
   // Skeleton timeout: show skeleton for up to 5s while waiting for card to report.
   // After timeout, assume card doesn't use reporting and show content.
-  const skeletonTimedOut = useTimeoutFlag(LOADING_TIMEOUT_MS, checkIsDemoMode)
+  const skeletonTimedOut = useTimeoutFlag(LOADING_TIMEOUT_MS, checkIsDemoMode())
 
   // Skeleton delay: don't show skeleton immediately — prevents flicker when cache loads quickly from IndexedDB
-  const skeletonDelayPassed = useTimeoutFlag(SKELETON_DELAY_MS, checkIsDemoMode)
+  const skeletonDelayPassed = useTimeoutFlag(SKELETON_DELAY_MS, checkIsDemoMode())
 
   // Quick initial render timeout: if card hasn't reported state within 150ms, assume static/demo card
-  const initialRenderTimedOut = useTimeoutFlag(INITIAL_RENDER_TIMEOUT_MS, checkIsDemoMode)
+  const initialRenderTimedOut = useTimeoutFlag(INITIAL_RENDER_TIMEOUT_MS, checkIsDemoMode())
 
   // Minimum skeleton display duration guard (#5206): prevents skeleton→content→skeleton flicker
-  const minSkeletonElapsed = useTimeoutFlag(MIN_SKELETON_DISPLAY_MS, checkIsDemoMode)
+  const minSkeletonElapsed = useTimeoutFlag(MIN_SKELETON_DISPLAY_MS, checkIsDemoMode())
 
   // Stuck loading guard: force exit loading state after CARD_LOADING_TIMEOUT_MS (30s)
   const cardLoadingTimedOut = useConditionalTimeout(childDataState?.isLoading ?? false, CARD_LOADING_TIMEOUT_MS)
@@ -610,7 +610,8 @@ export const CardWrapper = memo(function CardWrapper({
   }, [onRefresh, cardType])
 
   const handleLoadingTimeoutRetry = useCallback(() => {
-    setCardLoadingTimedOut(false)
+    // cardLoadingTimedOut resets automatically via useConditionalTimeout when
+    // childDataState.isLoading toggles back to true on re-fetch
     onRefresh?.()
   }, [onRefresh])
 
