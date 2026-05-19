@@ -517,6 +517,7 @@ func (h *AuthHandler) oauthErrorRedirect(c *fiber.Ctx, errorCode, detail string)
 
 // classifyExchangeError inspects a token-exchange error and returns a specific
 // error code plus a short description suitable for logging and the frontend.
+// Enhanced in #14850 to provide clearer guidance when OAuth credentials are invalid.
 func classifyExchangeError(err error) (code, detail string) {
 	msg := err.Error()
 
@@ -534,14 +535,15 @@ func classifyExchangeError(err error) (code, detail string) {
 	lower := strings.ToLower(msg)
 	switch {
 	case strings.Contains(lower, "incorrect_client_credentials") ||
-		strings.Contains(lower, "client_id"):
-		return "invalid_client", "GitHub rejected the client credentials — verify GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET"
+		strings.Contains(lower, "client_id") ||
+		strings.Contains(lower, "invalid_client"):
+		return "invalid_client", "GitHub OAuth failed: invalid client credentials. Verify GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in your .env file match your GitHub OAuth App settings at https://github.com/settings/developers"
 	case strings.Contains(lower, "redirect_uri_mismatch"):
-		return "redirect_mismatch", "The callback URL does not match the one registered in GitHub OAuth app settings"
+		return "redirect_mismatch", "The callback URL does not match the one registered in GitHub OAuth app settings. Expected: the callback URL in your .env to match the one at https://github.com/settings/developers"
 	case strings.Contains(lower, "bad_verification_code"):
 		return "exchange_failed", "Authorization code expired or was already used — please try logging in again"
 	default:
-		return "exchange_failed", "Token exchange failed — please try logging in again"
+		return "exchange_failed", "Token exchange failed — please try logging in again. If this persists, verify your GitHub OAuth App credentials."
 	}
 }
 
@@ -610,7 +612,12 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 	token, err := h.oauthConfig.Exchange(ctx, code)
 	if err != nil {
 		errCode, detail := classifyExchangeError(err)
-		slog.Error("[Auth] token exchange failed", "code", errCode, "error", err, "detail", detail)
+		clientIDPrefix := ""
+		if h.oauthConfig.ClientID != "" {
+			clientIDPrefix = h.oauthConfig.ClientID[:min(8, len(h.oauthConfig.ClientID))] + "..."
+		}
+		slog.Error("[Auth] token exchange failed", "code", errCode, "error", err, "detail", detail,
+			"clientID_prefix", clientIDPrefix)
 		return h.oauthErrorRedirect(c, errCode, detail)
 	}
 
