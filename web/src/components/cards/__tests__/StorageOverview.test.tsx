@@ -97,6 +97,26 @@ describe('StorageOverview', () => {
       render(<StorageOverview />)
       expect(screen.getByText('storageOverview.noData')).toBeTruthy()
     })
+
+    it('renders failed-to-fetch message when empty state is caused by fetch errors', async () => {
+      const { useCardLoadingState } = await import('../CardDataContext')
+      const { useCachedPVCs } = await import('../../../hooks/useCachedData')
+      vi.mocked(useCardLoadingState).mockReturnValue({ showSkeleton: false, showEmptyState: true } as never)
+      vi.mocked(useCachedPVCs).mockReturnValue({
+        pvcs: [],
+        isLoading: false,
+        isRefreshing: false,
+        isDemoFallback: false,
+        isFailed: true,
+        consecutiveFailures: 1,
+        error: 'PVC API unavailable',
+      } as never)
+
+      render(<StorageOverview />)
+
+      expect(screen.getByText('storageOverview.fetchFailed')).toBeTruthy()
+      expect(screen.getByText('PVC API unavailable')).toBeTruthy()
+    })
   })
 
   describe('Main stats', () => {
@@ -120,8 +140,9 @@ describe('StorageOverview', () => {
       vi.mocked(useCachedPVCs).mockReturnValue({
         pvcs: [
           { cluster: 'cluster-1', namespace: 'default', name: 'pvc-1', status: 'Bound', storageClass: 'gp2' },
-          { cluster: 'cluster-1', namespace: 'default', name: 'pvc-2', status: 'Pending', storageClass: 'gp2' },
-          { cluster: 'cluster-1', namespace: 'default', name: 'pvc-3', status: 'Lost', storageClass: 'gp2' },
+          { cluster: 'cluster-1', namespace: 'default', name: 'pvc-2', status: 'Bound', storageClass: 'gp2' },
+          { cluster: 'cluster-1', namespace: 'default', name: 'pvc-3', status: 'Pending', storageClass: 'gp2' },
+          { cluster: 'cluster-1', namespace: 'default', name: 'pvc-4', status: 'Lost', storageClass: 'gp2' },
         ],
         isLoading: false,
         isRefreshing: false,
@@ -130,9 +151,11 @@ describe('StorageOverview', () => {
         consecutiveFailures: 0,
       } as never)
       render(<StorageOverview />)
-      // bound=1, pending=1, failed=1 — all rendered as "1"
-      const ones = screen.getAllByText('1')
-      expect(ones.length).toBeGreaterThanOrEqual(3)
+
+      expect(screen.getByTitle('4 Persistent Volume Claims')).toBeTruthy()
+      expect(screen.getByTitle('2 PVCs successfully bound')).toBeTruthy()
+      expect(screen.getByTitle('1 PVC pending')).toBeTruthy()
+      expect(screen.getByTitle('1 PVC in failed/lost state')).toBeTruthy()
     })
   })
 
@@ -182,6 +205,25 @@ describe('StorageOverview', () => {
     it('renders cluster filter dropdown', () => {
       render(<StorageOverview />)
       expect(screen.getByTestId('cluster-filter')).toBeTruthy()
+    })
+  })
+
+  describe('Error states', () => {
+    it('renders all-fetches-failed state when refresh retries are exhausted', async () => {
+      const { useCachedPVCs } = await import('../../../hooks/useCachedData')
+      vi.mocked(useCachedPVCs).mockReturnValue({
+        pvcs: [],
+        isLoading: false,
+        isRefreshing: false,
+        isDemoFallback: false,
+        isFailed: false,
+        consecutiveFailures: 3,
+      } as never)
+
+      render(<StorageOverview />)
+
+      expect(screen.getByText('storageOverview.allFetchesFailed')).toBeTruthy()
+      expect(screen.getByText('storageOverview.allFetchesFailedHint')).toBeTruthy()
     })
   })
 

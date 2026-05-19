@@ -82,6 +82,25 @@ describe('NodeConditions', () => {
       expect(pulses.length).toBeGreaterThan(0)
     })
 
+    it('renders empty state when there are no nodes', async () => {
+      const { useCachedNodes } = await import('../../../hooks/useCachedData')
+      vi.mocked(useCachedNodes).mockReturnValue({
+        nodes: [],
+        isLoading: false,
+        isRefreshing: false,
+        isDemoFallback: false,
+        isFailed: false,
+        consecutiveFailures: 0,
+        lastRefresh: null,
+      } as never)
+      mockUseCardLoadingState.mockReturnValue({ showEmptyState: true })
+
+      render(<NodeConditions />)
+
+      expect(screen.getByText('nodeConditions.emptyTitle')).toBeTruthy()
+      expect(screen.getByText('nodeConditions.emptyMessage')).toBeTruthy()
+    })
+
     it('reports demo data instead of a failure state when fallback nodes are shown', async () => {
       const { useCachedNodes } = await import('../../../hooks/useCachedData')
       vi.mocked(useCachedNodes).mockReturnValue({

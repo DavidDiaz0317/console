@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PodIssues } from '../PodIssues'
 import type { PodIssue } from '../../../hooks/useMCP'
@@ -396,6 +396,55 @@ describe('PodIssues', () => {
       render(<PodIssues />)
       await userEvent.click(screen.getByTestId('card-list-item'))
       expect(mockDrillToPod).not.toHaveBeenCalled()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  describe('search', () => {
+    it('filters issues when the search query changes', () => {
+      const issues = [
+        makePodIssue({ name: 'alpha-pod', namespace: 'default' }),
+        makePodIssue({ name: 'beta-pod', namespace: 'kube-system', issues: ['ImagePullBackOff'] }),
+      ]
+      let currentSearch = ''
+      const setSearch = vi.fn((value: string) => {
+        currentSearch = value
+      })
+
+      setupDefaults({ issues })
+      mockUseCardData.mockImplementation((rawIssues: PodIssue[]) => {
+        const query = currentSearch.toLowerCase()
+        const filteredIssues = rawIssues.filter(issue => [
+          issue.name,
+          issue.namespace,
+          issue.cluster || '',
+          issue.status,
+          ...(issue.issues || []),
+        ].join(' ').toLowerCase().includes(query))
+        const base = makeCardDataReturn(filteredIssues)
+        return {
+          ...base,
+          items: filteredIssues,
+          totalItems: filteredIssues.length,
+          filters: {
+            ...base.filters,
+            search: currentSearch,
+            setSearch,
+          },
+        }
+      })
+
+      const { rerender } = render(<PodIssues />)
+
+      expect(screen.getByText('alpha-pod')).toBeInTheDocument()
+      expect(screen.getByText('beta-pod')).toBeInTheDocument()
+
+      fireEvent.change(screen.getByTestId('search-input'), { target: { value: 'kube-system' } })
+      rerender(<PodIssues />)
+
+      expect(setSearch).toHaveBeenCalledWith('kube-system')
+      expect(screen.queryByText('alpha-pod')).not.toBeInTheDocument()
+      expect(screen.getByText('beta-pod')).toBeInTheDocument()
     })
   })
 
