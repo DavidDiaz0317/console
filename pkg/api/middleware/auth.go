@@ -347,9 +347,27 @@ const bearerScheme = "Bearer "
 func JWTAuth(secret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Übersicht desktop widgets use curl without auth tokens.
-		// Allow read-only access when source=widget is present (#widget-auth).
-		if c.Method() == fiber.MethodGet && strings.Contains(c.Query("source"), "widget") {
-			return c.Next()
+		// Allow read-only GET access for the exact source value on paths that
+		// already serve public data. Using exact equality (not contains) prevents
+		// trivial bypasses; path prefix guard prevents access to sensitive routes
+		// (settings, users, dashboards, K8s proxy, etc.). See #14875.
+		if c.Method() == fiber.MethodGet && c.Query("source") == "ubersicht-widget" {
+			widgetPublicPrefixes := []string{
+				"/api/public/",
+				"/api/youtube/",
+				"/api/medium/",
+				"/api/missions/",
+				"/api/github/issues",
+				"/api/nightly-e2e/",
+				"/api/rewards/",
+				"/api/issue-stats",
+				"/api/github-pipelines",
+			}
+			for _, prefix := range widgetPublicPrefixes {
+				if strings.HasPrefix(c.Path(), prefix) {
+					return c.Next()
+				}
+			}
 		}
 
 		authHeader := c.Get("Authorization")
