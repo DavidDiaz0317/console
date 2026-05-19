@@ -661,6 +661,10 @@ test('card cache compliance — storage and retrieval', async ({ page }, testInf
 
   // ── Phase 4: Cache snapshot ────────────────────────────────────────────
   console.log('[CacheTest] Phase 4: Inspecting cache state')
+  // Record time before snapshot so Phase 9 TTL check compares entry ages
+  // relative to when they were captured — not relative to when Phase 9 runs
+  // (which can be 5+ minutes later, falsely flagging all entries as stale).
+  const cacheSnapshotTime = Date.now()
   const cacheState = await snapshotCacheState(page)
   console.log(`[CacheTest] IndexedDB: ${cacheState.indexedDBEntries.length} entries, localStorage: ${cacheState.localStorageKeys.length} cache keys`)
 
@@ -915,18 +919,20 @@ test('card cache compliance — storage and retrieval', async ({ page }, testInf
   // ── Phase 9: Cache TTL validation ───────────────────────────────────
   console.log('[CacheTest] Phase 9: Cache TTL validation')
 
-  // Check that cache entries have reasonable timestamps (not stale)
-  const now = Date.now()
+  // Check that cache entries had reasonable timestamps at snapshot time (Phase 4).
+  // Use cacheSnapshotTime (recorded in Phase 4) as the reference point rather
+  // than Date.now() here, because Phases 5–8 can take 5+ minutes on CI
+  // shared runners, which would cause every entry to appear stale by Phase 9.
   const MAX_ACCEPTABLE_AGE_MS = 5 * 60 * 1000 // 5 minutes (entries were just written)
   let staleEntries = 0
   let validTimestamps = 0
 
   for (const entry of cacheState.indexedDBEntries) {
     if (entry.timestamp > 0) {
-      const ageMs = now - entry.timestamp
+      const ageMs = cacheSnapshotTime - entry.timestamp
       if (ageMs > MAX_ACCEPTABLE_AGE_MS) {
         staleEntries++
-        console.log(`[CacheTest] STALE: ${entry.key} — age ${Math.round(ageMs / 1000)}s (max ${MAX_ACCEPTABLE_AGE_MS / 1000}s)`)
+        console.log(`[CacheTest] STALE: ${entry.key} — age at snapshot ${Math.round(ageMs / 1000)}s (max ${MAX_ACCEPTABLE_AGE_MS / 1000}s)`)
       } else {
         validTimestamps++
       }
@@ -937,6 +943,6 @@ test('card cache compliance — storage and retrieval', async ({ page }, testInf
     console.log(`[CacheTest] TTL check: ${validTimestamps} valid, ${staleEntries} stale out of ${cacheState.indexedDBEntries.length} entries`)
   }
 
-  // Stale entries should be 0 since we just wrote them
-  expect(staleEntries, `${staleEntries} cache entries are stale (>5min old)`).toBe(0)
+  // Stale entries should be 0 since we just wrote them (checked relative to Phase 4 snapshot time)
+  expect(staleEntries, `${staleEntries} cache entries were stale at snapshot time (>5min old at Phase 4)`).toBe(0)
 })
