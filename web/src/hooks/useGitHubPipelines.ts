@@ -506,10 +506,15 @@ export function usePipelineMutations() {
   const run = useCallback(
     async (op: 'rerun' | 'cancel', repo: string, runId: number): Promise<MutationResult> => {
       const p = new URLSearchParams({ view: 'mutate', op, repo, run: String(runId) })
+      const mutationSecret = import.meta.env.VITE_PIPELINES_MUTATION_SECRET ?? ''
+      const headers: Record<string, string> = { 'X-Requested-With': 'XMLHttpRequest' }
+      if (mutationSecret) {
+        headers['Authorization'] = `Bearer ${mutationSecret}`
+      }
       try {
         const res = await fetch(`/api/github-pipelines?${p.toString()}`, {
           method: 'POST',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          headers,
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         })
         const body = (await res.json().catch(() => ({}))) as { error?: string }
