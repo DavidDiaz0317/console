@@ -90,6 +90,7 @@ class DrillDownErrorBoundary extends Component<
           )}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => this.setState({ hasError: false, error: null })}
               className="px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
             >
@@ -97,6 +98,7 @@ class DrillDownErrorBoundary extends Component<
               Retry
             </button>
             <button
+              type="button"
               onClick={this.props.onClose}
               className="px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors"
             >
@@ -351,6 +353,7 @@ export function DrillDownModal() {
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Back button - always visible; closes modal at root level */}
             <button
+              type="button"
               data-testid="drilldown-back"
               onClick={state.stack.length > 1 ? pop : close}
               className="p-2 rounded-lg hover:bg-card/50 text-muted-foreground hover:text-foreground transition-colors"
@@ -377,6 +380,7 @@ export function DrillDownModal() {
                       </svg>
                     )}
                     <button
+                      type="button"
                       onClick={() => goTo(index)}
                       aria-label={t('drilldown.navigateTo', 'Navigate to {{title}}', { title: view.title })}
                       className={`px-2 py-1 rounded text-sm transition-colors flex items-center gap-1.5 ${
@@ -402,6 +406,7 @@ export function DrillDownModal() {
 
           {/* Close button */}
           <button
+            type="button"
             data-testid="drilldown-close"
             onClick={close}
             className="p-2 rounded-lg hover:bg-card/50 text-muted-foreground hover:text-foreground transition-colors"
