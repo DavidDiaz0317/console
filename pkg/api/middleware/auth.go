@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/kubestellar/console/pkg/safego"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/kubestellar/console/pkg/safego"
 
 	"github.com/kubestellar/console/pkg/api/audit"
 )
@@ -342,21 +342,33 @@ const jwtCookieName = "kc_auth"
 // middleware and any helpers agree on the exact prefix to strip.
 const bearerScheme = "Bearer "
 
+func isLoopbackIP(ip string) bool {
+	return ip == "127.0.0.1" || ip == "::1"
+}
+
 // JWTAuth creates JWT authentication middleware.
 // Token resolution order: Authorization header -> HttpOnly cookie -> _token query param (SSE only).
 func JWTAuth(secret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Übersicht desktop widgets use curl without auth tokens.
-		// Allow read-only GET access for the exact source value on paths that
-		// already serve public data. Using exact equality (not contains) prevents
-		// trivial bypasses; path prefix guard prevents access to sensitive routes
-		// (settings, users, dashboards, K8s proxy, etc.). See #14875.
+		// Allow read-only GET access for the exact source value on narrowly scoped
+		// public paths only. Using exact equality (not contains) prevents trivial
+		// bypasses; the MCP subset is restricted to localhost loopback as a
+		// defense-in-depth guard. See #14875 and #14906.
 		if c.Method() == fiber.MethodGet && c.Query("source") == "ubersicht-widget" {
-			// Widgets run on the user's local machine (Übersicht on macOS) and
-			// hit localhost only. The exact-match "ubersicht-widget" check +
-			// GET-only guard prevents abuse. MCP/cluster paths are safe here
-			// because the data is the user's own kubeconfig — same as opening
-			// the console in a browser.
+			path := c.Path()
+			widgetPublicPaths := map[string]bool{
+				"/api/mcp/status":   true,
+				"/api/mcp/clusters": true,
+			}
+			if widgetPublicPaths[path] {
+				if strings.HasPrefix(path, "/api/mcp/") && !isLoopbackIP(c.IP()) {
+					// Fall through to standard JWT auth for non-loopback callers.
+				} else {
+					return c.Next()
+				}
+			}
+
 			widgetPublicPrefixes := []string{
 				"/api/public/",
 				"/api/youtube/",
@@ -367,15 +379,13 @@ func JWTAuth(secret string) fiber.Handler {
 				"/api/rewards/",
 				"/api/issue-stats",
 				"/api/github-pipelines",
-				"/api/mcp/",
 				"/api/alerts",
 				"/api/providers/health",
 				"/api/gitops/operators",
 				"/api/gitops/helm-releases",
-				"/api/namespaces",
 			}
 			for _, prefix := range widgetPublicPrefixes {
-				if strings.HasPrefix(c.Path(), prefix) {
+				if strings.HasPrefix(path, prefix) {
 					return c.Next()
 				}
 			}

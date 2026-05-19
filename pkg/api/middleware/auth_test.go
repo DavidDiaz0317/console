@@ -182,6 +182,82 @@ func TestJWTAuth(t *testing.T) {
 	})
 }
 
+func TestJWTAuth_WidgetBypass(t *testing.T) {
+	app := fiber.New(fiber.Config{ProxyHeader: fiber.HeaderXForwardedFor})
+	handler := JWTAuth("test-secret")
+
+	app.Get("/api/mcp/status", handler, func(c *fiber.Ctx) error {
+		return c.SendString("status")
+	})
+	app.Get("/api/mcp/clusters", handler, func(c *fiber.Ctx) error {
+		return c.SendString("clusters")
+	})
+	app.Get("/api/mcp/clusters/health", handler, func(c *fiber.Ctx) error {
+		return c.SendString("clusters-health")
+	})
+	app.Get("/api/mcp/secrets", handler, func(c *fiber.Ctx) error {
+		return c.SendString("secrets")
+	})
+	app.Get("/api/namespaces", handler, func(c *fiber.Ctx) error {
+		return c.SendString("namespaces")
+	})
+
+	tests := []struct {
+		name       string
+		path       string
+		clientIP   string
+		wantStatus int
+	}{
+		{
+			name:       "localhost widget can reach safe MCP status path",
+			path:       "/api/mcp/status?source=ubersicht-widget",
+			clientIP:   "127.0.0.1",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "localhost widget can reach safe MCP clusters path",
+			path:       "/api/mcp/clusters?source=ubersicht-widget",
+			clientIP:   "127.0.0.1",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "non-localhost widget cannot reach safe MCP path",
+			path:       "/api/mcp/status?source=ubersicht-widget",
+			clientIP:   "203.0.113.9",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "localhost widget cannot reach clusters health via prefix matching",
+			path:       "/api/mcp/clusters/health?source=ubersicht-widget",
+			clientIP:   "127.0.0.1",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "localhost widget cannot reach secrets path",
+			path:       "/api/mcp/secrets?source=ubersicht-widget",
+			clientIP:   "127.0.0.1",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "localhost widget cannot reach namespaces path",
+			path:       "/api/namespaces?source=ubersicht-widget",
+			clientIP:   "127.0.0.1",
+			wantStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			req.Header.Set(fiber.HeaderXForwardedFor, tt.clientIP)
+
+			resp, err := app.Test(req, 5000)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+		})
+	}
+}
+
 func TestJWTAuth_TokenRefreshHeader(t *testing.T) {
 	secret := "test-secret"
 	app := fiber.New()
