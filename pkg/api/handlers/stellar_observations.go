@@ -377,19 +377,21 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
+	streamCtx, streamCancel := context.WithCancel(c.UserContext())
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		defer streamCancel()
 		connID := fmt.Sprintf("%s-%d", userID, time.Now().UnixNano())
 		clientCh := make(chan SSEEvent, 32)
 		h.registerSSEClient(connID, clientCh)
 		defer h.unregisterSSEClient(connID)
 
 		// Send initial batch of unread notifications and state
-		initialNotifs, err := h.store.ListStellarNotifications(context.Background(), userID, 50, true)
+		initialNotifs, err := h.store.ListStellarNotifications(streamCtx, userID, 50, true)
 		if err == nil && len(initialNotifs) > 0 {
 			for i := len(initialNotifs) - 1; i >= 0; i-- {
 				_ = writeSSE(w, "notification", initialNotifs[i])
 			}
-			state, err := h.buildState(context.Background(), userID)
+			state, err := h.buildState(streamCtx, userID)
 			if err == nil && state != nil {
 				_ = writeSSE(w, "state", fiber.Map{
 					"clustersWatching":   state.ClustersWatching,
@@ -403,7 +405,7 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 		// If returning after a gap, push catch-up summary after stream establishes
 		if isReturning && lastSeen != nil {
 			safego.GoWith("stellar-catch-up-summary", func() {
-				h.pushCatchUpSummary(context.Background(), w, userID, *lastSeen)
+				h.pushCatchUpSummary(streamCtx, w, userID, *lastSeen)
 			})
 		}
 
@@ -411,10 +413,13 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 		defer ticker.Stop()
 		lastSentID := ""
 		send := func() bool {
-			_ = h.syncTimelineNotifications(context.Background(), userID)
+			if streamCtx.Err() != nil {
+				return false
+			}
+			_ = h.syncTimelineNotifications(streamCtx, userID)
 			// Stream only unread notifications so dismissed/read items do not
 			// get re-sent to clients after "dismiss" or "clear all".
-			items, err := h.store.ListStellarNotifications(context.Background(), userID, 30, true)
+			items, err := h.store.ListStellarNotifications(streamCtx, userID, 30, true)
 			if err != nil {
 				return writeSSE(w, "error", fiber.Map{"message": "failed to load notifications"}) == nil
 			}
@@ -424,7 +429,7 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 					return false
 				}
 			}
-			observations, err := h.store.GetUnshownObservations(context.Background())
+			observations, err := h.store.GetUnshownObservations(streamCtx)
 			if err == nil && len(observations) > 0 {
 				next := observations[0]
 				payload := fiber.Map{
@@ -437,9 +442,9 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 				if writeSSE(w, "observation", payload) != nil {
 					return false
 				}
-				_ = h.store.MarkObservationShown(context.Background(), next.ID)
+				_ = h.store.MarkObservationShown(streamCtx, next.ID)
 			}
-			state, err := h.buildState(context.Background(), userID)
+			state, err := h.buildState(streamCtx, userID)
 			if err != nil {
 				return writeSSE(w, "error", fiber.Map{"message": "failed to build state"}) == nil
 			}
@@ -451,7 +456,7 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 				return false
 			}
 			// Push current active watches so the frontend stays in sync
-			activeWatches, _ := h.store.GetActiveWatches(context.Background(), userID)
+			activeWatches, _ := h.store.GetActiveWatches(streamCtx, userID)
 			if writeSSE(w, "watches", activeWatches) != nil {
 				return false
 			}
@@ -462,6 +467,8 @@ func (h *StellarHandler) Stream(c *fiber.Ctx) error {
 		}
 		for {
 			select {
+			case <-streamCtx.Done():
+				return
 			case <-ticker.C:
 				if !send() {
 					return
