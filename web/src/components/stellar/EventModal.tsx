@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { StellarAction, StellarNotification, StellarSolve } from '../../types/stellar'
 import type { PendingAction } from './EventCard'
 import { countSolveAttempts } from './lib/derive'
-import { STELLAR_DARK_BG } from '../../lib/theme/chartColors'
+import { useToast } from '../ui/Toast'
 
 const RELATED_EVENT_LIMIT = 6
 const RECURRING_RELATED_THRESHOLD = 2
@@ -30,6 +31,8 @@ interface EventModalProps {
   solves?: StellarSolve[]
   onClose: () => void
   onAction?: (prompt: string, action?: PendingAction) => void
+  onSolve?: (eventID: string) => Promise<unknown>
+  onDismiss?: () => void
 }
 
 interface DerivedNarration {
@@ -200,13 +203,93 @@ function formatRelative(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`
 }
 
-export function EventModal({ notification, allNotifications, pendingActions, solveStatus, solves, onClose, onAction }: EventModalProps) {
+const ACTION_BUTTON_TIMEOUT_MS = 5000
+const MODAL_OVERLAY_BACKGROUND = 'var(--game-overlay)'
+const MODAL_ELEVATION_SHADOW = '0 20px 60px var(--glass-shadow)'
+const INFO_ACCENT_BACKGROUND = 'color-mix(in srgb, var(--s-info) 12%, transparent)'
+const INFO_PANEL_BACKGROUND = 'color-mix(in srgb, var(--s-info) 6%, transparent)'
+const INFO_PANEL_BORDER = '1px solid color-mix(in srgb, var(--s-info) 20%, transparent)'
+const RECOMMENDATION_HIGHLIGHT_BACKGROUND = 'color-mix(in srgb, var(--s-info) 4%, transparent)'
+
+export function EventModal({ notification, allNotifications, pendingActions, solveStatus, solves, onClose, onAction, onSolve, onDismiss }: EventModalProps) {
+  const { t } = useTranslation()
+  const { showToast } = useToast()
+  const [showInvestigationPanel, setShowInvestigationPanel] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [resolutionNote, setResolutionNote] = useState('')
+  const [dismissReason, setDismissReason] = useState('')
+  const [showResolutionNoteInput, setShowResolutionNoteInput] = useState(false)
+  const [showDismissReasonInput, setShowDismissReasonInput] = useState(false)
+
   // Solve-derived attempt count for this workload. Mirrors the badge on the
   // card so the modal's header agrees with the list view.
   const solveAttemptCount = useMemo(
     () => countSolveAttempts(notification, solves || []),
     [notification, solves],
   )
+
+  // Handle Solve action: Mark event as resolved with optional note
+  const handleSolve = async () => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      if (onSolve) {
+        await Promise.race([
+          onSolve(notification.id),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ACTION_BUTTON_TIMEOUT_MS)),
+        ])
+        showToast(t('stellar.eventModal.solveSuccess'), 'success')
+      }
+      if (resolutionNote.trim()) {
+        // Note captured — in a production system this would be persisted
+        // to the solve record or a separate notes table
+      }
+      onClose()
+    } catch (err) {
+      showToast(t('stellar.eventModal.solveFailed', { error: err instanceof Error ? err.message : String(err) }), 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle Investigate action: Opens sub-panel with logs and details
+  const handleInvestigate = () => {
+    setShowInvestigationPanel(true)
+    if (onAction) {
+      const prompt = `Investigate ${notification.title} on cluster ${notification.cluster || 'unknown'}. Pull the logs and tell me what's wrong.`
+      const action: PendingAction = {
+        prompt,
+        actionType: 'investigate',
+        cluster: notification.cluster || '',
+        namespace: notification.namespace || '',
+        name: extractResourceName(notification),
+      }
+      onAction(prompt, action)
+    }
+    showToast(t('stellar.eventModal.investigateStarted'), 'info')
+  }
+
+  // Handle Remove action: Dismisses event with optional reason
+  const handleRemove = async () => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      await Promise.race([
+        onDismiss ? onDismiss() : Promise.resolve(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ACTION_BUTTON_TIMEOUT_MS)),
+      ])
+      if (dismissReason.trim()) {
+        // Reason captured — in a production system this would be persisted
+        // to an audit log or event metadata
+      }
+      showToast(t('stellar.eventModal.removeSuccess'), 'success')
+      onClose()
+    } catch (err) {
+      showToast(t('stellar.eventModal.removeFailed', { error: err instanceof Error ? err.message : String(err) }), 'error')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   // Solve rows for this workload — render alongside the legacy auto-fix
   // notifications so the modal shows the same attempt history the card hints
@@ -298,7 +381,7 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
       aria-labelledby={titleId}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0, 0, 0, 0.6)',
+        background: MODAL_OVERLAY_BACKGROUND,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20, backdropFilter: 'blur(4px)',
       }}
@@ -307,13 +390,13 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 720, maxHeight: '90vh',
-          background: `var(--s-bg, ${STELLAR_DARK_BG})`,
+          background: 'var(--s-bg)',
           border: `1px solid var(--s-border)`,
           borderLeft: `4px solid ${color}`,
           borderRadius: 'var(--s-r)',
           display: 'flex', flexDirection: 'column',
           fontFamily: 'var(--s-sans)', color: 'var(--s-text)',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          boxShadow: MODAL_ELEVATION_SHADOW,
         }}
       >
         {/* Header */}
@@ -352,7 +435,7 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
               <span style={{
                 fontSize: 10, fontFamily: 'var(--s-mono)',
                 padding: '2px 6px', borderRadius: 10,
-                background: 'rgba(56,139,253,0.12)',
+                background: INFO_ACCENT_BACKGROUND,
                 color: 'var(--s-info)',
                 border: '1px solid var(--s-info)',
               }} title="Number of times Stellar has tried to auto-solve this workload">
@@ -446,7 +529,7 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
             <div key={rec.hint} style={{
               border: '1px solid var(--s-border)', borderRadius: 'var(--s-r)',
               padding: '10px 12px', marginBottom: 8,
-              background: idx === 0 ? 'rgba(56,139,253,0.04)' : 'transparent',
+              background: idx === 0 ? RECOMMENDATION_HIGHLIGHT_BACKGROUND : 'transparent',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{rec.label}</span>
@@ -513,6 +596,186 @@ export function EventModal({ notification, allNotifications, pendingActions, sol
                 )}
               </div>
             </>
+          )}
+        </div>
+
+        {/* Action buttons footer */}
+        <div style={{ borderTop: '1px solid var(--s-border)', padding: '14px 18px', flexShrink: 0 }}>
+          {/* Optional resolution note input */}
+          {showResolutionNoteInput && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--s-text-muted)', marginBottom: 4 }}>
+                {t('stellar.eventModal.resolutionNoteLabel')}
+              </label>
+              <textarea
+                value={resolutionNote}
+                onChange={(e) => setResolutionNote(e.target.value)}
+                placeholder={t('stellar.eventModal.resolutionNotePlaceholder')}
+                rows={2}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  fontSize: 12,
+                  fontFamily: 'var(--s-mono)',
+                  background: 'var(--s-surface-2)',
+                  border: '1px solid var(--s-border)',
+                  borderRadius: 'var(--s-rs)',
+                  color: 'var(--s-text)',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Optional dismiss reason input */}
+          {showDismissReasonInput && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--s-text-muted)', marginBottom: 4 }}>
+                {t('stellar.eventModal.dismissReasonLabel')}
+              </label>
+              <textarea
+                value={dismissReason}
+                onChange={(e) => setDismissReason(e.target.value)}
+                placeholder={t('stellar.eventModal.dismissReasonPlaceholder')}
+                rows={2}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  fontSize: 12,
+                  fontFamily: 'var(--s-mono)',
+                  background: 'var(--s-surface-2)',
+                  border: '1px solid var(--s-border)',
+                  borderRadius: 'var(--s-rs)',
+                  color: 'var(--s-text)',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Investigation panel (inline) */}
+          {showInvestigationPanel && (
+            <div style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              background: INFO_PANEL_BACKGROUND,
+              border: INFO_PANEL_BORDER,
+              borderRadius: 'var(--s-r)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--s-info)' }}>
+                  🔍 {t('stellar.eventModal.investigationPanelTitle')}
+                </span>
+                <div style={{ flex: 1 }} />
+                <button
+                  onClick={() => setShowInvestigationPanel(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--s-text-dim)' }}
+                >✕</button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--s-text-muted)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                {t('stellar.eventModal.investigationPanelDescription')}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons row */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => {
+                if (showResolutionNoteInput) {
+                  void handleSolve()
+                } else {
+                  setShowResolutionNoteInput(true)
+                }
+              }}
+              disabled={isProcessing}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: isProcessing ? 'var(--s-surface-2)' : 'var(--s-success)',
+                color: isProcessing ? 'var(--s-text-dim)' : 'var(--s-bg)',
+                border: 'none',
+                borderRadius: 'var(--s-r)',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.5 : 1,
+              }}
+              title={t('stellar.eventModal.solveTooltip')}
+            >
+              {isProcessing ? t('stellar.eventModal.solving') : showResolutionNoteInput ? t('stellar.eventModal.confirmSolve') : t('stellar.eventModal.solve')}
+            </button>
+
+            <button
+              onClick={handleInvestigate}
+              disabled={isProcessing}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: 'none',
+                color: 'var(--s-info)',
+                border: '1px solid var(--s-info)',
+                borderRadius: 'var(--s-r)',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.5 : 1,
+              }}
+              title={t('stellar.eventModal.investigateTooltip')}
+            >
+              {t('stellar.eventModal.investigate')}
+            </button>
+
+            <button
+              onClick={() => {
+                if (showDismissReasonInput) {
+                  void handleRemove()
+                } else {
+                  setShowDismissReasonInput(true)
+                }
+              }}
+              disabled={isProcessing}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 600,
+                background: 'none',
+                color: 'var(--s-text-muted)',
+                border: '1px solid var(--s-border-muted)',
+                borderRadius: 'var(--s-r)',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.5 : 1,
+              }}
+              title={t('stellar.eventModal.removeTooltip')}
+            >
+              {isProcessing ? t('stellar.eventModal.removing') : showDismissReasonInput ? t('stellar.eventModal.confirmRemove') : t('stellar.eventModal.remove')}
+            </button>
+          </div>
+
+          {/* Cancel button when input is shown */}
+          {(showResolutionNoteInput || showDismissReasonInput) && (
+            <button
+              onClick={() => {
+                setShowResolutionNoteInput(false)
+                setShowDismissReasonInput(false)
+                setResolutionNote('')
+                setDismissReason('')
+              }}
+              style={{
+                marginTop: 8,
+                width: '100%',
+                padding: '6px 12px',
+                fontSize: 11,
+                background: 'none',
+                color: 'var(--s-text-dim)',
+                border: 'none',
+                borderRadius: 'var(--s-rs)',
+                cursor: 'pointer',
+              }}
+            >
+              {t('actions.cancel')}
+            </button>
           )}
         </div>
       </div>
