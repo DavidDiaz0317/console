@@ -4933,6 +4933,24 @@
       "pausedAtBudget": "Paused at budget",
       "actionCount_one": "{{count}} action",
       "actionCount_other": "{{count}} actions"
+    },
+    "batch": {
+      "title": "Batch Processing Monitor",
+      "elapsed": "Elapsed",
+      "summary": "Summary",
+      "events_one": "event",
+      "events_other": "events",
+      "resolved": "Resolved",
+      "failed": "Failed",
+      "skipped": "Skipped",
+      "inProgress": "In Progress",
+      "noEvents": "No events in this batch",
+      "statusInProgress": "In Progress",
+      "statusCompleted": "Completed",
+      "statusFailed": "Failed",
+      "viewBatchMonitor": "View batch progress",
+      "processingBatch": "Processing batch…",
+      "batchComplete": "Batch complete"
     }
   },
   "missionControl": {
