@@ -21,6 +21,8 @@ import (
 // floatEpsilon is the tolerance for float equality comparisons (#3722).
 const floatEpsilon = 1e-9
 
+const maxNodeFetchConcurrency = 10
+
 // EvaluateClusterQuery evaluates a dynamic group query against current cluster state
 // POST /api/cluster-groups/evaluate
 func (h *WorkloadHandlers) EvaluateClusterQuery(c *fiber.Ctx) error {
@@ -85,6 +87,7 @@ func (h *WorkloadHandlers) EvaluateClusterQuery(c *fiber.Ctx) error {
 	if needNodes {
 		var nodesMu sync.Mutex
 		g, gctx := errgroup.WithContext(ctx)
+		g.SetLimit(maxNodeFetchConcurrency)
 		for _, cl := range dedupClusters {
 			clName := cl.Name
 			g.Go(func() error {
