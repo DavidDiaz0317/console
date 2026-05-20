@@ -15,6 +15,27 @@ import (
 	"github.com/kubestellar/console/pkg/safego"
 )
 
+const (
+	nightlyCacheIdleTTL   = 5 * time.Minute  // cache when no jobs running
+	nightlyCacheActiveTTL = 2 * time.Minute  // cache when jobs are in progress
+	imageCacheTTL         = 30 * time.Minute // image tags change less frequently
+	nightlyRunsPerPage    = 7
+
+	failureReasonGPU  = "gpu_unavailable"
+	failureReasonTest = "test_failure"
+
+	// maxErrorBodyBytes is the maximum number of bytes to read from GitHub error
+	// response bodies. Prevents unbounded memory consumption on large HTML error
+	// pages during outages (#7055).
+	maxErrorBodyBytes = 10_000           // 10 KB
+	maxLogBytes       = 200_000          // 200KB tail per job log
+	logCacheTTL       = 10 * time.Minute // immutable once run completes
+	maxLogFetchJobs   = 5                // limit concurrent job log fetches
+
+	// imageRepo is the GitHub repo whose guide directories contain image references
+	imageRepo = "llm-d/llm-d"
+)
+
 // imageRe matches direct image references: ghcr.io/llm-d/<name>:<tag>
 // imageRe matches direct image references: ghcr.io/llm-d/<name>:<tag>.
 // (?m) enables per-line ^/$ so FindAllStringSubmatch anchors each match to
