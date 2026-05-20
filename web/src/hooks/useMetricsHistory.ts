@@ -9,6 +9,8 @@ const HISTORY_CHANGED_EVENT = 'kubestellar-metrics-history-changed'
 const MAX_SNAPSHOTS = 1008 // 7 days at 10-min intervals (6 per hour * 24 hours * 7 days)
 /** Cache TTL: 7 days — remove snapshots older than this */
 const CACHE_TTL_MS = 7 * MS_PER_DAY
+const TREND_WINDOW_SNAPSHOTS = 6
+const CLUSTER_TREND_THRESHOLD = 5
 /** Maximum number of increasing-restart pods to include in AI context */
 const MAX_INCREASING_RESTART_PODS = 10
 /**
@@ -58,6 +60,10 @@ if (typeof window !== 'undefined') {
 // Notify all subscribers
 function notifySubscribers() {
   subscribers.forEach(fn => fn(snapshots))
+}
+
+function getPodIssueKey(name: string, cluster: string): string {
+  return `${name}:${cluster}`
 }
 
 // Persist to localStorage with quota exceeded handling
@@ -370,6 +376,23 @@ export function useMetricsHistory() {
     persistSnapshots()
   }
 
+  const recentTrendSnapshots = useMemo(
+    () => history.slice(-TREND_WINDOW_SNAPSHOTS),
+    [history]
+  )
+  const recentClustersByName = useMemo(
+    () => recentTrendSnapshots.map(snapshot => new Map(
+      snapshot.clusters.map(cluster => [cluster.name, cluster] as const)
+    )),
+    [recentTrendSnapshots]
+  )
+  const recentPodIssuesByKey = useMemo(
+    () => recentTrendSnapshots.map(snapshot => new Map(
+      snapshot.podIssues.map(pod => [getPodIssueKey(pod.name, pod.cluster), pod] as const)
+    )),
+    [recentTrendSnapshots]
+  )
+
   // Get trend for a specific cluster metric
   const getClusterTrend = (
     clusterName: string,
@@ -377,9 +400,8 @@ export function useMetricsHistory() {
   ): TrendDirection => {
     if (history.length < 3) return 'stable'
 
-    const recentSnapshots = history.slice(-6) // Last hour (6 x 10min)
-    const values = recentSnapshots
-      .map(s => s.clusters.find(c => c.name === clusterName)?.[metric])
+    const values = recentClustersByName
+      .map(clustersByName => clustersByName.get(clusterName)?.[metric])
       .filter((v): v is number => v !== undefined)
 
     if (values.length < 3) return 'stable'
@@ -393,10 +415,9 @@ export function useMetricsHistory() {
     const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length
 
     const diff = avgSecond - avgFirst
-    const threshold = 5 // 5% change threshold
 
-    if (diff > threshold) return 'worsening'
-    if (diff < -threshold) return 'improving'
+    if (diff > CLUSTER_TREND_THRESHOLD) return 'worsening'
+    if (diff < -CLUSTER_TREND_THRESHOLD) return 'improving'
     return 'stable'
   }
 
@@ -407,9 +428,9 @@ export function useMetricsHistory() {
   ): TrendDirection => {
     if (history.length < 3) return 'stable'
 
-    const recentSnapshots = history.slice(-6)
-    const values = recentSnapshots
-      .map(s => s.podIssues.find(p => p.name === podName && p.cluster === cluster)?.restarts)
+    const podKey = getPodIssueKey(podName, cluster)
+    const values = recentPodIssuesByKey
+      .map(podIssuesByKey => podIssuesByKey.get(podKey)?.restarts)
       .filter((v): v is number => v !== undefined)
 
     if (values.length < 2) return 'stable'
