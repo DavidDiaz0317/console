@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -487,9 +489,10 @@ func (s *Server) handleSetKey(w http.ResponseWriter, r *http.Request) {
 }
 
 // validateBaseURL performs a syntactic check on a base URL before it is
-// saved. This is not a reachability test — local runners may not be
-// running at the time the operator configures them. The goal is only to
-// reject obvious typos (missing scheme, whitespace, non-http(s) scheme).
+// saved, and blocks private/internal IP ranges to prevent SSRF.
+// This is not a reachability test — local runners may not be running at
+// the time the operator configures them. The goal is to reject typos
+// (missing scheme, whitespace) and SSRF vectors (private IPs).
 func validateBaseURL(s string) error {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -501,7 +504,86 @@ func validateBaseURL(s string) error {
 	if !strings.HasPrefix(s, "http://") && !strings.HasPrefix(s, "https://") {
 		return fmt.Errorf("base URL must start with http:// or https://")
 	}
+
+	// Parse URL to extract hostname
+	parsedURL, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	hostname := parsedURL.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("URL must have a hostname")
+	}
+
+	// Check if hostname is an IP address
+	ip := net.ParseIP(hostname)
+	if ip != nil {
+		if isPrivateOrInternalIP(ip) {
+			return fmt.Errorf("base URL must not use private/internal IP addresses (SSRF protection)")
+		}
+		return nil
+	}
+
+	// Resolve hostname to IP addresses (DNS rebinding protection)
+	ips, err := net.LookupHost(hostname)
+	if err != nil {
+		// Don't fail on DNS lookup errors — the service may not be reachable
+		// at configuration time. Just log a warning.
+		slog.Warn("validateBaseURL: DNS lookup failed", "hostname", hostname, "error", err)
+		return nil
+	}
+
+	// Check all resolved IPs
+	for _, ipStr := range ips {
+		resolvedIP := net.ParseIP(ipStr)
+		if resolvedIP != nil && isPrivateOrInternalIP(resolvedIP) {
+			return fmt.Errorf("base URL hostname %q resolves to private/internal IP %s (SSRF protection)", hostname, ipStr)
+		}
+	}
+
 	return nil
+}
+
+// isPrivateOrInternalIP returns true if the IP is in a private/internal range:
+// - IPv4: 127.0.0.0/8 (loopback), 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (RFC1918),
+//   169.254.0.0/16 (link-local), 0.0.0.0/8 (unspecified)
+// - IPv6: ::1 (loopback), fc00::/7 (unique local), fe80::/10 (link-local)
+func isPrivateOrInternalIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	// Check for IPv4-mapped IPv6 addresses (::ffff:x.x.x.x)
+	// If it's IPv4-mapped, convert to IPv4 and check
+	if ipv4 := ip.To4(); ipv4 != nil {
+		ip = ipv4
+	}
+
+	// Define private/internal CIDR ranges
+	privateCIDRs := []string{
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // IPv4 link-local
+		"0.0.0.0/8",      // IPv4 unspecified
+		"::1/128",        // IPv6 loopback
+		"fc00::/7",       // IPv6 unique local
+		"fe80::/10",      // IPv6 link-local
+	}
+
+	for _, cidr := range privateCIDRs {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if network.Contains(ip) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // validateAPIKey tests if the configured key for a provider works
