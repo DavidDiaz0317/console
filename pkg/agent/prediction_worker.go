@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	predictionInitialDelay = 30 * time.Second
-	predictionTimeout      = 60 * time.Second
+	predictionInitialDelay   = 30 * time.Second
+	predictionTimeout        = 60 * time.Second
+	maxPredictionConcurrency = 10
 
 	// perClusterDataTimeout bounds each goroutine's data-gathering work
 	// (pod issues + GPU nodes + offline nodes) for a single cluster.
@@ -517,6 +518,7 @@ func (w *PredictionWorker) gatherClusterData(ctx context.Context) (*ClusterAnaly
 
 		var wg sync.WaitGroup
 		var mu sync.Mutex
+		sem := make(chan struct{}, maxPredictionConcurrency)
 
 		for _, cluster := range clusters {
 			if !healthyClusterSet[cluster.Name] {
@@ -527,6 +529,8 @@ func (w *PredictionWorker) gatherClusterData(ctx context.Context) (*ClusterAnaly
 			wg.Add(1)
 			safego.GoWith("prediction-worker/"+cl.Name, func() {
 				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
 
 				// Check parent context before starting work
 				select {
