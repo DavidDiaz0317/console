@@ -5,8 +5,19 @@ interface Props {
   onDismiss: () => void
 }
 
+const BULLET_SPACING = 6
+const ITEM_VERTICAL_SPACING = 4
+
 export function CatchUpBanner({ catchUp, onDismiss }: Props) {
   const isClean = catchUp.kind === 'clean'
+  
+  // Parse summary into bullet points
+  // Split on periods, newlines, or semicolons to create individual points
+  const points = (catchUp.summary || '')
+    .split(/[.\n;]/)
+    .map(point => point.trim())
+    .filter(point => point.length > 0)
+  
   return (
     <div style={{
       margin: '8px 10px 0',
@@ -25,14 +36,30 @@ export function CatchUpBanner({ catchUp, onDismiss }: Props) {
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: isClean ? 'var(--s-success)' : 'var(--s-info)',
-              marginBottom: 4,
+              marginBottom: BULLET_SPACING,
             }}
           >
             While you were away
           </div>
-          <div className="text-xs" style={{ color: 'var(--s-text)', lineHeight: 1.55 }}>
-            {catchUp.summary}
-          </div>
+          <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+            {(points || []).map((point, index) => (
+              <li
+                key={index}
+                className="text-xs"
+                style={{
+                  color: 'var(--s-text)',
+                  lineHeight: 1.55,
+                  marginBottom: index < points.length - 1 ? ITEM_VERTICAL_SPACING : 0,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: BULLET_SPACING,
+                }}
+              >
+                <span style={{ color: isClean ? 'var(--s-success)' : 'var(--s-info)', flexShrink: 0 }}>•</span>
+                <span style={{ flex: 1 }}>{point}</span>
+              </li>
+            ))}
+          </ul>
         </div>
         <button
           onClick={onDismiss}
