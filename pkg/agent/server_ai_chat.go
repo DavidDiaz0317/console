@@ -20,6 +20,7 @@ import (
 
 const (
 	kagentiContextFetchTimeout        = 8 * time.Second
+	kagentiMaxClusterConcurrency      = 10
 	kagentiMaxPodIssuesPerCluster     = 10
 	kagentiMaxWarningEventsPerCluster = 5
 )
@@ -77,12 +78,15 @@ func (s *Server) buildKagentiK8sContext(ctx context.Context, clusterContext stri
 	}
 
 	snapshots := make([]kagentiClusterSnapshot, len(clusters))
+	sem := make(chan struct{}, kagentiMaxClusterConcurrency)
 	var wg sync.WaitGroup
 	for i, cluster := range clusters {
 		i, cluster := i, cluster
+		sem <- struct{}{}
 		wg.Add(1)
 		safego.Go(func() {
 			defer wg.Done()
+			defer func() { <-sem }()
 			snapshots[i] = s.collectKagentiClusterSnapshot(fetchCtx, cluster)
 		})
 	}
