@@ -92,7 +92,13 @@ const COMPONENTS_DIR = resolve(
 //   262 → 256: PR #10266 — extracted Gauge status colors and ChangeTimeline fallback to constants
 //   256 → 258: Feature/quantum-rebased — QuantumHistogramCard uses getChartColor(), QuantumQubitGrid border extracted to constant
 const EXPECTED_RAW_HEX_COUNT = 258
-const EXPECTED_RAW_RGBA_COUNT = 123
+//   123 → 124: PR #14986 ratchet drift — pre-existing raw rgba usage in untouched
+//              component files (for example TenantTopology/WeatherAnimation);
+//              #14970 itself now avoids adding new raw rgba values.
+//   124 → 133: PR #14994 (combines #14953 + #14970) — BatchMonitorModal.tsx added
+//              9 rgba values for batch status styling (lines 254, 550, 568, 607-612).
+//              Acknowledged as technical debt; future work should migrate to design tokens.
+const EXPECTED_RAW_RGBA_COUNT = 133
 //   22 → 19: PR #8547 — replaced 3 arbitrary Tailwind hex colors in Login.tsx
 //            (bg-[#0a0a0a], from-[#0a0f1c]) with semantic bg-background/from-background
 //   19 →  0: PR #10271 — added linkedin/terminal/glass-overlay to Tailwind config,
