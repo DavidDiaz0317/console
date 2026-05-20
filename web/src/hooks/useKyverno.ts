@@ -249,6 +249,12 @@ async function fetchSingleCluster(cluster: string): Promise<KyvernoClusterStatus
 
     // Fetch PolicyReports for violation counts
     const reports: KyvernoPolicyReport[] = []
+    const policyMap = new Map<string, KyvernoPolicy>()
+    for (const policy of policies) {
+      if (!policyMap.has(policy.name)) {
+        policyMap.set(policy.name, policy)
+      }
+    }
     const reportResult = await kubectlProxy.exec(
       ['get', 'policyreports', '-A', '-o', 'json'],
       { context: cluster, timeout: CRD_DATA_FETCH_TIMEOUT_MS }
@@ -274,7 +280,7 @@ async function fetchSingleCluster(cluster: string): Promise<KyvernoClusterStatus
         if (item.results) {
           for (const result of (item.results || [])) {
             if (result.result === 'fail' && result.policy) {
-              const matchingPolicy = policies.find(p => p.name === result.policy)
+              const matchingPolicy = policyMap.get(result.policy)
               if (matchingPolicy) {
                 matchingPolicy.violations += 1
               }
@@ -300,7 +306,7 @@ async function fetchSingleCluster(cluster: string): Promise<KyvernoClusterStatus
         if (item.results) {
           for (const result of (item.results || [])) {
             if (result.result === 'fail' && result.policy) {
-              const matchingPolicy = policies.find(p => p.name === result.policy)
+              const matchingPolicy = policyMap.get(result.policy)
               if (matchingPolicy) {
                 matchingPolicy.violations += 1
               }
