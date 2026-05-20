@@ -4950,7 +4950,11 @@
       "statusFailed": "Failed",
       "viewBatchMonitor": "View batch progress",
       "processingBatch": "Processing batch…",
-      "batchComplete": "Batch complete"
+      "batchComplete": "Batch complete",
+      "resolutionSteps": "Resolution steps",
+      "closeAriaLabel": "Close batch monitor",
+      "progressAriaLabel": "Batch processing progress: {{percent}}%",
+      "eventListAriaLabel": "Events being processed in this batch"
     }
   },
   "missionControl": {
