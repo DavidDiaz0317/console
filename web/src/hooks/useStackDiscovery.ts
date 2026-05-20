@@ -413,10 +413,15 @@ export function useStackDiscovery(clusters: string[]) {
         setStacks(prev => {
           if (replace) {
             // Phase 1: replace all stacks for this cluster
-            const cachedById = new Map(
-              prev.filter(s => s.cluster === cluster).map(s => [s.id, s])
-            )
-            const filtered = prev.filter(s => s.cluster !== cluster)
+            const cachedById = new Map<string, LLMdStack>()
+            const filtered: LLMdStack[] = []
+            for (const s of prev) {
+              if (s.cluster === cluster) {
+                cachedById.set(s.id, s)
+              } else {
+                filtered.push(s)
+              }
+            }
             const mergedStacks = newStacks.map(freshStack => {
               const cachedStack = cachedById.get(freshStack.id)
               if (!cachedStack) return freshStack
