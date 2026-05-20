@@ -38,6 +38,8 @@ import {
 
 import type { FeedbackAppAction, IssueRequest } from "./_shared/feedback-helpers";
 
+const MAX_FEEDBACK_BODY_BYTES = 102_400;
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return handlePreflight(request, CORS_OPTS);
@@ -57,6 +59,11 @@ export default async function handler(request: Request): Promise<Response> {
   let payload: IssueRequest | null = null;
   let action: FeedbackAppAction = "create_issue";
   if (request.method === "POST") {
+    const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+    if (contentLength > MAX_FEEDBACK_BODY_BYTES) {
+      return jsonResponse(request, 413, { error: "Request body too large" });
+    }
+
     let rawBody: unknown;
     try {
       rawBody = await request.json();

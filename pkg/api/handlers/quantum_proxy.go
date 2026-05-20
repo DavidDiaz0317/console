@@ -16,6 +16,7 @@ import (
 
 const (
 	quantumProxyTimeout     = 30 * time.Second
+	maxQuantumBodyBytes     = 1 << 20  // 1 MB request body limit
 	maxQuantumResponseBytes = 10 << 20 // 10 MB
 	quantumBearerScheme     = "Bearer "
 )
@@ -223,6 +224,10 @@ func (h *QuantumProxyHandler) ProxyPostRequest(c *fiber.Ctx) error {
 
 	if err := h.requireBearerToken(c); err != nil {
 		return err
+	}
+
+	if len(c.Body()) > maxQuantumBodyBytes {
+		return fiber.NewError(fiber.StatusRequestEntityTooLarge, "Request body too large")
 	}
 
 	// Prepend /api/ to the endpoint path to match quantum backend API structure

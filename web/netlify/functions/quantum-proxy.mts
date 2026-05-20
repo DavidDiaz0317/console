@@ -79,6 +79,7 @@ const ALLOWED_PATHS = new Set([
 ]);
 
 const PROXY_TIMEOUT_MS = 15_000;
+const MAX_PROXY_BODY_BYTES = 1_048_576;
 const ALLOWED_METHODS = new Set(["GET", "POST"]);
 
 function isAllowedPath(path: string): boolean {
@@ -229,6 +230,15 @@ export default async (req: Request, context: Context): Promise<Response> => {
     }
 
     const targetURL = new URL(path, quantumServiceURL).toString();
+    if (req.method !== "GET") {
+      const contentLength = parseInt(req.headers.get("content-length") || "0", 10);
+      if (contentLength > MAX_PROXY_BODY_BYTES) {
+        return new Response(JSON.stringify({ error: "Request body too large" }), {
+          status: 413,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
     const requestBody = req.method === "GET" ? undefined : await req.text();
     const response = await fetch(targetURL, {
       method: req.method,
