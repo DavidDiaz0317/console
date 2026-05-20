@@ -8,7 +8,7 @@ const BATCH_UPDATE_INTERVAL_MS = 2000
 const SECONDS_PER_MINUTE = 60
 const MS_PER_SECOND = 1000
 
-Types // ── ───────
+// ── Types ────────────────────────────────────────────────────────────────
 
 export interface ResolutionStep {
   name: string
@@ -141,7 +141,7 @@ function buildDemoBatch(batchTimestamp: string): BatchProcessing {
   }
 }
 
-Helpers // ── ──────
+// ── Helpers ──────────────────────────────────────────────────────────────
 
 function deriveEventStatus(
   notification: StellarNotification,
@@ -231,7 +231,7 @@ function formatElapsedSeconds(seconds: number): string {
   return `${minutes}m ${secs}s`
 }
 
-EventRow // ── ─────────────────────────────
+// ── EventRow ─────────────────────────────────────────────────────────────
 
 function EventRow({ event }: { event: BatchEvent }) {
   const [expanded, setExpanded] = useState(false)
