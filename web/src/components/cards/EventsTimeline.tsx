@@ -8,8 +8,8 @@ import { Skeleton, SkeletonStats } from '../ui/Skeleton'
 import { RefreshIndicator } from '../ui/RefreshIndicator'
 import { useCardLoadingState } from './CardDataContext'
 import { useDemoMode } from '../../hooks/useDemoMode'
-import { MS_PER_MINUTE } from '../../lib/constants/time'
 import { CardClusterFilter } from '../../lib/cards/CardComponents'
+import { groupEventsByTime } from './groupEventsByTime'
 import { useTranslation } from 'react-i18next'
 import { DynamicCardErrorBoundary } from './DynamicCardErrorBoundary'
 import {
@@ -22,17 +22,8 @@ import {
   CHART_BODY_FONT_SIZE } from '../../lib/constants'
 import { AMBER_500, GREEN_500_BRIGHT, hexToRgba } from '../../lib/theme/chartColors'
 
-interface TimePoint {
-  time: string
-  timestamp: number
-  warnings: number
-  normal: number
-  total: number
-}
-
 type TimeRange = '15m' | '1h' | '6h' | '24h'
 type TimeRangeTranslationKey = 'cards:eventsTimeline.range15m' | 'cards:eventsTimeline.range1h' | 'cards:eventsTimeline.range6h' | 'cards:eventsTimeline.range24h'
-type EventTimelineDatum = { type: string; lastSeen?: string; firstSeen?: string; count?: number | string }
 type EventTimelineTooltipParam = {
   seriesName: string
   value: number | string | number[]
@@ -76,53 +67,12 @@ function getEventCount(count?: number | string): number {
   return Number.isFinite(numericCount) && numericCount > 0 ? numericCount : 1
 }
 
-// Group events by time buckets
-function groupEventsByTime(events: EventTimelineDatum[], bucketMinutes = 5, numBuckets = 12): TimePoint[] {
-  const now = Date.now()
-  const bucketMs = bucketMinutes * MS_PER_MINUTE
-
-  // Initialize buckets
-  const buckets: TimePoint[] = []
-  for (let i = numBuckets - 1; i >= 0; i--) {
-    const bucketTime = now - (i * bucketMs)
-    const date = new Date(bucketTime)
-    buckets.push({
-      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: bucketTime,
-      warnings: 0,
-      normal: 0,
-      total: 0 })
-  }
-
-  // Place events in buckets
-  ;(events || []).forEach(event => {
-    const eventTime = event.lastSeen ? new Date(event.lastSeen).getTime() :
-                      event.firstSeen ? new Date(event.firstSeen).getTime() : now
-    const eventCount = getEventCount(event.count)
-
-    // Find the bucket this event belongs to
-    for (let i = 0; i < buckets.length; i++) {
-      const bucketStart = buckets[i].timestamp - bucketMs
-      const bucketEnd = buckets[i].timestamp
-
-      if (eventTime >= bucketStart && eventTime < bucketEnd) {
-        if (event.type === 'Warning') {
-          buckets[i].warnings += eventCount
-        } else {
-          buckets[i].normal += eventCount
-        }
-        buckets[i].total += eventCount
-        break
-      }
-    }
-  })
-
-  return buckets
-}
-
 function EventsTimelineInternal() {
   const { t } = useTranslation(['cards', 'common'])
-  const TIME_RANGE_OPTIONS = TIME_RANGE_OPTIONS_KEYS.map(opt => ({ ...opt, label: String(t(opt.labelKey)) }))
+  const TIME_RANGE_OPTIONS = useMemo(
+    () => TIME_RANGE_OPTIONS_KEYS.map(opt => ({ ...opt, label: String(t(opt.labelKey)) })),
+    [t],
+  )
   const { isDemoMode } = useDemoMode()
   const {
     events: rawEvents,
@@ -169,8 +119,10 @@ function EventsTimelineInternal() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Get reachable clusters
-  const reachableClusters = (clusters || []).filter(c => c.reachable !== false)
+  const reachableClusters = useMemo(
+    () => (clusters || []).filter(c => c.reachable !== false),
+    [clusters],
+  )
 
   // Get available clusters for local filter (respects global filter)
   const availableClustersForFilter = useMemo(() => {
