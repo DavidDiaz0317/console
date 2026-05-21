@@ -101,7 +101,13 @@ export async function getAccessToken(
     throw new Error(`Upstream service error (req=${reqId})`);
   }
 
-  const data = await resp.json();
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    const reqId = Date.now();
+    console.error(`[analytics-dashboard] token response too large (req=${reqId})`);
+    throw new Error(`Upstream service error (req=${reqId})`);
+  }
+  const data = JSON.parse(bodyText) as { access_token?: string; expires_in?: number };
   const accessToken = data.access_token;
   const expiresIn = data.expires_in || JWT_EXPIRY_SECONDS;
 

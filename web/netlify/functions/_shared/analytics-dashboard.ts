@@ -73,7 +73,13 @@ async function runReport(
     throw new Error(`Upstream service error (req=${reqId})`);
   }
 
-  const data = await resp.json();
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    const reqId = Date.now();
+    console.error(`[analytics-dashboard] GA4 response too large (req=${reqId})`);
+    throw new Error(`Upstream service error (req=${reqId})`);
+  }
+  const data = JSON.parse(bodyText) as { rows?: GA4Row[] };
   return data.rows || [];
 }
 

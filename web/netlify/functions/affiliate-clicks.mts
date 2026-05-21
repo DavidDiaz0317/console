@@ -158,7 +158,11 @@ async function getAccessToken(serviceAccount: ServiceAccountKey): Promise<string
     throw new Error(`Token exchange failed (${resp.status}): ${body}`);
   }
 
-  const data = await resp.json();
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    throw new Error("Token response too large");
+  }
+  const data = JSON.parse(bodyText) as { access_token?: string; expires_in?: number };
   const accessToken = data.access_token;
   const expiresIn = data.expires_in || JWT_EXPIRY_SECONDS;
 
@@ -191,7 +195,11 @@ async function runReport(
     throw new Error(`GA4 API ${resp.status}: ${text}`);
   }
 
-  const data = await resp.json();
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    throw new Error("GA4 response too large");
+  }
+  const data = JSON.parse(bodyText) as { rows?: GA4Row[] };
   return data.rows || [];
 }
 

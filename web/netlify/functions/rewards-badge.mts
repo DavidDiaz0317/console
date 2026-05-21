@@ -123,7 +123,11 @@ async function searchItems(login: string, itemType: "issue" | "pr", token: strin
       }
       throw new Error(`GitHub API ${res.status}`);
     }
-    const sr: SearchResponse = await res.json();
+    const bodyText = await res.text();
+    if (bodyText.length > 512_000) {
+      throw new Error("GitHub search response too large");
+    }
+    const sr: SearchResponse = JSON.parse(bodyText) as SearchResponse;
     all.push(...sr.items);
     if (all.length >= sr.total_count || sr.items.length < PER_PAGE) break;
   }

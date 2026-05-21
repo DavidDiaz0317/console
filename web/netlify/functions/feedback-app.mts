@@ -169,7 +169,12 @@ export default async function handler(request: Request): Promise<Response> {
         console.error("[feedback-app] GitHub issue comment failed:", resp.status, sanitizeUpstreamError(txt));
         return jsonResponse(request, resp.status, { error: "Failed to add comment to issue" });
       }
-      const data = (await resp.json()) as { html_url: string };
+      const bodyText = await resp.text();
+      if (bodyText.length > 512_000) {
+        console.error("[feedback-app] comment response too large");
+        return jsonResponse(request, 502, { error: "Upstream response too large" });
+      }
+      const data = JSON.parse(bodyText) as { html_url: string };
       return jsonResponse(request, 200, { html_url: data.html_url, submitter: user.login });
     }
 
@@ -194,7 +199,12 @@ export default async function handler(request: Request): Promise<Response> {
         console.error("[feedback-app] GitHub issue update failed:", resp.status, sanitizeUpstreamError(txt));
         return jsonResponse(request, resp.status, { error: "Failed to update issue state" });
       }
-      const data = (await resp.json()) as { html_url: string; state: string };
+      const bodyText = await resp.text();
+      if (bodyText.length > 512_000) {
+        console.error("[feedback-app] update response too large");
+        return jsonResponse(request, 502, { error: "Upstream response too large" });
+      }
+      const data = JSON.parse(bodyText) as { html_url: string; state: string };
       return jsonResponse(request, 200, { html_url: data.html_url, state: data.state, submitter: user.login });
     }
 
@@ -221,7 +231,12 @@ export default async function handler(request: Request): Promise<Response> {
       console.error("[feedback-app] GitHub issue create failed:", resp.status, sanitizeUpstreamError(txt));
       return jsonResponse(request, resp.status, { error: "Failed to create issue" });
     }
-    const data = (await resp.json()) as { id: number; number: number; html_url: string };
+    const bodyText = await resp.text();
+    if (bodyText.length > 512_000) {
+      console.error("[feedback-app] create issue response too large");
+      return jsonResponse(request, 502, { error: "Upstream response too large" });
+    }
+    const data = JSON.parse(bodyText) as { id: number; number: number; html_url: string };
 
     let warning: string | undefined;
     if (typeof payload.parentIssueNumber === "number" && payload.parentIssueNumber > 0) {

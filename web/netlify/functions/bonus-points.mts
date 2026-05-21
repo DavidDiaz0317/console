@@ -63,9 +63,13 @@ async function fetchAllBonusIssues(): Promise<Record<string, BonusEntry[]>> {
     throw new Error(`GitHub API ${res.status}`);
   }
 
-  const issues = await res.json();
+  const bodyText = await res.text();
+  if (bodyText.length > 512_000) {
+    throw new Error("GitHub API response too large");
+  }
+  const issues = JSON.parse(bodyText) as Array<{ number: number; title: string; user: { login: string }; created_at: string; state: string }>;
 
-  for (const issue of issues as Array<{ number: number; title: string; user: { login: string }; created_at: string; state: string }>) {
+  for (const issue of issues) {
     if (issue.user?.login !== BONUS_AUTHORIZED_USER) continue;
 
     const match = issue.title.match(BONUS_TITLE_REGEX);

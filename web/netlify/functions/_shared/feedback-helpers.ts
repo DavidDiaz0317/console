@@ -272,7 +272,13 @@ export async function getInstallationCred(): Promise<string> {
     console.error(`[feedback-app] installation credential exchange failed (req=${reqId}): HTTP ${resp.status} — ${sanitizeUpstreamError(txt)}`);
     throw new Error(`Upstream service error (req=${reqId})`);
   }
-  const data = (await resp.json()) as { token: string };
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    const reqId = Date.now();
+    console.error(`[feedback-app] installation token response too large (req=${reqId})`);
+    throw new Error(`Upstream service error (req=${reqId})`);
+  }
+  const data = JSON.parse(bodyText) as { token: string };
   cachedInstallCred = { value: data.token, fetchedAt: Date.now() };
   return data.token;
 }
@@ -312,7 +318,11 @@ export async function verifyClientAuth(
   if (!resp.ok) {
     throw new Error(`introspection HTTP ${resp.status}`);
   }
-  const data = (await resp.json()) as {
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    throw new Error("introspection response too large");
+  }
+  const data = JSON.parse(bodyText) as {
     user?: { login?: string; id?: number };
   };
   if (!data.user?.login || typeof data.user.id !== "number") {
@@ -354,7 +364,11 @@ export async function getRepoPermissions(
   if (!resp.ok) {
     throw new Error(`repo permissions HTTP ${resp.status}`);
   }
-  const data = (await resp.json()) as { permissions?: { push?: boolean } };
+  const bodyText = await resp.text();
+  if (bodyText.length > 512_000) {
+    throw new Error("repo permissions response too large");
+  }
+  const data = JSON.parse(bodyText) as { permissions?: { push?: boolean } };
   return { push: data.permissions?.push === true };
 }
 
