@@ -72,15 +72,14 @@ jobs:
 
           echo "New account (${AGE_DAYS} days) with no prior contributions — closing PR."
 
+          PR_COMMENT=$(printf '%s\n\n%s\n\n%s\n%s\n%s\n%s\n\n%s' \
+            "👋 Welcome! This repo requires new contributors to open an issue first before submitting a PR. This helps us coordinate work and avoid duplicate effort." \
+            "**Your account** is less than ${MIN_ACCOUNT_AGE_DAYS} days old and has no prior contributions to this repo." \
+            "**Next steps:**" \
+            "1. Open an issue describing what you'd like to work on" \
+            "2. Wait for a maintainer to approve and assign it to you" \
+            "3. Then submit your PR referencing that issue" \
+            "This is an automated check — if you believe this was a mistake, comment on this PR and a maintainer will review.")
           gh pr close "$PR_NUMBER" \
             --repo "${REPO}" \
-            --comment "👋 Welcome! This repo requires new contributors to open an issue first before submitting a PR. This helps us coordinate work and avoid duplicate effort.
-
-**Your account** is less than ${MIN_ACCOUNT_AGE_DAYS} days old and has no prior contributions to this repo.
-
-**Next steps:**
-1. Open an issue describing what you'd like to work on
-2. Wait for a maintainer to approve and assign it to you
-3. Then submit your PR referencing that issue
-
-This is an automated check — if you believe this was a mistake, comment on this PR and a maintainer will review."
+            --comment "$PR_COMMENT"
