@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Box, Plus } from 'lucide-react'
 import { Skeleton } from '../ui/Skeleton'
-import { CardSearchInput, CardControlsRow, CardPaginationFooter } from '../../lib/cards/CardComponents'
+import { CardSearchInput, CardControlsRow, CardPaginationFooter, type CardControlsRowProps } from '../../lib/cards/CardComponents'
 import { useCardData, commonComparators } from '../../lib/cards/cardHooks'
 import { useCachedWorkloads } from '../../hooks/useCachedData'
 import { useClusters } from '../../hooks/useMCP'
@@ -130,6 +130,54 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
     defaultLimit: 5,
   })
 
+  const handleSortChange = useCallback(
+    (value: string) => setSortBy(value as SortByOption),
+    [setSortBy],
+  )
+
+  const clusterIndicator = useMemo<NonNullable<CardControlsRowProps['clusterIndicator']>>(
+    () => ({
+      selectedCount: localClusterFilter.length,
+      totalCount: availableClusters.length,
+    }),
+    [availableClusters.length, localClusterFilter.length],
+  )
+
+  const clusterFilter = useMemo<NonNullable<CardControlsRowProps['clusterFilter']>>(
+    () => ({
+      availableClusters,
+      selectedClusters: localClusterFilter,
+      onToggle: toggleClusterFilter,
+      onClear: clearClusterFilter,
+      isOpen: showClusterFilter,
+      setIsOpen: setShowClusterFilter,
+      containerRef: clusterFilterRef,
+      minClusters: 1,
+    }),
+    [
+      availableClusters,
+      clearClusterFilter,
+      clusterFilterRef,
+      localClusterFilter,
+      showClusterFilter,
+      toggleClusterFilter,
+      setShowClusterFilter,
+    ],
+  )
+
+  const cardControls = useMemo<NonNullable<CardControlsRowProps['cardControls']>>(
+    () => ({
+      limit: itemsPerPage,
+      onLimitChange: setItemsPerPage,
+      sortBy,
+      sortOptions: SORT_OPTIONS,
+      onSortChange: handleSortChange,
+      sortDirection,
+      onSortDirectionChange: setSortDirection,
+    }),
+    [handleSortChange, itemsPerPage, setItemsPerPage, sortBy, sortDirection, setSortDirection],
+  )
+
   if (showSkeleton) {
     return (
       <div className="h-full flex flex-col min-h-card p-3">
@@ -157,29 +205,9 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
           </span>
         </div>
         <CardControlsRow
-          clusterIndicator={{
-            selectedCount: localClusterFilter.length,
-            totalCount: availableClusters.length,
-          }}
-          clusterFilter={{
-            availableClusters,
-            selectedClusters: localClusterFilter,
-            onToggle: toggleClusterFilter,
-            onClear: clearClusterFilter,
-            isOpen: showClusterFilter,
-            setIsOpen: setShowClusterFilter,
-            containerRef: clusterFilterRef,
-            minClusters: 1,
-          }}
-          cardControls={{
-            limit: itemsPerPage,
-            onLimitChange: setItemsPerPage,
-            sortBy,
-            sortOptions: SORT_OPTIONS,
-            onSortChange: value => setSortBy(value as SortByOption),
-            sortDirection,
-            onSortDirectionChange: setSortDirection,
-          }}
+          clusterIndicator={clusterIndicator}
+          clusterFilter={clusterFilter}
+          cardControls={cardControls}
         />
       </div>
 
