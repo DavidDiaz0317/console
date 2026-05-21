@@ -29,6 +29,7 @@ describe("missions-file", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
+      headers: { get: () => null },
       text: async () => '{"items":[]}',
     }));
   });
@@ -67,6 +68,7 @@ describe("missions-file", () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
+      headers: { get: () => null },
       text: async () => '{"items":[]}',
     });
     vi.stubGlobal("fetch", fetchSpy);
