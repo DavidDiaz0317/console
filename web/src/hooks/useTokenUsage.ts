@@ -568,9 +568,10 @@ async function fetchTokenUsage() {
           // Reset baseline without attributing any delta. On first init
           // (lastKnownUsage === null) we also take this branch to establish
           // a baseline without pretending all current usage happened just now.
+          // All usage is folded into "other" since we can't attribute it.
           updateSharedUsage({
             used: totalUsed,
-            byCategory: reconcileUsageBreakdown(totalUsed, sharedUsage.byCategory),
+            byCategory: { missions: 0, diagnose: 0, insights: 0, predictions: 0, other: totalUsed },
             resetDate,
           })
         } else if (totalUsed > lastKnownUsage) {
@@ -612,9 +613,10 @@ async function fetchTokenUsage() {
             }
           } else {
             console.warn(`[TokenUsage] Skipping large delta ${delta} - likely initialization`)
+            // Large delta is likely a restart or initialization - fold into "other"
             updateSharedUsage({
               used: totalUsed,
-              byCategory: reconcileUsageBreakdown(totalUsed, sharedUsage.byCategory),
+              byCategory: { missions: 0, diagnose: 0, insights: 0, predictions: 0, other: totalUsed },
               resetDate,
             })
           }
