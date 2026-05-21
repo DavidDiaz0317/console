@@ -18,9 +18,10 @@ var originBypassAllowedPaths = map[string]struct{}{
 func (s *Server) checkOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 
-	// No origin header (e.g., same-origin request, curl, etc.) - allow
+	// Reject empty Origin header to prevent bypass attacks
 	if origin == "" {
-		return true
+		slog.Warn("SECURITY: rejected WebSocket connection with empty Origin")
+		return false
 	}
 
 	// Check against allowed origins (supports wildcards like "https://*.ibm.com")
