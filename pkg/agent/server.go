@@ -71,10 +71,12 @@ const (
 	deployedByAnonymousMarker = "anonymous"
 
 	// defaultMissionExecutionTimeout is the compiled default for mission
-	// execution.  Operators can override it at startup via the
+	// execution. Operators can override it at startup via the
 	// KC_MISSION_TIMEOUT environment variable (accepts Go duration strings
-	// such as "10m", "600s", "1h").  See #9482.
-	defaultMissionExecutionTimeout = 5 * time.Minute
+	// such as "10m", "600s", "1h"). Increased from 5m to 15m because
+	// multi-workload missions were timing out on the final install step
+	// before the agent could report success (#15165).
+	defaultMissionExecutionTimeout = 15 * time.Minute
 
 	// missionTimeoutEnvVar is the environment variable operators can set
 	// to override the per-mission execution timeout.

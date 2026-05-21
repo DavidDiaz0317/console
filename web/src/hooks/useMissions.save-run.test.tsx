@@ -543,7 +543,7 @@ describe('error classification', () => {
       MockWebSocket.lastInstance?.simulateMessage({
         id: requestId,
         type: 'error',
-        payload: { code: 'mission_timeout', message: 'Timed out after 5 minutes' },
+        payload: { code: 'mission_timeout', message: 'Timed out after 15 minutes' },
       })
     })
 

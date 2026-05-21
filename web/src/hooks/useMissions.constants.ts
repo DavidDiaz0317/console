@@ -52,15 +52,19 @@ export const STATUS_PROCESSING_DELAY_MS = 3_000
 
 // ─── Mission Timeouts ────────────────────────────────────────────────────────
 
+const BACKEND_MISSION_TIMEOUT_MS = 15 * MS_PER_MINUTE
+const MISSION_TIMEOUT_GRACE_MS = 1 * MS_PER_MINUTE
+
 /**
  * Maximum time (ms) a mission is allowed to stay in "running" state before the
- * frontend considers it timed out and transitions it to "failed".  This acts as
+ * frontend considers it timed out and transitions it to "failed". This acts as
  * a client-side safety net in case the backend timeout fires but the error
  * message is lost (e.g., WebSocket reconnect race), or the backend itself is
- * unreachable.  Matches the backend missionExecutionTimeout (5 min) plus a
- * small grace period for network latency.
+ * unreachable. Matches the backend missionExecutionTimeout default (15 min)
+ * plus a small grace period so the backend's own timeout error wins when both
+ * thresholds are reached around the same time.
  */
-export const MISSION_TIMEOUT_MS = 300_000
+export const MISSION_TIMEOUT_MS = BACKEND_MISSION_TIMEOUT_MS + MISSION_TIMEOUT_GRACE_MS
 /** How often (ms) the frontend checks for timed-out missions */
 export const MISSION_TIMEOUT_CHECK_INTERVAL_MS = 15_000
 /**

@@ -41,7 +41,7 @@ describe('useMissions.constants', () => {
   it('keeps status and mission timeout constants stable', () => {
     expect(STATUS_WAITING_DELAY_MS).toBe(500)
     expect(STATUS_PROCESSING_DELAY_MS).toBe(3_000)
-    expect(MISSION_TIMEOUT_MS).toBe(300_000)
+    expect(MISSION_TIMEOUT_MS).toBe(960_000)
     expect(MISSION_TIMEOUT_CHECK_INTERVAL_MS).toBe(15_000)
     expect(MISSION_INACTIVITY_TIMEOUT_MS).toBe(90_000)
     expect(WAITING_INPUT_TIMEOUT_MS).toBe(600_000)

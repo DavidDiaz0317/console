@@ -4,6 +4,7 @@ import React from 'react'
 import { MissionProvider, useMissions } from './useMissions'
 import { getDemoMode } from './useDemoMode'
 import { emitMissionStarted, emitMissionCompleted, emitMissionError, emitMissionRated } from '../lib/analytics'
+import { MISSION_TIMEOUT_CHECK_INTERVAL_MS, MISSION_TIMEOUT_MS } from './useMissions.constants'
 
 // ── External module mocks ─────────────────────────────────────────────────────
 
@@ -803,7 +804,7 @@ describe('sidebar minimize/expand', () => {
 // ── Mission timeout interval ─────────────────────────────────────────────────
 
 describe('mission timeout interval', () => {
-  it('transitions running mission to failed after MISSION_TIMEOUT_MS (5 min)', async () => {
+  it('transitions running mission to failed after MISSION_TIMEOUT_MS (16 min incl grace)', async () => {
     vi.useFakeTimers()
     try {
       const { result } = renderHook(() => useMissions(), { wrapper })
@@ -811,8 +812,8 @@ describe('mission timeout interval', () => {
 
       expect(result.current.missions.find(m => m.id === missionId)?.status).toBe('running')
 
-      // Advance past the 5-minute timeout + one check interval (15s)
-      act(() => { vi.advanceTimersByTime(300_000 + 15_000) })
+      // Advance past the mission timeout window plus one check interval.
+      act(() => { vi.advanceTimersByTime(MISSION_TIMEOUT_MS + MISSION_TIMEOUT_CHECK_INTERVAL_MS) })
 
       const mission = result.current.missions.find(m => m.id === missionId)
       expect(mission?.status).toBe('failed')
