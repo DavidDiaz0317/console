@@ -86,7 +86,7 @@ export function RotatingTagline({ aiTagline }: { aiTagline?: string }) {
   const [index, setIndex] = useState(() => randomIndex(taglineCount))
   const [visible, setVisible] = useState(true)
   const [transition, setTransition] = useState<TransitionStyle>('fade')
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const advance = useCallback(() => {
     if (taglineCount === 0) {
