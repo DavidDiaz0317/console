@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const ROTATION_INTERVAL_MS = 30_000
@@ -86,28 +86,43 @@ export function RotatingTagline({ aiTagline }: { aiTagline?: string }) {
   const [index, setIndex] = useState(() => randomIndex(taglineCount))
   const [visible, setVisible] = useState(true)
   const [transition, setTransition] = useState<TransitionStyle>('fade')
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const advance = useCallback(() => {
     if (taglineCount === 0) {
-      return undefined
+      return
+    }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
     }
 
     setTransition(pickTransition())
     setVisible(false)
-    const tid = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIndex(prev => (prev + 1) % taglineCount)
       setVisible(true)
+      timeoutRef.current = null
     }, TRANSITION_DURATION_MS)
-    return () => clearTimeout(tid)
   }, [taglineCount])
 
   useEffect(() => {
     if (taglineCount <= 1) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
       return undefined
     }
 
     const id = setInterval(advance, ROTATION_INTERVAL_MS)
-    return () => clearInterval(id)
+    return () => {
+      clearInterval(id)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [advance, taglineCount])
 
   const safeIndex = taglineCount > 0 && index < taglineCount ? index : 0
