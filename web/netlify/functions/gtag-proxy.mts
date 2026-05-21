@@ -19,6 +19,47 @@ import type { Config } from "@netlify/functions"
 
 const GTAG_BASE_URL = "https://www.googletagmanager.com/gtag/js"
 const CACHE_MAX_AGE_SECS = 3600 // 1 hour — matches Go backend
+const MAX_PROXY_RESPONSE_BYTES = 1_048_576
+const OVERSIZED_RESPONSE_ERROR = "Upstream too large"
+
+async function readResponseTextWithCap(response: Response, maxBytes: number): Promise<string> {
+  const contentLengthHeader = response.headers.get("content-length")
+  if (contentLengthHeader) {
+    const contentLength = Number.parseInt(contentLengthHeader, 10)
+    if (!Number.isNaN(contentLength) && contentLength > maxBytes) {
+      throw new Error(OVERSIZED_RESPONSE_ERROR)
+    }
+  }
+
+  if (!response.body) {
+    return ""
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let totalSize = 0
+  let text = ""
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    if (!value) {
+      continue
+    }
+
+    totalSize += value.byteLength
+    if (totalSize > maxBytes) {
+      await reader.cancel(OVERSIZED_RESPONSE_ERROR)
+      throw new Error(OVERSIZED_RESPONSE_ERROR)
+    }
+
+    text += decoder.decode(value, { stream: true })
+  }
+
+  return text + decoder.decode()
+}
 
 export default async (req: Request) => {
   const url = new URL(req.url)
@@ -39,7 +80,7 @@ export default async (req: Request) => {
       return new Response(null, { status: resp.status })
     }
 
-    const body = await resp.text()
+    const body = await readResponseTextWithCap(resp, MAX_PROXY_RESPONSE_BYTES)
 
     return new Response(body, {
       status: 200,
@@ -49,7 +90,11 @@ export default async (req: Request) => {
         "X-Content-Type-Options": "nosniff",
       },
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === OVERSIZED_RESPONSE_ERROR) {
+      return new Response(OVERSIZED_RESPONSE_ERROR, { status: 502 })
+    }
+
     return new Response(null, { status: 502 })
   }
 }
