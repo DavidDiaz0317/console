@@ -297,8 +297,16 @@ export function RecommendedTasksPanel({ createTask }: Props) {
                   onClick={() => !isScheduled && setExpandedId(isExpanded ? null : rec.id)}
                   style={{ cursor: isScheduled ? 'default' : 'pointer' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: SUGGESTION_ROW_GAP_PX }}>
-                    <span style={{ display: 'flex', alignSelf: 'baseline', color: cColor }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: SUGGESTION_ROW_GAP_PX }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: SUGGESTION_ICON_SIZE_PX,
+                      height: SUGGESTION_ICON_SIZE_PX,
+                      flexShrink: 0,
+                      color: cColor,
+                    }}>
                       <Icon size={SUGGESTION_ICON_SIZE_PX} strokeWidth={SUGGESTION_ICON_STROKE_WIDTH} />
                     </span>
                     <span style={{ fontSize: TITLE_TEXT_SIZE_PX, fontWeight: TITLE_TEXT_WEIGHT, color: 'var(--s-text)', flex: DEFAULT_OPACITY }}>
