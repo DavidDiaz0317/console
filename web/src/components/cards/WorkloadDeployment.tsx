@@ -148,6 +148,42 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
     )
   }
 
+  // Memoize CardControlsRow props to prevent unnecessary re-renders
+  const clusterIndicator = useMemo(
+    () => ({
+      selectedCount: localClusterFilter.length,
+      totalCount: availableClusters.length,
+    }),
+    [localClusterFilter.length, availableClusters.length]
+  )
+
+  const clusterFilter = useMemo(
+    () => ({
+      availableClusters,
+      selectedClusters: localClusterFilter,
+      onToggle: toggleClusterFilter,
+      onClear: clearClusterFilter,
+      isOpen: showClusterFilter,
+      setIsOpen: setShowClusterFilter,
+      containerRef: clusterFilterRef,
+      minClusters: 1,
+    }),
+    [availableClusters, localClusterFilter, toggleClusterFilter, clearClusterFilter, showClusterFilter, setShowClusterFilter, clusterFilterRef]
+  )
+
+  const cardControls = useMemo(
+    () => ({
+      limit: itemsPerPage,
+      onLimitChange: setItemsPerPage,
+      sortBy,
+      sortOptions: SORT_OPTIONS,
+      onSortChange: (value: string) => setSortBy(value as SortByOption),
+      sortDirection,
+      onSortDirectionChange: setSortDirection,
+    }),
+    [itemsPerPage, setItemsPerPage, sortBy, sortDirection, setSortDirection]
+  )
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-y-2 mb-2 shrink-0 px-3 pt-3">
@@ -157,29 +193,9 @@ export function WorkloadDeployment(_props: WorkloadDeploymentProps) {
           </span>
         </div>
         <CardControlsRow
-          clusterIndicator={{
-            selectedCount: localClusterFilter.length,
-            totalCount: availableClusters.length,
-          }}
-          clusterFilter={{
-            availableClusters,
-            selectedClusters: localClusterFilter,
-            onToggle: toggleClusterFilter,
-            onClear: clearClusterFilter,
-            isOpen: showClusterFilter,
-            setIsOpen: setShowClusterFilter,
-            containerRef: clusterFilterRef,
-            minClusters: 1,
-          }}
-          cardControls={{
-            limit: itemsPerPage,
-            onLimitChange: setItemsPerPage,
-            sortBy,
-            sortOptions: SORT_OPTIONS,
-            onSortChange: value => setSortBy(value as SortByOption),
-            sortDirection,
-            onSortDirectionChange: setSortDirection,
-          }}
+          clusterIndicator={clusterIndicator}
+          clusterFilter={clusterFilter}
+          cardControls={cardControls}
         />
       </div>
 

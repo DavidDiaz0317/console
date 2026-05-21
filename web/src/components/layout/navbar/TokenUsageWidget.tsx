@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Coins, Rocket, Stethoscope, Lightbulb, TrendingUp, MoreHorizontal } from 'lucide-react'
@@ -60,6 +60,12 @@ export function TokenUsageWidget({ showLabel = false }: TokenUsageWidgetProps) {
   const previousTokensRef = useRef<number>(usage.used)
   const tokenRef = useRef<HTMLDivElement>(null)
   const alertStyles = isDemoData ? DEMO_TOKEN_STYLES : TOKEN_ALERT_STYLES[alertLevel]
+
+  // Precompute total category usage to avoid recomputing inside .map()
+  const totalCategoryUsage = useMemo(
+    () => Object.values(usage.byCategory || {}).reduce((a, b) => a + b, 0),
+    [usage.byCategory]
+  )
 
   // Animate token icon when usage increases significantly
   useEffect(() => {
@@ -200,7 +206,6 @@ export function TokenUsageWidget({ showLabel = false }: TokenUsageWidgetProps) {
                   {(Object.entries(usage.byCategory) as [TokenCategory, number][])
                     .filter(([, tokens]) => tokens > 0)
                     .map(([category, tokens]) => {
-                      const totalCategoryUsage = Object.values(usage.byCategory).reduce((a, b) => a + b, 0)
                       const pct = totalCategoryUsage > 0 ? (tokens / totalCategoryUsage) * 100 : 0
                       const config = CATEGORY_CONFIG[category]
                       return (

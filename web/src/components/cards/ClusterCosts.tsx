@@ -176,7 +176,10 @@ export const ClusterCosts = memo(function ClusterCosts({ config }: ClusterCostsP
   const { t } = useTranslation(['cards', 'common'])
 
   // Build sort options with translated labels
-  const SORT_OPTIONS = SORT_OPTIONS_KEYS.map(opt => ({ value: opt.value, label: String(t(opt.labelKey)) }))
+  const SORT_OPTIONS = useMemo(
+    () => SORT_OPTIONS_KEYS.map(opt => ({ value: opt.value, label: String(t(opt.labelKey)) })),
+    [t]
+  )
   const { deduplicatedClusters: allClusters, isLoading, isRefreshing: clustersRefreshing, isFailed, consecutiveFailures } = useClusters()
   const { nodes: gpuNodes, isRefreshing: gpuRefreshing, isDemoFallback } = useCachedGPUNodes()
   const { drillToCost } = useDrillDownActions()
