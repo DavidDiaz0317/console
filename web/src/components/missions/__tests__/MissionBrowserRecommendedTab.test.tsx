@@ -3,6 +3,37 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import type { MissionExport, MissionMatch, BrowseEntry } from '../../../lib/missions/types'
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => {
+      const map: Record<string, string> = {
+        'missions.recommended.tokenError.rateLimited': 'GitHub API rate limit reached',
+        'missions.recommended.tokenError.tokenInvalid': 'GitHub token is invalid or expired',
+        'missions.recommended.title.withCluster': 'Recommended for Your Cluster',
+        'missions.recommended.title.withoutCluster': 'Explore CNCF Fixes',
+        'missions.recommended.subtitle.withCluster': '🎯 Matched based on your cluster resources, labels, and detected issues',
+        'missions.recommended.subtitle.withoutCluster': '🌐 Showing popular CNCF community fixes — connect a cluster for personalized recommendations',
+        'missions.recommended.progress.connecting': 'Connecting to knowledge base…',
+        'missions.recommended.progress.scanning': 'Scanning',
+        'missions.recommended.progress.found': '{{found}} found · {{scanned}} scanned',
+        'missions.recommended.browseGitHub': 'Browse all fixes on GitHub',
+        'missions.recommended.refreshRecommendations': 'Refresh recommendations',
+        'missions.browser.emptyState.noFiles': 'No files in this directory',
+        'missions.browser.emptyState.selectFolder': 'Select a folder from the sidebar to browse missions',
+        'common.restartConsole': 'Restart the console',
+      }
+      let result = map[key] ?? key
+      if (opts) {
+        Object.entries(opts).forEach(([k, v]) => {
+          result = result.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v))
+        })
+      }
+      return result
+    },
+  }),
+}))
+
 vi.mock('../../lib/analytics', () => ({ emitFixerGitHubLink: vi.fn() }))
 vi.mock('../../../lib/analytics', () => ({ emitFixerGitHubLink: vi.fn() }))
 
