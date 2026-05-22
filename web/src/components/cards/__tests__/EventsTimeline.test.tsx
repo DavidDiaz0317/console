@@ -189,7 +189,7 @@ describe('EventsTimeline', () => {
   it('passes array-backed chart data to ECharts', () => {
     mockEvents.mockReturnValue({
       events: [
-        { type: 'Warning', reason: 'BackOff', message: 'Pod is backing off', object: 'Pod/app-1', namespace: 'default', cluster: 'prod-cluster', count: '32', lastSeen: new Date().toISOString() },
+        { type: 'Warning', reason: 'BackOff', message: 'Pod is backing off', object: 'Pod/app-1', namespace: 'default', cluster: 'prod-cluster', count: '32', lastSeen: new Date(Date.now() - 1000).toISOString() },
       ],
       isLoading: false,
       isRefreshing: false,
