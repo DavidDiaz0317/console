@@ -26,6 +26,7 @@ import { STORAGE_KEY_NAV_HISTORY } from '../../lib/constants'
 import { NAV_AFTER_ANIMATION_MS } from '../../lib/constants/network'
 import { suggestDashboardIcon, suggestIconSync } from '../../lib/iconSuggester'
 import { BaseModal, useModalState } from '../../lib/modals'
+import { useToast } from '../ui/Toast'
 import {
   AUTO_DISMISS_APPLIED_MS,
   AUTO_DISMISS_MS,
@@ -75,6 +76,7 @@ export function SidebarCustomizer({ isOpen, onClose, embedded = false }: Sidebar
   } = useSidebarConfig()
   const { createDashboard, dashboards } = useDashboards()
   const { isOpen: isCreateDashboardOpen, close: closeCreateDashboard } = useModalState()
+  const { showToast } = useToast()
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationResult, setGenerationResult] = useState<string | null>(null)
@@ -179,6 +181,7 @@ export function SidebarCustomizer({ isOpen, onClose, embedded = false }: Sidebar
       href = getCustomDashboardRoute(createdDashboard.id)
     } catch (error: unknown) {
       console.error('[SidebarCustomizer] backend create failed, falling back to local dashboard:', error)
+      showToast(t('sidebar.customizer.backendCreateFallback'), 'warning')
     }
 
     addItem({ name, icon: quickIcon, href, type: 'link', description }, 'primary')

@@ -178,6 +178,7 @@
       "recommendedDashboards": "Recommended Dashboards",
       "addTopicDashboards": "Add topic-specific dashboards to your sidebar",
       "searchPlaceholder": "Search dashboards...",
+      "backendCreateFallback": "Saved the new dashboard locally because the backend request failed.",
       "searchHint": "Search for a dashboard to add to your sidebar",
       "noMatchingDashboards": "No matching dashboards found",
       "availableToAdd": "Available to Add",
@@ -1263,6 +1264,7 @@
     "studio": {
       "title": "Console Studio",
       "search": "Search cards, collections, dashboards...",
+      "backendCreateFallback": "Saved the new dashboard locally because the backend request failed.",
       "sections": {
         "cards": "Cards",
         "browse": "Browse Catalog",

@@ -23,6 +23,7 @@ import { getCustomDashboardRoute } from '../../../config/routes'
 import { useDashboards } from '../../../hooks/useDashboards'
 import { useSidebarConfig } from '../../../hooks/useSidebarConfig'
 import { suggestIconSync } from '../../../lib/iconSuggester'
+import { useToast } from '../../ui/Toast'
 import type { CardSuggestion, HoveredCard } from '../shared/cardCatalog'
 import type { DashboardTemplate } from '../templates'
 
@@ -94,6 +95,7 @@ export function DashboardCustomizer({
   const globalSearch = ''
   const { dashboards, createDashboard: _createDashboard } = useDashboards()
   const { addItem } = useSidebarConfig()
+  const { showToast } = useToast()
   const navigate = useNavigate()
 
   const handleHoverCard = useCallback((card: HoveredCard | null) => setHoveredCard(card), [])
@@ -180,6 +182,7 @@ export function DashboardCustomizer({
                   href = getCustomDashboardRoute(createdDashboard.id)
                 } catch (error: unknown) {
                   console.error('[DashboardCustomizer] backend create failed, falling back to local dashboard:', error)
+                  showToast(t('dashboard.studio.backendCreateFallback'), 'warning')
                 }
 
                 addItem({ name, icon, href, type: 'link' }, 'primary')
