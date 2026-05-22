@@ -337,11 +337,20 @@ export function useKubescape() {
   const fetchInProgress = useRef(false)
 
   const clusters = allClusters.filter(c => c.reachable === true).map(c => c.name)
+  
+  // Stable key for cluster identity to detect when cluster set changes (not just count)
+  const clustersKey = useMemo(() => JSON.stringify([...clusters].sort()), [clusters])
+
+  // Keep refs for values used in callbacks to avoid stale closures
+  const isDemoModeRef = useRef(isDemoMode)
+  isDemoModeRef.current = isDemoMode
+  const clustersRef = useRef(clusters)
+  clustersRef.current = clusters
 
   const refetch = useCallback(async (silent = false) => {
     // In-cluster mode: kubectlProxy requires kc-agent which isn't available.
     // Return unavailable state instead of silently showing zeros. (#11747)
-    if (isInClusterMode() && !isDemoMode) {
+    if (isInClusterMode() && !isDemoModeRef.current) {
       setStatuses({})
       setIsLoading(false)
       setIsRefreshing(false)
@@ -349,7 +358,8 @@ export function useKubescape() {
       return
     }
 
-    if (clusters.length === 0) {
+    const currentClusters = clustersRef.current
+    if (currentClusters.length === 0) {
       setIsLoading(false)
       return
     }
@@ -366,7 +376,7 @@ export function useKubescape() {
     setClustersChecked(0)
 
     // (#6857) Return { cluster, status } from each callback to avoid shared mutation.
-    const tasks = (clusters || []).map(cluster => async () => {
+    const tasks = (currentClusters || []).map(cluster => async () => {
       const status = await fetchSingleCluster(cluster)
       setStatuses(prev => ({ ...prev, [cluster]: status }))
       setClustersChecked(prev => prev + 1)
@@ -395,7 +405,7 @@ export function useKubescape() {
     } finally {
       fetchInProgress.current = false
     }
-  }, [clusters])
+  }, []) // No deps - uses refs to avoid stale closures
 
   // Demo mode
   useEffect(() => {
@@ -422,7 +432,7 @@ export function useKubescape() {
       // (prevents premature empty state while useClusters is still resolving)
       setIsLoading(false)
     }
-  }, [clusters.length, isDemoMode, clustersLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clustersKey, isDemoMode, clustersLoading, refetch])
 
   // Register with unified mode transition system so skeleton/refetch works
   // in sync with all other cards when demo mode is toggled
@@ -453,7 +463,7 @@ export function useKubescape() {
 
     const interval = setInterval(() => refetch(true), REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [clusters.length, refetch, isDemoMode])
+  }, [clustersKey, refetch, isDemoMode])
 
   const isDemoData = isDemoMode
   const installed = Object.values(statuses).some(s => s.installed)

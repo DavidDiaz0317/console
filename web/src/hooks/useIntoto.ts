@@ -10,7 +10,7 @@
  * - Demo fallback when no clusters are connected
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useClusters } from './useMCP'
 import { kubectlProxy } from '../lib/kubectlProxy'
 import { MS_PER_HOUR, MS_PER_MINUTE } from '../lib/constants/time'
@@ -398,8 +398,16 @@ export function useIntoto() {
 
   const clusters = allClusters.filter(c => c.reachable === true).map(c => c.name)
 
+  // Stable key for cluster identity to detect when cluster set changes (not just count)
+  const clustersKey = useMemo(() => JSON.stringify([...clusters].sort()), [clusters])
+
+  // Keep refs for values used in callbacks to avoid stale closures
+  const clustersRef = useRef(clusters)
+  clustersRef.current = clusters
+
   const refetch = useCallback(async (silent = false) => {
-    if (clusters.length === 0) {
+    const currentClusters = clustersRef.current
+    if (currentClusters.length === 0) {
       setIsLoading(false)
       return
     }
@@ -416,7 +424,7 @@ export function useIntoto() {
       setClustersChecked(0)
 
       // Check all clusters with bounded concurrency, stream results progressively
-      const clusterList = clusters || []
+      const clusterList = currentClusters || []
 
       const tasks = clusterList.map(cluster => async () => {
         const status = await fetchSingleCluster(cluster)
@@ -460,7 +468,7 @@ export function useIntoto() {
     } finally {
       fetchInProgress.current = false
     }
-  }, [clusters])
+  }, []) // No deps - uses refs to avoid stale closures
 
   // Demo mode
   useEffect(() => {
@@ -487,7 +495,7 @@ export function useIntoto() {
       // (prevents premature empty state while useClusters is still resolving)
       setIsLoading(false)
     }
-  }, [clusters.length, isDemoMode, clustersLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clustersKey, isDemoMode, clustersLoading, refetch])
 
   // Register with unified mode transition system so skeleton/refetch works
   // in sync with all other cards when demo mode is toggled
@@ -518,7 +526,7 @@ export function useIntoto() {
     if (isDemoMode || clusters.length === 0) return
     const interval = setInterval(() => refetch(true), INTOTO_CACHE_MAX_AGE_MS)
     return () => clearInterval(interval)
-  }, [clusters.length, refetch, isDemoMode])
+  }, [clustersKey, refetch, isDemoMode])
 
   const isDemoData = isDemoMode
   const installed = Object.values(statuses).some(s => s.installed)
