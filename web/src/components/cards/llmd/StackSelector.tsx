@@ -21,9 +21,9 @@ import { Skeleton } from '../../ui/Skeleton'
 import { useModalState } from '../../../lib/modals'
 
 const STATUS_COLORS = {
-  healthy: 'bg-green-500',
-  degraded: 'bg-yellow-500',
-  unhealthy: 'bg-red-500',
+  healthy: 'bg-green-400',
+  degraded: 'bg-yellow-400',
+  unhealthy: 'bg-red-400',
   unknown: 'bg-gray-500 dark:bg-gray-400' }
 
 type SortField = 'name' | 'accelerators' | 'status' | 'replicas'
@@ -448,12 +448,12 @@ export function StackSelector() {
 
               {/* Error message */}
               {fetchError && (
-                <div className="px-3 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-xs">
+                <div className="px-3 py-2 bg-red-400/10 border-b border-red-400/20 text-red-400 text-xs">
                   <div className="flex flex-wrap items-center justify-between gap-y-2 gap-2">
                     <span className="flex-1">{fetchError}</span>
                     <button
                       onClick={handleRefetch}
-                      className="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 transition-colors whitespace-nowrap"
+                      className="px-2 py-1 rounded bg-red-400/20 hover:bg-red-400/30 transition-colors whitespace-nowrap"
                     >
                       Retry
                     </button>
@@ -558,7 +558,7 @@ export function StackSelector() {
             <div className="px-3 py-2 border-t border-border bg-background/50 flex flex-wrap items-center justify-between gap-y-2 text-2xs">
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                   <span className="text-muted-foreground">
                     {stacks.filter(s => s.status === 'healthy').length} healthy
                   </span>
