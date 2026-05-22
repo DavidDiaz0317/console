@@ -14,10 +14,13 @@
 
 import { getStore } from "@netlify/blobs";
 import { SCANNABLE_IDS_BY_LEVEL, AGENT_INSTRUCTION_FILE_IDS, ACMM_DETECTION_PATHS } from "../../src/lib/acmm/scannableIdsByLevel";
+import { readCappedJson } from "./_shared/read-capped-json";
 
 const GITHUB_API = "https://api.github.com";
 const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 const API_TIMEOUT_MS = 15_000;
+/** Trusted origin for internal scan endpoint calls. Never derive from request. */
+const SCAN_ORIGIN = process.env.URL || "https://console.kubestellar.io";
 /** Maximum upstream response size (512 KB — tree JSON is typically < 200 KB) */
 const MAX_RESPONSE_BYTES = 512_000;
 const BLOB_CACHE_STORE = "acmm-scan";
@@ -176,14 +179,14 @@ async function writeBlobCache(repo: string, detectedIds: string[]): Promise<void
   }
 }
 
-async function fetchFromScanEndpoint(origin: string, repo: string, force = false): Promise<string[]> {
+async function fetchFromScanEndpoint(repo: string, force = false): Promise<string[]> {
   const forceParam = force ? "&force=true" : "";
-  const url = `${origin}/api/acmm/scan?repo=${encodeURIComponent(repo)}${forceParam}`;
+  const url = `${SCAN_ORIGIN}/api/acmm/scan?repo=${encodeURIComponent(repo)}${forceParam}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`scan returned ${res.status}`);
   }
-  const body = (await res.json()) as { detectedIds?: string[] };
+  const body = await readCappedJson<{ detectedIds?: string[] }>(res, "acmm-scan");
   return body.detectedIds || [];
 }
 
@@ -279,7 +282,7 @@ export default async (req: Request) => {
   // If we have stale Blob data, use it as guaranteed fallback.
   let detectedIds: string[] | null = null;
   try {
-    detectedIds = await fetchFromScanEndpoint(url.origin, repo, force);
+    detectedIds = await fetchFromScanEndpoint(repo, force);
     // Persist to Blobs for next request
     writeBlobCache(repo, detectedIds).catch((err) => {
       console.error('[acmm-badge] blob cache write failed', err instanceof Error ? err.message : err)
