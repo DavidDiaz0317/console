@@ -59,6 +59,10 @@ interface UseMissionContentViewerOptions {
   revealMissionInTree: (mission: MissionExport) => Promise<void>
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
 export function useMissionContentViewer({
   isOpen,
   activeTab,
@@ -319,7 +323,19 @@ export function useMissionContentViewer({
     }
   }, [handleImport, showToast, t])
 
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => {
+    abortControllerRef.current?.abort()
+  }, [])
+
   const selectNode = useCallback(async (node: TreeNode) => {
+    abortControllerRef.current?.abort()
+
+    const controller = new AbortController()
+    const { signal } = controller
+    abortControllerRef.current = controller
+
     setSelectedMission(null)
     setUnstructuredContent(null)
     setRawContent(null)
@@ -329,29 +345,43 @@ export function useMissionContentViewer({
     if (node.type === 'directory') {
       setLoading(true)
       try {
-        const entries = await fetchDirectoryEntries(node)
-        setDirectoryEntries(entries)
-      } catch {
+        const entries = await fetchDirectoryEntries(node, signal)
+        if (!signal.aborted) {
+          setDirectoryEntries(entries)
+        }
+      } catch (error) {
+        if (isAbortError(error) || signal.aborted) return
         setDirectoryEntries([])
         showToast(t('missions.browser.loadDirectoryFailed'), 'error')
       } finally {
-        setLoading(false)
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null
+        }
+        if (!signal.aborted) {
+          setLoading(false)
+        }
       }
       return
     }
 
     setLoading(true)
     try {
-      const content = node.source === 'local' ? (node.content ?? null) : await fetchNodeFileContent(node)
-      if (content === null) return
+      const content = node.source === 'local' ? (node.content ?? null) : await fetchNodeFileContent(node, signal)
+      if (content === null || signal.aborted) return
       setDirectoryEntries([])
       applySelectedFileContent(node, content)
-    } catch {
+    } catch (error) {
+      if (isAbortError(error) || signal.aborted) return
       setRawContent(null)
       setSelectedMission(null)
       showToast(t('missions.browser.loadFileFailed'), 'error')
     } finally {
-      setLoading(false)
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+      }
+      if (!signal.aborted) {
+        setLoading(false)
+      }
     }
   }, [applySelectedFileContent, showToast, t])
 
