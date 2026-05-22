@@ -47,9 +47,24 @@ const DEMO_DATA: ControlState = {
 
 const DEMO_STATUS: SystemStatus = DEMO_QUANTUM_STATUS
 
+// Build the standard header set for quantum mutation requests. When a
+// localStorage JWT is present (token-mode auth), include it as a Bearer
+// token. OAuth-mode users authenticate via the HttpOnly kc_auth cookie
+// that the browser sends automatically — the proxy honors both.
+function buildQuantumMutationHeaders(token: string | null): HeadersInit {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return headers
+}
+
 export const QuantumControlPanel: React.FC = () => {
   const { t } = useTranslation('cards')
-  const { isAuthenticated, login, isLoading: authIsLoading } = useAuth()
+  const { isAuthenticated, login, isLoading: authIsLoading, token } = useAuth()
   const { open: openDrillDown, close: closeDrillDown } = useDrillDown()
   const [control, setControl] = useState<ControlState>(DEMO_DATA)
   const [mutationError, setMutationError] = useState<string | null>(null)
@@ -140,10 +155,7 @@ export const QuantumControlPanel: React.FC = () => {
 
       const res = await fetch('/api/quantum/auth/save', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: buildQuantumMutationHeaders(token),
         credentials: 'include',
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
         body: JSON.stringify({
@@ -170,7 +182,7 @@ export const QuantumControlPanel: React.FC = () => {
         onClose: closeDrillDown,
       },
     })
-  }, [ibmAuthenticated, openDrillDown, closeDrillDown, refetchAuthStatus])
+  }, [ibmAuthenticated, openDrillDown, closeDrillDown, refetchAuthStatus, token])
 
   // Clear IBM Quantum credentials
   const handleClearCredentials = useCallback(async () => {
@@ -178,10 +190,7 @@ export const QuantumControlPanel: React.FC = () => {
     try {
       const res = await fetch('/api/quantum/auth/clear', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: buildQuantumMutationHeaders(token),
         credentials: 'include',
         signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
       })
@@ -200,7 +209,7 @@ export const QuantumControlPanel: React.FC = () => {
     } finally {
       setIsClearing(false)
     }
-  }, [refetchAuthStatus])
+  }, [refetchAuthStatus, token])
 
   useEffect(() => {
     if (!showClearCredentialsDialog || isClearing) return
@@ -223,10 +232,7 @@ export const QuantumControlPanel: React.FC = () => {
 
       const uploadRes = await fetch('/api/quantum/qasm/file', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
+          headers: buildQuantumMutationHeaders(token),
           credentials: 'include',
           signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
           body: JSON.stringify({
@@ -246,16 +252,22 @@ export const QuantumControlPanel: React.FC = () => {
 
       const response = await fetch('/api/quantum/execute', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: buildQuantumMutationHeaders(token),
       credentials: 'include',
       signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
       body: JSON.stringify(payload),
       })
 
-      if (!response.ok) throw new Error('Execution failed')
+      if (!response.ok) {
+        // Log the response body for diagnostics, but keep the user-facing
+        // message generic (it may include upstream error pages or stack
+        // traces that should not surface in the UI).
+        const errBody = await response.text().catch(() => '')
+        if (errBody) {
+          console.error('[QuantumControlPanel] execute failed', { status: response.status, body: errBody })
+        }
+        throw new Error(`Execution failed (HTTP ${response.status})`)
+      }
 
       const result = await response.json()
       setControl(prev => ({
@@ -291,10 +303,7 @@ export const QuantumControlPanel: React.FC = () => {
       const endpoint = control.loop_mode ? '/api/quantum/loop/stop' : '/api/quantum/loop/start'
       const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: buildQuantumMutationHeaders(token),
       credentials: 'include',
       signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
       })
