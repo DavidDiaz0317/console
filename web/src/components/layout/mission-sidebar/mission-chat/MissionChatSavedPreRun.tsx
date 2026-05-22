@@ -215,7 +215,7 @@ export function MissionChatSavedPreRun({
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">{step.title}</p>
                       {step.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-3 whitespace-pre-wrap">{step.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{step.description}</p>
                       )}
                     </div>
                   </div>

@@ -52,7 +52,7 @@ export const MemoizedMessage = memo(function MemoizedMessage({ msg, missionAgent
   }), [fontSize])
 
   const proseClasses = cn(
-    "prose dark:prose-invert max-w-none overflow-x-auto overflow-y-hidden",
+    "prose dark:prose-invert max-w-none overflow-x-auto",
     "prose-pre:my-5 prose-pre:bg-transparent prose-pre:p-0 prose-pre:overflow-x-auto",
     "prose-code:text-purple-700 dark:prose-code:text-purple-300 prose-code:bg-black/5 dark:prose-code:bg-black/20 prose-code:px-1 prose-code:rounded prose-code:break-all",
     "prose-hr:my-6",

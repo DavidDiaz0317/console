@@ -89,7 +89,7 @@ export function MissionChatHeader({
             </div>
           ) : (
             <div className="flex items-center gap-1 flex-1 min-w-0 group">
-              <h3 className="font-semibold text-foreground flex-1 truncate">{mission.title}</h3>
+              <h3 className="font-semibold text-foreground flex-1 truncate" title={mission.title}>{mission.title}</h3>
               <button
                 onClick={onStartEditingTitle}
                 className="p-0.5 rounded transition-colors text-muted-foreground hover:bg-secondary"
@@ -153,7 +153,7 @@ export function MissionChatHeader({
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-xs text-muted-foreground flex-1 line-clamp-2">{mission.description}</p>
+          <p className="text-xs text-muted-foreground flex-1 truncate" title={mission.description}>{mission.description}</p>
           {mission.agent && missionAgentProvider && (
             <AgentBadge provider={missionAgentProvider} name={mission.agent} />
           )}
