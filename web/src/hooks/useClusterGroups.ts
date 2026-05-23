@@ -213,22 +213,20 @@ export function useClusterGroups() {
         await updateCRGroup(name, localGroupToCR(merged) as CRClusterGroup)
       }
     } else {
-      setLocalGroups(prev => prev.map(g => {
-        if (g.name !== name) return g
-        return { ...g, ...updates, name: g.name }
-      }))
+      const current = localGroups.find(g => g.name === name)
+      if (!current) return
+      const merged = { ...current, ...updates, name: current.name }
 
-      const group = localGroups.find(g => g.name === name)
-      if (group) {
-        try {
-          await syncClusterGroupsRequest(`/api/cluster-groups/${encodeURIComponent(name)}`, {
-            method: 'PUT',
-            headers: authHeaders(),
-            body: JSON.stringify({ ...group, ...updates }),
-            signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
-        } catch (err) {
-          warnBackendSyncFailure('update', err)
-        }
+      setLocalGroups(prev => prev.map(g => g.name === name ? merged : g))
+
+      try {
+        await syncClusterGroupsRequest(`/api/cluster-groups/${encodeURIComponent(name)}`, {
+          method: 'PUT',
+          headers: authHeaders(),
+          body: JSON.stringify(merged),
+          signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) })
+      } catch (err) {
+        warnBackendSyncFailure('update', err)
       }
     }
   }
