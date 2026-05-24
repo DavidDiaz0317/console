@@ -8,14 +8,23 @@ import { useTranslation } from 'react-i18next'
 import { emitGameStarted, emitGameEnded } from '../../lib/analytics'
 import { useGameKeys } from '../../hooks/useGameKeys'
 import { safeGet, safeSet } from '../../lib/safeLocalStorage'
+import {
+  ROWS,
+  COLS,
+  Board,
+  Piece,
+  TetrominoType,
+  createBoard,
+  rotateShape,
+  isValidPosition,
+  placePiece,
+  clearLines,
+  calculateScore
+} from './containerTetrisHelpers'
 
 // High-score key — persisted via safe wrapper so private-mode browsers
 // don't throw (issue #8935, same pattern as #8938).
 const TETRIS_HIGHSCORE_KEY = 'highscore-containerTetris'
-
-// Board dimensions
-const ROWS = 20
-const COLS = 10
 
 // Game timing (milliseconds)
 const TETRIS_NEXT_TICK_MS = 10
@@ -44,89 +53,7 @@ const TETROMINOES = {
     shape: [[0, 0, 1], [1, 1, 1]],
     color: 'bg-orange-500' } }
 
-type TetrominoType = keyof typeof TETROMINOES
-type Board = (string | null)[][]
 
-interface Piece {
-  type: TetrominoType
-  shape: number[][]
-  x: number
-  y: number
-}
-
-// Create empty board
-function createBoard(): Board {
-  return Array(ROWS).fill(null).map(() => Array(COLS).fill(null))
-}
-
-// Rotate a shape clockwise
-function rotateShape(shape: number[][]): number[][] {
-  const rows = shape.length
-  const cols = shape[0].length
-  const rotated: number[][] = []
-
-  for (let c = 0; c < cols; c++) {
-    const newRow: number[] = []
-    for (let r = rows - 1; r >= 0; r--) {
-      newRow.push(shape[r][c])
-    }
-    rotated.push(newRow)
-  }
-
-  return rotated
-}
-
-// Check if piece position is valid
-function isValidPosition(board: Board, piece: Piece): boolean {
-  for (let r = 0; r < piece.shape.length; r++) {
-    for (let c = 0; c < piece.shape[r].length; c++) {
-      if (piece.shape[r][c]) {
-        const newRow = piece.y + r
-        const newCol = piece.x + c
-
-        // Check bounds
-        if (newCol < 0 || newCol >= COLS || newRow >= ROWS) return false
-
-        // Check collision with placed pieces (only if piece is on board)
-        if (newRow >= 0 && board[newRow][newCol]) return false
-      }
-    }
-  }
-  return true
-}
-
-// Place piece on board
-function placePiece(board: Board, piece: Piece): Board {
-  const newBoard = board.map(row => [...row])
-  const color = TETROMINOES[piece.type].color
-
-  for (let r = 0; r < piece.shape.length; r++) {
-    for (let c = 0; c < piece.shape[r].length; c++) {
-      if (piece.shape[r][c]) {
-        const boardRow = piece.y + r
-        const boardCol = piece.x + c
-        if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
-          newBoard[boardRow][boardCol] = color
-        }
-      }
-    }
-  }
-
-  return newBoard
-}
-
-// Clear completed lines and return new board + lines cleared
-function clearLines(board: Board): { board: Board; linesCleared: number } {
-  const newBoard = board.filter(row => row.some(cell => !cell))
-  const linesCleared = ROWS - newBoard.length
-
-  // Add empty rows at top
-  while (newBoard.length < ROWS) {
-    newBoard.unshift(Array(COLS).fill(null))
-  }
-
-  return { board: newBoard, linesCleared }
-}
 
 // Get random tetromino
 function getRandomPiece(): Piece {
@@ -139,17 +66,11 @@ function getRandomPiece(): Piece {
     y: -1 }
 }
 
-// Calculate score based on lines cleared
-function calculateScore(lines: number, level: number): number {
-  const basePoints = [0, 100, 300, 500, 800]
-  return basePoints[lines] * level
-}
-
 function ContainerTetrisInternal(_props: CardComponentProps) {
   const { t } = useTranslation('cards')
   const { isExpanded } = useCardExpanded()
 
-  const [board, setBoard] = useState<Board>(createBoard)
+  const [board, setBoard] = useState<Board>(() => createBoard(ROWS, COLS))
   const [piece, setPiece] = useState<Piece | null>(null)
   const [nextPiece, setNextPiece] = useState<Piece>(() => getRandomPiece())
   const [score, setScore] = useState(0)
@@ -185,11 +106,11 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
 
     const newPiece = { ...piece, y: piece.y + 1 }
 
-    if (isValidPosition(board, newPiece)) {
+    if (isValidPosition(board, newPiece.shape, newPiece.x, newPiece.y)) {
       setPiece(newPiece)
     } else {
       // Piece has landed
-      const newBoard = placePiece(board, piece)
+      const newBoard = placePiece(board, piece.shape, piece.x, piece.y, TETROMINOES[piece.type].color)
 
       // Check for game over (piece landed above board)
       if (piece.y < 0) {
@@ -224,7 +145,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
     if (!piece || gameOver || isPaused) return
 
     const newPiece = { ...piece, x: piece.x + dir }
-    if (isValidPosition(board, newPiece)) {
+    if (isValidPosition(board, newPiece.shape, newPiece.x, newPiece.y)) {
       setPiece(newPiece)
     }
   }
@@ -239,7 +160,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
     // Try to fit rotated piece (wall kick)
     for (const offset of [0, -1, 1, -2, 2]) {
       const adjusted = { ...newPiece, x: newPiece.x + offset }
-      if (isValidPosition(board, adjusted)) {
+      if (isValidPosition(board, adjusted.shape, adjusted.x, adjusted.y)) {
         setPiece(adjusted)
         return
       }
@@ -251,7 +172,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
     if (!piece || gameOver || isPaused) return
 
     const newPiece = { ...piece }
-    while (isValidPosition(board, { ...newPiece, y: newPiece.y + 1 })) {
+    while (isValidPosition(board, newPiece.shape, newPiece.x, newPiece.y + 1)) {
       newPiece.y++
     }
     setPiece(newPiece)
@@ -322,7 +243,7 @@ function ContainerTetrisInternal(_props: CardComponentProps) {
 
   // Start new game
   const startGame = () => {
-    setBoard(createBoard())
+    setBoard(createBoard(ROWS, COLS))
     setPiece(getRandomPiece())
     setNextPiece(getRandomPiece())
     setScore(0)
