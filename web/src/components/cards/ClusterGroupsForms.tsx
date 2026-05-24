@@ -166,6 +166,8 @@ function CreateGroupForm({ availableClusters, clusterHealthMap, onSave, onCancel
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={t('cards:clusterGroups.groupNamePlaceholder')}
+        aria-label={t('cards:clusterGroups.groupName')}
+        data-testid="cluster-group-name-input"
         className="w-full px-2.5 py-1.5 text-sm rounded-md bg-gray-900/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-blue-500"
         autoFocus
       />
@@ -419,6 +421,8 @@ function QueryBuilder({
           value={labelSelector}
           onChange={(e) => onLabelSelectorChange(e.target.value)}
           placeholder="e.g. topology.kubernetes.io/zone in (us-east-1a)"
+          aria-label={t('cards:clusterGroups.labelSelector')}
+          data-testid="cluster-group-label-selector-input"
           className="w-full px-2 py-1.5 text-xs font-mono rounded-md bg-gray-900/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-purple-500"
         />
       </div>
@@ -564,6 +568,8 @@ function AIAssistant({
         value={prompt}
         onChange={(e) => onPromptChange(e.target.value)}
         placeholder='e.g. "Healthy clusters with at least 4 CPU cores"'
+        aria-label={t('cards:clusterGroups.describeClusters')}
+        data-testid="cluster-group-ai-prompt-input"
         rows={2}
         className="w-full px-2.5 py-1.5 text-xs rounded-md bg-gray-900/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:border-purple-500 resize-none"
       />

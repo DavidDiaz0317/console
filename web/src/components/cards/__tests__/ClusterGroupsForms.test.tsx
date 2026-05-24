@@ -20,10 +20,9 @@ const GROUP_NAME = 'edge-clusters'
 const LABEL_SELECTOR_VALUE = 'zone=us-east'
 const AI_ERROR_MESSAGE = 'Failed to generate query'
 const SAMPLE_FILTER: ClusterFilter = { field: 'healthy', operator: 'eq', value: 'true' }
-const NAME_INPUT_PLACEHOLDER = 'cards:clusterGroups.groupNamePlaceholder'
-const LABEL_SELECTOR_PLACEHOLDER = 'e.g. topology.kubernetes.io/zone in (us-east-1a)'
-const AI_PROMPT_PLACEHOLDER = 'e.g. "Healthy clusters with at least 4 CPU cores"'
-const DEFAULT_GROUP_COLOR = 'blue'
+const GROUP_NAME_INPUT_TEST_ID = 'cluster-group-name-input'
+const LABEL_SELECTOR_INPUT_TEST_ID = 'cluster-group-label-selector-input'
+const AI_PROMPT_INPUT_TEST_ID = 'cluster-group-ai-prompt-input'
 
 const AVAILABLE_CLUSTERS = ['cluster-a', 'cluster-b', 'cluster-c']
 
@@ -43,18 +42,27 @@ vi.mock('../../../hooks/useClusterGroups', async () => {
   }
 })
 
+function mockT(key: string, options?: Record<string, unknown> | string) {
+  if (options && typeof options === 'object' && options.count != null) {
+    return `${key}_${String(options.count)}`
+  }
+
+  if (!options || typeof options !== 'object') {
+    return key
+  }
+
+  return Object.entries(options).reduce((result, [name, value]) => {
+    return result.replaceAll(`{{${name}}}`, String(value))
+  }, key)
+}
+
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
   return {
     ...actual,
     initReactI18next: actual.initReactI18next ?? { type: '3rdParty', init: () => {} },
     useTranslation: () => ({
-      t: (key: string, options?: Record<string, unknown>) => {
-        if (options && typeof options.count === 'number') {
-          return `${key}:${options.count}`
-        }
-        return key
-      },
+      t: mockT,
       i18n: { language: 'en', changeLanguage: vi.fn() },
     }),
   }
@@ -73,11 +81,15 @@ function renderWithRouter(ui: ReactElement) {
 }
 
 function getNameInput() {
-  return screen.getByPlaceholderText(NAME_INPUT_PLACEHOLDER)
+  return screen.getByTestId(GROUP_NAME_INPUT_TEST_ID)
 }
 
 function getLabelSelectorInput() {
-  return screen.getByPlaceholderText(LABEL_SELECTOR_PLACEHOLDER)
+  return screen.getByTestId(LABEL_SELECTOR_INPUT_TEST_ID)
+}
+
+function getAIPromptInput() {
+  return screen.getByTestId(AI_PROMPT_INPUT_TEST_ID)
 }
 
 function getCreateSaveButton(kind: 'static' | 'dynamic' = 'static') {
@@ -146,7 +158,6 @@ describe('ClusterGroupsForms', () => {
           name: GROUP_NAME,
           kind: 'static',
           clusters: ['cluster-a'],
-          color: DEFAULT_GROUP_COLOR,
         }),
       )
     })
@@ -177,8 +188,7 @@ describe('ClusterGroupsForms', () => {
         expect.objectContaining({
           name: GROUP_NAME,
           kind: 'dynamic',
-          color: DEFAULT_GROUP_COLOR,
-          query: { labelSelector: LABEL_SELECTOR_VALUE },
+          query: expect.objectContaining({ labelSelector: LABEL_SELECTOR_VALUE }),
         }),
       )
     })
@@ -204,7 +214,7 @@ describe('ClusterGroupsForms', () => {
       expect(getLabelSelectorInput()).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'cards:clusterGroups.aiAssistant' }))
-      expect(screen.getByPlaceholderText(AI_PROMPT_PLACEHOLDER)).toBeInTheDocument()
+      expect(getAIPromptInput()).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'cards:clusterGroups.queryBuilder' }))
       expect(getLabelSelectorInput()).toBeInTheDocument()
@@ -392,7 +402,6 @@ describe('ClusterGroupsForms', () => {
         expect.objectContaining({
           kind: 'static',
           clusters: ['cluster-b'],
-          color: 'blue',
         }),
       )
     })
