@@ -6,7 +6,7 @@ import {
   placePiece,
   clearLines,
   calculateScore,
-} from '../containerTetrisHelpers'
+} from '../ContainerTetris.helpers'
 
 describe('ContainerTetris Helpers', () => {
   describe('createBoard', () => {

@@ -83,9 +83,7 @@ describe('EnterpriseComplianceCards', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.getByText('7')).toBeInTheDocument();
 
-      // Click card title
-      const cardTitle = screen.getByText('HIPAA Compliance');
-      await user.click(cardTitle);
+      await user.click(screen.getByRole('button', { name: 'HIPAA Compliance' }));
       expect(mockNavigate).toHaveBeenCalledWith('/hipaa');
     });
 
@@ -162,9 +160,8 @@ describe('EnterpriseComplianceCards', () => {
       );
 
       expect(screen.getByText('72%')).toBeInTheDocument();
-      
-      const cardTitle = screen.getByText('NIST 800-53');
-      await user.click(cardTitle);
+
+      await user.click(screen.getByRole('button', { name: 'NIST 800-53' }));
       expect(mockNavigate).toHaveBeenCalledWith('/nist');
     });
   });
@@ -172,22 +169,25 @@ describe('EnterpriseComplianceCards', () => {
   describe('ScoreRing (shared helper)', () => {
     it('renders green ring when score is >= 80', () => {
       render(<ScoreRing score={85} />);
-      const progressCircle = screen.getByTestId('score-ring-progress');
-      expect(progressCircle.getAttribute('stroke')).toContain('--chart-success');
+      const scoreRing = screen.getByRole('progressbar', { name: 'Compliance score' });
+      expect(scoreRing).toHaveAttribute('aria-valuenow', '85');
+      expect(scoreRing.getAttribute('aria-valuetext')).toContain('good');
       expect(screen.getByText('85%')).toBeInTheDocument();
     });
 
     it('renders amber ring when score is >= 60 and < 80', () => {
       render(<ScoreRing score={65} />);
-      const progressCircle = screen.getByTestId('score-ring-progress');
-      expect(progressCircle.getAttribute('stroke')).toContain('--chart-warning');
+      const scoreRing = screen.getByRole('progressbar', { name: 'Compliance score' });
+      expect(scoreRing).toHaveAttribute('aria-valuenow', '65');
+      expect(scoreRing.getAttribute('aria-valuetext')).toContain('warning');
       expect(screen.getByText('65%')).toBeInTheDocument();
     });
 
     it('renders red ring when score is < 60', () => {
       render(<ScoreRing score={40} />);
-      const progressCircle = screen.getByTestId('score-ring-progress');
-      expect(progressCircle.getAttribute('stroke')).toContain('--chart-danger');
+      const scoreRing = screen.getByRole('progressbar', { name: 'Compliance score' });
+      expect(scoreRing).toHaveAttribute('aria-valuenow', '40');
+      expect(scoreRing.getAttribute('aria-valuetext')).toContain('danger');
       expect(screen.getByText('40%')).toBeInTheDocument();
     });
   });
@@ -201,11 +201,7 @@ describe('EnterpriseComplianceCards', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText('Compliance Frameworks')).toBeInTheDocument();
-
-      const cardShell = screen.getByText('Compliance Frameworks').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+      await user.click(screen.getByRole('button', { name: 'Compliance Frameworks' }));
       expect(mockNavigate).toHaveBeenCalledWith('/compliance-frameworks');
     });
   });

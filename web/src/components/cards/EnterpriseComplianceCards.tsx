@@ -46,9 +46,20 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
   const r = (size - 8) / 2
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
-  const color = score >= 80 ? SCORE_GOOD : score >= 60 ? SCORE_WARN : SCORE_BAD
+  const scoreTier = score >= 80 ? 'good' : score >= 60 ? 'warning' : 'danger'
+  const color = scoreTier === 'good' ? SCORE_GOOD : scoreTier === 'warning' ? SCORE_WARN : SCORE_BAD
   return (
-    <svg width={size} height={size} className="shrink-0">
+    <svg
+      width={size}
+      height={size}
+      className="shrink-0"
+      role="progressbar"
+      aria-label="Compliance score"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={score}
+      aria-valuetext={`Score ${score}%, ${scoreTier}`}
+    >
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={RING_BG} strokeWidth={6} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6}
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
@@ -63,18 +74,26 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
 function CardShell({ title, icon: Icon, children, onClick }: {
   title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; onClick?: () => void
 }) {
-  return (
-    <div
-      className={`h-full flex flex-col ${onClick ? 'cursor-pointer hover:bg-gray-700/30 transition-colors min-h-11' : ''}`}
-      onClick={onClick}
-    >
+  const className = `h-full flex flex-col ${onClick ? 'w-full cursor-pointer bg-transparent border-0 p-0 text-left hover:bg-gray-700/30 transition-colors min-h-11' : ''}`
+  const content = (
+    <>
       <div className="flex items-center gap-2 mb-3">
         <Icon className="w-4 h-4 text-blue-400 shrink-0" />
         <span className="text-sm font-medium text-white truncate">{title}</span>
       </div>
       <div className="flex-1 min-h-0">{children}</div>
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" className={className} onClick={onClick} aria-label={title}>
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function MiniStat({ label, value, color = 'text-white' }: { label: string; value: string | number; color?: string }) {

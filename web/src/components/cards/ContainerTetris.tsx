@@ -20,7 +20,7 @@ import {
   placePiece,
   clearLines,
   calculateScore
-} from './containerTetrisHelpers'
+} from './ContainerTetris.helpers'
 
 // High-score key — persisted via safe wrapper so private-mode browsers
 // don't throw (issue #8935, same pattern as #8938).
