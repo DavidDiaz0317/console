@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -44,6 +44,16 @@ describe('EnterpriseComplianceCards', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const getCardShell = (title: string) => {
+    const cardShell = screen.getByText(title).closest('div')?.parentElement;
+    expect(cardShell).not.toBeNull();
+    return cardShell as HTMLElement;
+  };
+
   describe('HIPAACard (Pattern A - useEffect/authFetch)', () => {
     it('renders loading state initially', async () => {
       // Return an unresolved promise to keep it in loading state
@@ -83,15 +93,12 @@ describe('EnterpriseComplianceCards', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.getByText('7')).toBeInTheDocument();
 
-      // Click card
-      const cardShell = screen.getByText('HIPAA Compliance').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+      await user.click(getCardShell('HIPAA Compliance'));
       expect(mockNavigate).toHaveBeenCalledWith('/hipaa');
     });
 
     it('renders error state on fetch rejection', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
       (authFetch as any).mockRejectedValue(new Error('Network error'));
 
       render(
@@ -105,7 +112,6 @@ describe('EnterpriseComplianceCards', () => {
         expect(errorText).toBeInTheDocument();
         expect(errorText.className).toContain('text-red-400');
       });
-      consoleSpy.mockRestore();
     });
 
     it('renders "No data" state when response is not ok', async () => {
@@ -163,10 +169,8 @@ describe('EnterpriseComplianceCards', () => {
       );
 
       expect(screen.getByText('72%')).toBeInTheDocument();
-      
-      const cardShell = screen.getByText('NIST 800-53').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+
+      await user.click(getCardShell('NIST 800-53'));
       expect(mockNavigate).toHaveBeenCalledWith('/nist');
     });
   });
@@ -205,9 +209,7 @@ describe('EnterpriseComplianceCards', () => {
 
       expect(screen.getByText('Compliance Frameworks')).toBeInTheDocument();
 
-      const cardShell = screen.getByText('Compliance Frameworks').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+      await user.click(getCardShell('Compliance Frameworks'));
       expect(mockNavigate).toHaveBeenCalledWith('/compliance-frameworks');
     });
   });
