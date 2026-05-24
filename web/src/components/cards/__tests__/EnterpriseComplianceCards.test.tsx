@@ -47,8 +47,7 @@ describe('EnterpriseComplianceCards', () => {
   describe('HIPAACard (Pattern A - useEffect/authFetch)', () => {
     it('renders loading state initially', async () => {
       // Return an unresolved promise to keep it in loading state
-      let resolvePromise: any;
-      const promise = new Promise(resolve => { resolvePromise = resolve; });
+      const promise = new Promise(() => {});
       (authFetch as any).mockReturnValue(promise);
 
       render(
@@ -63,6 +62,7 @@ describe('EnterpriseComplianceCards', () => {
     });
 
     it('renders success state and navigates on click', async () => {
+      const user = userEvent.setup();
       const mockResponse = { ok: true };
       const mockData = { overall_score: 85, safeguards_passed: 10, safeguards_failed: 2, phi_namespaces: 3, encrypted_flows: 7 };
       (authFetch as any).mockResolvedValue(mockResponse);
@@ -85,13 +85,13 @@ describe('EnterpriseComplianceCards', () => {
 
       // Click card
       const cardShell = screen.getByText('HIPAA Compliance').closest('div')?.parentElement;
-      if (cardShell) {
-        await userEvent.click(cardShell);
-        expect(mockNavigate).toHaveBeenCalledWith('/hipaa');
-      }
+      expect(cardShell).toBeTruthy();
+      await user.click(cardShell!);
+      expect(mockNavigate).toHaveBeenCalledWith('/hipaa');
     });
 
     it('renders error state on fetch rejection', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       (authFetch as any).mockRejectedValue(new Error('Network error'));
 
       render(
@@ -105,6 +105,7 @@ describe('EnterpriseComplianceCards', () => {
         expect(errorText).toBeInTheDocument();
         expect(errorText.className).toContain('text-red-400');
       });
+      consoleSpy.mockRestore();
     });
 
     it('renders "No data" state when response is not ok', async () => {
@@ -151,6 +152,7 @@ describe('EnterpriseComplianceCards', () => {
     });
 
     it('renders success state and navigates on click', async () => {
+      const user = userEvent.setup();
       const mockData = { overall_score: 72, implemented_controls: 50, partial_controls: 10, planned_controls: 5, total_controls: 65 };
       (useCache as any).mockReturnValue({ data: mockData, error: null });
 
@@ -163,10 +165,9 @@ describe('EnterpriseComplianceCards', () => {
       expect(screen.getByText('72%')).toBeInTheDocument();
       
       const cardShell = screen.getByText('NIST 800-53').closest('div')?.parentElement;
-      if (cardShell) {
-        await userEvent.click(cardShell);
-        expect(mockNavigate).toHaveBeenCalledWith('/nist');
-      }
+      expect(cardShell).toBeTruthy();
+      await user.click(cardShell!);
+      expect(mockNavigate).toHaveBeenCalledWith('/nist');
     });
   });
 
@@ -195,6 +196,7 @@ describe('EnterpriseComplianceCards', () => {
 
   describe('ComplianceFrameworksCard (Pattern C - static)', () => {
     it('renders without crashing and navigates on click', async () => {
+      const user = userEvent.setup();
       render(
         <MemoryRouter>
           <ComplianceFrameworksCard />
@@ -204,10 +206,9 @@ describe('EnterpriseComplianceCards', () => {
       expect(screen.getByText('Compliance Frameworks')).toBeInTheDocument();
 
       const cardShell = screen.getByText('Compliance Frameworks').closest('div')?.parentElement;
-      if (cardShell) {
-        await userEvent.click(cardShell);
-        expect(mockNavigate).toHaveBeenCalledWith('/compliance-frameworks');
-      }
+      expect(cardShell).toBeTruthy();
+      await user.click(cardShell!);
+      expect(mockNavigate).toHaveBeenCalledWith('/compliance-frameworks');
     });
   });
 });
