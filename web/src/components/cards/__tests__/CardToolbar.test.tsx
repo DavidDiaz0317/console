@@ -77,22 +77,20 @@ describe('CardToolbar', () => {
   })
 
   describe('collapse button', () => {
-    it('shows ChevronRight and aria-expanded=false when collapsed', () => {
+    it('uses expand label and aria-expanded=false when collapsed', () => {
       renderCardToolbar({ isCollapsed: true })
 
       const collapseBtn = getCollapseButton(true)
       expect(collapseBtn).toHaveAttribute('aria-expanded', 'false')
-      expect(collapseBtn.querySelector('.lucide-chevron-right')).toBeTruthy()
-      expect(collapseBtn.querySelector('.lucide-chevron-down')).toBeFalsy()
+      expect(screen.queryByRole('button', { name: 'cardWrapper.collapseCard' })).not.toBeInTheDocument()
     })
 
-    it('shows ChevronDown and aria-expanded=true when expanded', () => {
+    it('uses collapse label and aria-expanded=true when expanded', () => {
       renderCardToolbar({ isCollapsed: false })
 
       const collapseBtn = getCollapseButton(false)
       expect(collapseBtn).toHaveAttribute('aria-expanded', 'true')
-      expect(collapseBtn.querySelector('.lucide-chevron-down')).toBeTruthy()
-      expect(collapseBtn.querySelector('.lucide-chevron-right')).toBeFalsy()
+      expect(screen.queryByRole('button', { name: 'cardWrapper.expandCard' })).not.toBeInTheDocument()
     })
 
     it('calls onToggleCollapse when clicked', async () => {
@@ -106,6 +104,7 @@ describe('CardToolbar', () => {
   })
 
   describe('refresh button', () => {
+    // #15513 acceptance criteria — refresh styling classes are part of the contract.
     it('is disabled with cursor-not-allowed and text-blue-400 when isRefreshDisabled', () => {
       renderCardToolbar({ isRefreshDisabled: true })
 
@@ -207,15 +206,18 @@ describe('CardToolbar', () => {
   })
 
   describe('toolbar shell', () => {
-    it('renders toolbar region with title in aria-label and isolates CardActionMenu', () => {
-      const { container } = renderCardToolbar()
+    it('renders toolbar region with expected controls and CardActionMenu stub', () => {
+      renderCardToolbar()
 
       const toolbar = screen.getByRole('toolbar', {
         name: `cardWrapper.cardControls:${TEST_CARD_TITLE}`,
       })
       expect(toolbar).toBeInTheDocument()
+      expect(within(toolbar).getByRole('button', { name: 'cardWrapper.collapseCard' })).toBeInTheDocument()
+      expect(within(toolbar).getByRole('button', { name: 'cardWrapper.refreshData' })).toBeInTheDocument()
+      expect(within(toolbar).getByRole('button', { name: 'cardWrapper.expandFullScreen' })).toBeInTheDocument()
+      expect(within(toolbar).getByRole('button', { name: 'cardWrapper.reportIssue' })).toBeInTheDocument()
       expect(within(toolbar).getByTestId('card-action-menu-stub')).toBeInTheDocument()
-      expect(container.querySelectorAll('button').length).toBeGreaterThanOrEqual(3)
     })
   })
 })
