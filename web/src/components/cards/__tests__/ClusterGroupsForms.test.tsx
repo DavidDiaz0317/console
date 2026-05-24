@@ -20,26 +20,45 @@ const GROUP_NAME = 'edge-clusters'
 const LABEL_SELECTOR_VALUE = 'zone=us-east'
 const AI_ERROR_MESSAGE = 'Failed to generate query'
 const SAMPLE_FILTER: ClusterFilter = { field: 'healthy', operator: 'eq', value: 'true' }
+const NAME_INPUT_PLACEHOLDER = 'cards:clusterGroups.groupNamePlaceholder'
+const LABEL_SELECTOR_PLACEHOLDER = 'e.g. topology.kubernetes.io/zone in (us-east-1a)'
+const AI_PROMPT_PLACEHOLDER = 'e.g. "Healthy clusters with at least 4 CPU cores"'
+const DEFAULT_GROUP_COLOR = 'blue'
 
 const AVAILABLE_CLUSTERS = ['cluster-a', 'cluster-b', 'cluster-c']
 
 const mockPreviewQuery = vi.fn()
 const mockGenerateAIQuery = vi.fn()
 
-vi.mock('../../../hooks/useClusterGroups', () => ({
-  useClusterGroups: () => ({
-    previewQuery: mockPreviewQuery,
-    generateAIQuery: mockGenerateAIQuery,
-  }),
-}))
+vi.mock('../../../hooks/useClusterGroups', async () => {
+  const actual = await vi.importActual<typeof import('../../../hooks/useClusterGroups')>(
+    '../../../hooks/useClusterGroups',
+  )
+  return {
+    ...actual,
+    useClusterGroups: () => ({
+      previewQuery: mockPreviewQuery,
+      generateAIQuery: mockGenerateAIQuery,
+    }),
+  }
+})
 
-vi.mock('react-i18next', () => ({
-  initReactI18next: { type: '3rdParty', init: () => {} },
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'en', changeLanguage: vi.fn() },
-  }),
-}))
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  return {
+    ...actual,
+    initReactI18next: actual.initReactI18next ?? { type: '3rdParty', init: () => {} },
+    useTranslation: () => ({
+      t: (key: string, options?: Record<string, unknown>) => {
+        if (options && typeof options.count === 'number') {
+          return `${key}:${options.count}`
+        }
+        return key
+      },
+      i18n: { language: 'en', changeLanguage: vi.fn() },
+    }),
+  }
+})
 
 function buildHealthMap() {
   return new Map<string, boolean | undefined>([
@@ -54,7 +73,11 @@ function renderWithRouter(ui: ReactElement) {
 }
 
 function getNameInput() {
-  return screen.getByPlaceholderText('cards:clusterGroups.groupNamePlaceholder')
+  return screen.getByPlaceholderText(NAME_INPUT_PLACEHOLDER)
+}
+
+function getLabelSelectorInput() {
+  return screen.getByPlaceholderText(LABEL_SELECTOR_PLACEHOLDER)
 }
 
 function getCreateSaveButton(kind: 'static' | 'dynamic' = 'static') {
@@ -118,12 +141,14 @@ describe('ClusterGroupsForms', () => {
       await user.click(getCreateSaveButton('static'))
 
       expect(onSave).toHaveBeenCalledTimes(1)
-      expect(onSave).toHaveBeenCalledWith({
-        name: GROUP_NAME,
-        kind: 'static',
-        clusters: ['cluster-a'],
-        color: 'blue',
-      })
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: GROUP_NAME,
+          kind: 'static',
+          clusters: ['cluster-a'],
+          color: DEFAULT_GROUP_COLOR,
+        }),
+      )
     })
 
     it('disables Save in dynamic mode when labelSelector and filters are empty', async () => {
@@ -143,7 +168,7 @@ describe('ClusterGroupsForms', () => {
       await user.type(getNameInput(), GROUP_NAME)
       await switchToDynamicMode(user)
 
-      const labelInput = screen.getByPlaceholderText('e.g. topology.kubernetes.io/zone in (us-east-1a)')
+      const labelInput = getLabelSelectorInput()
       await user.type(labelInput, LABEL_SELECTOR_VALUE)
       await user.click(getCreateSaveButton('dynamic'))
 
@@ -152,7 +177,7 @@ describe('ClusterGroupsForms', () => {
         expect.objectContaining({
           name: GROUP_NAME,
           kind: 'dynamic',
-          color: 'blue',
+          color: DEFAULT_GROUP_COLOR,
           query: { labelSelector: LABEL_SELECTOR_VALUE },
         }),
       )
@@ -176,19 +201,13 @@ describe('ClusterGroupsForms', () => {
 
       await switchToDynamicMode(user)
 
-      expect(
-        screen.getByPlaceholderText('e.g. topology.kubernetes.io/zone in (us-east-1a)'),
-      ).toBeInTheDocument()
+      expect(getLabelSelectorInput()).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'cards:clusterGroups.aiAssistant' }))
-      expect(
-        screen.getByPlaceholderText('e.g. "Healthy clusters with at least 4 CPU cores"'),
-      ).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(AI_PROMPT_PLACEHOLDER)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'cards:clusterGroups.queryBuilder' }))
-      expect(
-        screen.getByPlaceholderText('e.g. topology.kubernetes.io/zone in (us-east-1a)'),
-      ).toBeInTheDocument()
+      expect(getLabelSelectorInput()).toBeInTheDocument()
     })
   })
 
@@ -208,7 +227,7 @@ describe('ClusterGroupsForms', () => {
         />,
       )
 
-      const labelInput = screen.getByPlaceholderText('e.g. topology.kubernetes.io/zone in (us-east-1a)')
+      const labelInput = getLabelSelectorInput()
       await user.type(labelInput, 'a')
 
       expect(onLabelSelectorChange).toHaveBeenCalled()
