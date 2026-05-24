@@ -65,9 +65,16 @@ export function CardToolbar({
                 : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
           )}
           aria-label={isFailed ? t('cardWrapper.refreshFailedRetry', { count: consecutiveFailures }) : t('cardWrapper.refreshData')}
+          aria-busy={isRefreshSpinning}
+          data-refresh-state={isRefreshDisabled ? 'disabled' : isFailed ? 'failed' : 'idle'}
+          data-testid="card-toolbar-refresh-button"
           title={isFailed ? t('cardWrapper.refreshFailedRetry', { count: consecutiveFailures }) : t('cardWrapper.refreshData')}
         >
-          <RefreshCw className={cn('h-4 w-4', isRefreshSpinning && 'animate-spin')} aria-hidden="true" />
+          <RefreshCw
+            className={cn('h-4 w-4', isRefreshSpinning && 'animate-spin')}
+            aria-hidden="true"
+            data-testid="card-toolbar-refresh-icon"
+          />
         </button>
       )}
       <button

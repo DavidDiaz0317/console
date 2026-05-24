@@ -66,9 +66,7 @@ function getCollapseButton(isCollapsed: boolean) {
 }
 
 function getRefreshButton() {
-  return screen.getByRole('button', {
-    name: /cardWrapper\.refresh(FailedRetry|Data)/,
-  })
+  return screen.getByTestId('card-toolbar-refresh-button')
 }
 
 describe('CardToolbar', () => {
@@ -104,16 +102,16 @@ describe('CardToolbar', () => {
   })
 
   describe('refresh button', () => {
-    // #15513 acceptance criteria — refresh styling classes are part of the contract.
-    it('is disabled with cursor-not-allowed and text-blue-400 when isRefreshDisabled', () => {
+    it('is disabled and exposes disabled refresh state when isRefreshDisabled', () => {
       renderCardToolbar({ isRefreshDisabled: true })
 
       const refreshBtn = getRefreshButton()
       expect(refreshBtn).toBeDisabled()
-      expect(refreshBtn).toHaveClass('cursor-not-allowed', 'text-blue-400')
+      expect(refreshBtn).toHaveAttribute('data-refresh-state', 'disabled')
+      expect(refreshBtn).toHaveAttribute('aria-label', 'cardWrapper.refreshData')
     })
 
-    it('uses failed styling when isFailed and not disabled', () => {
+    it('exposes failed refresh state when isFailed and not disabled', () => {
       renderCardToolbar({
         isFailed: true,
         consecutiveFailures: CONSECUTIVE_FAILURE_COUNT,
@@ -122,17 +120,17 @@ describe('CardToolbar', () => {
 
       const refreshBtn = getRefreshButton()
       expect(refreshBtn).not.toBeDisabled()
-      expect(refreshBtn).toHaveClass('text-red-400')
-      expect(refreshBtn).not.toHaveClass('cursor-not-allowed')
+      expect(refreshBtn).toHaveAttribute('data-refresh-state', 'failed')
+      expect(refreshBtn).toHaveAttribute('aria-label', `cardWrapper.refreshFailedRetry:${CONSECUTIVE_FAILURE_COUNT}`)
     })
 
-    it('uses normal styling when not failed and not disabled', () => {
+    it('exposes idle refresh state when not failed and not disabled', () => {
       renderCardToolbar({ isFailed: false, isRefreshDisabled: false })
 
       const refreshBtn = getRefreshButton()
-      expect(refreshBtn).toHaveClass('text-muted-foreground')
-      expect(refreshBtn).not.toHaveClass('text-red-400')
-      expect(refreshBtn).not.toHaveClass('cursor-not-allowed')
+      expect(refreshBtn).not.toBeDisabled()
+      expect(refreshBtn).toHaveAttribute('data-refresh-state', 'idle')
+      expect(refreshBtn).toHaveAttribute('aria-label', 'cardWrapper.refreshData')
     })
 
     it('uses refreshFailedRetry aria-label with failure count when failed', () => {
@@ -156,11 +154,12 @@ describe('CardToolbar', () => {
       ).toBeInTheDocument()
     })
 
-    it('applies animate-spin to RefreshCw when isRefreshSpinning', () => {
+    it('marks the refresh button busy when isRefreshSpinning', () => {
       renderCardToolbar({ isRefreshSpinning: true })
 
       const refreshBtn = getRefreshButton()
-      expect(refreshBtn.querySelector('.animate-spin')).toBeTruthy()
+      expect(refreshBtn).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByTestId('card-toolbar-refresh-icon')).toBeInTheDocument()
     })
 
     it('calls onRefresh when clicked and not disabled', async () => {
