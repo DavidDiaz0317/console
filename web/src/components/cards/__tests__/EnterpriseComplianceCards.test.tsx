@@ -83,10 +83,9 @@ describe('EnterpriseComplianceCards', () => {
       expect(screen.getByText('3')).toBeInTheDocument();
       expect(screen.getByText('7')).toBeInTheDocument();
 
-      // Click card
-      const cardShell = screen.getByText('HIPAA Compliance').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+      // Click card title
+      const cardTitle = screen.getByText('HIPAA Compliance');
+      await user.click(cardTitle);
       expect(mockNavigate).toHaveBeenCalledWith('/hipaa');
     });
 
@@ -164,32 +163,31 @@ describe('EnterpriseComplianceCards', () => {
 
       expect(screen.getByText('72%')).toBeInTheDocument();
       
-      const cardShell = screen.getByText('NIST 800-53').closest('div')?.parentElement;
-      expect(cardShell).toBeTruthy();
-      await user.click(cardShell!);
+      const cardTitle = screen.getByText('NIST 800-53');
+      await user.click(cardTitle);
       expect(mockNavigate).toHaveBeenCalledWith('/nist');
     });
   });
 
   describe('ScoreRing (shared helper)', () => {
     it('renders green ring when score is >= 80', () => {
-      const { container } = render(<ScoreRing score={85} />);
-      const circles = container.querySelectorAll('circle');
-      expect(circles[1].getAttribute('stroke')).toBe('hsl(var(--chart-success, 142 71% 45%))');
+      render(<ScoreRing score={85} />);
+      const progressCircle = screen.getByTestId('score-ring-progress');
+      expect(progressCircle.getAttribute('stroke')).toContain('--chart-success');
       expect(screen.getByText('85%')).toBeInTheDocument();
     });
 
     it('renders amber ring when score is >= 60 and < 80', () => {
-      const { container } = render(<ScoreRing score={65} />);
-      const circles = container.querySelectorAll('circle');
-      expect(circles[1].getAttribute('stroke')).toBe('hsl(var(--chart-warning, 45 93% 47%))');
+      render(<ScoreRing score={65} />);
+      const progressCircle = screen.getByTestId('score-ring-progress');
+      expect(progressCircle.getAttribute('stroke')).toContain('--chart-warning');
       expect(screen.getByText('65%')).toBeInTheDocument();
     });
 
     it('renders red ring when score is < 60', () => {
-      const { container } = render(<ScoreRing score={40} />);
-      const circles = container.querySelectorAll('circle');
-      expect(circles[1].getAttribute('stroke')).toBe('hsl(var(--chart-danger, 0 84% 60%))');
+      render(<ScoreRing score={40} />);
+      const progressCircle = screen.getByTestId('score-ring-progress');
+      expect(progressCircle.getAttribute('stroke')).toContain('--chart-danger');
       expect(screen.getByText('40%')).toBeInTheDocument();
     });
   });

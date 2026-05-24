@@ -52,7 +52,7 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={RING_BG} strokeWidth={6} />
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={6}
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-        transform={`rotate(-90 ${size/2} ${size/2})`} />
+        transform={`rotate(-90 ${size/2} ${size/2})`} data-testid="score-ring-progress" />
       <text x="50%" y="50%" textAnchor="middle" dy=".35em" fill="white" fontSize={size/4} fontWeight="bold">
         {score}%
       </text>
