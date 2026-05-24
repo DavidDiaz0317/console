@@ -237,7 +237,9 @@ describe('ContainerTetris Component Layer', () => {
     })
 
     const cellsBefore = getBoardCells()
-    // Initial spawns shape at middle-ish x: 3
+    // Initial spawns shape at middle-ish 
+    expect(cellsBefore[0][3].getAttribute('data-color')).toBe('bg-cyan-500')
+    expect(cellsBefore[0][2].getAttribute('data-color')).not.toBe('bg-cyan-500')
     expect(cellsBefore[0][3].className).toContain('bg-cyan-500')
     expect(cellsBefore[0][2].className).not.toContain('bg-cyan-500')
 
@@ -245,6 +247,8 @@ describe('ContainerTetris Component Layer', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
 
     const cellsLeft = getBoardCells()
+    expect(cellsLeft[0][2].getAttribute('data-color')).toBe('bg-cyan-500')
+    expect(cellsLeft[0][3].getAttribute('data-color')).toBe('bg-cyan-500')
     expect(cellsLeft[0][2].className).toContain('bg-cyan-500')
     expect(cellsLeft[0][3].className).toContain('bg-cyan-500')
 
@@ -253,6 +257,7 @@ describe('ContainerTetris Component Layer', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' })
 
     const cellsRight = getBoardCells()
+    expect(cellsRight[0][4].getAttribute('data-color')).toBe('bg-cyan-500')
     expect(cellsRight[0][4].className).toContain('bg-cyan-500')
   })
 
@@ -281,6 +286,11 @@ describe('ContainerTetris Component Layer', () => {
     // Condition: active piece becomes the 'O' tetromino (occupies top columns)
     advanceTimersUntil(() => {
       const cells = getBoardCells()
+      return cells[0][4].getAttribute('data-color') === 'bg-yellow-500'
+    })
+
+    const cells = getBoardCells()
+    expect(cells[0][4].getAttribute('data-color')).toBe('bg-yellow-500')
       return cells[0][4].className.includes('bg-yellow-500')
     })
 
