@@ -42,7 +42,7 @@ function useSummaryData<T extends Record<string, unknown>>(endpoint: string) {
   }
 }
 
-function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
+export function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const r = (size - 8) / 2
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
