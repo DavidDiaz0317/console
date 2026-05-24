@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 
 // Standard mocks
 vi.mock('../../../lib/demoMode', () => ({
@@ -89,6 +90,81 @@ describe('ComputeOverview', () => {
   it('calls useCardLoadingState during render', () => {
     render(<ComputeOverview />)
     expect(mockUseCardLoadingState).toHaveBeenCalled()
+  })
+
+  it('aggregates CPU cores correctly across clusters', () => {
+    mockUseClusters.mockReturnValue({
+      clusters: [
+        { name: 'c1', cpuCores: 8, healthy: true, reachable: true, nodeCount: 1, podCount: 10 },
+        { name: 'c2', cpuCores: 16, healthy: true, reachable: true, nodeCount: 2, podCount: 20 }
+      ],
+      deduplicatedClusters: [
+        { name: 'c1', cpuCores: 8, healthy: true, reachable: true, nodeCount: 1, podCount: 10 },
+        { name: 'c2', cpuCores: 16, healthy: true, reachable: true, nodeCount: 2, podCount: 20 }
+      ],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    
+    render(<ComputeOverview />)
+    
+    // Find the CPU Cores card and verify its total count
+    const cpuLabel = screen.getByText('computeOverview.cpuCores')
+    const cpuCard = cpuLabel.closest('.cursor-pointer')
+    expect(cpuCard).toHaveTextContent('24')
+  })
+
+  it('aggregates Memory GB correctly across clusters', () => {
+    mockUseClusters.mockReturnValue({
+      clusters: [
+        { name: 'c1', cpuCores: 8, memoryGB: 16, healthy: true, reachable: true, nodeCount: 1, podCount: 10 },
+        { name: 'c2', cpuCores: 16, memoryGB: 32, healthy: true, reachable: true, nodeCount: 2, podCount: 20 }
+      ],
+      deduplicatedClusters: [
+        { name: 'c1', cpuCores: 8, memoryGB: 16, healthy: true, reachable: true, nodeCount: 1, podCount: 10 },
+        { name: 'c2', cpuCores: 16, memoryGB: 32, healthy: true, reachable: true, nodeCount: 2, podCount: 20 }
+      ],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    
+    render(<ComputeOverview />)
+    
+    // Find the Memory card and verify its total count
+    const memoryLabel = screen.getByText('common:common.memory')
+    const memoryCard = memoryLabel.closest('.cursor-pointer')
+    expect(memoryCard).toHaveTextContent(/48/)
+  })
+
+  it('renders empty state when no clusters are available', () => {
+    mockUseCardLoadingState.mockReturnValue({ showSkeleton: false, showEmptyState: true, hasData: false, isRefreshing: false })
+    mockUseClusters.mockReturnValue({ clusters: [], deduplicatedClusters: [], isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now() })
+    
+    render(<ComputeOverview />)
+    
+    expect(screen.getByText('computeOverview.noComputeData')).toBeInTheDocument()
+  })
+
+  it('does not double count deduplicated clusters', () => {
+    // raw clusters has 3 items, but deduplicated only has 2
+    mockUseClusters.mockReturnValue({
+      clusters: [
+        { name: 'c1', cpuCores: 10, healthy: true, reachable: true, nodeCount: 1, podCount: 1 },
+        { name: 'c1-alias', cpuCores: 10, healthy: true, reachable: true, nodeCount: 1, podCount: 1 },
+        { name: 'c2', cpuCores: 5, healthy: true, reachable: true, nodeCount: 1, podCount: 1 }
+      ],
+      deduplicatedClusters: [
+        { name: 'c1', cpuCores: 10, healthy: true, reachable: true, nodeCount: 1, podCount: 1 },
+        { name: 'c2', cpuCores: 5, healthy: true, reachable: true, nodeCount: 1, podCount: 1 }
+      ],
+      isLoading: false, isRefreshing: false, error: null, lastRefresh: Date.now(),
+    })
+    
+    render(<ComputeOverview />)
+    
+    // Find the CPU Cores card and verify it shows 15, not 25
+    const cpuLabel = screen.getByText('computeOverview.cpuCores')
+    const cpuCard = cpuLabel.closest('.cursor-pointer')
+    expect(cpuCard).toHaveTextContent('15')
+    expect(cpuCard).not.toHaveTextContent('25')
   })
 
   it('renders skeleton UI when data is loading', () => {

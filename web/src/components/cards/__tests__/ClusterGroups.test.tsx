@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('../../../lib/demoMode', () => ({
   isDemoMode: () => true,
@@ -161,5 +163,80 @@ describe('ClusterGroups', () => {
     })
     const { container } = render(<ClusterGroups />)
     expect(container).toBeTruthy()
+  })
+
+  it('opens CreateGroupForm when Clicking "New Group"', async () => {
+    const user = userEvent.setup()
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    render(<ClusterGroups />)
+    
+    const newGroupButton = screen.getByRole('button', { name: 'cards:clusterGroups.newGroup' })
+    await user.click(newGroupButton)
+    
+    expect(screen.getByText('cards:clusterGroups.newClusterGroup')).toBeInTheDocument()
+  })
+
+  it('renders a list of groups with names and cluster counts', () => {
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    mockUseClusterGroups.mockReturnValue({
+      groups: [
+        { name: 'Group A', kind: 'static', clusters: ['c1', 'c2'], color: 'blue' },
+        { name: 'Group B', kind: 'dynamic', clusters: ['c3'], color: 'green' }
+      ],
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup: vi.fn(),
+      isPersisted: false,
+    })
+    
+    render(<ClusterGroups />)
+    
+    expect(screen.getByText('Group A')).toBeInTheDocument()
+    expect(screen.getByText('Group B')).toBeInTheDocument()
+    // Verify that the computed cluster counts match the expected format (healthy/total)
+    expect(screen.getByText(/2\/2/)).toBeInTheDocument()
+    expect(screen.getByText(/1\/1/)).toBeInTheDocument()
+  })
+
+  it('opens EditGroupForm when clicking edit button', async () => {
+    const user = userEvent.setup()
+    mockUseClusterGroups.mockReturnValue({
+      groups: [{ name: 'Group A', kind: 'static', clusters: ['c1'], color: 'blue' }],
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup: vi.fn(),
+      isPersisted: false,
+    })
+    
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    render(<ClusterGroups />)
+    
+    const editButton = screen.getByRole('button', { name: 'cards:clusterGroups.editGroup' })
+    await user.click(editButton)
+    
+    expect(screen.getByText(/common.edit.*Group A/)).toBeInTheDocument()
+  })
+
+  it('calls deleteGroup when confirmation is accepted', async () => {
+    const user = userEvent.setup()
+    const deleteGroup = vi.fn()
+    mockUseClusterGroups.mockReturnValue({
+      groups: [{ name: 'Group A', kind: 'static', clusters: ['c1'], color: 'blue' }],
+      createGroup: vi.fn(),
+      updateGroup: vi.fn(),
+      deleteGroup,
+      isPersisted: false,
+    })
+    
+    mockUseDemoMode.mockReturnValue({ isDemoMode: false, toggleDemoMode: vi.fn(), setDemoMode: vi.fn() })
+    render(<ClusterGroups />)
+    
+    const deleteButton = screen.getByRole('button', { name: 'cards:clusterGroups.deleteGroup' })
+    await user.click(deleteButton)
+    
+    const confirmButton = screen.getByRole('button', { name: 'common:actions.delete' })
+    await user.click(confirmButton)
+    
+    expect(deleteGroup).toHaveBeenCalledWith('Group A')
   })
 })
