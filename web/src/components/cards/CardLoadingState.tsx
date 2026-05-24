@@ -54,18 +54,26 @@ export function CardLoadingState({
   const shouldHideChildren = shouldShowSkeleton || shouldShowLoadingTimeout || shouldShowEmptyState
 
   if (!(isVisible || isExpanded)) {
-    return <CardSkeleton type={skeletonType} rows={skeletonRows} showHeader={false} />
+    return (
+      <div data-testid="card-loading-skeleton">
+        <CardSkeleton type={skeletonType} rows={skeletonRows} showHeader={false} />
+      </div>
+    )
   }
 
   return (
     <>
       {shouldShowSkeleton && (
-        <div data-card-skeleton="true">
+        <div data-card-skeleton="true" data-testid="card-loading-skeleton">
           <CardSkeleton type={skeletonType} rows={skeletonRows} showHeader />
         </div>
       )}
       {shouldShowLoadingTimeout && (
-        <div className="flex h-full flex-col items-center justify-center p-4 text-center" data-card-loading-timeout="true">
+        <div
+          className="flex h-full flex-col items-center justify-center p-4 text-center"
+          data-card-loading-timeout="true"
+          data-testid="card-loading-timeout-panel"
+        >
           <AlertTriangle className="mb-2 h-8 w-8 text-amber-400" />
           <p className="mb-1 text-sm font-medium text-foreground">
             {t('cardWrapper.loadingTimedOutTitle')}
@@ -78,6 +86,7 @@ export function CardLoadingState({
               onClick={onLoadingTimeoutRetry}
               className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary/80"
               aria-label={t('cardWrapper.loadingTimedOutRetry')}
+              data-testid="card-loading-timeout-retry-button"
             >
               <RefreshCw className={cn('h-3 w-3', (isRefreshing || isVisuallySpinning) && 'animate-spin')} aria-hidden="true" />
               {t('cardWrapper.loadingTimedOutRetry')}
@@ -97,7 +106,11 @@ export function CardLoadingState({
         </div>
       )}
       {shouldShowEmptyState && (
-        <div className="flex h-full flex-col items-center justify-center p-4 text-center" data-card-empty-state="true">
+        <div
+          className="flex h-full flex-col items-center justify-center p-4 text-center"
+          data-card-empty-state="true"
+          data-testid="card-empty-state-panel"
+        >
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
             <Info className="h-6 w-6 text-muted-foreground" />
           </div>
@@ -112,6 +125,7 @@ export function CardLoadingState({
               onClick={onRefresh}
               className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary/80"
               aria-label={t('cardWrapper.loadingTimedOutRetry')}
+              data-testid="card-empty-state-refresh-button"
             >
               <RefreshCw className={cn('h-3 w-3', (isRefreshing || isVisuallySpinning) && 'animate-spin')} aria-hidden="true" />
               {t('cardWrapper.loadingTimedOutRetry')}

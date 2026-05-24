@@ -15,6 +15,11 @@ const TEST_CARD_TITLE = 'Cluster Health'
 const CHILD_CONTENT_TEXT = 'card-loading-child-content'
 const SKELETON_ROW_COUNT = 3
 const CHILDREN_CONTAINER_TEST_ID = 'card-loading-children'
+const SKELETON_TEST_ID = 'card-loading-skeleton'
+const TIMEOUT_PANEL_TEST_ID = 'card-loading-timeout-panel'
+const TIMEOUT_RETRY_BUTTON_TEST_ID = 'card-loading-timeout-retry-button'
+const EMPTY_STATE_PANEL_TEST_ID = 'card-empty-state-panel'
+const EMPTY_STATE_REFRESH_BUTTON_TEST_ID = 'card-empty-state-refresh-button'
 
 vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
@@ -64,16 +69,12 @@ function getChildrenContainer() {
   return screen.getByTestId(CHILDREN_CONTAINER_TEST_ID)
 }
 
-function getTimeoutPanel(container: HTMLElement) {
-  const panel = container.querySelector('[data-card-loading-timeout="true"]')
-  expect(panel).not.toBeNull()
-  return panel as HTMLElement
+function getTimeoutPanel() {
+  return screen.getByTestId(TIMEOUT_PANEL_TEST_ID)
 }
 
-function getEmptyStatePanel(container: HTMLElement) {
-  const panel = container.querySelector('[data-card-empty-state="true"]')
-  expect(panel).not.toBeNull()
-  return panel as HTMLElement
+function getEmptyStatePanel() {
+  return screen.getByTestId(EMPTY_STATE_PANEL_TEST_ID)
 }
 
 describe('CardLoadingState', () => {
@@ -83,7 +84,7 @@ describe('CardLoadingState', () => {
 
   describe('invisible-card branch', () => {
     it('renders bare skeleton without header and does not mount children', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         isVisible: false,
         isExpanded: false,
         shouldShowSkeleton: true,
@@ -93,10 +94,9 @@ describe('CardLoadingState', () => {
 
       expect(screen.queryByTestId('card-child')).not.toBeInTheDocument()
       expect(screen.queryByTestId(CHILDREN_CONTAINER_TEST_ID)).not.toBeInTheDocument()
-      expect(container.querySelector('[data-card-skeleton="true"]')).not.toBeInTheDocument()
-      expect(container.querySelector('[data-card-loading-timeout="true"]')).not.toBeInTheDocument()
-      expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
-      expect(container.querySelector('.min-h-card')).toBeInTheDocument()
+      expect(screen.getByTestId(SKELETON_TEST_ID)).toBeInTheDocument()
+      expect(screen.queryByTestId(TIMEOUT_PANEL_TEST_ID)).not.toBeInTheDocument()
+      expect(screen.queryByTestId(EMPTY_STATE_PANEL_TEST_ID)).not.toBeInTheDocument()
     })
 
     it('still renders when expanded even if not visible', () => {
@@ -114,9 +114,9 @@ describe('CardLoadingState', () => {
 
   describe('skeleton branch', () => {
     it('renders data-card-skeleton and hides children', () => {
-      const { container } = renderCardLoadingState({ shouldShowSkeleton: true })
+      renderCardLoadingState({ shouldShowSkeleton: true })
 
-      expect(container.querySelector('[data-card-skeleton="true"]')).toBeInTheDocument()
+      expect(screen.getByTestId(SKELETON_TEST_ID)).toBeInTheDocument()
       expect(getChildrenContainer()).toHaveClass('hidden')
     })
   })
@@ -126,12 +126,12 @@ describe('CardLoadingState', () => {
       emptyChildDataState({ isLoading: true, hasData: false })
 
     it('renders timeout panel with AlertTriangle when timed out without data', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
       })
 
-      const timeoutPanel = getTimeoutPanel(container)
+      const timeoutPanel = getTimeoutPanel()
       expect(within(timeoutPanel).getByText('cardWrapper.loadingTimedOutTitle')).toBeInTheDocument()
       expect(within(timeoutPanel).getByText('cardWrapper.loadingTimedOutMessage')).toBeInTheDocument()
       expect(timeoutPanel.querySelector('svg')).toBeTruthy()
@@ -141,16 +141,14 @@ describe('CardLoadingState', () => {
     it('calls onLoadingTimeoutRetry when retry button is clicked', async () => {
       const user = userEvent.setup()
       const onLoadingTimeoutRetry = vi.fn()
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onLoadingTimeoutRetry,
       })
 
-      const timeoutPanel = getTimeoutPanel(container)
-      const retryBtn = within(timeoutPanel).getByRole('button', {
-        name: 'cardWrapper.loadingTimedOutRetry',
-      })
+      const timeoutPanel = getTimeoutPanel()
+      const retryBtn = within(timeoutPanel).getByTestId(TIMEOUT_RETRY_BUTTON_TEST_ID)
       await user.click(retryBtn)
 
       expect(onLoadingTimeoutRetry).toHaveBeenCalledTimes(1)
@@ -159,13 +157,13 @@ describe('CardLoadingState', () => {
     it('calls onRemove when remove button is clicked', async () => {
       const user = userEvent.setup()
       const onRemove = vi.fn()
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onRemove,
       })
 
-      const timeoutPanel = getTimeoutPanel(container)
+      const timeoutPanel = getTimeoutPanel()
       const removeBtn = within(timeoutPanel).getByTestId('card-remove-button')
       await user.click(removeBtn)
 
@@ -173,28 +171,26 @@ describe('CardLoadingState', () => {
     })
 
     it('applies animate-spin to RefreshCw when isVisuallySpinning is true', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onLoadingTimeoutRetry: vi.fn(),
         isVisuallySpinning: true,
       })
 
-      const timeoutPanel = getTimeoutPanel(container)
-      const retryBtn = within(timeoutPanel).getByRole('button', {
-        name: 'cardWrapper.loadingTimedOutRetry',
-      })
+      const timeoutPanel = getTimeoutPanel()
+      const retryBtn = within(timeoutPanel).getByTestId(TIMEOUT_RETRY_BUTTON_TEST_ID)
       expect(retryBtn.querySelector('.animate-spin')).toBeTruthy()
     })
   })
 
   describe('empty-state branch', () => {
     it('renders empty-state panel when loaded without data', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         childDataState: emptyChildDataState(),
       })
 
-      const emptyPanel = getEmptyStatePanel(container)
+      const emptyPanel = getEmptyStatePanel()
       expect(within(emptyPanel).getByText('cardWrapper.noDataTitle')).toBeInTheDocument()
       expect(getChildrenContainer()).toHaveClass('hidden')
     })
@@ -202,43 +198,40 @@ describe('CardLoadingState', () => {
     it('calls onRefresh when refresh button is clicked', async () => {
       const user = userEvent.setup()
       const onRefresh = vi.fn()
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         childDataState: emptyChildDataState(),
         onRefresh,
       })
 
-      const emptyPanel = getEmptyStatePanel(container)
-      // Production reuses cardWrapper.loadingTimedOutRetry for empty-state refresh aria-label.
-      const refreshBtn = within(emptyPanel).getByRole('button', {
-        name: 'cardWrapper.loadingTimedOutRetry',
-      })
+      const emptyPanel = getEmptyStatePanel()
+      const refreshBtn = within(emptyPanel).getByTestId(EMPTY_STATE_REFRESH_BUTTON_TEST_ID)
       await user.click(refreshBtn)
 
       expect(onRefresh).toHaveBeenCalledTimes(1)
     })
 
     it('does not render empty state when loading timed out', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: emptyChildDataState({ isLoading: true }),
       })
 
-      expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
-      expect(container.querySelector('[data-card-loading-timeout="true"]')).toBeInTheDocument()
+      expect(screen.queryByTestId(EMPTY_STATE_PANEL_TEST_ID)).not.toBeInTheDocument()
+      expect(screen.getByTestId(TIMEOUT_PANEL_TEST_ID)).toBeInTheDocument()
     })
   })
 
   describe('normal children branch', () => {
     it('shows children with flex layout when no branch is active', () => {
-      const { container } = renderCardLoadingState({
+      renderCardLoadingState({
         childDataState: emptyChildDataState({ hasData: true }),
       })
 
       expect(screen.getByTestId('card-child')).toHaveTextContent(CHILD_CONTENT_TEXT)
       expect(getChildrenContainer()).toHaveClass('flex', 'flex-1', 'flex-col')
       expect(getChildrenContainer()).not.toHaveClass('hidden')
-      expect(container.querySelector('[data-card-skeleton="true"]')).not.toBeInTheDocument()
-      expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(SKELETON_TEST_ID)).not.toBeInTheDocument()
+      expect(screen.queryByTestId(EMPTY_STATE_PANEL_TEST_ID)).not.toBeInTheDocument()
     })
   })
 
