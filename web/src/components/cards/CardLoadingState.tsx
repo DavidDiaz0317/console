@@ -131,6 +131,7 @@ export function CardLoadingState({
         </div>
       )}
       <div
+        data-testid="card-loading-children"
         className={cn(
           'min-h-0',
           shouldHideChildren ? 'hidden' : 'flex flex-1 flex-col'

@@ -14,6 +14,7 @@ const TEST_CARD_TYPE = 'cluster_health'
 const TEST_CARD_TITLE = 'Cluster Health'
 const CHILD_CONTENT_TEXT = 'card-loading-child-content'
 const SKELETON_ROW_COUNT = 3
+const CHILDREN_CONTAINER_TEST_ID = 'card-loading-children'
 
 vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
@@ -60,10 +61,19 @@ function emptyChildDataState(overrides: Partial<CardDataState> = {}): CardDataSt
 }
 
 function getChildrenContainer() {
-  const child = screen.getByTestId('card-child')
-  const container = child.closest('.min-h-0')
-  expect(container).not.toBeNull()
-  return container as HTMLElement
+  return screen.getByTestId(CHILDREN_CONTAINER_TEST_ID)
+}
+
+function getTimeoutPanel(container: HTMLElement) {
+  const panel = container.querySelector('[data-card-loading-timeout="true"]')
+  expect(panel).not.toBeNull()
+  return panel as HTMLElement
+}
+
+function getEmptyStatePanel(container: HTMLElement) {
+  const panel = container.querySelector('[data-card-empty-state="true"]')
+  expect(panel).not.toBeNull()
+  return panel as HTMLElement
 }
 
 describe('CardLoadingState', () => {
@@ -82,6 +92,7 @@ describe('CardLoadingState', () => {
       })
 
       expect(screen.queryByTestId('card-child')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(CHILDREN_CONTAINER_TEST_ID)).not.toBeInTheDocument()
       expect(container.querySelector('[data-card-skeleton="true"]')).not.toBeInTheDocument()
       expect(container.querySelector('[data-card-loading-timeout="true"]')).not.toBeInTheDocument()
       expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
@@ -103,9 +114,9 @@ describe('CardLoadingState', () => {
 
   describe('skeleton branch', () => {
     it('renders data-card-skeleton and hides children', () => {
-      renderCardLoadingState({ shouldShowSkeleton: true })
+      const { container } = renderCardLoadingState({ shouldShowSkeleton: true })
 
-      expect(document.querySelector('[data-card-skeleton="true"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-card-skeleton="true"]')).toBeInTheDocument()
       expect(getChildrenContainer()).toHaveClass('hidden')
     })
   })
@@ -120,25 +131,24 @@ describe('CardLoadingState', () => {
         childDataState: timeoutState(),
       })
 
-      const panel = document.querySelector('[data-card-loading-timeout="true"]')
-      expect(panel).not.toBeNull()
-      const timeoutPanel = panel as HTMLElement
+      const timeoutPanel = getTimeoutPanel(container)
       expect(within(timeoutPanel).getByText('cardWrapper.loadingTimedOutTitle')).toBeInTheDocument()
       expect(within(timeoutPanel).getByText('cardWrapper.loadingTimedOutMessage')).toBeInTheDocument()
-      expect(container.querySelector('[data-card-loading-timeout="true"] svg')).toBeTruthy()
+      expect(timeoutPanel.querySelector('svg')).toBeTruthy()
       expect(getChildrenContainer()).toHaveClass('hidden')
     })
 
     it('calls onLoadingTimeoutRetry when retry button is clicked', async () => {
       const user = userEvent.setup()
       const onLoadingTimeoutRetry = vi.fn()
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onLoadingTimeoutRetry,
       })
 
-      const retryBtn = screen.getByRole('button', {
+      const timeoutPanel = getTimeoutPanel(container)
+      const retryBtn = within(timeoutPanel).getByRole('button', {
         name: 'cardWrapper.loadingTimedOutRetry',
       })
       await user.click(retryBtn)
@@ -149,31 +159,29 @@ describe('CardLoadingState', () => {
     it('calls onRemove when remove button is clicked', async () => {
       const user = userEvent.setup()
       const onRemove = vi.fn()
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onRemove,
       })
 
-      const panel = document.querySelector('[data-card-loading-timeout="true"]') as HTMLElement
-      expect(panel).not.toBeNull()
-      const removeBtn = within(panel).getByTestId('card-remove-button')
+      const timeoutPanel = getTimeoutPanel(container)
+      const removeBtn = within(timeoutPanel).getByTestId('card-remove-button')
       await user.click(removeBtn)
 
       expect(onRemove).toHaveBeenCalledTimes(1)
     })
 
     it('applies animate-spin to RefreshCw when isVisuallySpinning is true', () => {
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: timeoutState(),
         onLoadingTimeoutRetry: vi.fn(),
         isVisuallySpinning: true,
       })
 
-      const panel = document.querySelector('[data-card-loading-timeout="true"]') as HTMLElement
-      expect(panel).not.toBeNull()
-      const retryBtn = within(panel).getByRole('button', {
+      const timeoutPanel = getTimeoutPanel(container)
+      const retryBtn = within(timeoutPanel).getByRole('button', {
         name: 'cardWrapper.loadingTimedOutRetry',
       })
       expect(retryBtn.querySelector('.animate-spin')).toBeTruthy()
@@ -182,25 +190,26 @@ describe('CardLoadingState', () => {
 
   describe('empty-state branch', () => {
     it('renders empty-state panel when loaded without data', () => {
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         childDataState: emptyChildDataState(),
       })
 
-      const panel = document.querySelector('[data-card-empty-state="true"]') as HTMLElement
-      expect(panel).not.toBeNull()
-      expect(within(panel).getByText('cardWrapper.noDataTitle')).toBeInTheDocument()
+      const emptyPanel = getEmptyStatePanel(container)
+      expect(within(emptyPanel).getByText('cardWrapper.noDataTitle')).toBeInTheDocument()
       expect(getChildrenContainer()).toHaveClass('hidden')
     })
 
     it('calls onRefresh when refresh button is clicked', async () => {
       const user = userEvent.setup()
       const onRefresh = vi.fn()
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         childDataState: emptyChildDataState(),
         onRefresh,
       })
 
-      const refreshBtn = screen.getByRole('button', {
+      const emptyPanel = getEmptyStatePanel(container)
+      // Production reuses cardWrapper.loadingTimedOutRetry for empty-state refresh aria-label.
+      const refreshBtn = within(emptyPanel).getByRole('button', {
         name: 'cardWrapper.loadingTimedOutRetry',
       })
       await user.click(refreshBtn)
@@ -209,27 +218,27 @@ describe('CardLoadingState', () => {
     })
 
     it('does not render empty state when loading timed out', () => {
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         cardLoadingTimedOut: true,
         childDataState: emptyChildDataState({ isLoading: true }),
       })
 
-      expect(document.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
-      expect(document.querySelector('[data-card-loading-timeout="true"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-card-loading-timeout="true"]')).toBeInTheDocument()
     })
   })
 
   describe('normal children branch', () => {
     it('shows children with flex layout when no branch is active', () => {
-      renderCardLoadingState({
+      const { container } = renderCardLoadingState({
         childDataState: emptyChildDataState({ hasData: true }),
       })
 
       expect(screen.getByTestId('card-child')).toHaveTextContent(CHILD_CONTENT_TEXT)
       expect(getChildrenContainer()).toHaveClass('flex', 'flex-1', 'flex-col')
       expect(getChildrenContainer()).not.toHaveClass('hidden')
-      expect(document.querySelector('[data-card-skeleton="true"]')).not.toBeInTheDocument()
-      expect(document.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-card-skeleton="true"]')).not.toBeInTheDocument()
+      expect(container.querySelector('[data-card-empty-state="true"]')).not.toBeInTheDocument()
     })
   })
 
