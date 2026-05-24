@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:card-wrapper": "vitest run src/hooks/__tests__/useTimeoutFlag.test.ts src/components/cards/__tests__/CardWrapper.test.tsx",
+    "test:card-toolbar": "vitest run src/components/cards/__tests__/CardToolbar.test.tsx",
     "test:card-loading-state": "vitest run src/components/cards/__tests__/CardLoadingState.test.tsx",
     "test:netlify-github-cluster": "vitest run netlify/functions/__tests__/github-pipelines.test.ts netlify/functions/__tests__/github-pipelines-mutate.test.ts netlify/functions/__tests__/nightly-e2e.test.ts netlify/functions/__tests__/issue-stats.test.ts",
     "test:netlify-identity": "vitest run netlify/functions/__tests__/identity-oidc-rbac.test.ts",
