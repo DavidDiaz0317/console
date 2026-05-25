@@ -21,6 +21,10 @@ vi.mock('../../../lib/constants/network', () => ({
   isLocalAgentSuppressed: mockIsLocalAgentSuppressed,
 }))
 
+vi.mock('../sharedImpl.connection', () => ({
+  resetAuthFailed: vi.fn(),
+}))
+
 import { agentFetch, AGENT_TOKEN_STORAGE_KEY, _resetAgentTokenState } from '../agentFetch'
 
 const TOKEN_VALUE = 'test-agent-token-abc123'

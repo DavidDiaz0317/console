@@ -51,6 +51,10 @@ vi.mock('../../hooks/mcp/shared', () => ({
   reportAgentDataSuccess: () => {},
 }))
 
+vi.mock('../../hooks/mcp/sharedImpl.connection', () => ({
+  resetAuthFailed: vi.fn(),
+}))
+
 vi.mock('../constants', () => ({
   LOCAL_AGENT_WS_URL: 'ws://127.0.0.1:8585/ws',
   WS_CONNECT_TIMEOUT_MS: 2500,

@@ -47,6 +47,10 @@ vi.mock('../../../hooks/mcp/shared', () => ({
   agentFetch: vi.fn().mockResolvedValue({ json: () => Promise.resolve({ clusters: [] }) }),
 }))
 
+vi.mock('../../../hooks/mcp/sharedImpl.connection', () => ({
+  resetAuthFailed: vi.fn(),
+}))
+
 vi.mock('../OPAPolicies.utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../OPAPolicies.utils')>()
   return {
