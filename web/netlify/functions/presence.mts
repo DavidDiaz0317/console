@@ -237,3 +237,5 @@ export default async (req: Request) => {
 
   return jsonResponse({ activeUsers: count, totalConnections: count }, headers);
 };
+
+export const _testOnly = { MAX_BODY_BYTES };
