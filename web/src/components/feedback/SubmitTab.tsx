@@ -430,6 +430,10 @@ export function SubmitForm({
                 ))}
               </ul>
               <div className="text-muted-foreground text-xs mt-1.5">
+                <a href={sanitizeUrl(directIssueUrl)} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 underline underline-offset-2">
+                  {t('feedback.fileIssueManually', 'File issue manually on GitHub')}
+                </a>
+                {' · '}
                 <a href={GITHUB_TOKEN_CREATE_URL} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 underline underline-offset-2">Create token on GitHub</a>
                 {' · '}
                 <button
