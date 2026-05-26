@@ -274,7 +274,7 @@ export function MiniDashboard() {
     <div className="min-h-screen bg-linear-to-br from-gray-900 via-gray-900 to-gray-800 text-white flex items-center justify-center p-2">
       {/* Fixed-size widget container */}
       <div className="w-[520px] h-[320px] flex flex-col bg-background/50 rounded-xl border border-border/50 overflow-hidden">
-        <div className="flex-1 p-4 overflow-auto scroll-enhanced">
+        <div className="flex-1 p-4 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -354,7 +354,7 @@ export function MiniDashboard() {
       {totalIssues > 0 && (
         <div className="mb-4">
           <h2 className="text-xs font-medium text-muted-foreground mb-2">Recent Issues</h2>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
+          <div className="space-y-1 max-h-32 overflow-hidden">
             {podIssues?.slice(0, 5).map((issue, i) => {
               const isCritical = issue.status === 'CrashLoopBackOff' || issue.status === 'OOMKilled' || issue.status === 'Error'
               return (
