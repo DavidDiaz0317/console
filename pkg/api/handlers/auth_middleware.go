@@ -8,7 +8,6 @@ import (
 	"github.com/kubestellar/console/pkg/api/middleware"
 	"github.com/kubestellar/console/pkg/models"
 	"log/slog"
-	"strings"
 	"time"
 )
 
@@ -116,7 +115,7 @@ func (h *AuthHandler) hasValidAuthCookie(c *fiber.Ctx) bool {
 // SameSite=Lax, which allowed cross-origin top-level POSTs to carry the
 // cookie and enabled CSRF on mutating endpoints.
 func (h *AuthHandler) setJWTCookie(c *fiber.Ctx, token string) {
-	secure := strings.HasPrefix(h.frontendURL, "https://")
+	secure := h.isSecureRequest(c)
 	c.Cookie(&fiber.Cookie{
 		Name:     jwtCookieName,
 		Value:    token,
@@ -130,7 +129,7 @@ func (h *AuthHandler) setJWTCookie(c *fiber.Ctx, token string) {
 
 // clearJWTCookie removes the JWT HttpOnly cookie.
 func (h *AuthHandler) clearJWTCookie(c *fiber.Ctx) {
-	secure := strings.HasPrefix(h.frontendURL, "https://")
+	secure := h.isSecureRequest(c)
 	c.Cookie(&fiber.Cookie{
 		Name:     jwtCookieName,
 		Value:    "",
@@ -140,6 +139,18 @@ func (h *AuthHandler) clearJWTCookie(c *fiber.Ctx) {
 		Secure:   secure,
 		SameSite: "Strict",
 	})
+}
+
+// isSecureRequest determines whether the Secure cookie flag should be set.
+// In production (non-dev mode), always set Secure to prevent JWT leakage over
+// plain HTTP even if the operator misconfigures FRONTEND_URL. In dev mode,
+// derive from the actual request protocol (respects X-Forwarded-Proto behind
+// reverse proxies) so local HTTP development still works.
+func (h *AuthHandler) isSecureRequest(c *fiber.Ctx) bool {
+	if !h.devMode {
+		return true
+	}
+	return c.Protocol() == "https"
 }
 
 func (h *AuthHandler) generateJWT(user *models.User) (string, error) {
