@@ -8,7 +8,6 @@ import (
 	"github.com/kubestellar/console/pkg/api/middleware"
 	"github.com/kubestellar/console/pkg/models"
 	"log/slog"
-	"strings"
 	"time"
 )
 
@@ -105,39 +104,42 @@ func (h *AuthHandler) hasValidAuthCookie(c *fiber.Ctx) bool {
 	return true
 }
 
+func isSecureRequest(c *fiber.Ctx) bool {
+	return c.Protocol() == "https" || c.Get("X-Forwarded-Proto") == "https"
+}
+
 // setJWTCookie sets an HttpOnly cookie carrying the JWT token.
-// The cookie is Secure when the frontend URL uses HTTPS and uses
-// SameSite=Strict (#6588): the cookie must NEVER be attached to a request
-// initiated by another origin, including top-level navigations. The OAuth
-// callback is handled by our own backend, which then redirects back to
-// the frontend via 307 — the final navigation is same-origin from the
-// browser's perspective once the redirect lands on the frontend URL, so
-// Strict does not break the OAuth flow. Previously the cookie used
-// SameSite=Lax, which allowed cross-origin top-level POSTs to carry the
-// cookie and enabled CSRF on mutating endpoints.
+// The cookie is Secure when the incoming request uses HTTPS (including
+// proxied HTTPS signaled via X-Forwarded-Proto) and uses SameSite=Strict
+// (#6588): the cookie must NEVER be attached to a request initiated by
+// another origin, including top-level navigations. The OAuth callback is
+// handled by our own backend, which then redirects back to the frontend via
+// 307 — the final navigation is same-origin from the browser's perspective
+// once the redirect lands on the frontend URL, so Strict does not break the
+// OAuth flow. Previously the cookie used SameSite=Lax, which allowed
+// cross-origin top-level POSTs to carry the cookie and enabled CSRF on
+// mutating endpoints.
 func (h *AuthHandler) setJWTCookie(c *fiber.Ctx, token string) {
-	secure := strings.HasPrefix(h.frontendURL, "https://")
 	c.Cookie(&fiber.Cookie{
 		Name:     jwtCookieName,
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(jwtExpiration.Seconds()),
 		HTTPOnly: true,
-		Secure:   secure,
+		Secure:   isSecureRequest(c),
 		SameSite: "Strict",
 	})
 }
 
 // clearJWTCookie removes the JWT HttpOnly cookie.
 func (h *AuthHandler) clearJWTCookie(c *fiber.Ctx) {
-	secure := strings.HasPrefix(h.frontendURL, "https://")
 	c.Cookie(&fiber.Cookie{
 		Name:     jwtCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
 		HTTPOnly: true,
-		Secure:   secure,
+		Secure:   isSecureRequest(c),
 		SameSite: "Strict",
 	})
 }
