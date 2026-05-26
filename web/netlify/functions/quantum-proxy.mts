@@ -82,6 +82,7 @@ const PROXY_TIMEOUT_MS = 15_000;
 const MAX_PROXY_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 1_048_576;
 const ALLOWED_METHODS = new Set(["GET", "POST"]);
+const LOOP_START_PATH = "/loop/start";
 const LOOP_STOP_PATH = "/loop/stop";
 const OVERSIZED_RESPONSE_ERROR = "Upstream response too large";
 
@@ -103,10 +104,17 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function validatePostBody(path: string, requestBody: string): string | null {
   const trimmedBody = requestBody.trim();
-  let parsedBody: unknown;
 
+  if (trimmedBody === "") {
+    if (path === LOOP_START_PATH || path === LOOP_STOP_PATH) {
+      return null;
+    }
+    return "Request body must be a JSON object";
+  }
+
+  let parsedBody: unknown;
   try {
-    parsedBody = trimmedBody === "" ? {} : JSON.parse(trimmedBody);
+    parsedBody = JSON.parse(trimmedBody);
   } catch {
     return "Invalid JSON in request body";
   }

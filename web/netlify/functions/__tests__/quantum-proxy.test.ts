@@ -162,7 +162,7 @@ describe("quantum-proxy", () => {
       expect(body.qubits).toEqual([0, 1, 2, 3, 4]);
     });
 
-    it("returns execute demo response", async () => {
+    it("returns execute demo response for control panel payloads", async () => {
       const req = new Request("https://example.test/.netlify/functions/quantum-proxy/execute", {
         method: "POST",
         headers: {
@@ -170,7 +170,7 @@ describe("quantum-proxy", () => {
           authorization: "Bearer token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ circuit: "OPENQASM 2.0;" }),
+        body: JSON.stringify({ backend: "Aer Simulator", shots: 1024, qasm_file: "bell.qasm" }),
       });
       const res = await handler(req, { env: {} } as unknown as Context);
       expect(res.status).toBe(HTTP_STATUS_OK);
@@ -179,7 +179,7 @@ describe("quantum-proxy", () => {
       expect(body.status).toBe("completed");
     });
 
-    it("returns loop start demo response", async () => {
+    it("returns loop start demo response for empty POST bodies", async () => {
       const req = new Request("https://example.test/.netlify/functions/quantum-proxy/loop/start", {
         method: "POST",
         headers: {
@@ -187,7 +187,6 @@ describe("quantum-proxy", () => {
           authorization: "Bearer token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ circuit: "OPENQASM 2.0;" }),
       });
       const res = await handler(req, { env: {} } as unknown as Context);
       expect(res.status).toBe(HTTP_STATUS_OK);
@@ -330,7 +329,16 @@ describe("quantum-proxy", () => {
       expect(body.error).toBe("Request body must be a JSON object");
     });
 
-    it("returns 400 when POST request body is missing 'circuit' for /execute", async () => {
+    it("accepts plain object POST payloads for /execute", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ job_id: "upstream-job-99" }), {
+          status: HTTP_STATUS_CREATED,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const payload = { backend: "Aer Simulator", shots: 1024, qasm_file: "bell.qasm" };
       const req = new Request("https://example.test/.netlify/functions/quantum-proxy/execute", {
         method: "POST",
         headers: {
@@ -338,12 +346,41 @@ describe("quantum-proxy", () => {
           authorization: "Bearer token",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ otherKey: "val" }),
+        body: JSON.stringify(payload),
       });
       const res = await handler(req, contextWithEnv);
-      expect(res.status).toBe(HTTP_STATUS_BAD_REQUEST);
-      const body = await readJson<{ error: string }>(res);
-      expect(body.error).toBe('Request body must be an object with a non-empty "circuit" string');
+      expect(res.status).toBe(HTTP_STATUS_CREATED);
+      const body = await readJson<{ job_id: string }>(res);
+      expect(body.job_id).toBe("upstream-job-99");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const firstCallInit = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(firstCallInit.body).toBe(JSON.stringify(payload));
+    });
+
+    it("accepts empty POST bodies for /loop/start", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ status: "started" }), {
+          status: HTTP_STATUS_OK,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const req = new Request("https://example.test/.netlify/functions/quantum-proxy/loop/start", {
+        method: "POST",
+        headers: {
+          Origin: TEST_CORS_ORIGIN,
+          authorization: "Bearer token",
+          "Content-Type": "application/json",
+        },
+      });
+      const res = await handler(req, contextWithEnv);
+      expect(res.status).toBe(HTTP_STATUS_OK);
+      const body = await readJson<{ status: string }>(res);
+      expect(body.status).toBe("started");
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const firstCallInit = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(firstCallInit.body).toBe("");
     });
 
     it("returns 400 when POST request body for /loop/stop is not empty", async () => {
