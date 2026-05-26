@@ -4,6 +4,34 @@ import userEvent from '@testing-library/user-event'
 import type { ComponentProps } from 'react'
 
 const mockShowToast = vi.hoisted(() => vi.fn())
+
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const map: Record<string, string> = {
+        'actions.remove': 'Remove',
+        'actions.cancel': 'Cancel',
+        'missionBrowser.repoAddedToast': 'Repository "{{value}}" added',
+        'missionBrowser.pathAddedToast': 'Path "{{value}}" added',
+        'missionBrowser.repoPlaceholder': 'owner/repo (e.g., kubara-io/kubara or your-org/runbooks)',
+        'missionBrowser.pathPlaceholder': '/path/to/missions',
+        'missionBrowser.dropZone': 'Drop mission file (JSON, YAML, MD) or click to browse',
+        'missionBrowser.removeWatchedRepoTitle': 'Remove watched repository?',
+        'missionBrowser.removeWatchedRepoMessage': 'Remove {{path}} from your watched repositories?',
+        'missionBrowser.removeWatchedPathTitle': 'Remove watched path?',
+        'missionBrowser.removeWatchedPathMessage': 'Remove {{path}} from your watched paths?',
+      }
+      let value = map[key] ?? key
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(replacement))
+      }
+      return value
+    },
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+}))
+
 vi.mock('../../ui/Toast', () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }))

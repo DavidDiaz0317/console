@@ -2,6 +2,42 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const map: Record<string, string> = {
+        'actions.clearAll': 'Clear All',
+        'missionBrowser.match': 'Match:',
+        'missionBrowser.matchAny': 'Any',
+        'missionBrowser.source': 'Source:',
+        'missionBrowser.sourceAll': 'All',
+        'missionBrowser.sourceCluster': '🎯 Cluster',
+        'missionBrowser.sourceCommunity': '🌐 Community',
+        'missionBrowser.category': 'Category:',
+        'missionBrowser.class': 'Class:',
+        'missionBrowser.maturity': 'Maturity:',
+        'missionBrowser.difficulty': 'Difficulty:',
+        'missionBrowser.cncf': 'CNCF:',
+        'missionBrowser.cncfPlaceholder': 'e.g. Istio, Envoy…',
+        'missionBrowser.tags': 'Tags:',
+        'missionBrowser.clearTags': 'Clear tags',
+        'missionBrowser.summary': 'Showing {{shown}} of {{total}} missions',
+        'missionBrowser.filteredSummary': 'Showing {{shown}} of {{total}} missions (filtered)',
+        'missionBrowser.noMissionsMatchFilters': 'No missions match your filters.',
+        'missionBrowser.clearAllFiltersAction': 'Clear all filters',
+      }
+      let value = map[key] ?? key
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(replacement))
+      }
+      return value
+    },
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+}))
+
 import { MissionBrowserFilterPanel } from '../MissionBrowserFilterPanel'
 
 function renderPanel(overrides: Partial<ComponentProps<typeof MissionBrowserFilterPanel>> = {}) {
