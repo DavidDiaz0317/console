@@ -82,7 +82,6 @@ const PROXY_TIMEOUT_MS = 15_000;
 const MAX_PROXY_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 1_048_576;
 const ALLOWED_METHODS = new Set(["GET", "POST"]);
-const CIRCUIT_POST_PATHS = new Set(["/execute", "/loop/start"]);
 const LOOP_STOP_PATH = "/loop/stop";
 const OVERSIZED_RESPONSE_ERROR = "Upstream response too large";
 
@@ -114,12 +113,6 @@ function validatePostBody(path: string, requestBody: string): string | null {
 
   if (!isPlainObject(parsedBody)) {
     return "Request body must be a JSON object";
-  }
-
-  if (CIRCUIT_POST_PATHS.has(path)) {
-    if (Object.keys(parsedBody).length !== 1 || typeof parsedBody.circuit !== "string" || parsedBody.circuit.trim() === "") {
-      return 'Request body must be an object with a non-empty "circuit" string';
-    }
   }
 
   if (path === LOOP_STOP_PATH && Object.keys(parsedBody).length !== 0) {
