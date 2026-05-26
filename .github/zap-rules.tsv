@@ -14,6 +14,10 @@
 # SPA returns 200 for all routes (client-side routing)
 10010	IGNORE	Cookie No HttpOnly Flag
 
+# Source Code Disclosure - SQL: false positive triggered by GitHub Actions
+# workflow names containing "Update" in /api/github-pipelines JSON responses
+10099	WARN	Source Code Disclosure - SQL
+
 # Informational findings — too noisy for nightly
 10049	IGNORE	Storable and Cacheable Content
 10050	IGNORE	Retrieved from Cache
