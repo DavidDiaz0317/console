@@ -82,8 +82,6 @@ const PROXY_TIMEOUT_MS = 15_000;
 const MAX_PROXY_BODY_BYTES = 1_048_576;
 const MAX_RESPONSE_BYTES = 1_048_576;
 const ALLOWED_METHODS = new Set(["GET", "POST"]);
-const CIRCUIT_POST_PATHS = new Set(["/execute", "/loop/start"]);
-const LOOP_STOP_PATH = "/loop/stop";
 const OVERSIZED_RESPONSE_ERROR = "Upstream response too large";
 
 function isAllowedPath(path: string): boolean {
@@ -102,7 +100,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function validatePostBody(path: string, requestBody: string): string | null {
+function validatePostBody(requestBody: string): string | null {
   const trimmedBody = requestBody.trim();
   let parsedBody: unknown;
 
@@ -114,16 +112,6 @@ function validatePostBody(path: string, requestBody: string): string | null {
 
   if (!isPlainObject(parsedBody)) {
     return "Request body must be a JSON object";
-  }
-
-  if (CIRCUIT_POST_PATHS.has(path)) {
-    if (Object.keys(parsedBody).length !== 1 || typeof parsedBody.circuit !== "string" || parsedBody.circuit.trim() === "") {
-      return 'Request body must be an object with a non-empty "circuit" string';
-    }
-  }
-
-  if (path === LOOP_STOP_PATH && Object.keys(parsedBody).length !== 0) {
-    return "Request body for /loop/stop must be empty";
   }
 
   return null;
@@ -321,7 +309,7 @@ export default async (req: Request, context: Context): Promise<Response> => {
     }
     const requestBody = req.method === "GET" ? undefined : await req.text();
     if (req.method === "POST" && requestBody !== undefined) {
-      const validationError = validatePostBody(path, requestBody);
+      const validationError = validatePostBody(requestBody);
       if (validationError) {
         return new Response(JSON.stringify({ error: validationError }), {
           status: 400,
