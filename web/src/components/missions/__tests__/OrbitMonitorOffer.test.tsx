@@ -3,6 +3,20 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DEFAULT_MONITOR_KINDS } from '../../../lib/constants/k8sResources'
 import type { Mission } from '../../../hooks/useMissions'
+
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({
+    t: (key: string) => ({
+      'missions.orbit.title': 'Want to keep watching this?',
+      'missions.orbit.description': 'Set up an orbit to monitor it automatically.',
+      'missions.orbit.setupMonitor': 'Set up monitor',
+      'missions.orbit.dismiss': 'Dismiss',
+    }[key] ?? key),
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+}))
+
 import { OrbitMonitorOffer } from '../OrbitMonitorOffer'
 
 function createMission(cluster?: string): Mission {

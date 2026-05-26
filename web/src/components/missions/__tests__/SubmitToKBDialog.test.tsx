@@ -20,6 +20,45 @@ const { mockBuildGitHubNewFileUrl, mockBuildGitHubIssueUrl } = vi.hoisted(() => 
 
 // ── Module mocks ─────────────────────────────────────────────────────────
 
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const pluralized = {
+        'missions.browser.stepsCount': options?.count === 1 ? '{{count}} step' : '{{count}} steps',
+        'missions.submitToKB.findings': options?.count === 1
+          ? '{{count}} finding — review before submitting'
+          : '{{count}} findings — review before submitting',
+      } as Record<string, string | undefined>
+      const map: Record<string, string> = {
+        'missions.submitToKB.title': 'Submit to Knowledge Base',
+        'missions.submitToKB.missionType': 'Mission Type',
+        'missions.submitToKB.missionClass.fixer.label': 'Fixer',
+        'missions.submitToKB.missionClass.fixer.description': 'Troubleshooting fix',
+        'missions.submitToKB.missionClass.install.label': 'Install Mission',
+        'missions.submitToKB.missionClass.install.description': 'Setup / deploy guide',
+        'missions.submitToKB.cncfProject': 'CNCF Project',
+        'missions.submitToKB.optional': 'optional',
+        'missions.submitToKB.cncfProjectPlaceholder': 'e.g., Istio, Argo CD, Prometheus...',
+        'missions.submitToKB.filename': 'Filename',
+        'missions.submitToKB.scanning': 'Scanning for sensitive data...',
+        'missions.submitToKB.noSensitiveData': 'No sensitive data detected',
+        'missions.submitToKB.runSecurityScan': 'Run security scan',
+        'missions.submitToKB.previewJson': 'Preview JSON ({{count}} chars)',
+        'missions.submitToKB.opensPr': 'Opens a PR on {{repo}}',
+        'missions.submitToKB.cancel': 'Cancel',
+        'missions.submitToKB.submit': 'Submit to KB',
+      }
+      let value = pluralized[key] ?? map[key] ?? key
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(replacement))
+      }
+      return value
+    },
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+}))
+
 vi.mock('@/lib/githubUrls', () => ({
   buildGitHubNewFileUrl: mockBuildGitHubNewFileUrl,
   buildGitHubIssueUrl: mockBuildGitHubIssueUrl,
@@ -238,7 +277,7 @@ describe('SubmitToKBDialog', () => {
       ],
     })
     renderDialog()
-    expect(screen.getByText(/2 finding\(s\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/2 findings\s+—\s+review before submitting/i)).toBeInTheDocument()
   })
 
   // ── Submit / Cancel ──────────────────────────────────────────────────

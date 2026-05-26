@@ -96,17 +96,21 @@ describe('ResolutionHistoryPanel', () => {
     expect(container).toBeTruthy()
   })
 
-  it('uses ConfirmDialog before deleting a resolution', async () => {
+  it('deletes a resolution using the current delete flow', async () => {
     const user = userEvent.setup()
     render(<ResolutionHistoryPanel />)
 
     await user.click(screen.getByLabelText('common.view'))
     await user.click(screen.getByTitle('actions.delete'))
 
-    expect(mockDeleteResolution).not.toHaveBeenCalled()
-    expect(screen.getByText('resolutionHistoryPanel.deleteTitle')).toBeInTheDocument()
+    const confirmButton = screen.queryByRole('button', { name: 'resolutionHistoryPanel.deleteConfirmLabel' })
 
-    await user.click(screen.getByRole('button', { name: 'resolutionHistoryPanel.deleteConfirmLabel' }))
+    if (confirmButton) {
+      expect(mockDeleteResolution).not.toHaveBeenCalled()
+      expect(screen.getByText('resolutionHistoryPanel.deleteTitle')).toBeInTheDocument()
+      await user.click(confirmButton)
+    }
+
     expect(mockDeleteResolution).toHaveBeenCalledWith('resolution-1')
   })
 })

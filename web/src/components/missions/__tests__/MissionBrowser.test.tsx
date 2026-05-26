@@ -33,7 +33,17 @@ const toastMockState = vi.hoisted(() => ({
 vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      const map: Record<string, string> = {
+        'actions.clearAll': 'Clear All',
+        'missionBrowser.clearAllFiltersAction': 'Clear all filters',
+      }
+      let value = map[key] ?? key
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(replacement))
+      }
+      return value
+    },
     i18n: { language: 'en' },
   }),
 }))

@@ -8,8 +8,47 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ShareMissionDialog } from '../ShareMissionDialog'
 import type { Resolution } from '../../../hooks/useResolutions'
+
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const pluralized = {
+        'missions.browser.stepsCount': options?.count === 1
+          ? '{{count}} step'
+          : '{{count}} steps',
+        'missions.share.findings': options?.count === 1
+          ? '{{count}} finding — review before sharing externally'
+          : '{{count}} findings — review before sharing externally',
+      } as Record<string, string | undefined>
+      const map: Record<string, string> = {
+        'missions.share.title': 'Export Mission',
+        'missions.share.scanning': 'Scanning for sensitive data...',
+        'missions.share.noSensitiveData': 'No sensitive data detected',
+        'missions.share.runSecurityScan': 'Run security scan before export',
+        'missions.share.done': 'Done!',
+        'missions.share.export.json.label': 'Download JSON',
+        'missions.share.export.json.description': 'Save as .json file',
+        'missions.share.export.clipboard.label': 'Copy JSON',
+        'missions.share.export.clipboard.description': 'Copy to clipboard',
+        'missions.share.export.markdown.label': 'Copy Markdown',
+        'missions.share.export.markdown.description': 'Human-readable format',
+        'missions.share.export.yaml.label': 'Download YAML',
+        'missions.share.export.yaml.description': 'Save as .yaml file',
+        'missions.share.errors.unknown': 'unknown error',
+      }
+      let value = pluralized[key] ?? map[key] ?? key
+      for (const [name, replacement] of Object.entries(options ?? {})) {
+        value = value.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(replacement))
+      }
+      return value
+    },
+    i18n: { language: 'en', changeLanguage: vi.fn() },
+  }),
+}))
+
+import { ShareMissionDialog } from '../ShareMissionDialog'
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -169,8 +208,7 @@ describe('ShareMissionDialog', () => {
     const scanButton = screen.getByText('Run security scan before export')
     await user.click(scanButton)
 
-    expect(screen.getByText(/1 finding\(s\)/)).toBeInTheDocument()
-    expect(screen.getByText(/review before sharing externally/)).toBeInTheDocument()
+    expect(screen.getByText(/1 finding\s+—\s+review before sharing externally/)).toBeInTheDocument()
   })
 
   it('calls onClose when the close button is clicked', async () => {
