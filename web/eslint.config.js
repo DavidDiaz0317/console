@@ -54,6 +54,15 @@ export default tseslint.config(
           message: 'Use <Select> from components/ui/Select.tsx instead of raw <select>.',
         },
       ],
+      // Soft limit on file length to curb god-file growth (#15790)
+      'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  // Test and mock files may be long — exempt from max-lines.
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/mocks/**'],
+    rules: {
+      'max-lines': 'off',
     },
   },
   // The shared form components themselves necessarily render native elements —
