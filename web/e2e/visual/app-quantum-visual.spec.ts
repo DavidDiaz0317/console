@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { setupDemoMode } from '../helpers/setup'
+import { CIRCUIT_ZOOM_STORAGE_KEY } from '../../src/components/cards/quantum/QuantumCircuitViewer.constants'
 
 const PAGE_VISIBLE_TIMEOUT_MS = 15_000
 const CARD_VISIBLE_TIMEOUT_MS = 15_000
@@ -37,6 +38,16 @@ test.describe('Quantum dashboard cards', () => {
   })
 
   test('circuit viewer renders zoom controls and small zoom levels visibly shrink the diagram', async ({ page }) => {
+    // Clear persisted zoom so the 100% baseline is deterministic regardless of
+    // any prior test run or shared storage state.
+    await page.addInitScript((key: string) => {
+      try {
+        window.localStorage.removeItem(key)
+      } catch {
+        // localStorage unavailable; baseline still works since component falls back to 100%.
+      }
+    }, CIRCUIT_ZOOM_STORAGE_KEY)
+
     await setupQuantumPage(page)
 
     const circuitCard = page
@@ -48,7 +59,7 @@ test.describe('Quantum dashboard cards', () => {
     await circuitCard.scrollIntoViewIfNeeded()
     await expect(circuitCard).toBeVisible({ timeout: CARD_VISIBLE_TIMEOUT_MS })
 
-    // All eight default zoom buttons must be present.
+    // All ten zoom level buttons must be present.
     const zoomLevels = [15, 20, 25, 35, 50, 65, 85, 100, 125, 150]
     for (const pct of zoomLevels) {
       await expect(circuitCard.getByRole('button', { name: `${pct}%`, exact: true })).toBeVisible()
