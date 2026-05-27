@@ -231,6 +231,7 @@ function GPUNamespaceAllocationsInternal({ config: _config }: GPUNamespaceAlloca
             key={ns.namespace}
             role="button"
             tabIndex={0}
+            aria-label={`View GPU allocations for namespace ${ns.namespace}`}
             onClick={() => drillToGPUNamespace(ns.namespace, {
               gpuRequested: ns.gpuRequested,
               podCount: ns.podCount,
