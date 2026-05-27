@@ -17,14 +17,18 @@ const INITIAL_BALL_SPEED = 5
 const MAX_BALL_SPEED = 12
 const WINNING_SCORE = 7
 
-// Colors (Kubernetes theme)
-const COLORS = {
-  background: '#0a1628',
-  paddle: '#326ce5', // K8s blue
-  ball: '#00d4aa',   // Teal accent
-  net: '#1e3a5f',
-  text: '#fff',
-  score: '#326ce5' }
+// Helper to get theme colors from CSS variables
+function getThemeColors() {
+  const style = getComputedStyle(document.documentElement)
+  return {
+    background: style.getPropertyValue('--color-background').trim() || '#0a1628',
+    paddle: style.getPropertyValue('--color-primary').trim() || '#326ce5',
+    ball: style.getPropertyValue('--color-accent').trim() || '#00d4aa',
+    net: style.getPropertyValue('--color-border').trim() || '#1e3a5f',
+    text: style.getPropertyValue('--color-foreground').trim() || '#fff',
+    score: style.getPropertyValue('--color-primary').trim() || '#326ce5',
+  }
+}
 
 interface Ball {
   x: number
@@ -218,6 +222,9 @@ export function KubePong() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Get theme colors
+    const COLORS = getThemeColors()
+
     // Clear
     ctx.fillStyle = COLORS.background
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
@@ -333,8 +340,8 @@ export function KubePong() {
 
           {/* Overlays */}
           {gameState === 'idle' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded">
-              <h3 className="text-2xl font-bold text-blue-400 mb-2">Kube Pong</h3>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 rounded">
+              <h3 className="text-2xl font-bold text-primary mb-2">Kube Pong</h3>
               <p className="text-sm text-muted-foreground mb-4">Arrow keys or W/S to move paddle</p>
 
               {/* Difficulty selector */}
@@ -345,7 +352,7 @@ export function KubePong() {
                     onClick={() => setDifficulty(d)}
                     className={`px-3 py-1 text-sm rounded capitalize ${
                       difficulty === d
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-primary text-primary-foreground'
                         : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
                     }`}
                   >
@@ -356,7 +363,7 @@ export function KubePong() {
 
               <button
                 onClick={startGame}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded text-primary-foreground"
               >
                 <Play className="w-4 h-4" />
                 Start Game
@@ -365,11 +372,11 @@ export function KubePong() {
           )}
 
           {gameState === 'paused' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded">
-              <div className="text-xl font-bold text-white mb-4">Paused</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 rounded">
+              <div className="text-xl font-bold text-foreground mb-4">Paused</div>
               <button
                 onClick={togglePause}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded text-primary-foreground"
               >
                 <Play className="w-4 h-4" />
                 Resume
@@ -378,7 +385,7 @@ export function KubePong() {
           )}
 
           {gameState === 'finished' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/70 rounded">
               {winner === 'player' ? (
                 <>
                   <Trophy className="w-12 h-12 text-yellow-400 mb-2" />
@@ -390,10 +397,10 @@ export function KubePong() {
                   <div className="text-2xl font-bold text-red-400 mb-2">AI Wins</div>
                 </>
               )}
-              <p className="text-lg text-white mb-4">{playerScore} - {aiScore}</p>
+              <p className="text-lg text-foreground mb-4">{playerScore} - {aiScore}</p>
               <button
                 onClick={startGame}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white"
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded text-primary-foreground"
               >
                 <RotateCcw className="w-4 h-4" />
                 Play Again
