@@ -56,7 +56,10 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test:visual": "playwright test --config e2e/visual/app-visual.config.ts",
-    "test:visual:update": "playwright test --config e2e/visual/app-visual.config.ts --update-snapshots"
+    "test:visual:update": "playwright test --config e2e/visual/app-visual.config.ts --update-snapshots",
+    "test:auth-drift": "playwright test --config e2e/auth-drift/auth-ui-drift.config.ts",
+    "test:auth-drift:update": "playwright test --config e2e/auth-drift/auth-ui-drift.config.ts --update-snapshots",
+    "test:auth-drift:self": "node scripts/auth-drift-self-test.mjs"
   },
   "dependencies": {
     "@codemirror/legacy-modes": "^6.5.3",
