@@ -39,6 +39,75 @@ const health: ClusterHealth = {
 const mockStartMission = vi.fn()
 let mockDeploymentIssues: DeploymentIssue[] = []
 
+interface TestDeploymentIssueInput {
+  name: string
+  namespace: string
+  replicas: number | null | undefined
+  readyReplicas: number | null | undefined
+  reason?: string
+}
+
+const NORMAL_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'nginx',
+  namespace: 'default',
+  replicas: 3,
+  readyReplicas: 1,
+}
+
+const UNDEFINED_REPLICAS_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'api-server',
+  namespace: 'production',
+  replicas: undefined,
+  readyReplicas: undefined,
+}
+
+const PARTIALLY_LOADED_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'worker',
+  namespace: 'jobs',
+  replicas: undefined,
+  readyReplicas: 0,
+}
+
+const ZERO_REPLICAS_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'scaled-down',
+  namespace: 'staging',
+  replicas: 0,
+  readyReplicas: 0,
+}
+
+const NULL_REPLICAS_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'cache',
+  namespace: 'infra',
+  replicas: null,
+  readyReplicas: null,
+}
+
+const LARGE_REPLICA_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'web-frontend',
+  namespace: 'production',
+  replicas: 100,
+  readyReplicas: 100,
+}
+
+const REPAIR_PROMPT_DEPLOYMENT: TestDeploymentIssueInput = {
+  name: 'broken-deploy',
+  namespace: 'default',
+  replicas: undefined,
+  readyReplicas: undefined,
+  reason: 'ImagePullBackOff',
+}
+
+function createDeploymentIssue(issue: TestDeploymentIssueInput): DeploymentIssue {
+  return {
+    name: issue.name,
+    namespace: issue.namespace,
+    cluster: 'test-cluster',
+    replicas: issue.replicas as unknown as number,
+    readyReplicas: issue.readyReplicas as unknown as number,
+    ...(issue.reason ? { reason: issue.reason } : {}),
+  }
+}
+
 vi.mock('../../../hooks/useMCP', () => ({
   useClusters: () => ({ deduplicatedClusters: [clusterInfo], clusters: [clusterInfo] }),
   useClusterHealth: () => ({ health, isLoading: false, error: null }),
@@ -142,13 +211,7 @@ describe('Diagnose prompt — deployment replica counts', () => {
   })
 
   it('renders normal replica counts correctly in diagnose prompt', () => {
-    mockDeploymentIssues = [{
-      name: 'nginx',
-      namespace: 'default',
-      cluster: 'test-cluster',
-      replicas: 3,
-      readyReplicas: 1,
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(NORMAL_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
     expect(prompt).toContain('1/3 ready')
@@ -171,16 +234,10 @@ describe('Diagnose prompt — deployment replica counts', () => {
   })
 
   it('never shows "undefined/undefined" when replicas are undefined', () => {
-    // Simulate runtime case where data hasn't loaded — types say number but runtime is undefined
-    mockDeploymentIssues = [{
-      name: 'api-server',
-      namespace: 'production',
-      cluster: 'test-cluster',
-      replicas: undefined as unknown as number,
-      readyReplicas: undefined as unknown as number,
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(UNDEFINED_REPLICAS_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
+    expect(prompt).not.toContain('undefined/undefined ready')
     expect(prompt).not.toContain('undefined')
     expect(prompt).toContain('0/0 ready')
   })
@@ -199,42 +256,25 @@ describe('Diagnose prompt — deployment replica counts', () => {
     expect(prompt).toContain('0/5 ready')
   })
 
-  it('never shows "undefined" when only replicas is undefined', () => {
-    mockDeploymentIssues = [{
-      name: 'worker',
-      namespace: 'jobs',
-      cluster: 'test-cluster',
-      replicas: undefined as unknown as number,
-      readyReplicas: 2,
-    }]
+  it('never shows "undefined" for partially loaded replica counts', () => {
+    mockDeploymentIssues = [createDeploymentIssue(PARTIALLY_LOADED_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
     expect(prompt).not.toContain('undefined')
-    expect(prompt).toContain('2/0 ready')
+    expect(prompt).toContain('0/0 ready')
   })
 
   it('never shows "null/null" when replicas are null', () => {
-    mockDeploymentIssues = [{
-      name: 'cache',
-      namespace: 'infra',
-      cluster: 'test-cluster',
-      replicas: null as unknown as number,
-      readyReplicas: null as unknown as number,
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(NULL_REPLICAS_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
+    expect(prompt).not.toContain('null/null ready')
     expect(prompt).not.toContain('null')
     expect(prompt).toContain('0/0 ready')
   })
 
   it('handles zero replicas correctly (healthy zero state)', () => {
-    mockDeploymentIssues = [{
-      name: 'scaled-down',
-      namespace: 'staging',
-      cluster: 'test-cluster',
-      replicas: 0,
-      readyReplicas: 0,
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(ZERO_REPLICAS_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
     expect(prompt).toContain('0/0 ready')
@@ -242,13 +282,7 @@ describe('Diagnose prompt — deployment replica counts', () => {
   })
 
   it('handles large replica counts', () => {
-    mockDeploymentIssues = [{
-      name: 'web-frontend',
-      namespace: 'production',
-      cluster: 'test-cluster',
-      replicas: 100,
-      readyReplicas: 100,
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(LARGE_REPLICA_DEPLOYMENT)]
 
     const prompt = getDiagnosePrompt()
     expect(prompt).toContain('100/100 ready')
@@ -263,14 +297,7 @@ describe('Diagnose prompt — deployment replica counts', () => {
   })
 
   it('repair prompt guards against undefined replicas', () => {
-    mockDeploymentIssues = [{
-      name: 'broken-deploy',
-      namespace: 'default',
-      cluster: 'test-cluster',
-      replicas: undefined as unknown as number,
-      readyReplicas: undefined as unknown as number,
-      reason: 'ImagePullBackOff',
-    }]
+    mockDeploymentIssues = [createDeploymentIssue(REPAIR_PROMPT_DEPLOYMENT)]
 
     const prompt = getRepairPrompt()
     expect(prompt).not.toContain('undefined/undefined')
