@@ -4,6 +4,8 @@ import { useDrillDownActions, useDrillDown } from '../../../hooks/useDrillDown'
 import { ClusterBadge } from '../../ui/ClusterBadge'
 import { StatusIndicator, type Status } from '../../charts/StatusIndicator'
 import { hasGPUResourceRequest, normalizeClusterName } from '../../../lib/gpu'
+import { cn } from '../../../lib/cn'
+import { TOUCH_TARGET_SIZE_CLASS } from '../../../lib/constants/ui'
 
 interface Props {
   data: Record<string, unknown>
@@ -112,7 +114,7 @@ export function GPUNamespaceDrillDown({ data }: Props) {
                 <button
                   key={c}
                   onClick={() => drillToCluster(c)}
-                  className="hover:opacity-80 transition-opacity cursor-pointer"
+                  className={cn('cursor-pointer rounded transition-opacity hover:opacity-80', TOUCH_TARGET_SIZE_CLASS)}
                 >
                   <ClusterBadge cluster={c} size="sm" />
                 </button>

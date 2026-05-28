@@ -5,6 +5,8 @@
 import { ReactNode, useState } from 'react'
 import { AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { cn } from '../../lib/cn'
+import { TOUCH_TARGET_HEIGHT_CLASS } from '../../lib/constants/ui'
 
 // ============================================================================
 // Collapsible Section
@@ -231,7 +233,7 @@ export function QuickActionsSection({
   }
 
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`}>
+    <div className={cn('flex flex-wrap gap-2', className)}>
       {actions.map((action) => {
         const Icon = action.icon
         return (
@@ -239,9 +241,7 @@ export function QuickActionsSection({
             key={action.id}
             onClick={action.onClick}
             disabled={action.disabled}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              variantStyles[action.variant || 'default']
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={cn('flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50', TOUCH_TARGET_HEIGHT_CLASS, variantStyles[action.variant || 'default'])}
           >
             <Icon className="w-4 h-4" />
             {action.label}

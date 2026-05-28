@@ -2,6 +2,7 @@ import { Check, AlertTriangle, Loader2, RefreshCw, RotateCcw, X } from 'lucide-r
 import { useTranslation } from 'react-i18next'
 import { Button } from '../ui/Button'
 import { cn } from '../../lib/cn'
+import { TOUCH_TARGET_SIZE_CLASS } from '../../lib/constants/ui'
 import { WATCHDOG_STAGE_LABELS } from '../../hooks/useBackendHealth'
 import type { UpdateProgress } from '../../types/updates'
 
@@ -92,7 +93,7 @@ export function ProgressToast({
                     ) : (
                       <button
                         onClick={onRestartBackend}
-                        className="ml-1 flex items-center gap-1.5 px-2.5 py-2 bg-muted hover:bg-muted/80 text-foreground rounded text-xs transition-colors min-h-11 min-w-11"
+                        className={cn('ml-1 flex items-center gap-1.5 rounded bg-muted px-2.5 py-2 text-xs text-foreground transition-colors hover:bg-muted/80', TOUCH_TARGET_SIZE_CLASS)}
                         title={t('layout.restartBackendServer')}
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -146,7 +147,7 @@ export function ProgressToast({
                   variant="primary"
                   size="sm"
                   onClick={() => window.location.reload()}
-                  className="ml-1 rounded"
+                  className={cn('ml-1 rounded', TOUCH_TARGET_SIZE_CLASS)}
                 >
                   {t('layout.reload')}
                 </Button>
@@ -162,7 +163,7 @@ export function ProgressToast({
                 </span>
                 <button
                   onClick={onDismissUpdateToast}
-                  className="p-2 hover:bg-secondary/50 rounded shrink-0 min-h-11 min-w-11"
+                  className={cn('shrink-0 rounded p-2 hover:bg-secondary/50', TOUCH_TARGET_SIZE_CLASS)}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -210,7 +211,7 @@ export function ProgressToast({
               variant="primary"
               size="sm"
               onClick={() => window.location.reload()}
-              className="ml-1 rounded"
+              className={cn('ml-1 rounded', TOUCH_TARGET_SIZE_CLASS)}
             >
               {t('layout.reload')}
             </Button>
