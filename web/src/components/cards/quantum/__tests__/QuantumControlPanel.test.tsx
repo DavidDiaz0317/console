@@ -183,6 +183,17 @@ describe('QuantumControlPanel — error classification', () => {
       screen.queryByText('quantumControlPanel.ibmUpstreamUnavailable'),
     ).toBeNull()
   })
+
+  it('does not render the red banner on a non-IBM backend even if the cached auth error is fatal', () => {
+    // A stale 401 from a prior IBM-backed validation must not surface in the
+    // red banner once the user is on aer/sim doing purely local work.
+    mockUseQuantumAuthStatus.mockReturnValue(
+      authHookReturn({ error: 'invalid api key' }),
+    )
+    render(<QuantumControlPanel />)
+
+    expect(screen.queryByText('invalid api key')).toBeNull()
+  })
 })
 
 describe('QuantumControlPanel — three-state credentials badge', () => {

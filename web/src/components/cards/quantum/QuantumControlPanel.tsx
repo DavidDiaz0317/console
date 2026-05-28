@@ -134,11 +134,15 @@ export const QuantumControlPanel: React.FC = () => {
   // Split the auth-status error from the rest. Transient IBM upstream errors
   // (rate-limited / 5xx / timeout / "max retries attempted") shouldn't paint
   // the panel red — those go to a softer yellow banner. Genuine fatal errors
-  // (401 with no transient signature, etc.) still surface as red.
+  // (401 with no transient signature, etc.) still surface as red — but only
+  // when the selected backend actually needs IBM. On a local-only backend
+  // (aer/sim) a stale 401/403 from a prior IBM selection shouldn't paint the
+  // panel red while the user is doing purely local work.
   const fatalError = mutationError ?? statusError
   const classifiedAuthError = authStatusError ? classifyApiError(authStatusError) : null
   const isAuthErrorTransient = classifiedAuthError?.retryable === true
-  const authErrorForBanner = classifiedAuthError && !isAuthErrorTransient ? authStatusError : null
+  const authErrorForBanner =
+    classifiedAuthError && !isAuthErrorTransient && requiresIBM ? authStatusError : null
   const error = fatalError ?? authErrorForBanner
 
   // Three-state credential badge:
