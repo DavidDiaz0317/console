@@ -35,6 +35,14 @@ const REWARDS_STORAGE_KEY = 'kubestellar-rewards'
 const MAX_REWARD_EVENTS = 100
 /** Number of recent events to show in the UI */
 const RECENT_EVENTS_LIMIT = 10
+
+type RewardsSyncIssue = 'cross-tab-refresh' | 'coin-persist'
+
+interface RewardsSyncError {
+  issue: RewardsSyncIssue
+  message: string
+  failedAt: string
+}
 /**
  * Shared user id used for rewards storage when the session is running in
  * demo/dev mode. Without this, switching between dev mode (e.g. "demo-user")
@@ -60,6 +68,8 @@ interface RewardsContextType {
   localCoins: number
   /** Bonus points awarded via [bonus] issues by maintainer */
   bonusPoints: number
+  rewardsSyncError: RewardsSyncError | null
+  rewardsSyncFailures: number
   refreshGitHubRewards: () => Promise<void>
 }
 
@@ -101,6 +111,10 @@ function createInitialRewards(userId: string): UserRewards {
     events: [],
     achievements: [],
     lastUpdated: new Date().toISOString() }
+}
+
+function getRewardsSyncMessage(err: unknown): string {
+  return err instanceof Error && err.message ? err.message : 'Unknown rewards sync error'
 }
 
 /**
@@ -152,6 +166,8 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [rewards, setRewards] = useState<UserRewards | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [rewardsSyncError, setRewardsSyncError] = useState<RewardsSyncError | null>(null)
+  const [rewardsSyncFailures, setRewardsSyncFailures] = useState(0)
   const { githubRewards, githubPoints, refresh: refreshGitHubRewards } = useGitHubRewards()
   const { bonusPoints } = useBonusPoints()
 
@@ -168,6 +184,21 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     rewardsRef.current = rewards
   }, [rewards])
+
+  const clearRewardsSyncError = useCallback(() => {
+    setRewardsSyncError(null)
+    setRewardsSyncFailures(0)
+  }, [])
+
+  const registerRewardsSyncFailure = useCallback((issue: RewardsSyncIssue, err: unknown) => {
+    console.error(`[useRewards] ${issue} failed:`, err)
+    setRewardsSyncFailures(prev => prev + 1)
+    setRewardsSyncError({
+      issue,
+      message: getRewardsSyncMessage(err),
+      failedAt: new Date().toISOString(),
+    })
+  }, [])
 
   // Load rewards when the user changes.
   //
@@ -228,11 +259,12 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    clearRewardsSyncError()
     hydrate()
     return () => {
       cancelled = true
     }
-  }, [effectiveUserId])
+  }, [clearRewardsSyncError, effectiveUserId])
 
   // Cross-tab sync (issue #6014): when another tab mutates the rewards
   // localStorage key, mirror the change in this tab so the coin balance,
@@ -281,15 +313,16 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
             saveRewards(id, merged)
             return merged
           })
+          clearRewardsSyncError()
         })
         .catch((refreshErr: unknown) => {
           if (refreshErr instanceof RewardsUnauthenticatedError) return
-          console.warn('[useRewards] cross-tab server refresh failed:', refreshErr)
+          registerRewardsSyncFailure('cross-tab-refresh', refreshErr)
         })
     }
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
-  }, [])
+  }, [clearRewardsSyncError, registerRewardsSyncFailure])
 
   // Check if action has been earned (for one-time rewards)
   const hasEarnedAction = useCallback((action: RewardActionType): boolean => {
@@ -310,8 +343,8 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
   // Updates local state + localStorage optimistically (so the UI is
   // instantly responsive) and also mirrors the delta to the backend
   // persistence endpoint when the user is authenticated. Network errors
-  // are logged but do NOT roll back the optimistic state — the next load
-  // will reconcile against the server row.
+  // now surface through hook state but do NOT roll back the optimistic state —
+  // the next load will reconcile against the server row.
   const awardCoins = useCallback((action: RewardActionType, metadata?: Record<string, unknown>): boolean => {
     const currentRewards = rewardsRef.current
     const currentUserId = effectiveUserIdRef.current
@@ -359,14 +392,18 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
     // JWT so the request would always 401.
     const isDemoSession = getDemoMode() || currentUserId === DEMO_REWARDS_USER_ID
     if (!isDemoSession) {
-      apiIncrementCoins(rewardConfig.coins).catch((err: unknown) => {
-        if (err instanceof RewardsUnauthenticatedError) return
-        console.warn('[useRewards] failed to persist coin delta to backend:', err)
-      })
+      apiIncrementCoins(rewardConfig.coins)
+        .then(() => {
+          clearRewardsSyncError()
+        })
+        .catch((err: unknown) => {
+          if (err instanceof RewardsUnauthenticatedError) return
+          registerRewardsSyncFailure('coin-persist', err)
+        })
     }
 
     return true
-  }, [])
+  }, [clearRewardsSyncError, registerRewardsSyncFailure])
 
   // Get earned achievements as full objects
   const earnedAchievements = useMemo(() => {
@@ -424,6 +461,8 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
     githubPoints,
     localCoins,
     bonusPoints,
+    rewardsSyncError,
+    rewardsSyncFailures,
     refreshGitHubRewards,
   }), [
     rewards,
@@ -438,6 +477,8 @@ export function RewardsProvider({ children }: { children: ReactNode }) {
     githubPoints,
     localCoins,
     bonusPoints,
+    rewardsSyncError,
+    rewardsSyncFailures,
     refreshGitHubRewards,
   ])
 
@@ -466,6 +507,8 @@ const REWARDS_FALLBACK: RewardsContextType = {
   githubPoints: 0,
   localCoins: 0,
   bonusPoints: 0,
+  rewardsSyncError: null,
+  rewardsSyncFailures: 0,
   refreshGitHubRewards: async () => {} }
 
 export function useRewards() {

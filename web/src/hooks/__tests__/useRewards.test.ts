@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import React from 'react'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 
 // ---------- Mocks ----------
 
@@ -39,13 +39,16 @@ vi.mock('../useBonusPoints', () => ({
   useBonusPoints: vi.fn(() => ({ bonusPoints: 0 })),
 }))
 
+const mockGetUserRewards = vi.fn(() => Promise.reject(new Error('not authed')))
+const mockIncrementCoins = vi.fn(() => Promise.resolve())
+
 vi.mock('../../lib/rewardsApi', () => ({
-  getUserRewards: vi.fn(() => Promise.reject(new Error('not authed'))),
-  incrementCoins: vi.fn(() => Promise.resolve()),
+  getUserRewards: mockGetUserRewards,
+  incrementCoins: mockIncrementCoins,
   RewardsUnauthenticatedError: class extends Error {},
 }))
 
-import { useRewards, RewardsProvider, ACHIEVEMENTS } from '../useRewards'
+import { useRewards, RewardsProvider } from '../useRewards'
 
 // ---------- Helpers ----------
 
@@ -76,6 +79,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetDemoMode.mockReturnValue(false)
   mockUseAuth.mockReturnValue({ user: mockUser, isAuthenticated: true })
+  mockGetUserRewards.mockImplementation(() => Promise.reject(new Error('not authed')))
+  mockIncrementCoins.mockImplementation(() => Promise.resolve())
 })
 
 // ── generateId (tested indirectly through event id format) ──────────
@@ -283,5 +288,61 @@ describe('checkAchievements (indirect)', () => {
       result.current.awardCoins('complete_onboarding')
     })
     expect(result.current.earnedAchievements.map(a => a.id)).toContain('first_steps')
+  })
+})
+
+describe('rewards sync errors', () => {
+  it('surfaces cross-tab refresh failures in hook state', async () => {
+    seedRewards('test-user-123')
+    mockGetUserRewards.mockRejectedValue(new Error('refresh failed'))
+
+    const { result } = renderHook(() => useRewards(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.rewards).not.toBeNull()
+    })
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: STORAGE_KEY,
+        newValue: JSON.stringify({
+          'test-user-123': {
+            userId: 'test-user-123',
+            totalCoins: 25,
+            lifetimeCoins: 25,
+            events: [],
+            achievements: [],
+            lastUpdated: new Date().toISOString(),
+          },
+        }),
+      }))
+    })
+
+    await waitFor(() => {
+      expect(result.current.rewardsSyncError?.issue).toBe('cross-tab-refresh')
+    })
+    expect(result.current.rewardsSyncError?.message).toBe('refresh failed')
+    expect(result.current.rewardsSyncFailures).toBe(1)
+  })
+
+  it('surfaces coin persistence failures without rolling back optimistic state', async () => {
+    mockIncrementCoins.mockRejectedValueOnce(new Error('persist failed'))
+
+    const { result } = renderHook(() => useRewards(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.rewards).not.toBeNull()
+    })
+
+    act(() => {
+      result.current.awardCoins('daily_login')
+    })
+
+    await waitFor(() => {
+      expect(result.current.rewardsSyncError?.issue).toBe('coin-persist')
+    })
+    expect(result.current.rewardsSyncError?.message).toBe('persist failed')
+    expect(result.current.rewardsSyncFailures).toBe(1)
+    expect(result.current.totalCoins).toBe(10)
   })
 })
