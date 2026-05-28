@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { isAgentUnavailable } from './useLocalAgent'
 import { clusterCacheRef, agentFetch } from './mcp/shared'
 import { isDemoMode } from '../lib/demoMode'
 import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_TOKEN } from '../lib/constants'
 import { MCP_HOOK_TIMEOUT_MS } from '../lib/constants/network'
+import { sleep } from '../lib/utils/sleep'
 
 export interface ResolvedDependency {
   kind: string
@@ -82,13 +83,18 @@ async function resolveViaAgent(
  * Hook to resolve dependencies for a workload (dry-run).
  * Used by the pre-deploy confirmation dialog and the Resource Marshall card.
  */
+/** Maximum retries before giving up on a 429/5xx response. */
+export const RESOLVE_MAX_RETRIES = 3
+/** Base delay (ms) for exponential backoff on 429/5xx. */
+export const RESOLVE_BACKOFF_BASE_MS = 1000
+
 export function useResolveDependencies() {
   const [data, setData] = useState<DependencyResolution | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [progressMessage, setProgressMessage] = useState<string>('')
 
-  const resolve = async (
+  const resolve = useCallback(async (
     cluster: string,
     namespace: string,
     name: string,
@@ -131,18 +137,31 @@ export function useResolveDependencies() {
       let agentError: unknown
 
       // Try backend REST API first (works when JWT auth is available)
+      // Includes retry with exponential backoff for 429/5xx responses.
       try {
         setProgressMessage('Scanning pod spec for references…')
-        const res = await fetch(
-          `/api/workloads/resolve-deps/${encodeURIComponent(cluster)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
-          { headers: authHeaders(), signal: AbortSignal.timeout(3000) },
-        )
-        if (!res.ok) {
-          throw new Error(`REST ${res.status}`)
+        let lastRes: Response | null = null
+        for (let attempt = 0; attempt <= RESOLVE_MAX_RETRIES; attempt++) {
+          if (attempt > 0) {
+            const delay = RESOLVE_BACKOFF_BASE_MS * Math.pow(2, attempt - 1)
+            setProgressMessage(`Rate limited — retrying in ${delay / 1000}s…`)
+            await sleep(delay)
+          }
+          lastRes = await fetch(
+            `/api/workloads/resolve-deps/${encodeURIComponent(cluster)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
+            { headers: authHeaders(), signal: AbortSignal.timeout(3000) },
+          )
+          if (lastRes.ok) {
+            const result: DependencyResolution = await lastRes.json()
+            setData(result)
+            return result
+          }
+          // Only retry on 429 or 5xx — other errors are not transient
+          if (lastRes.status !== 429 && lastRes.status < 500) {
+            break
+          }
         }
-        const result: DependencyResolution = await res.json()
-        setData(result)
-        return result
+        throw new Error(`REST ${lastRes?.status ?? 'unknown'}`)
       } catch (restErr: unknown) {
         restError = restErr
         console.error('[useDependencies] REST API failed, trying agent:', restErr)
@@ -173,14 +192,14 @@ export function useResolveDependencies() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setData(null)
     setError(null)
     setIsLoading(false)
     setProgressMessage('')
-  }
+  }, [])
 
   return { data, isLoading, error, progressMessage, resolve, reset }
 }

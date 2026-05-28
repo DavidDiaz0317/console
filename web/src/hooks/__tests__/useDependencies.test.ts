@@ -46,6 +46,10 @@ vi.mock('../../lib/constants/network', async (importOriginal) => {
   return { ...actual, MCP_HOOK_TIMEOUT_MS: 10_000 }
 })
 
+vi.mock('../../lib/utils/sleep', () => ({
+  sleep: () => Promise.resolve(),
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -96,10 +100,6 @@ describe('useResolveDependencies', () => {
     mockIsDemoMode.mockReturnValue(false)
     mockIsAgentUnavailable.mockReturnValue(true)
     mockClusterCacheRef.clusters = []
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
   })
 
   // ── Initial state ─────────────────────────────────────────────────
@@ -225,8 +225,11 @@ describe('useResolveDependencies', () => {
 
     const agentResult = makeResolution({ cluster: 'ctx-a' })
 
-    // REST fails (500), agent succeeds
+    // REST fails (500) — retried MAX_RETRIES times, agent succeeds
     mockFetch
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
       .mockReturnValueOnce(jsonResponse(null, 500))
       .mockReturnValueOnce(jsonResponse(agentResult))
 
@@ -240,7 +243,7 @@ describe('useResolveDependencies', () => {
     expect(resolution).not.toBeNull()
     expect(result.current.error).toBeNull()
     // The agent call should have been made with the mapped context
-    const agentCall = mockFetch.mock.calls[1]
+    const agentCall = mockFetch.mock.calls[4]
     expect(agentCall[0]).toContain('http://localhost:8585/resolve-deps')
     expect(agentCall[0]).toContain('cluster=ctx-a')
   })
@@ -253,6 +256,9 @@ describe('useResolveDependencies', () => {
 
     mockFetch
       .mockReturnValueOnce(jsonResponse(null, 500))  // REST fails
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
       .mockReturnValueOnce(jsonResponse(agentResult))
 
     const { result } = renderHook(() => useResolveDependencies())
@@ -262,7 +268,7 @@ describe('useResolveDependencies', () => {
     })
 
     // Should fall back to using 'my-cluster' as the context directly
-    const agentCall = mockFetch.mock.calls[1]
+    const agentCall = mockFetch.mock.calls[4]
     expect(agentCall[0]).toContain('cluster=my-cluster')
   })
 
@@ -276,6 +282,9 @@ describe('useResolveDependencies', () => {
 
     mockFetch
       .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
       .mockReturnValueOnce(jsonResponse(agentResult))
 
     const { result } = renderHook(() => useResolveDependencies())
@@ -285,7 +294,7 @@ describe('useResolveDependencies', () => {
     })
 
     // The unreachable cluster entry should be skipped, using raw name
-    const agentCall = mockFetch.mock.calls[1]
+    const agentCall = mockFetch.mock.calls[4]
     expect(agentCall[0]).toContain('cluster=cluster-a')
   })
 
@@ -294,8 +303,12 @@ describe('useResolveDependencies', () => {
   it('skips agent when isAgentUnavailable returns true and reports both failures', async () => {
     mockIsAgentUnavailable.mockReturnValue(true)
 
-    // REST fails
-    mockFetch.mockReturnValueOnce(jsonResponse(null, 500))
+    // REST fails — retried MAX_RETRIES times
+    mockFetch
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
 
     const { result } = renderHook(() => useResolveDependencies())
 
@@ -338,8 +351,11 @@ describe('useResolveDependencies', () => {
     mockIsAgentUnavailable.mockReturnValue(false)
     mockClusterCacheRef.clusters = [{ name: 'c', context: 'ctx', reachable: true }]
 
-    // REST fails
+    // REST fails (retried MAX_RETRIES+1 times for 5xx)
     mockFetch
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
+      .mockReturnValueOnce(jsonResponse(null, 500))
       .mockReturnValueOnce(jsonResponse(null, 500))
       // Agent returns ok but with an error field
       .mockReturnValueOnce(jsonResponse({ error: 'resource not found' }))
