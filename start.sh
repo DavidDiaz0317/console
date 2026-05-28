@@ -122,56 +122,6 @@ persist_env_var() {
     chmod 600 "$INSTALL_ENV_FILE" 2>/dev/null || true
 }
 
-resolve_database_path() {
-    if [ -n "$DATABASE_PATH" ]; then
-        echo "$DATABASE_PATH"
-    else
-        echo "$INSTALL_DIR/data/console.db"
-    fi
-}
-
-load_oauth_from_existing_config() {
-    [ -n "$GITHUB_CLIENT_ID" ] && [ -n "$GITHUB_CLIENT_SECRET" ] && return 0
-
-    local db_path
-    db_path=$(resolve_database_path)
-    [ -f "$db_path" ] || return 1
-
-    local credential_lines=""
-    if command -v sqlite3 >/dev/null 2>&1; then
-        credential_lines=$(sqlite3 -noheader "$db_path" "SELECT client_id || char(10) || client_secret FROM oauth_credentials WHERE id = 1;" 2>/dev/null || true)
-    elif command -v python3 >/dev/null 2>&1; then
-        credential_lines=$(python3 - "$db_path" <<'PY'
-import sqlite3
-import sys
-
-try:
-    conn = sqlite3.connect(sys.argv[1])
-    row = conn.execute("SELECT client_id, client_secret FROM oauth_credentials WHERE id = 1").fetchone()
-    if row and row[0] and row[1]:
-        print(row[0])
-        print(row[1])
-except Exception:
-    pass
-PY
-)
-    fi
-
-    local stored_client_id stored_client_secret
-    stored_client_id=$(printf '%s\n' "$credential_lines" | sed -n '1p')
-    stored_client_secret=$(printf '%s\n' "$credential_lines" | sed -n '2p')
-    if [ -z "$stored_client_id" ] || [ -z "$stored_client_secret" ]; then
-        return 1
-    fi
-
-    export GITHUB_CLIENT_ID="$stored_client_id"
-    export GITHUB_CLIENT_SECRET="$stored_client_secret"
-    persist_env_var "GITHUB_CLIENT_ID" "$GITHUB_CLIENT_ID"
-    persist_env_var "GITHUB_CLIENT_SECRET" "$GITHUB_CLIENT_SECRET"
-    echo "Reusing saved GitHub OAuth credentials from existing local config."
-    return 0
-}
-
 prompt_for_feedback_token() {
     if [ -n "$FEEDBACK_GITHUB_TOKEN" ]; then
         persist_env_var "FEEDBACK_GITHUB_TOKEN" "$FEEDBACK_GITHUB_TOKEN"
@@ -440,15 +390,17 @@ if [ -n "$GITHUB_CLIENT_ID" ] && [ -n "$GITHUB_CLIENT_SECRET" ]; then
     persist_env_var "GITHUB_CLIENT_ID" "$GITHUB_CLIENT_ID"
     persist_env_var "GITHUB_CLIENT_SECRET" "$GITHUB_CLIENT_SECRET"
 else
-    load_oauth_from_existing_config || true
+    # Quick-start should stay usable with kubeconfig-only access unless the
+    # user explicitly opts into GitHub OAuth via .env or environment variables.
+    export IGNORE_PERSISTED_OAUTH_CREDENTIALS=true
 fi
 
 # Warn when GitHub OAuth credentials are not configured
 if [ -z "$GITHUB_CLIENT_ID" ] || [ -z "$GITHUB_CLIENT_SECRET" ]; then
     echo ""
-    echo "Note: No GitHub OAuth credentials found in .env or existing local config."
-    echo "  You can set up GitHub sign-in from the login page (one-click setup)"
-    echo "  or add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to $INSTALL_ENV_FILE manually."
+    echo "Note: No GitHub OAuth credentials found in .env."
+    echo "  Quick start will use local kubeconfig access without requiring GitHub sign-in."
+    echo "  Add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to $INSTALL_ENV_FILE to enable OAuth."
     echo ""
 fi
 

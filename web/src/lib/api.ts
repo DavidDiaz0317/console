@@ -982,6 +982,10 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
     } else {
       markBackendSuccess(response.status)
     }
+    const path = extractRequestPath(input)
+    if (response.status === 401 && !path.startsWith('/api/github/')) {
+      handle401()
+    }
     return response
   } catch (error) {
     markBackendFailure()
