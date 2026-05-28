@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { useClusterGroups } from '../../hooks/useClusterGroups'
 import { useClusters, useDeployments } from '../../hooks/useMCP'
@@ -8,6 +9,8 @@ import { StatBlockValue } from '../ui/StatsOverview'
 import { DashboardPage } from '../../lib/dashboards/DashboardPage'
 import { deployDashboardConfig, getDefaultCards } from '../../config/dashboards'
 import { RotatingTip } from '../ui/RotatingTip'
+import { StatusBadge } from '../ui/StatusBadge'
+import { summarizeDeployments } from '../../lib/deployments'
 import { emitDeployWorkload } from '../../lib/analytics'
 import { useCardPublish, type DeployResultPayload } from '../../lib/cardEvents'
 import { DeployConfirmDialog } from './DeployConfirmDialog'
@@ -26,6 +29,7 @@ export function Deploy() {
   const { isLoading: deploymentsLoading, isRefreshing: deploymentsRefreshing, lastUpdated, refetch } = useDeployments()
   const { deployments: cachedDeployments } = useCachedDeployments()
   const { applications: argoCDApps, isDemoData: isArgoCDDemo } = useArgoCDApplications()
+  const deploymentSummary = summarizeDeployments(cachedDeployments)
 
   const publishCardEvent = useCardPublish()
   const { mutate: deployWorkload } = useDeployWorkload()
@@ -37,21 +41,40 @@ export function Deploy() {
   const { createItem: createWorkloadDeployment } = useWorkloadDeployments()
   const { createItem: createManagedWorkload } = useManagedWorkloads()
 
-  // Deploy stats from cached data (works in demo mode too)
-  const runningCount = cachedDeployments.filter(d => d.status === 'running' || (d.readyReplicas === d.replicas && d.replicas > 0)).length
-  const progressingCount = cachedDeployments.filter(d => d.status === 'deploying').length
-  const failedCount = cachedDeployments.filter(d => d.status === 'failed').length
+  const headerBadge = deploymentsLoading && deploymentSummary.total === 0
+    ? false
+    : deploymentSummary.issueCount > 0
+      ? (
+          <StatusBadge
+            color="red"
+            size="xs"
+            variant="outline"
+            icon={<AlertCircle className="w-3 h-3" />}
+          >
+            {t('common:deploy.criticalIssueCount', { count: deploymentSummary.issueCount })}
+          </StatusBadge>
+        )
+      : (
+          <StatusBadge
+            color="green"
+            size="xs"
+            variant="outline"
+            icon={<CheckCircle2 className="w-3 h-3" />}
+          >
+            {t('cards:deploymentIssues.allHealthy')}
+          </StatusBadge>
+        )
 
   const getDeployStatValue = (blockId: string): StatBlockValue => {
     switch (blockId) {
       case 'deployments':
-        return { value: cachedDeployments.length, sublabel: t('common:deploy.totalDeployments') }
+        return { value: deploymentSummary.total, sublabel: t('common:deploy.totalDeployments') }
       case 'healthy':
-        return { value: runningCount, sublabel: t('common:common.running') }
+        return { value: deploymentSummary.healthyCount, sublabel: t('common:common.running') }
       case 'progressing':
-        return { value: progressingCount, sublabel: t('common:deploy.deploying') }
+        return { value: deploymentSummary.progressingCount, sublabel: t('common:deploy.deploying') }
       case 'failed':
-        return { value: failedCount, sublabel: t('common:common.failed') }
+        return { value: deploymentSummary.failedCount, sublabel: t('common:common.failed') }
       case 'argocd':
         return { value: argoCDApps.length, sublabel: t('common:deploy.applications'), isDemo: isArgoCDDemo }
       default:
@@ -232,6 +255,7 @@ export function Deploy() {
       title={t('common:deploy.title')}
       subtitle={t('common:deploy.subtitle')}
       icon="Rocket"
+      afterTitle={headerBadge}
       rightExtra={<RotatingTip page="deploy" />}
       storageKey={DEPLOY_CARDS_KEY}
       defaultCards={DEFAULT_DEPLOY_CARDS}

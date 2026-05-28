@@ -57,6 +57,7 @@ import type {
   SecurityIssue,
 } from './useMCP'
 import type { Workload } from './useWorkloads'
+import { deriveDeploymentIssues } from '../lib/deployments'
 
 // ============================================================================
 // Shared types
@@ -464,21 +465,8 @@ export function useCachedDeploymentIssues(
 ): CachedHookResult<DeploymentIssue[]> & { issues: DeploymentIssue[] } {
   const deploymentsResult = useCachedDeployments(cluster, namespace, options)
 
-  const deriveIssues = (deployments: Deployment[]): DeploymentIssue[] =>
-    (deployments || [])
-      .filter(d => (d.readyReplicas ?? 0) < (d.replicas ?? 1))
-      .map(d => ({
-        name: d.name,
-        namespace: d.namespace || 'default',
-        cluster: d.cluster,
-        replicas: d.replicas ?? 1,
-        readyReplicas: d.readyReplicas ?? 0,
-        reason: d.status === 'failed' ? 'DeploymentFailed' : 'ReplicaFailure',
-        message: d.message || '',
-      }))
-
   const issues = useMemo(
-    () => deriveIssues(deploymentsResult.data || []),
+    () => deriveDeploymentIssues(deploymentsResult.data || []),
     [deploymentsResult.data]
   )
 
