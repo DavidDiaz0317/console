@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,10 @@ func (s *Server) oauthConfigured() bool {
 // resolveOAuthCredentials checks the SQLite store for persisted OAuth credentials.
 func (s *Server) resolveOAuthCredentials() {
 	if s.config.GitHubClientID != "" && s.config.GitHubSecret != "" {
+		return
+	}
+	if os.Getenv("IGNORE_PERSISTED_OAUTH_CREDENTIALS") == "true" {
+		slog.Info("[Server] skipping persisted OAuth credentials; using explicit environment only")
 		return
 	}
 	dbID, dbSecret, err := s.store.GetOAuthCredentials(context.Background())
