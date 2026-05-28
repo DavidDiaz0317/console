@@ -213,7 +213,13 @@
     "qasmFiles": {
       "loadingFiles": "Loading files...",
       "customQasm": "Custom QASM..."
-    }
+    },
+    "credsConfigured": "Configured",
+    "credsStored": "Stored",
+    "credsNone": "Not configured",
+    "validateNow": "Validate now",
+    "validating": "Validating…",
+    "ibmUpstreamUnavailable": "IBM Quantum is temporarily unavailable. We'll keep retrying — your saved credentials are unaffected."
   },
   "titles": {
     "cluster_health": "Cluster Health",

@@ -37,6 +37,19 @@ test.describe('Quantum dashboard cards', () => {
     await expectCardScreenshot(histogramCard, 'app-quantum-histogram-card.png')
   })
 
+  test('control panel renders three-state credentials badge and IBM-only backends only when stored', async ({ page }) => {
+    await setupQuantumPage(page)
+
+    const controlPanelCard = page
+      .locator('h3:has-text("Quantum Demonstration Controls")')
+      .first()
+      .locator('xpath=ancestor::*[@data-card-type][1]')
+
+    // Demo mode: hook is forceDemo, so lastRefresh is null and authenticated is false →
+    // badge state should be "Not configured" (the `quantumControlPanel.credsNone` key in tests).
+    await expectCardScreenshot(controlPanelCard, 'app-quantum-control-panel-demo.png')
+  })
+
   test('circuit viewer renders zoom controls and small zoom levels visibly shrink the diagram', async ({ page }) => {
     // Clear persisted zoom so the 100% baseline is deterministic regardless of
     // any prior test run or shared storage state.

@@ -20,6 +20,7 @@ interface UseQuantumCacheOptions {
   isAuthenticated: boolean
   forceDemo?: boolean
   pollInterval?: number
+  autoRefresh?: boolean
 }
 
 interface UseCachedQuantumResult<T> {
@@ -267,12 +268,13 @@ export function useQuantumAuthStatus({
   isAuthenticated,
   forceDemo = false,
   pollInterval = QUANTUM_STATUS_DEFAULT_POLL_MS,
+  autoRefresh,
 }: UseQuantumCacheOptions): UseCachedQuantumResult<QuantumAuthStatus> {
   const result = useCache<QuantumAuthStatus>({
     key: QUANTUM_AUTH_STATUS_CACHE_KEY,
     category: 'realtime',
     refreshInterval: pollInterval,
-    autoRefresh: !isGlobalQuantumPollingPaused(),
+    autoRefresh: (autoRefresh ?? true) && !isGlobalQuantumPollingPaused(),
     enabled: isAuthenticated && !forceDemo,
     initialData: DEFAULT_AUTH_STATUS,
     demoData: DEFAULT_AUTH_STATUS,

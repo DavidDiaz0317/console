@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { AlertCircle, Play, Zap, Key, Check, Trash2 } from 'lucide-react'
+import { AlertCircle, Play, Zap, Key, Check, Trash2, ShieldCheck, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../../lib/cn'
 import { useReportCardDataState } from '../CardDataContext'
@@ -9,6 +9,7 @@ import { useQASMFiles } from '../../../hooks/useQASMFiles'
 import { useAuth } from '../../../lib/auth'
 import { useDrillDown } from '../../../hooks/useDrillDown'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../../../lib/constants/network'
+import { classifyApiError } from '../../../lib/errorHandling'
 import {
   useQuantumSystemStatus,
   useQuantumAuthStatus,
@@ -36,6 +37,11 @@ const LARGE_CIRCUIT_QASM = 'expt32.qasm'
 const LOOP_MODE_STATUS_SYNC_DELAY_MS = 100
 const EXECUTION_STATUS_POLL_DELAY_MS = 500
 const CONTROL_PANEL_POLL_MS = QUANTUM_STATUS_DEFAULT_POLL_MS
+
+// Backends that talk to IBM Quantum's upstream API. `aer` and `sim` run
+// purely locally on the quantum-kc-demo pod; the three below all hit IBM
+// and so are the only ones for which `/api/quantum/auth/status` is meaningful.
+const BACKENDS_REQUIRING_IBM: ReadonlySet<string> = new Set(['qx5', 'least', 'aer_noise'])
 
 const DEMO_DATA: ControlState = {
   backend: 'aer',
@@ -71,6 +77,11 @@ export const QuantumControlPanel: React.FC = () => {
   const [showClearCredentialsDialog, setShowClearCredentialsDialog] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [statusTab, setStatusTab] = useState<'system' | 'job'>('system')
+  // Marks the wall-clock time of the last `authenticated:true` we observed in
+  // THIS browser session. Persisted cache entries from a prior session don't
+  // count — after a pod restart or page reload we want to drop back to
+  // "Stored" until validation succeeds again.
+  const [sessionValidatedAt, setSessionValidatedAt] = useState<number | null>(null)
 
   // Custom QASM support
   const [showCustomQasmModal, setShowCustomQasmModal] = useState(false)
@@ -79,6 +90,7 @@ export const QuantumControlPanel: React.FC = () => {
 
   const forceDemo = isQuantumForcedToDemo()
   const hasInitializedControlRef = useRef(false)
+  const requiresIBM = BACKENDS_REQUIRING_IBM.has(control.backend)
 
   // Fetch available QASM files
   const { files: qasmFiles, isLoading: qasmFilesLoading } = useQASMFiles(undefined, forceDemo)
@@ -100,22 +112,54 @@ export const QuantumControlPanel: React.FC = () => {
     data: authStatus,
     isRefreshing: isAuthRefreshing,
     error: authStatusError,
+    lastRefresh: lastAuthRefresh,
     refetch: refetchAuthStatus,
   } = useQuantumAuthStatus({
     isAuthenticated,
     forceDemo,
     pollInterval: CONTROL_PANEL_POLL_MS,
+    autoRefresh: requiresIBM,
   })
 
   const ibmAuthenticated = authStatus.authenticated
-  const error = mutationError ?? statusError ?? authStatusError
+
+  // Mark the session as validated whenever a successful auth check returns
+  // authenticated:true. This is what flips the badge from "Stored" → "Configured".
+  useEffect(() => {
+    if (ibmAuthenticated && !isAuthRefreshing) {
+      setSessionValidatedAt(Date.now())
+    }
+  }, [ibmAuthenticated, isAuthRefreshing])
+
+  // Split the auth-status error from the rest. Transient IBM upstream errors
+  // (rate-limited / 5xx / timeout / "max retries attempted") shouldn't paint
+  // the panel red — those go to a softer yellow banner. Genuine fatal errors
+  // (401 with no transient signature, etc.) still surface as red.
+  const fatalError = mutationError ?? statusError
+  const classifiedAuthError = authStatusError ? classifyApiError(authStatusError) : null
+  const isAuthErrorTransient = classifiedAuthError?.retryable === true
+  const authErrorForBanner = classifiedAuthError && !isAuthErrorTransient ? authStatusError : null
+  const error = fatalError ?? authErrorForBanner
+
+  // Three-state credential badge:
+  //   configured — validation succeeded in this browser session
+  //   stored     — token likely exists on backend but unvalidated this session
+  //   none       — no token saved
+  const hasHistoricalValidation = lastAuthRefresh !== null
+  const tokenLikelyStored = hasHistoricalValidation || ibmAuthenticated
+  const ibmCredentialState: 'configured' | 'stored' | 'none' =
+    sessionValidatedAt !== null
+      ? 'configured'
+      : tokenLikelyStored
+        ? 'stored'
+        : 'none'
 
   useReportCardDataState({
     isLoading: isAuthenticated ? isLoading && status === null : false,
     isRefreshing: isRefreshing || isAuthRefreshing,
     isDemoData: isAuthenticated ? isDemoFallback : false,
     hasData: isAuthenticated ? status !== null : false,
-    isFailed: isStatusFailed || error !== null,
+    isFailed: isStatusFailed || fatalError !== null,
     consecutiveFailures,
   })
 
@@ -200,6 +244,7 @@ export const QuantumControlPanel: React.FC = () => {
         throw new Error(errorData.error || 'Failed to clear credentials')
       }
 
+      setSessionValidatedAt(null)
       await refetchAuthStatus()
       setShowClearCredentialsDialog(false)
       setMutationError(null)
@@ -372,6 +417,15 @@ export const QuantumControlPanel: React.FC = () => {
           </div>
       )}
 
+      {isAuthErrorTransient && requiresIBM && !isDemoFallback && (
+          <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              {t('quantumControlPanel.ibmUpstreamUnavailable')}
+            </p>
+          </div>
+      )}
+
       <div className="space-y-4">
           {/* IBM Credentials Button with Clear Option */}
           <div className="flex gap-2 items-stretch">
@@ -383,18 +437,38 @@ export const QuantumControlPanel: React.FC = () => {
                 <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">IBM Credentials</span>
               </div>
-              <div className={`flex items-center gap-1 text-xs font-semibold ${ibmAuthenticated ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                {ibmAuthenticated ? (
+              <div className={cn('flex items-center gap-1 text-xs font-semibold',
+                ibmCredentialState === 'configured' && 'text-green-600 dark:text-green-400',
+                ibmCredentialState === 'stored' && 'text-blue-600 dark:text-blue-400',
+                ibmCredentialState === 'none' && 'text-gray-500 dark:text-gray-400',
+              )}>
+                {ibmCredentialState === 'configured' && (
+                  <>
+                    <ShieldCheck className="w-3 h-3" />
+                    {t('quantumControlPanel.credsConfigured')}
+                  </>
+                )}
+                {ibmCredentialState === 'stored' && (
                   <>
                     <Check className="w-3 h-3" />
-                    Configured
+                    {t('quantumControlPanel.credsStored')}
                   </>
-                ) : (
-                  'Not configured'
                 )}
+                {ibmCredentialState === 'none' && t('quantumControlPanel.credsNone')}
               </div>
             </button>
-            {ibmAuthenticated && (
+            {ibmCredentialState === 'stored' && (
+              <button
+                onClick={() => { void refetchAuthStatus() }}
+                disabled={isAuthRefreshing}
+                className="px-3 py-2 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50 flex items-center"
+                title={t('quantumControlPanel.validateNow')}
+                aria-label={t('quantumControlPanel.validateNow')}
+              >
+                <RefreshCw className={cn('w-4 h-4 text-blue-600 dark:text-blue-400', isAuthRefreshing && 'animate-spin')} />
+              </button>
+            )}
+            {ibmCredentialState !== 'none' && (
               <button
                 onClick={() => setShowClearCredentialsDialog(true)}
                 disabled={isClearing}
@@ -457,7 +531,7 @@ export const QuantumControlPanel: React.FC = () => {
                   <option value="aer">{t('quantumControlPanel.backendOptions.aerSimulator')}</option>
                   <option value="sim">QASM Simulator</option>
                   <option value="qx5">IBM 5-qubit</option>
-                  {ibmAuthenticated && (
+                  {ibmCredentialState !== 'none' && (
                     <>
                       <option value="least">IBM Least Busy (Real Hardware)</option>
                       <option value="aer_noise" disabled={is32Qubit}>
