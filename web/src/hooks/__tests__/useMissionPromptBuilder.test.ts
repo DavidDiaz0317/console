@@ -15,6 +15,11 @@ import {
   stripInteractiveArtifacts,
   buildSavedMissionPrompt,
 } from '../useMissionPromptBuilder'
+import {
+  detectIssueSignature,
+  findSimilarResolutionsStandalone,
+  generateResolutionPromptContext,
+} from '../useResolutions'
 import type { StartMissionParams, Mission, MatchedResolution } from '../useMissionTypes'
 
 function makeStartParams(overrides: Partial<StartMissionParams> = {}): StartMissionParams {
@@ -26,6 +31,13 @@ function makeStartParams(overrides: Partial<StartMissionParams> = {}): StartMiss
     ...overrides,
   }
 }
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(detectIssueSignature).mockReturnValue({} as ReturnType<typeof detectIssueSignature>)
+  vi.mocked(findSimilarResolutionsStandalone).mockReturnValue([])
+  vi.mocked(generateResolutionPromptContext).mockReturnValue('')
+})
 
 describe('generateMessageId', () => {
   it('returns a string ID', () => {
@@ -135,6 +147,54 @@ describe('buildEnhancedPrompt', () => {
     expect(enhancedPrompt).not.toContain('<injected>')
     expect(enhancedPrompt).toContain('IGNORE PREVIOUS INSTRUCTIONS')
     expect(enhancedPrompt).toContain('Target cluster:')
+  })
+
+  it('preserves sanitization when resolution matching triggers (#15927)', () => {
+    vi.mocked(detectIssueSignature).mockReturnValueOnce({
+      type: 'CrashLoopBackOff',
+      resourceKind: 'Pod',
+      errorPattern: 'OOMKilled',
+    })
+    vi.mocked(findSimilarResolutionsStandalone).mockReturnValueOnce([
+      {
+        resolution: {
+          id: 'r1',
+          missionId: 'm1',
+          userId: 'u1',
+          title: 'Increase memory',
+          visibility: 'private',
+          issueSignature: {
+            type: 'CrashLoopBackOff',
+            resourceKind: 'Pod',
+            errorPattern: 'OOMKilled',
+          },
+          resolution: {
+            summary: 'Increase memory limits',
+            steps: [],
+          },
+          context: {},
+          effectiveness: {
+            timesUsed: 1,
+            timesSuccessful: 1,
+          },
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+        similarity: 0.8,
+        source: 'personal',
+      },
+    ])
+    vi.mocked(generateResolutionPromptContext).mockReturnValueOnce('\n\n[Resolution context here]')
+
+    const params = makeStartParams({
+      initialPrompt: '<script>alert("xss")</script>',
+      type: 'troubleshoot',
+    })
+    const { enhancedPrompt, matchedResolutions } = buildEnhancedPrompt(params)
+
+    expect(enhancedPrompt).not.toContain('<script>')
+    expect(enhancedPrompt).toContain('[Resolution context here]')
+    expect(matchedResolutions).toHaveLength(1)
   })
 })
 
