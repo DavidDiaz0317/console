@@ -23,6 +23,7 @@ import { scrollToCard } from '../../../lib/scrollToCard'
 import { useFeatureHints } from '../../../hooks/useFeatureHints'
 import { FeatureHintTooltip } from '../../ui/FeatureHintTooltip'
 import { emitGlobalSearchOpened, emitGlobalSearchQueried, emitGlobalSearchSelected, emitGlobalSearchAskAI } from '../../../lib/analytics'
+import { sanitizeMissionTitle, sanitizeSearchPrompt } from '../../../lib/utils/sanitizeInput'
 import { useModalState } from '../../../lib/modals'
 
 /** Routes for dashboards that are discoverable but not shown by default in the sidebar */
@@ -251,11 +252,13 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
 
     const query = searchQuery.trim()
     emitGlobalSearchAskAI(query.length)
+    const safeTitle = sanitizeMissionTitle(query)
+    const safePrompt = sanitizeSearchPrompt(query)
     startMission({
-      title: query.length > 50 ? query.substring(0, 47) + '...' : query,
+      title: safeTitle,
       description: 'Custom AI mission from search',
       type: 'custom',
-      initialPrompt: query })
+      initialPrompt: safePrompt })
 
     setSearchQuery('')
     closeSearch()
