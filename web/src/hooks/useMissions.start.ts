@@ -4,6 +4,7 @@ import {
   buildEnhancedPrompt,
   buildSavedMissionPrompt,
   buildSystemMessages,
+  sanitizeForPrompt,
 } from './useMissionPromptBuilder'
 import {
   getMissionMessages,
@@ -55,17 +56,22 @@ export function createMissionStartActions(
       }
     }
 
+    params = {
+      ...params,
+      initialPrompt: sanitizeForPrompt(params.initialPrompt),
+    }
+
     if (!params.skipReview) {
       state.setPendingReviewQueue(prev => [...prev, { params, missionId }])
       return missionId
     }
 
-    const { enhancedPrompt, matchedResolutions, isInstallMission } = buildEnhancedPrompt(params)
+    const { enhancedPrompt, sanitizedInitialPrompt, matchedResolutions, isInstallMission } = buildEnhancedPrompt(params)
     const initialMessages: MissionMessage[] = [
       {
         id: generateMessageId(),
         role: 'user',
-        content: params.initialPrompt,
+        content: sanitizedInitialPrompt,
         timestamp: new Date(),
       },
       ...buildSystemMessages(isInstallMission, matchedResolutions),
@@ -91,7 +97,7 @@ export function createMissionStartActions(
     state.setIsSidebarOpen(true)
     state.setIsSidebarMinimized(false)
     emitMissionStarted(params.type, state.selectedAgentRef.current || state.defaultAgentRef.current || 'unknown')
-    executionApi.preflightAndExecute(missionId, enhancedPrompt, params)
+    executionApi.preflightAndExecute(missionId, enhancedPrompt, { ...params, initialPrompt: sanitizedInitialPrompt })
     return missionId
   }
 
@@ -344,7 +350,7 @@ export function createMissionStartActions(
       initialPrompt: basePrompt,
       context: mission.context,
     }
-    const { enhancedPrompt, matchedResolutions, isInstallMission } = buildEnhancedPrompt(params)
+    const { enhancedPrompt, sanitizedInitialPrompt, matchedResolutions, isInstallMission } = buildEnhancedPrompt(params)
     const systemMessages = buildSystemMessages(isInstallMission, matchedResolutions)
 
     state.setMissions(prev => prev.map(candidate =>
@@ -359,7 +365,7 @@ export function createMissionStartActions(
               {
                 id: generateMessageId(),
                 role: 'user' as const,
-                content: basePrompt,
+                content: sanitizedInitialPrompt,
                 timestamp: new Date(),
               },
               ...systemMessages,
@@ -372,7 +378,7 @@ export function createMissionStartActions(
     state.setIsSidebarOpen(true)
     state.setIsSidebarMinimized(false)
     emitMissionStarted(params.type, state.selectedAgentRef.current || state.defaultAgentRef.current || 'unknown')
-    executionApi.preflightAndExecute(missionId, enhancedPrompt, params)
+    executionApi.preflightAndExecute(missionId, enhancedPrompt, { ...params, initialPrompt: sanitizedInitialPrompt })
   }
 
   return {

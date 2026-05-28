@@ -12,10 +12,11 @@ import { detectIssueSignature, findSimilarResolutionsStandalone, generateResolut
 import type { Mission, MissionMessage, MatchedResolution, StartMissionParams } from './useMissionTypes'
 
 const PROMPT_INPUT_MAX_LENGTH = 500
+const ENHANCED_PROMPT_INPUT_MAX_LENGTH = 20_000
 const ESCAPED_LT_PATTERN = /\\u0*03[cC]|\\x3[cC]/g
 const ESCAPED_GT_PATTERN = /\\u0*03[eE]|\\x3[eE]/g
+const SAFE_PROMPT_ENTITY_PATTERN = /&(?!amp;|quot;|#39;)/g
 const PROMPT_ENTITY_MAP: Record<string, string> = {
-  '&': '&amp;',
   '"': '&quot;',
   "'": '&#39;',
 }
@@ -42,14 +43,19 @@ export function generateMessageId(suffix = ''): string {
  * Removes literal or unicode-escaped angle brackets, encodes a few HTML
  * metacharacters, trims whitespace, and caps length to prevent abuse.
  */
-export function sanitizeForPrompt(input: string): string {
+export function sanitizeForPrompt(
+  input: string,
+  options: { maxLength?: number } = {},
+): string {
+  const { maxLength = PROMPT_INPUT_MAX_LENGTH } = options
   return input
     .replace(ESCAPED_LT_PATTERN, '<')
     .replace(ESCAPED_GT_PATTERN, '>')
     .replace(/[<>]/g, '')
-    .replace(/[&"']/g, character => PROMPT_ENTITY_MAP[character] || character)
+    .replace(SAFE_PROMPT_ENTITY_PATTERN, '&amp;')
+    .replace(/["']/g, character => PROMPT_ENTITY_MAP[character] || character)
     .trim()
-    .slice(0, PROMPT_INPUT_MAX_LENGTH)
+    .slice(0, maxLength)
 }
 
 /**
@@ -59,24 +65,31 @@ export function sanitizeForPrompt(input: string): string {
  */
 export function buildEnhancedPrompt(params: StartMissionParams): {
   enhancedPrompt: string
+  sanitizedInitialPrompt: string
   matchedResolutions: MatchedResolution[]
   isInstallMission: boolean
 } {
+  const sanitizedInitialPrompt = sanitizeForPrompt(
+    params.initialPrompt,
+    { maxLength: ENHANCED_PROMPT_INPUT_MAX_LENGTH },
+  )
+  const sanitizedClusterList = (params.cluster || '')
+    .split(',')
+    .map(cluster => sanitizeForPrompt(cluster))
+    .filter(Boolean)
+
   // Inject cluster targeting into the prompt sent to the agent
-  let enhancedPrompt = params.initialPrompt
-  if (params.cluster) {
-    const clusterList = params.cluster.split(',').map(c => c.trim()).filter(Boolean)
-    if (clusterList.length === 1) {
-      enhancedPrompt = `Target cluster: ${clusterList[0]}\nIMPORTANT: All kubectl commands MUST use --context=${clusterList[0]}\n\n${enhancedPrompt}`
-    } else {
-      // #7188/#7198 — Inject explicit per-cluster context instructions so
-      // the agent uses the correct kubectl context for each cluster instead
-      // of defaulting to the first one.
-      const perClusterInstructions = clusterList
-        .map((c, i) => `  ${i + 1}. Cluster "${c}": use --context=${c}`)
-        .join('\n')
-      enhancedPrompt = `Target clusters: ${clusterList.join(', ')}\nIMPORTANT: Perform the following on EACH cluster using its respective kubectl context:\n${perClusterInstructions}\n\n${enhancedPrompt}`
-    }
+  let enhancedPrompt = sanitizedInitialPrompt
+  if (sanitizedClusterList.length === 1) {
+    enhancedPrompt = `Target cluster: ${sanitizedClusterList[0]}\nIMPORTANT: All kubectl commands MUST use --context=${sanitizedClusterList[0]}\n\n${enhancedPrompt}`
+  } else if (sanitizedClusterList.length > 1) {
+    // #7188/#7198 — Inject explicit per-cluster context instructions so
+    // the agent uses the correct kubectl context for each cluster instead
+    // of defaulting to the first one.
+    const perClusterInstructions = sanitizedClusterList
+      .map((cluster, index) => `  ${index + 1}. Cluster "${cluster}": use --context=${cluster}`)
+      .join('\n')
+    enhancedPrompt = `Target clusters: ${sanitizedClusterList.join(', ')}\nIMPORTANT: Perform the following on EACH cluster using its respective kubectl context:\n${perClusterInstructions}\n\n${enhancedPrompt}`
   }
 
   // Inject dry-run instructions for server-side validation without actual changes
@@ -115,7 +128,7 @@ export function buildEnhancedPrompt(params: StartMissionParams): {
   // Match resolutions for troubleshooting-related missions (not deploy/upgrade)
   if (params.type !== 'deploy' && params.type !== 'upgrade') {
     // Detect issue signature from mission content
-    const content = `${params.title} ${params.description} ${params.initialPrompt}`
+    const content = `${sanitizeForPrompt(params.title)} ${sanitizeForPrompt(params.description)} ${sanitizedInitialPrompt}`
     const signature = detectIssueSignature(content)
 
     if (signature.type && signature.type !== 'Unknown') {
@@ -133,14 +146,15 @@ export function buildEnhancedPrompt(params: StartMissionParams): {
           similarity: sr.similarity,
           source: sr.source }))
 
-        // Inject resolution context into the prompt
+        // Inject resolution context into the prompt without dropping any
+        // previously added guardrails (cluster targeting, dry-run, install).
         const resolutionContext = generateResolutionPromptContext(similarResolutions)
-        enhancedPrompt = params.initialPrompt + resolutionContext
+        enhancedPrompt += resolutionContext
       }
     }
   }
 
-  return { enhancedPrompt, matchedResolutions, isInstallMission }
+  return { enhancedPrompt, sanitizedInitialPrompt, matchedResolutions, isInstallMission }
 }
 
 /**

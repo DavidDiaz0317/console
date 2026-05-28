@@ -57,8 +57,13 @@ describe('sanitizeForPrompt', () => {
 
   it('encodes prompt metacharacters and caps length', () => {
     const sanitized = sanitizeForPrompt(`pods & services ${'x'.repeat(600)}`)
-    expect(sanitized).toStartWith('pods &amp; services ')
+    expect(sanitized.startsWith('pods &amp; services ')).toBe(true)
     expect(sanitized.length).toBe(500)
+  })
+
+  it('is idempotent for already sanitized prompt content', () => {
+    const sanitized = sanitizeForPrompt(`pods & services \"quoted\"`)
+    expect(sanitizeForPrompt(sanitized)).toBe(sanitized)
   })
 })
 
@@ -67,6 +72,20 @@ describe('buildEnhancedPrompt', () => {
     const params = makeStartParams({ initialPrompt: 'Fix the pod', type: 'upgrade' })
     const { enhancedPrompt } = buildEnhancedPrompt(params)
     expect(enhancedPrompt).toContain('Fix the pod')
+  })
+
+  it('sanitizes the initial prompt before building the enhanced prompt', () => {
+    const params = makeStartParams({ initialPrompt: '<script>alert(1)</script>', type: 'upgrade' })
+    const { enhancedPrompt, sanitizedInitialPrompt } = buildEnhancedPrompt(params)
+    expect(sanitizedInitialPrompt).toBe('scriptalert(1)/script')
+    expect(enhancedPrompt).toBe('scriptalert(1)/script')
+  })
+
+  it('allows longer mission prompts than the generic inline input cap', () => {
+    const longPrompt = `diagnose ${'x'.repeat(900)}`
+    const params = makeStartParams({ initialPrompt: longPrompt, type: 'upgrade' })
+    const { enhancedPrompt } = buildEnhancedPrompt(params)
+    expect(enhancedPrompt).toHaveLength(longPrompt.length)
   })
 
   it('injects cluster context for single cluster', () => {
@@ -82,6 +101,14 @@ describe('buildEnhancedPrompt', () => {
     expect(enhancedPrompt).toContain('Target clusters: cluster-a, cluster-b')
     expect(enhancedPrompt).toContain('--context=cluster-a')
     expect(enhancedPrompt).toContain('--context=cluster-b')
+  })
+
+  it('sanitizes cluster names before interpolating them into instructions', () => {
+    const params = makeStartParams({ cluster: 'prod<script>,qa\u003ccluster\u003e', type: 'upgrade' })
+    const { enhancedPrompt } = buildEnhancedPrompt(params)
+    expect(enhancedPrompt).toContain('Target clusters: prodscript, qacluster')
+    expect(enhancedPrompt).toContain('--context=prodscript')
+    expect(enhancedPrompt).toContain('--context=qacluster')
   })
 
   it('injects dry-run instructions when dryRun is true', () => {

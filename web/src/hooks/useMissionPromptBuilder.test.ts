@@ -83,8 +83,13 @@ describe('sanitizeForPrompt', () => {
   it('encodes prompt metacharacters and limits length', () => {
     const longInput = `pods & services ${'x'.repeat(600)}`
     const sanitized = sanitizeForPrompt(longInput)
-    expect(sanitized).toStartWith('pods &amp; services ')
+    expect(sanitized.startsWith('pods &amp; services ')).toBe(true)
     expect(sanitized.length).toBe(500)
+  })
+
+  it('is idempotent for already sanitized prompt content', () => {
+    const sanitized = sanitizeForPrompt(`pods & services \"quoted\"`)
+    expect(sanitizeForPrompt(sanitized)).toBe(sanitized)
   })
 })
 
@@ -92,6 +97,20 @@ describe('buildEnhancedPrompt', () => {
   it('returns original prompt when no cluster or dryRun', () => {
     const { enhancedPrompt } = buildEnhancedPrompt(makeParams())
     expect(enhancedPrompt).toBe('Fix the broken pod')
+  })
+
+  it('sanitizes the initial prompt before building the enhanced prompt', () => {
+    const { enhancedPrompt, sanitizedInitialPrompt } = buildEnhancedPrompt(
+      makeParams({ initialPrompt: '<script>alert(1)</script>' }),
+    )
+    expect(sanitizedInitialPrompt).toBe('scriptalert(1)/script')
+    expect(enhancedPrompt).toBe('scriptalert(1)/script')
+  })
+
+  it('allows longer mission prompts than the generic inline input cap', () => {
+    const longPrompt = `diagnose ${'x'.repeat(900)}`
+    const { enhancedPrompt } = buildEnhancedPrompt(makeParams({ initialPrompt: longPrompt }))
+    expect(enhancedPrompt).toHaveLength(longPrompt.length)
   })
 
   it('prepends single-cluster targeting instructions', () => {
@@ -110,6 +129,13 @@ describe('buildEnhancedPrompt', () => {
   it('trims whitespace from cluster names', () => {
     const { enhancedPrompt } = buildEnhancedPrompt(makeParams({ cluster: '  my-cluster  ' }))
     expect(enhancedPrompt).toContain('Target cluster: my-cluster')
+  })
+
+  it('sanitizes cluster names before interpolating them into instructions', () => {
+    const { enhancedPrompt } = buildEnhancedPrompt(makeParams({ cluster: 'prod<script>, qa\u003ccluster\u003e' }))
+    expect(enhancedPrompt).toContain('Target clusters: prodscript, qacluster')
+    expect(enhancedPrompt).toContain('--context=prodscript')
+    expect(enhancedPrompt).toContain('--context=qacluster')
   })
 
   it('appends dry-run instructions when dryRun is true', () => {
@@ -166,6 +192,30 @@ describe('buildEnhancedPrompt', () => {
     const { matchedResolutions, enhancedPrompt } = buildEnhancedPrompt(makeParams({ type: 'chat' }))
     expect(matchedResolutions).toHaveLength(1)
     expect(matchedResolutions[0].id).toBe('res-1')
+    expect(enhancedPrompt).toContain('Past resolution context')
+  })
+
+  it('preserves cluster and dry-run guardrails when resolution context is appended', () => {
+    mockDetect.mockReturnValue({ type: 'CrashLoopBackOff', resourceKind: 'Pod', errorPattern: '' })
+    mockFind.mockReturnValue([
+      {
+        resolution: { id: 'res-1', title: 'Fix OOM kill' },
+        similarity: 0.9,
+        source: 'personal',
+      } as unknown as ReturnType<typeof findSimilarResolutionsStandalone>[0],
+    ])
+    mockGenerate.mockReturnValue('\n\nPast resolution context')
+
+    const { enhancedPrompt } = buildEnhancedPrompt(makeParams({
+      type: 'chat',
+      cluster: 'prod<script>',
+      dryRun: true,
+      initialPrompt: '<b>Fix the broken pod</b>',
+    }))
+
+    expect(enhancedPrompt).toContain('Target cluster: prodscript')
+    expect(enhancedPrompt).toContain('DRY RUN MODE')
+    expect(enhancedPrompt).toContain('bFix the broken pod/b')
     expect(enhancedPrompt).toContain('Past resolution context')
   })
 })

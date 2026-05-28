@@ -308,6 +308,46 @@ describe('startMission', () => {
     expect(msg.payload.prompt).toBe(defaultParams.initialPrompt)
   })
 
+  it('stores and sends a sanitized prompt for mission execution', async () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+    const unsafePrompt = '<script>alert(1)</script> fix pod'
+
+    act(() => {
+      result.current.startMission({
+        ...defaultParams,
+        initialPrompt: unsafePrompt,
+      })
+    })
+
+    expect(result.current.missions[0].messages[0].content).toBe('scriptalert(1)/script fix pod')
+
+    await flushMissionPreflightChain()
+    await act(async () => {
+      MockWebSocket.lastInstance?.simulateOpen()
+    })
+
+    const chatCall = MockWebSocket.lastInstance?.send.mock.calls.find(
+      (call: string[]) => JSON.parse(call[0]).type === 'chat',
+    )
+    expect(chatCall).toBeDefined()
+    const msg = JSON.parse(chatCall![0])
+    expect(msg.payload.prompt).toBe('scriptalert(1)/script fix pod')
+  })
+
+  it('sanitizes the pending review prompt at the startMission boundary', () => {
+    const { result } = renderHook(() => useMissions(), { wrapper })
+
+    act(() => {
+      result.current.startMission({
+        ...defaultParams,
+        skipReview: false,
+        initialPrompt: '<script>alert(1)</script> queued review',
+      })
+    })
+
+    expect(result.current.pendingReviewQueue[0]?.params.initialPrompt).toBe('scriptalert(1)/script queued review')
+  })
+
   it('transitions mission to waiting_input when stream done:true is received', async () => {
     const { result } = renderHook(() => useMissions(), { wrapper })
     const { requestId } = await startMissionWithConnection(result)
