@@ -97,19 +97,20 @@ export function DeployConfirmDialog({
   groupName,
 }: DeployConfirmDialogProps) {
   const { t } = useTranslation()
-  const { data, isLoading, error, progressMessage, resolve, reset } = useResolveDependencies()
+  const { data, isLoading, error, progressMessage, retryCooldown, resolve, reset, cancel } = useResolveDependencies()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
 
-  // Resolve dependencies when dialog opens
+  // Resolve dependencies when dialog opens; cancel in-flight requests on close
   useEffect(() => {
     if (isOpen && sourceCluster && namespace && workloadName) {
       resolve(sourceCluster, namespace, workloadName)
       setExpandedGroups(new Set())
     }
     if (!isOpen) {
+      cancel()
       reset()
     }
-  }, [isOpen, sourceCluster, namespace, workloadName, resolve, reset])
+  }, [isOpen, sourceCluster, namespace, workloadName, resolve, reset, cancel])
 
   const toggleGroup = (label: string) => {
     setExpandedGroups(prev => {
@@ -190,10 +191,17 @@ export function DeployConfirmDialog({
           {error && !isLoading && (
             <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-yellow-400 font-medium">{t('deploy.couldNotResolve')}</p>
                 <p className="text-xs text-yellow-400/70 mt-0.5">{error.message}</p>
                 <p className="text-xs text-muted-foreground mt-1">{t('deploy.canStillDeploy')}</p>
+                <button
+                  onClick={() => resolve(sourceCluster, namespace, workloadName)}
+                  disabled={retryCooldown > 0}
+                  className="mt-2 text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {retryCooldown > 0 ? `${t('common.retry')} (${retryCooldown}s)` : t('common.retry')}
+                </button>
               </div>
             </div>
           )}

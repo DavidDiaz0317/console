@@ -1,9 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { isAgentUnavailable } from './useLocalAgent'
 import { clusterCacheRef, agentFetch } from './mcp/shared'
 import { isDemoMode } from '../lib/demoMode'
 import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_TOKEN } from '../lib/constants'
 import { MCP_HOOK_TIMEOUT_MS } from '../lib/constants/network'
+
+const MAX_RETRIES = 3
+const MAX_BACKOFF_MS = 30_000
+const RETRY_COOLDOWN_SEC = 10
 
 export interface ResolvedDependency {
   kind: string
@@ -25,6 +29,50 @@ export interface DependencyResolution {
 function authHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_KEY_TOKEN)
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+/**
+ * Fetch with exponential backoff on HTTP 429.
+ * Reads the `Retry-After` response header when present; otherwise uses
+ * `1s * 2^attempt + jitter` capped at MAX_BACKOFF_MS.
+ * Throws after MAX_RETRIES exhausted with a user-facing message.
+ * Each individual attempt respects `perAttemptTimeoutMs` independently.
+ */
+async function fetchWithBackoff(
+  url: string,
+  options: Omit<RequestInit, 'signal'>,
+  userAbort: AbortSignal,
+  perAttemptTimeoutMs = 3000,
+  onRetry?: (attempt: number, waitMs: number) => void,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const timeoutSignal = AbortSignal.timeout(perAttemptTimeoutMs)
+    const signal = typeof AbortSignal.any === 'function'
+      ? AbortSignal.any([userAbort, timeoutSignal])
+      : userAbort
+
+    const res = await fetch(url, { ...options, signal })
+
+    if (res.status !== 429) return res
+
+    if (attempt === MAX_RETRIES) {
+      throw new Error('Dependency resolution failed. The server is busy. Please try again.')
+    }
+
+    const retryAfterHeader = res.headers.get('Retry-After')
+    const waitMs = retryAfterHeader
+      ? Math.min(parseInt(retryAfterHeader, 10) * 1000, MAX_BACKOFF_MS)
+      : Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, MAX_BACKOFF_MS)
+
+    onRetry?.(attempt + 1, waitMs)
+    // Wait for backoff duration; abort early if user cancelled
+    await new Promise<void>((resolve, reject) => {
+      const tid = setTimeout(resolve, waitMs)
+      userAbort.addEventListener('abort', () => { clearTimeout(tid); reject(new DOMException('Aborted', 'AbortError')) }, { once: true })
+    })
+  }
+  // Unreachable — loop always returns or throws above
+  throw new Error('Dependency resolution failed. The server is busy. Please try again.')
 }
 
 /** Fetch a JSON endpoint from the local agent with timeout. */
@@ -87,15 +135,50 @@ export function useResolveDependencies() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [progressMessage, setProgressMessage] = useState<string>('')
+  const [retryCooldown, setRetryCooldown] = useState(0)
+  const abortRef = useRef<AbortController | null>(null)
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startCooldown = useCallback(() => {
+    setRetryCooldown(RETRY_COOLDOWN_SEC)
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current)
+    cooldownTimerRef.current = setInterval(() => {
+      setRetryCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownTimerRef.current!)
+          cooldownTimerRef.current = null
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [])
+
+  // Clean up cooldown timer on unmount
+  useEffect(() => () => {
+    if (cooldownTimerRef.current) clearInterval(cooldownTimerRef.current)
+  }, [])
+
+  const cancel = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setIsLoading(false)
+    setProgressMessage('')
+  }, [])
 
   const resolve = async (
     cluster: string,
     namespace: string,
     name: string,
   ): Promise<DependencyResolution | null> => {
+    // Cancel any in-flight request before starting a new one
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
     setIsLoading(true)
     setError(null)
-    setProgressMessage('Connecting to cluster…')
+    setProgressMessage('Connecting to cluster\u2026')
 
     // Demo mode returns synthetic dependency data
     if (isDemoMode()) {
@@ -130,12 +213,19 @@ export function useResolveDependencies() {
       let restError: unknown
       let agentError: unknown
 
-      // Try backend REST API first (works when JWT auth is available)
+      // Try backend REST API first (works when JWT auth is available).
+      // fetchWithBackoff handles HTTP 429 with exponential backoff and respects
+      // the Retry-After header, retrying up to MAX_RETRIES times before throwing.
       try {
-        setProgressMessage('Scanning pod spec for references…')
-        const res = await fetch(
+        setProgressMessage('Scanning pod spec for references\u2026')
+        const res = await fetchWithBackoff(
           `/api/workloads/resolve-deps/${encodeURIComponent(cluster)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`,
-          { headers: authHeaders(), signal: AbortSignal.timeout(3000) },
+          { headers: authHeaders() },
+          ctrl.signal,
+          3000,
+          (attempt, waitMs) => {
+            setProgressMessage(`Server busy \u2014 retrying in ${Math.ceil(waitMs / 1000)}s (attempt ${attempt}/${MAX_RETRIES})\u2026`)
+          },
         )
         if (!res.ok) {
           throw new Error(`REST ${res.status}`)
@@ -144,19 +234,21 @@ export function useResolveDependencies() {
         setData(result)
         return result
       } catch (restErr: unknown) {
+        if ((restErr as Error)?.name === 'AbortError') throw restErr
         restError = restErr
         console.error('[useDependencies] REST API failed, trying agent:', restErr)
       }
 
       // Fall back to agent's dynamic resolve-deps endpoint
       try {
-        setProgressMessage('Tracing ConfigMaps, Secrets, RBAC, Services, PVCs…')
+        setProgressMessage('Tracing ConfigMaps, Secrets, RBAC, Services, PVCs\u2026')
         const agentResult = await resolveViaAgent(cluster, namespace, name)
         if (agentResult) {
           setData(agentResult)
           return agentResult
         }
       } catch (agentErr: unknown) {
+        if ((agentErr as Error)?.name === 'AbortError') throw agentErr
         agentError = agentErr
         console.error('[useDependencies] Agent resolve-deps failed:', agentErr)
       }
@@ -169,18 +261,36 @@ export function useResolveDependencies() {
         ? `Dependency resolution failed (${details.join('; ')})`
         : 'No data source available for dependency resolution'
       setError(new Error(message))
+      startCooldown()
+      return null
+    } catch (err: unknown) {
+      // Propagate abort silently; surface all other errors
+      if ((err as Error)?.name !== 'AbortError') {
+        const e = err instanceof Error ? err : new Error(String(err))
+        setError(e)
+        startCooldown()
+      }
       return null
     } finally {
-      setIsLoading(false)
+      if (!ctrl.signal.aborted) {
+        setIsLoading(false)
+        setProgressMessage('')
+      }
     }
   }
 
   const reset = () => {
+    cancel()
     setData(null)
     setError(null)
     setIsLoading(false)
     setProgressMessage('')
+    setRetryCooldown(0)
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current)
+      cooldownTimerRef.current = null
+    }
   }
 
-  return { data, isLoading, error, progressMessage, resolve, reset }
+  return { data, isLoading, error, progressMessage, retryCooldown, resolve, reset, cancel }
 }

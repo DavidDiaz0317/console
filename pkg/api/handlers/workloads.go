@@ -191,6 +191,15 @@ func (h *WorkloadHandlers) ResolveDependencies(c *fiber.Ctx) error {
 					slog.Info("[Workloads] not found", "error", err)
 					return c.Status(404).JSON(fiber.Map{"error": "not found"})
 				}
+				// Surface k8s API rate-limit errors as 429 with a Retry-After hint
+				// so the frontend backoff logic (#15911) can honour the header.
+				if strings.Contains(err.Error(), "rate limit") ||
+					strings.Contains(err.Error(), "too many requests") ||
+					strings.Contains(err.Error(), "429") {
+					slog.Warn("[Workloads] k8s rate limited on resolve-deps", "error", err)
+					c.Set("Retry-After", "2")
+					return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "server is busy, please retry"})
+				}
 				return handleK8sError(c, err)
 			}
 

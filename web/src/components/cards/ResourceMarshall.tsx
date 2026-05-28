@@ -81,7 +81,7 @@ export function ResourceMarshall() {
   const availableWorkloads = workloads || []
 
   // Dependency resolution
-  const { data: depData, isLoading: depLoading, error: depError, resolve, reset } = useResolveDependencies()
+  const { data: depData, isLoading: depLoading, error: depError, retryCooldown: depRetryCooldown, resolve, reset, cancel: cancelDep } = useResolveDependencies()
 
   // Auto-select cluster, namespace, and workload in demo mode
   useEffect(() => {
@@ -264,9 +264,18 @@ export function ResourceMarshall() {
       {depError && !depLoading && (
         <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm text-yellow-400 font-medium">Could not resolve dependencies</p>
             <p className="text-xs text-yellow-400/70 mt-0.5">{depError.message}</p>
+            {selectedWorkload && selectedCluster && selectedNamespace && (
+              <button
+                onClick={() => resolve(selectedCluster, selectedNamespace, selectedWorkload)}
+                disabled={depRetryCooldown > 0}
+                className="mt-2 text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {depRetryCooldown > 0 ? `${t('common.retry')} (${depRetryCooldown}s)` : t('common.retry')}
+              </button>
+            )}
           </div>
         </div>
       )}

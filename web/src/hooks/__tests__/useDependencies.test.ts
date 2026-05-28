@@ -60,12 +60,13 @@ import type { DependencyResolution } from '../useDependencies'
 // Helpers
 // ---------------------------------------------------------------------------
 
-function jsonResponse(data: unknown, status = 200) {
+function jsonResponse(data: unknown, status = 200, headers: Record<string, string> = {}) {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,
     statusText: status === 200 ? 'OK' : 'Internal Server Error',
     json: () => Promise.resolve(data),
+    headers: { get: (key: string) => headers[key] ?? null },
   })
 }
 
@@ -445,5 +446,107 @@ describe('useResolveDependencies', () => {
     expect(url).toContain('cluster%2Fspecial')
     expect(url).toContain('my%20namespace')
     expect(url).toContain('app%26name')
+  })
+
+  // ── HTTP 429 — exponential backoff ────────────────────────────────
+
+  it('retries on 429 and succeeds on second attempt', async () => {
+    vi.useFakeTimers()
+    const apiResult = makeResolution()
+
+    mockFetch
+      .mockReturnValueOnce(jsonResponse(null, 429))
+      .mockReturnValueOnce(jsonResponse(apiResult))
+
+    const { result } = renderHook(() => useResolveDependencies())
+
+    let resolution: DependencyResolution | null = null
+    const resolvePromise = act(async () => {
+      const p = result.current.resolve('cluster-a', 'default', 'nginx')
+      // Advance timers to skip the backoff wait
+      await vi.runAllTimersAsync()
+      resolution = await p
+    })
+    await resolvePromise
+
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(resolution).not.toBeNull()
+    expect(result.current.error).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('throws user-facing error after MAX_RETRIES 429 responses', async () => {
+    vi.useFakeTimers()
+
+    // Return 429 for every attempt (initial + 3 retries = 4 total calls)
+    mockFetch.mockReturnValue(jsonResponse(null, 429))
+
+    const { result } = renderHook(() => useResolveDependencies())
+
+    await act(async () => {
+      const p = result.current.resolve('c', 'ns', 'app')
+      await vi.runAllTimersAsync()
+      await p
+    })
+
+    // REST exhausted all retries — error should contain the busy message
+    // (agent fallback is skipped because isAgentUnavailable returns true)
+    expect(result.current.error).not.toBeNull()
+    expect(result.current.error!.message).toContain('server is busy')
+    vi.useRealTimers()
+  })
+
+  it('honours Retry-After header instead of default backoff', async () => {
+    vi.useFakeTimers()
+    const apiResult = makeResolution()
+
+    mockFetch
+      .mockReturnValueOnce(jsonResponse(null, 429, { 'Retry-After': '2' }))
+      .mockReturnValueOnce(jsonResponse(apiResult))
+
+    const { result } = renderHook(() => useResolveDependencies())
+
+    await act(async () => {
+      const p = result.current.resolve('c', 'ns', 'app')
+      await vi.runAllTimersAsync()
+      await p
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(result.current.data).toEqual(apiResult)
+    vi.useRealTimers()
+  })
+
+  // ── cancel ────────────────────────────────────────────────────────
+
+  it('cancel stops in-flight request and clears loading state', async () => {
+    // Block the fetch indefinitely
+    mockFetch.mockReturnValueOnce(new Promise(() => { /* never resolves */ }))
+
+    const { result } = renderHook(() => useResolveDependencies())
+
+    act(() => {
+      result.current.resolve('c', 'ns', 'app')
+    })
+    expect(result.current.isLoading).toBe(true)
+
+    act(() => {
+      result.current.cancel()
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.progressMessage).toBe('')
+  })
+
+  // ── retryCooldown ─────────────────────────────────────────────────
+
+  it('exposes retryCooldown=0 initially', () => {
+    const { result } = renderHook(() => useResolveDependencies())
+    expect(result.current.retryCooldown).toBe(0)
+  })
+
+  it('exposes cancel function', () => {
+    const { result } = renderHook(() => useResolveDependencies())
+    expect(typeof result.current.cancel).toBe('function')
   })
 })
