@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, KeyboardEvent } from 'react'
 import { Sparkles, X, Play, Pause, CheckCircle, Loader2, Copy, Download, Terminal, Send, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn } from '../../lib/cn'
+import { Button } from '../ui/Button'
 import { useTokenUsage } from '../../hooks/useTokenUsage'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../../lib/constants'
 import { AI_THINKING_DELAY_MS, FOCUS_DELAY_MS } from '../../lib/constants/network'
@@ -586,14 +587,15 @@ Labels:       app=${resourceName.split('-')[0]}
               {/* Quick commands */}
               <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-border/30">
                 {quickCommands.map((qc, i) => (
-                  <button
+                  <Button
                     key={i}
+                    variant="secondary"
+                    size="sm"
                     onClick={() => executeCommand(qc.cmd)}
                     disabled={isExecuting}
-                    className="px-3 py-1 text-xs rounded bg-card/50 border border-border text-muted-foreground hover:text-foreground hover:border-green-500/50 transition-colors disabled:opacity-50"
                   >
                     {qc.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
@@ -639,16 +641,18 @@ Labels:       app=${resourceName.split('-')[0]}
                   <span>{shellError}</span>
                 </div>
                 {lastFailedCommand && (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => {
                       executeCommand(lastFailedCommand)
                     }}
                     disabled={isExecuting}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5"
                   >
                     <RefreshCw className={`w-3 h-3 ${isExecuting ? 'animate-spin' : ''}`} />
                     <span>{t('remediation.retryCommand')}</span>
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -718,13 +722,15 @@ Labels:       app=${resourceName.split('-')[0]}
                       {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                       {isPaused ? t('remediation.resume') : t('remediation.pause')}
                     </div>
-                    <button
+                    <Button
+                      variant="destructive"
+                      size="md"
                       onClick={stopRemediation}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-foreground transition-colors"
+                      className="flex items-center gap-2"
                     >
                       <X className="w-4 h-4" />
                       {t('remediation.stop')}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {isComplete && (
@@ -762,14 +768,16 @@ Labels:       app=${resourceName.split('-')[0]}
             >
               <Copy className="w-4 h-4" />
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={downloadLogs}
               disabled={logs.length === 0}
-              className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50"
               title={t('remediation.downloadLogs')}
+              className="p-2"
             >
               <Download className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>

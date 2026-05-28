@@ -166,7 +166,9 @@ enableMocking()
         initPreloadedMeta(meta)
       } catch (e: unknown) {
         logOpfsFallback('[Cache] SQLite worker init: using IndexedDB fallback:', e)
-        try { await migrateFromLocalStorage() } catch (migrateErr: unknown) { console.warn('[Cache] failed to migrate from localStorage:', migrateErr) }
+        try { await migrateFromLocalStorage() } catch (migrateErr: unknown) { 
+          console.error('[Cache] failed to migrate from localStorage:', migrateErr)
+        }
       }
     })()
 
@@ -176,11 +178,15 @@ enableMocking()
         dynamicCards.forEach(card => {
           registerDynamicCardType(card.id, card.defaultWidth ?? 6)
         })
-      }).catch(() => { /* ignore — dynamic card registration is non-critical */ })
+      }).catch((err: unknown) => { 
+        console.error('[CardRegistry] Dynamic card registration failed (non-critical):', err)
+      })
     }
 
     // Register unified card data hooks (background — ~300 KB chunk)
-    import('./lib/unified/registerHooks').catch(() => { /* ignore — hook registration is non-critical */ })
+    import('./lib/unified/registerHooks').catch((err: unknown) => { 
+      console.error('[UnifiedHooks] Hook registration failed (non-critical):', err)
+    })
 
     // #6747 — Validate CARD_INSTALL_MAP keys against the live card registry
     // at startup. The validator already logs a single console.warn listing

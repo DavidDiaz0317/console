@@ -360,17 +360,19 @@ export function DrillDownModal() {
         <div className="flex items-center justify-between p-3 md:p-4 border-b border-border">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Back button - always visible; closes modal at root level */}
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               data-testid="drilldown-back"
               onClick={state.stack.length > 1 ? pop : close}
-              className="p-2 rounded-lg hover:bg-card/50 text-muted-foreground hover:text-foreground transition-colors"
               title={state.stack.length > 1 ? t('drilldown.goBack') : t('drilldown.close')}
               aria-label={state.stack.length > 1 ? t('drilldown.goBack') : t('drilldown.close')}
+              className="p-2"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-            </button>
+            </Button>
 
             {/* Breadcrumbs */}
             <nav data-testid="drilldown-tabs" className="flex items-center gap-1 min-w-0 overflow-x-auto" role="tablist" aria-label={t('drilldown.navigationHistory', 'Navigation history')} onKeyDown={handleBreadcrumbKeyDown}>
@@ -386,7 +388,9 @@ export function DrillDownModal() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     )}
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => goTo(index)}
                       id={`drilldown-tab-${index}`}
                       data-index={index}
@@ -395,15 +399,15 @@ export function DrillDownModal() {
                       aria-selected={isLast}
                       aria-controls={`drilldown-panel-${index}`}
                       aria-label={t('drilldown.navigateTo', 'Navigate to {{title}}', { title: view.title })}
-                      className={`px-2 py-1 rounded text-sm transition-colors flex items-center gap-1.5 ${
+                      className={`px-2 py-1 rounded text-sm flex items-center gap-1.5 ${
                         isLast
                           ? 'text-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {getViewIcon(view.type)}
                       {view.title}
-                    </button>
+                    </Button>
                     {/* Pod status badge - small, inline */}
                     {isLast && podStatus && (
                       <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getPodStatusColor(podStatus)}`}>
@@ -417,16 +421,18 @@ export function DrillDownModal() {
           </div>
 
           {/* Close button */}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             data-testid="drilldown-close"
             onClick={close}
-            className="p-2 rounded-lg hover:bg-card/50 text-muted-foreground hover:text-foreground transition-colors"
             aria-label={t('drilldown.close')}
+            className="p-2"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
