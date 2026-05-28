@@ -1,5 +1,7 @@
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { StatusIndicator } from '../../charts/StatusIndicator'
+import { cn } from '../../../lib/cn'
+import { TOUCH_TARGET_HEIGHT_CLASS, TOUCH_TARGET_SIZE_CLASS } from '../../../lib/constants/ui'
 import type { TreeNodeProps } from './types'
 
 /** Pixels of horizontal indent per tree nesting level */
@@ -34,7 +36,7 @@ export function TreeNode({
   return (
     <div className="select-none">
       <div
-        className={`flex items-center gap-1.5 py-1.5 px-2 rounded-md hover:bg-secondary/50 transition-colors group`}
+        className="group flex items-center gap-1.5 rounded-md px-2 transition-colors hover:bg-secondary/50"
         style={{ paddingLeft: `${indent * INDENT_PER_LEVEL_PX + BASE_PADDING_LEFT_PX}px` }}
       >
         {/* Chevron + Icon - handles expand/collapse */}
@@ -46,7 +48,7 @@ export function TreeNode({
               toggleNode(id)
               onToggle?.(willExpand)
             }}
-            className="flex items-center gap-1 p-1 -m-0.5 rounded hover:bg-secondary shrink-0"
+            className={cn('-m-0.5 flex shrink-0 items-center justify-center gap-1 rounded p-1 hover:bg-secondary', TOUCH_TARGET_SIZE_CLASS)}
           >
             {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
             <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
@@ -68,7 +70,7 @@ export function TreeNode({
             tabIndex: 0,
             onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } },
           } : {})}
-          className={`text-sm text-foreground truncate ${onClick ? 'cursor-pointer hover:text-purple-400' : ''}`}
+          className={cn('inline-flex items-center truncate text-sm text-foreground', onClick ? ['cursor-pointer hover:text-purple-400', TOUCH_TARGET_HEIGHT_CLASS] : TOUCH_TARGET_HEIGHT_CLASS)}
         >
           {label}
         </span>

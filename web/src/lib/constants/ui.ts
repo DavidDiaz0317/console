@@ -139,3 +139,9 @@ export const SIDEBAR_CONTROLS_LEFT_OFFSET_PX = -1
  *   button right edge (~39) + breathing gap (~9) = 48
  */
 export const SIDEBAR_CONTROLS_OFFSET_PX = 48
+
+/** Minimum 44×44px touch target size recommended by WCAG 2.5.5. */
+export const TOUCH_TARGET_SIZE_CLASS = 'min-h-11 min-w-11'
+
+/** Minimum 44px touch target height for text buttons and form controls. */
+export const TOUCH_TARGET_HEIGHT_CLASS = 'min-h-11'

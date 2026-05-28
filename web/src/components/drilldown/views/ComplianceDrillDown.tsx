@@ -17,6 +17,7 @@ import { useTrestle, type OscalControlResult } from '../../../hooks/useTrestle'
 import { useGlobalFilters } from '../../../hooks/useGlobalFilters'
 import { StatusBadge } from '../../ui/StatusBadge'
 import { cn } from '../../../lib/cn'
+import { TOUCH_TARGET_HEIGHT_CLASS, TOUCH_TARGET_SIZE_CLASS } from '../../../lib/constants/ui'
 
 interface Props {
   data: Record<string, unknown>
@@ -252,7 +253,7 @@ export function ComplianceDrillDown({ data }: Props) {
           <button
             onClick={() => { setStatusFilter(''); resetPage() }}
             className={cn(
-              'p-3 rounded-lg border transition-colors text-left',
+              cn('rounded-lg border p-3 text-left transition-colors', TOUCH_TARGET_HEIGHT_CLASS),
               !statusFilter ? 'border-teal-500/40 bg-teal-500/10' : 'border-border bg-card/50 hover:border-border/80'
             )}
           >
@@ -262,7 +263,7 @@ export function ComplianceDrillDown({ data }: Props) {
           <button
             onClick={() => { setStatusFilter(statusFilter === 'pass' ? '' : 'pass'); resetPage() }}
             className={cn(
-              'p-3 rounded-lg border transition-colors text-left',
+              cn('rounded-lg border p-3 text-left transition-colors', TOUCH_TARGET_HEIGHT_CLASS),
               statusFilter === 'pass' ? 'border-green-500/40 bg-green-500/10' : 'border-border bg-card/50 hover:border-border/80'
             )}
           >
@@ -272,7 +273,7 @@ export function ComplianceDrillDown({ data }: Props) {
           <button
             onClick={() => { setStatusFilter(statusFilter === 'fail' ? '' : 'fail'); resetPage() }}
             className={cn(
-              'p-3 rounded-lg border transition-colors text-left',
+              cn('rounded-lg border p-3 text-left transition-colors', TOUCH_TARGET_HEIGHT_CLASS),
               statusFilter === 'fail' ? 'border-red-500/40 bg-red-500/10' : 'border-border bg-card/50 hover:border-border/80'
             )}
           >
@@ -282,7 +283,7 @@ export function ComplianceDrillDown({ data }: Props) {
           <button
             onClick={() => { setStatusFilter(statusFilter === 'other' ? '' : 'other'); resetPage() }}
             className={cn(
-              'p-3 rounded-lg border transition-colors text-left',
+              cn('rounded-lg border p-3 text-left transition-colors', TOUCH_TARGET_HEIGHT_CLASS),
               statusFilter === 'other' ? 'border-yellow-500/40 bg-yellow-500/10' : 'border-border bg-card/50 hover:border-border/80'
             )}
           >
@@ -300,12 +301,12 @@ export function ComplianceDrillDown({ data }: Props) {
               placeholder="Search by control ID, title, or description..."
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); resetPage() }}
-              className="w-full pl-9 pr-8 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className={cn('w-full rounded-lg border border-border bg-card/50 py-2 pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-1 focus:ring-primary', TOUCH_TARGET_HEIGHT_CLASS)}
             />
             {searchQuery && (
               <button
                 onClick={() => { setSearchQuery(''); resetPage() }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className={cn('absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground', TOUCH_TARGET_SIZE_CLASS)}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -314,7 +315,8 @@ export function ComplianceDrillDown({ data }: Props) {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm transition-colors',
+              'flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors',
+              TOUCH_TARGET_HEIGHT_CLASS,
               showFilters || activeFilters > 0
                 ? 'border-teal-500/40 bg-teal-500/10 text-teal-400'
                 : 'border-border bg-card/50 text-muted-foreground hover:text-foreground'
@@ -336,7 +338,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value); resetPage() }}
-              className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className={cn('rounded-lg border border-border bg-card/50 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary', TOUCH_TARGET_HEIGHT_CLASS)}
             >
               <option value="">{t('drilldown.compliance.allStatuses')}</option>
               {uniqueStatuses.map(s => (
@@ -346,7 +348,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={severityFilter}
               onChange={e => { setSeverityFilter(e.target.value); resetPage() }}
-              className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className={cn('rounded-lg border border-border bg-card/50 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary', TOUCH_TARGET_HEIGHT_CLASS)}
             >
               <option value="">{t('drilldown.compliance.allSeverities')}</option>
               <option value="critical">{t('drilldown.compliance.critical')}</option>
@@ -357,7 +359,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={clusterFilter}
               onChange={e => { setClusterFilter(e.target.value); resetPage() }}
-              className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className={cn('rounded-lg border border-border bg-card/50 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary', TOUCH_TARGET_HEIGHT_CLASS)}
             >
               <option value="">{t('drilldown.compliance.allClusters')}</option>
               {uniqueClusters.map(c => (
@@ -367,7 +369,7 @@ export function ComplianceDrillDown({ data }: Props) {
             <select
               value={profileFilter}
               onChange={e => { setProfileFilter(e.target.value); resetPage() }}
-              className="px-3 py-2 rounded-lg border border-border bg-card/50 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              className={cn('rounded-lg border border-border bg-card/50 px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary', TOUCH_TARGET_HEIGHT_CLASS)}
             >
               <option value="">{t('drilldown.compliance.allProfiles')}</option>
               {uniqueProfiles.map(p => (
@@ -385,7 +387,7 @@ export function ComplianceDrillDown({ data }: Props) {
                   setSearchQuery('')
                   resetPage()
                 }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors col-span-2 md:col-span-4 text-left"
+                className={cn('col-span-2 text-left text-xs text-muted-foreground transition-colors hover:text-foreground md:col-span-4', TOUCH_TARGET_HEIGHT_CLASS)}
               >
                 Clear all filters
               </button>
@@ -540,7 +542,8 @@ export function ComplianceDrillDown({ data }: Props) {
                   key={cluster}
                   onClick={() => { setClusterFilter(clusterFilter === cluster ? '' : cluster); resetPage() }}
                   className={cn(
-                    'p-2 rounded-lg border text-left transition-colors',
+                    'rounded-lg border p-2 text-left transition-colors',
+                    TOUCH_TARGET_HEIGHT_CLASS,
                     clusterFilter === cluster ? 'border-blue-500/40 bg-blue-500/10' : 'border-border bg-card/50 hover:border-border/80'
                   )}
                 >

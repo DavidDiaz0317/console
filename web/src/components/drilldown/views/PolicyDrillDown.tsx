@@ -11,6 +11,7 @@ import {
   FileText, AlertCircle
 } from 'lucide-react'
 import { cn } from '../../../lib/cn'
+import { TOUCH_TARGET_SIZE_CLASS } from '../../../lib/constants/ui'
 import { StatusBadge } from '../../ui/StatusBadge'
 import { ConsoleAIIcon } from '../../ui/ConsoleAIIcon'
 import {
@@ -290,7 +291,7 @@ Please:
             {namespace && (
               <button
                 onClick={() => drillToNamespace(cluster, namespace)}
-                className="flex items-center gap-2 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/30 px-3 py-1.5 rounded-lg transition-all group cursor-pointer"
+                className={cn('group flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 transition-all hover:border-purple-500/30 hover:bg-purple-500/10', TOUCH_TARGET_SIZE_CLASS)}
               >
                 <Layers className="w-4 h-4 text-purple-400" />
                 <span className="text-muted-foreground">{t('drilldown.fields.namespace')}</span>
@@ -302,7 +303,7 @@ Please:
             )}
             <button
               onClick={() => drillToCluster(cluster)}
-              className="flex items-center gap-2 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 px-3 py-1.5 rounded-lg transition-all group cursor-pointer"
+              className={cn('group flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 transition-all hover:border-blue-500/30 hover:bg-blue-500/10', TOUCH_TARGET_SIZE_CLASS)}
             >
               <Server className="w-4 h-4 text-blue-400" />
               <span className="text-muted-foreground">{t('drilldown.fields.cluster')}</span>
@@ -345,7 +346,7 @@ Please:
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'px-4 py-2 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors',
+                  cn('flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors', TOUCH_TARGET_SIZE_CLASS),
                   activeTab === tab.id
                     ? 'text-primary border-primary'
                     : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border'
@@ -516,7 +517,7 @@ Please:
               <button
                 onClick={handleDiagnose}
                 disabled={!isAgentConnected}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                className={cn('flex items-center gap-2 rounded-lg bg-purple-500/20 px-3 py-2 text-sm text-purple-400 transition-colors hover:bg-purple-500/30 disabled:cursor-not-allowed disabled:opacity-50', TOUCH_TARGET_SIZE_CLASS)}
               >
                 <Stethoscope className="w-4 h-4" />
                 Analyze Policy
