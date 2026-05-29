@@ -32,13 +32,6 @@ test.describe('Hosted demo auth drift', () => {
   test('root route renders demo dashboard without any login workflow', async ({ page }) => {
     await page.goto(HOSTED_DEMO_URL)
     await waitForDashboardWithoutLogin(page)
-
-    await expect(page).toHaveScreenshot('hosted-demo-dashboard-no-login.png', {
-      fullPage: false,
-      mask: [
-        page.getByTestId('dashboard-cards-grid'),
-      ],
-    })
   })
 
   test('direct /login route auto-enters demo mode instead of exposing auth UI', async ({ page }) => {

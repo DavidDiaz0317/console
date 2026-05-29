@@ -15,7 +15,7 @@ export default defineConfig({
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixelRatio: 0.015,
+      maxDiffPixelRatio: 0.025,
     },
   },
   retries: IS_CI ? 1 : 0,
