@@ -452,7 +452,7 @@ export function LaunchSequence({
         projects: phase.projects.map((project) => ({
           ...project,
           status: 'running' as const,
-          error: undefined,
+          error: undefined as string | undefined,
         })),
       }))
     )
@@ -482,14 +482,14 @@ export function LaunchSequence({
             ...project,
             missionId,
             status: 'running' as const,
-            error: undefined,
+            error: undefined as string | undefined,
           })),
         }))
       )
-    } catch (err: unknown) {
-      const errorMessage = Array.isArray(err)
-        ? err.map(String).join('; ')
-        : String(err)
+    } catch (error: unknown) {
+      const errorMessage = Array.isArray(error)
+        ? error.map((item) => (item instanceof Error ? item.message : String(item))).join('; ')
+        : error instanceof Error ? error.message : String(error)
       updateProgress((prev) =>
         prev.map((phase) => ({
           ...phase,
@@ -517,7 +517,7 @@ export function LaunchSequence({
         if (!mission) return proj
         if (proj.status === 'failed' && RETRIED_MISSION_STATUSES.has(mission.status)) {
           changed = true
-          return { ...proj, status: 'running' as const, error: undefined }
+          return { ...proj, status: 'running' as const, error: undefined as string | undefined }
         }
         if (proj.status === 'completed' || proj.status === 'failed') return proj
         if (mission.status === 'completed') {

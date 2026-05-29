@@ -46,9 +46,11 @@
     "expand": "Expand",
     "collapse": "Collapse",
     "restore": "Restore",
+    "reset": "Reset",
     "skip": "Skip",
     "skipToContent": "Skip to content",
     "signOut": "Sign Out",
+    "logout": "Log Out",
     "getYourOwn": "Get Your Own Console",
     "viewDetails": "View Details",
     "copied": "Copied!",
@@ -2493,7 +2495,8 @@
       "dryRunPrefix": "[DRY RUN] ",
       "dryRunValidation": "Dry-run validation",
       "unifiedDeployment": "Unified deployment"
-    }
+    },
+    "projectAdded": "Project added to mission"
   },
   "feedback": {
     "share": "Share",
@@ -5396,6 +5399,14 @@
     "removeWatchedRepoMessage": "Remove {{path}} from your watched repositories?",
     "removeWatchedPathTitle": "Remove watched path?",
     "removeWatchedPathMessage": "Remove {{path}} from your watched paths?"
+  },
+  "confirmDialog": {
+    "resetDashboardTitle": "Reset Dashboard to Defaults?",
+    "resetDashboardMessage": "This will restore all default cards and clear your customizations. This action cannot be undone.",
+    "logoutTitle": "Log Out?",
+    "logoutMessage": "You will be logged out and all session data will be cleared.",
+    "clearTokensTitle": "Clear All Tokens?",
+    "clearTokensMessage": "This will remove all stored tokens including agent and authentication tokens. You will need to log in again."
   },
   "saveResolution": "Save Resolution",
   "shareToOrg": "Share to Org",
