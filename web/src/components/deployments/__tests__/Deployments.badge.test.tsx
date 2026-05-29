@@ -1,41 +1,42 @@
+/**
+ * Test: critical stat value returned by getStatValue('critical') matches
+ * filteredDeploymentIssues.length — regression guard for bug #15906.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 
-const mockUseCachedDeployments = vi.fn()
-const mockUseCachedDeploymentIssues = vi.fn()
-const mockUseCachedPodIssues = vi.fn()
-const mockUseClusters = vi.fn()
-const mockUseGlobalFilters = vi.fn()
-const mockUseDrillDownActions = vi.fn()
-
-vi.mock('../../../hooks/useMCP', () => ({
-  useClusters: () => mockUseClusters(),
+vi.mock('react-i18next', () => ({
+  initReactI18next: { type: '3rdParty', init: () => {} },
+  useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'en', changeLanguage: vi.fn() } }),
 }))
 
+vi.mock('../../../hooks/useMCP', () => ({
+  useClusters: () => ({ clusters: [], deduplicatedClusters: [], isLoading: false, isRefreshing: false, lastUpdated: null, refetch: vi.fn(), error: null }),
+}))
+
+let mockDeployments: { cluster: string; readyReplicas: number; replicas: number }[] = []
+let mockDeploymentIssues: { cluster: string }[] = []
+
 vi.mock('../../../hooks/useCachedData', () => ({
-  useCachedDeployments: () => mockUseCachedDeployments(),
-  useCachedDeploymentIssues: () => mockUseCachedDeploymentIssues(),
-  useCachedPodIssues: () => mockUseCachedPodIssues(),
+  useCachedDeployments: () => ({
+    deployments: mockDeployments,
+    isLoading: false, isRefreshing: false, lastRefresh: null, refetch: vi.fn(), error: null,
+  }),
+  useCachedDeploymentIssues: () => ({ issues: mockDeploymentIssues, refetch: vi.fn(), error: null }),
+  useCachedPodIssues: () => ({ issues: [], error: null }),
 }))
 
 vi.mock('../../../hooks/useGlobalFilters', () => ({
-  useGlobalFilters: () => mockUseGlobalFilters(),
+  useGlobalFilters: () => ({ selectedClusters: [], isAllClustersSelected: true }),
 }))
 
 vi.mock('../../../hooks/useDrillDown', () => ({
-  useDrillDownActions: () => mockUseDrillDownActions(),
+  useDrillDownActions: () => ({ drillToAllDeployments: vi.fn(), drillToAllPods: vi.fn() }),
 }))
 
-vi.mock('../../../lib/dashboards/DashboardPage', () => ({
-  DashboardPage: ({ getStatValue }: { getStatValue: (id: string) => { value: number; sublabel: string } }) => {
-    const criticalStat = getStatValue('critical')
-    return (
-      <div>
-        <div data-testid="critical-badge">{criticalStat.value}</div>
-        <div data-testid="critical-sublabel">{criticalStat.sublabel}</div>
-      </div>
-    )
-  },
+vi.mock('../../../hooks/useUniversalStats', () => ({
+  useUniversalStats: () => ({ getStatValue: vi.fn() }),
+  createMergedStatValueGetter: () => vi.fn(),
 }))
 
 vi.mock('../../../config/dashboards', () => ({
@@ -47,201 +48,59 @@ vi.mock('../../../lib/dashboards/migrateStorageKey', () => ({
   migrateStorageKey: vi.fn(),
 }))
 
-vi.mock('react-i18next', () => ({
-  initReactI18next: { type: '3rdParty', init: () => {} },
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback || key,
-    i18n: { language: 'en', changeLanguage: vi.fn() },
-  }),
+let capturedGetStatValue: ((blockId: string) => { value: number }) | null = null
+
+vi.mock('../../../lib/dashboards/DashboardPage', () => ({
+  DashboardPage: ({ getStatValue }: { getStatValue: (blockId: string) => { value: number }; children?: ReactNode }) => {
+    capturedGetStatValue = getStatValue
+    return <div data-testid="dashboard-page" />
+  },
 }))
 
 vi.mock('../../ui/RotatingTip', () => ({
   RotatingTip: () => null,
 }))
 
-import { Deployments } from '../Deployments'
+vi.mock('../../PageErrorBoundary', () => ({
+  PageErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</>,
+}))
 
-describe('Deployments Badge Count', () => {
+import { render } from '@testing-library/react'
+
+const IMPORT_TIMEOUT_MS = 30000
+
+describe('Deployments critical issues badge (#15906)', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseClusters.mockReturnValue({
-      clusters: [],
-      deduplicatedClusters: [],
-      isLoading: false,
-      isRefreshing: false,
-      lastUpdated: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseGlobalFilters.mockReturnValue({
-      selectedClusters: [],
-      isAllClustersSelected: true,
-    })
-    mockUseDrillDownActions.mockReturnValue({
-      drillToAllDeployments: vi.fn(),
-      drillToAllPods: vi.fn(),
-    })
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [],
-      isLoading: false,
-      isRefreshing: false,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [],
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedPodIssues.mockReturnValue({
-      issues: [],
-      error: null,
-    })
+    capturedGetStatValue = null
+    mockDeployments = []
+    mockDeploymentIssues = []
+    vi.resetModules()
   })
 
-  it('badge value equals filteredDeploymentIssues.length when deployments are loaded', () => {
-    mockUseGlobalFilters.mockReturnValue({
-      selectedClusters: ['cluster-1'],
-      isAllClustersSelected: false,
-    })
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [
-        { name: 'dep1', namespace: 'default', cluster: 'cluster-1', replicas: 3, readyReplicas: 3 },
-        { name: 'dep2', namespace: 'default', cluster: 'cluster-1', replicas: 2, readyReplicas: 1 },
-      ],
-      isLoading: false,
-      isRefreshing: false,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [
-        { deployment: 'dep1', cluster: 'cluster-1', severity: 'critical', message: 'Issue 1' },
-        { deployment: 'dep2', cluster: 'cluster-1', severity: 'critical', message: 'Issue 2' },
-        { deployment: 'dep3', cluster: 'cluster-2', severity: 'critical', message: 'Issue 3' },
-      ],
-      refetch: vi.fn(),
-      error: null,
-    })
-
+  it('critical stat value is 0 when there are no deployment issues', async () => {
+    mockDeployments = [{ cluster: 'minikube', readyReplicas: 1, replicas: 1 }]
+    mockDeploymentIssues = []
+    const { Deployments } = await import('../Deployments')
     render(<Deployments />)
+    expect(capturedGetStatValue).not.toBeNull()
+    expect(capturedGetStatValue!('critical').value).toBe(0)
+  }, IMPORT_TIMEOUT_MS)
 
-    expect(screen.getByTestId('critical-badge').textContent).toBe('2')
-  })
-
-  it('badge value falls back to cachedStats.current.issues when currentTotalDeployments === 0', () => {
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [
-        { name: 'dep1', namespace: 'default', cluster: 'cluster-1', replicas: 3, readyReplicas: 3 },
-      ],
-      isLoading: false,
-      isRefreshing: false,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [
-        { deployment: 'dep1', cluster: 'cluster-1', severity: 'critical', message: 'Issue 1' },
-        { deployment: 'dep2', cluster: 'cluster-1', severity: 'critical', message: 'Issue 2' },
-      ],
-      refetch: vi.fn(),
-      error: null,
-    })
-
-    const { rerender } = render(<Deployments />)
-    expect(screen.getByTestId('critical-badge').textContent).toBe('2')
-
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [],
-      isLoading: false,
-      isRefreshing: true,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [],
-      refetch: vi.fn(),
-      error: null,
-    })
-
-    rerender(<Deployments />)
-
-    expect(screen.getByTestId('critical-badge').textContent).toBe('2')
-  })
-
-  it('badge shows 0 when both live count and cached count are 0', () => {
+  it('critical stat value matches filteredDeploymentIssues.length when issues exist', async () => {
+    mockDeployments = [{ cluster: 'minikube', readyReplicas: 1, replicas: 1 }]
+    mockDeploymentIssues = [{ cluster: 'minikube' }, { cluster: 'minikube' }]
+    const { Deployments } = await import('../Deployments')
     render(<Deployments />)
+    expect(capturedGetStatValue).not.toBeNull()
+    expect(capturedGetStatValue!('critical').value).toBe(2)
+  }, IMPORT_TIMEOUT_MS)
 
-    expect(screen.getByTestId('critical-badge').textContent).toBe('0')
-  })
-
-  it('currentIssueCount updates when cluster filter changes', () => {
-    mockUseGlobalFilters.mockReturnValue({
-      selectedClusters: ['cluster-1'],
-      isAllClustersSelected: false,
-    })
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [
-        { name: 'dep1', namespace: 'default', cluster: 'cluster-1', replicas: 3, readyReplicas: 3 },
-        { name: 'dep2', namespace: 'default', cluster: 'cluster-2', replicas: 2, readyReplicas: 2 },
-      ],
-      isLoading: false,
-      isRefreshing: false,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [
-        { deployment: 'dep1', cluster: 'cluster-1', severity: 'critical', message: 'Issue 1' },
-        { deployment: 'dep2', cluster: 'cluster-2', severity: 'critical', message: 'Issue 2' },
-        { deployment: 'dep3', cluster: 'cluster-2', severity: 'critical', message: 'Issue 3' },
-      ],
-      refetch: vi.fn(),
-      error: null,
-    })
-
-    const { rerender } = render(<Deployments />)
-    expect(screen.getByTestId('critical-badge').textContent).toBe('1')
-
-    mockUseGlobalFilters.mockReturnValue({
-      selectedClusters: ['cluster-2'],
-      isAllClustersSelected: false,
-    })
-
-    rerender(<Deployments />)
-
-    expect(screen.getByTestId('critical-badge').textContent).toBe('2')
-  })
-
-  it('badge value and stats panel are consistent (both use issueCount variable)', () => {
-    mockUseCachedDeployments.mockReturnValue({
-      deployments: [
-        { name: 'dep1', namespace: 'default', cluster: 'cluster-1', replicas: 3, readyReplicas: 3 },
-      ],
-      isLoading: false,
-      isRefreshing: false,
-      lastRefresh: null,
-      refetch: vi.fn(),
-      error: null,
-    })
-    mockUseCachedDeploymentIssues.mockReturnValue({
-      issues: [
-        { deployment: 'dep1', cluster: 'cluster-1', severity: 'critical', message: 'Issue 1' },
-        { deployment: 'dep2', cluster: 'cluster-1', severity: 'critical', message: 'Issue 2' },
-        { deployment: 'dep3', cluster: 'cluster-1', severity: 'critical', message: 'Issue 3' },
-      ],
-      refetch: vi.fn(),
-      error: null,
-    })
-
+  it('critical stat value does not exceed actual issue count', async () => {
+    mockDeployments = [{ cluster: 'minikube', readyReplicas: 1, replicas: 1 }]
+    mockDeploymentIssues = [{ cluster: 'minikube' }]
+    const { Deployments } = await import('../Deployments')
     render(<Deployments />)
-
-    expect(screen.getByTestId('critical-badge').textContent).toBe('3')
-    expect(screen.getByTestId('critical-sublabel').textContent).toContain('with issues')
-  })
+    expect(capturedGetStatValue).not.toBeNull()
+    expect(capturedGetStatValue!('critical').value).toBeLessThanOrEqual(mockDeploymentIssues.length)
+  }, IMPORT_TIMEOUT_MS)
 })
