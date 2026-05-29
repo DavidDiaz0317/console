@@ -33,7 +33,11 @@ describe('useQuantumAuthStatus', () => {
       useQuantumAuthStatus({ isAuthenticated: false }),
     )
 
-    expect(result.current.data).toEqual({ authenticated: false })
+    expect(result.current.data).toEqual({
+      authenticated: false,
+      tokenStored: false,
+      lastIbmError: null,
+    })
     expect(result.current.isLoading).toBe(false)
     expect(result.current.isRefreshing).toBe(false)
     expect(result.current.isDemoData).toBe(false)

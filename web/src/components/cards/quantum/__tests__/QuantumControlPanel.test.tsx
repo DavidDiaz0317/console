@@ -100,7 +100,11 @@ function authHookReturn(
   }> = {},
 ) {
   return {
-    data: { authenticated: false } as QuantumAuthStatus,
+    data: {
+      authenticated: false,
+      tokenStored: false,
+      lastIbmError: null,
+    } as QuantumAuthStatus,
     isLoading: false,
     isRefreshing: false,
     isDemoData: false,
@@ -111,6 +115,25 @@ function authHookReturn(
     refetch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
+}
+
+/**
+ * Force the control panel onto a non-IBM (local-only) backend before
+ * assertions. Use in tests that verify "stale IBM error must NOT surface
+ * on local backends" so they don't depend on the component's default
+ * backend value remaining `aer`.
+ */
+function selectNonIbmBackend(container: HTMLElement) {
+  const select = container.querySelector('select') as HTMLSelectElement
+  fireEvent.change(select, { target: { value: 'aer' } })
+}
+
+/**
+ * Force the control panel onto an IBM-requiring backend (qx5).
+ */
+function selectIbmBackend(container: HTMLElement) {
+  const select = container.querySelector('select') as HTMLSelectElement
+  fireEvent.change(select, { target: { value: 'qx5' } })
 }
 
 describe('QuantumControlPanel — auth-status polling gating', () => {
@@ -149,27 +172,32 @@ describe('QuantumControlPanel — error classification', () => {
       authHookReturn({ error: 'max retries attempted; service unavailable' }),
     )
     const { container } = render(<QuantumControlPanel />)
-    const select = container.querySelector('select') as HTMLSelectElement
-    fireEvent.change(select, { target: { value: 'qx5' } })
+    selectIbmBackend(container)
 
-    expect(
-      screen.getByText('quantumControlPanel.ibmUpstreamUnavailable'),
-    ).toBeInTheDocument()
+    // Both the banner element AND its rendered copy are checked: testid alone
+    // would silently pass if the banner were rendered empty or with the wrong
+    // i18n key.
+    const transient = screen.getByTestId('quantum-control-panel-transient-banner')
+    expect(transient).toBeInTheDocument()
+    expect(transient).toHaveTextContent('quantumControlPanel.ibmUpstreamUnavailable')
     // The classified-transient error must NOT also surface in the red banner.
-    expect(screen.queryByText(/max retries attempted/i)).toBeNull()
+    expect(
+      screen.queryByTestId('quantum-control-panel-fatal-banner'),
+    ).toBeNull()
   })
 
-  it('renders the red banner for fatal (non-retryable) auth errors', () => {
+  it('renders the red banner for fatal (non-retryable) auth errors on an IBM backend', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({ error: 'invalid api key' }),
     )
     const { container } = render(<QuantumControlPanel />)
-    const select = container.querySelector('select') as HTMLSelectElement
-    fireEvent.change(select, { target: { value: 'qx5' } })
+    selectIbmBackend(container)
 
-    expect(screen.getByText('invalid api key')).toBeInTheDocument()
+    const fatal = screen.getByTestId('quantum-control-panel-fatal-banner')
+    expect(fatal).toBeInTheDocument()
+    expect(fatal).toHaveTextContent('invalid api key')
     expect(
-      screen.queryByText('quantumControlPanel.ibmUpstreamUnavailable'),
+      screen.queryByTestId('quantum-control-panel-transient-banner'),
     ).toBeNull()
   })
 
@@ -177,22 +205,78 @@ describe('QuantumControlPanel — error classification', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({ error: 'service unavailable 503' }),
     )
-    render(<QuantumControlPanel />)
+    const { container } = render(<QuantumControlPanel />)
+    selectNonIbmBackend(container)
 
     expect(
-      screen.queryByText('quantumControlPanel.ibmUpstreamUnavailable'),
+      screen.queryByTestId('quantum-control-panel-transient-banner'),
     ).toBeNull()
   })
 
   it('does not render the red banner on a non-IBM backend even if the cached auth error is fatal', () => {
     // A stale 401 from a prior IBM-backed validation must not surface in the
     // red banner once the user is on aer/sim doing purely local work.
+    // Backend is set explicitly via selectNonIbmBackend so this test does
+    // not depend on the component's default backend remaining `aer`.
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({ error: 'invalid api key' }),
     )
-    render(<QuantumControlPanel />)
+    const { container } = render(<QuantumControlPanel />)
+    selectNonIbmBackend(container)
 
-    expect(screen.queryByText('invalid api key')).toBeNull()
+    expect(
+      screen.queryByTestId('quantum-control-panel-fatal-banner'),
+    ).toBeNull()
+  })
+
+  it('drives the yellow banner from authStatus.lastIbmError.retryable when present (v0.4.0+ workload)', () => {
+    // When the workload provides a structured lastIbmError, the Console
+    // should classify off `retryable`, not the error message string.
+    mockUseQuantumAuthStatus.mockReturnValue(
+      authHookReturn({
+        data: {
+          authenticated: false,
+          tokenStored: true,
+          lastIbmError: {
+            code: 'rate_limited',
+            message: 'rate limit exceeded',
+            retryable: true,
+          },
+        },
+        // Note: no `error` field — workload returned 200 with structured payload.
+      }),
+    )
+    const { container } = render(<QuantumControlPanel />)
+    selectIbmBackend(container)
+
+    const transient = screen.getByTestId('quantum-control-panel-transient-banner')
+    expect(transient).toBeInTheDocument()
+    expect(transient).toHaveTextContent('quantumControlPanel.ibmUpstreamUnavailable')
+    expect(
+      screen.queryByTestId('quantum-control-panel-fatal-banner'),
+    ).toBeNull()
+  })
+
+  it('drives the red banner from authStatus.lastIbmError when retryable:false', () => {
+    mockUseQuantumAuthStatus.mockReturnValue(
+      authHookReturn({
+        data: {
+          authenticated: false,
+          tokenStored: true,
+          lastIbmError: {
+            code: 'unknown',
+            message: 'invalid api key',
+            retryable: false,
+          },
+        },
+      }),
+    )
+    const { container } = render(<QuantumControlPanel />)
+    selectIbmBackend(container)
+
+    const fatal = screen.getByTestId('quantum-control-panel-fatal-banner')
+    expect(fatal).toBeInTheDocument()
+    expect(fatal).toHaveTextContent('invalid api key')
   })
 })
 
@@ -203,30 +287,45 @@ describe('QuantumControlPanel — three-state credentials badge', () => {
     mockUseQuantumSystemStatus.mockReturnValue(statusHookReturn())
   })
 
-  it('shows "Not configured" key when there is no token and no historical validation', () => {
+  it('shows "Not configured" when workload reports tokenStored:false', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
-      authHookReturn({ data: { authenticated: false }, lastRefresh: null }),
+      authHookReturn({
+        data: {
+          authenticated: false,
+          tokenStored: false,
+          lastIbmError: null,
+        },
+      }),
     )
     render(<QuantumControlPanel />)
     expect(screen.getByText('quantumControlPanel.credsNone')).toBeInTheDocument()
   })
 
-  it('shows "Stored" key when cache has a historical successful validation but session has not re-confirmed', () => {
+  it('shows "Stored" when workload reports tokenStored:true but session has not re-confirmed', () => {
+    // Common scenario: post-pod-restart. The Qiskit account file on the PV
+    // survives, so the workload reports tokenStored:true even though
+    // validation hasn't run this session.
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({
-        data: { authenticated: false },
-        lastRefresh: Date.now() - 60_000,
+        data: {
+          authenticated: false,
+          tokenStored: true,
+          lastIbmError: null,
+        },
       }),
     )
     render(<QuantumControlPanel />)
     expect(screen.getByText('quantumControlPanel.credsStored')).toBeInTheDocument()
   })
 
-  it('shows "Configured" key once the session observes authenticated:true', () => {
+  it('shows "Configured" once the session observes authenticated:true', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({
-        data: { authenticated: true },
-        lastRefresh: Date.now(),
+        data: {
+          authenticated: true,
+          tokenStored: true,
+          lastIbmError: null,
+        },
       }),
     )
     render(<QuantumControlPanel />)
@@ -236,8 +335,11 @@ describe('QuantumControlPanel — three-state credentials badge', () => {
   it('renders a Validate-now button when the badge is in Stored state', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({
-        data: { authenticated: false },
-        lastRefresh: Date.now() - 60_000,
+        data: {
+          authenticated: false,
+          tokenStored: true,
+          lastIbmError: null,
+        },
       }),
     )
     render(<QuantumControlPanel />)
@@ -247,11 +349,58 @@ describe('QuantumControlPanel — three-state credentials badge', () => {
   it('does not render a Validate-now button when the badge is Configured', () => {
     mockUseQuantumAuthStatus.mockReturnValue(
       authHookReturn({
-        data: { authenticated: true },
-        lastRefresh: Date.now(),
+        data: {
+          authenticated: true,
+          tokenStored: true,
+          lastIbmError: null,
+        },
       }),
     )
     render(<QuantumControlPanel />)
     expect(screen.queryByLabelText('quantumControlPanel.validateNow')).toBeNull()
+  })
+
+  it('REGRESSION (Bug 1 from PR #15948 review): after credentials clear, badge drops to "Not configured" — not "Stored"', () => {
+    // Pre-v0.4 the Console inferred tokenLikelyStored from lastRefresh!=null
+    // OR authenticated:true. After a `clear`, the workload returns
+    // {authenticated:false} which is still a successful fetch — so
+    // lastRefresh updated, the inference flipped to true, and the badge
+    // fell back to "Stored". That bug is structurally impossible now: the
+    // workload reports tokenStored explicitly, and after clear it's false
+    // regardless of the cache's lastRefresh state.
+    mockUseQuantumAuthStatus.mockReturnValue(
+      authHookReturn({
+        data: {
+          authenticated: false,
+          tokenStored: false,
+          lastIbmError: null,
+        },
+        lastRefresh: Date.now(), // recent successful fetch — pre-v0.4 trap
+      }),
+    )
+    render(<QuantumControlPanel />)
+    expect(screen.getByText('quantumControlPanel.credsNone')).toBeInTheDocument()
+    expect(screen.queryByText('quantumControlPanel.credsStored')).toBeNull()
+  })
+
+  it('treats a pre-v0.4 workload (no tokenStored field) as "Not configured" until next validation', () => {
+    // The fetcher coerces missing tokenStored to false. Until the next
+    // successful auth check flips authenticated:true (which sets
+    // sessionValidatedAt and moves the badge to Configured), the badge
+    // sits at "Not configured" — harmless and self-healing.
+    mockUseQuantumAuthStatus.mockReturnValue(
+      authHookReturn({
+        data: {
+          authenticated: false,
+          // Simulate an older workload by leaving tokenStored at its
+          // coerced default and lastIbmError at null.
+          tokenStored: false,
+          lastIbmError: null,
+        },
+        lastRefresh: Date.now() - 60_000,
+      }),
+    )
+    render(<QuantumControlPanel />)
+    expect(screen.getByText('quantumControlPanel.credsNone')).toBeInTheDocument()
   })
 })

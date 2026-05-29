@@ -112,7 +112,6 @@ export const QuantumControlPanel: React.FC = () => {
     data: authStatus,
     isRefreshing: isAuthRefreshing,
     error: authStatusError,
-    lastRefresh: lastAuthRefresh,
     refetch: refetchAuthStatus,
   } = useQuantumAuthStatus({
     isAuthenticated,
@@ -122,6 +121,8 @@ export const QuantumControlPanel: React.FC = () => {
   })
 
   const ibmAuthenticated = authStatus.authenticated
+  const ibmTokenStored = authStatus.tokenStored
+  const lastIbmError = authStatus.lastIbmError
 
   // Mark the session as validated whenever a successful auth check returns
   // authenticated:true. This is what flips the badge from "Stored" → "Configured".
@@ -138,23 +139,41 @@ export const QuantumControlPanel: React.FC = () => {
   // when the selected backend actually needs IBM. On a local-only backend
   // (aer/sim) a stale 401/403 from a prior IBM selection shouldn't paint the
   // panel red while the user is doing purely local work.
+  //
+  // Classification source:
+  //   1. Prefer the workload's structured `lastIbmError` (v0.4.0+). The
+  //      backend has the raw exception and classifies it authoritatively.
+  //   2. Fall back to client-side `classifyApiError` against the error
+  //      string when the workload didn't provide `lastIbmError` (older
+  //      images, network-level failures before the body parses).
   const fatalError = mutationError ?? statusError
-  const classifiedAuthError = authStatusError ? classifyApiError(authStatusError) : null
-  const isAuthErrorTransient = classifiedAuthError?.retryable === true
+  const classifiedFromMessage = authStatusError ? classifyApiError(authStatusError) : null
+  const isAuthErrorTransient =
+    lastIbmError !== null
+      ? lastIbmError.retryable === true
+      : classifiedFromMessage?.retryable === true
+  const hasAuthError = lastIbmError !== null || classifiedFromMessage !== null
   const authErrorForBanner =
-    classifiedAuthError && !isAuthErrorTransient && requiresIBM ? authStatusError : null
+    hasAuthError && !isAuthErrorTransient && requiresIBM
+      ? (lastIbmError?.message ?? authStatusError)
+      : null
   const error = fatalError ?? authErrorForBanner
 
-  // Three-state credential badge:
-  //   configured — validation succeeded in this browser session
-  //   stored     — token likely exists on backend but unvalidated this session
-  //   none       — no token saved
-  const hasHistoricalValidation = lastAuthRefresh !== null
-  const tokenLikelyStored = hasHistoricalValidation || ibmAuthenticated
+  // Three-state credential badge, driven by the workload's explicit
+  // `tokenStored` field (v0.4.0+ — see web/src/hooks/useCachedQuantum.ts):
+  //   configured — validation succeeded in this browser session.
+  //   stored     — workload reports a token saved (auth.json on emptyDir
+  //                OR Qiskit account file on the PV) but we have not
+  //                validated it this session.
+  //   none       — workload reports no token saved.
+  //
+  // Pre-v0.4 workloads omit `tokenStored`; the fetcher coerces the missing
+  // field to `false`, so the badge sits at "Not configured" until the
+  // first successful validation, which is harmless and self-healing.
   const ibmCredentialState: 'configured' | 'stored' | 'none' =
     sessionValidatedAt !== null
       ? 'configured'
-      : tokenLikelyStored
+      : ibmTokenStored
         ? 'stored'
         : 'none'
 
@@ -415,14 +434,22 @@ export const QuantumControlPanel: React.FC = () => {
       </h3>
 
       {error && !isDemoFallback && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-2">
+          <div
+            data-testid="quantum-control-panel-fatal-banner"
+            role="alert"
+            className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-2"
+          >
             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           </div>
       )}
 
       {isAuthErrorTransient && requiresIBM && !isDemoFallback && (
-          <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 flex items-start gap-2">
+          <div
+            data-testid="quantum-control-panel-transient-banner"
+            role="status"
+            className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 flex items-start gap-2"
+          >
             <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-yellow-700 dark:text-yellow-300">
               {t('quantumControlPanel.ibmUpstreamUnavailable')}
