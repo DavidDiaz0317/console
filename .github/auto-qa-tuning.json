@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "last_updated": "2026-05-30T04:21:49Z",
+  "last_updated": "2026-05-31T04:30:05Z",
   "rolling_window_days": 30,
   "categories": {
     "performance": {
@@ -11,32 +11,32 @@
       "last_evaluated": "2026-05-26T04:25:29Z"
     },
     "security": {
-      "merged": 44,
-      "closed": 40,
-      "acceptance_rate": 0.52,
+      "merged": 47,
+      "closed": 41,
+      "acceptance_rate": 0.53,
       "status": "normal",
-      "last_evaluated": "2026-05-29T04:29:18Z"
+      "last_evaluated": "2026-05-31T04:30:05Z"
     },
     "a11y": {
-      "merged": 47,
+      "merged": 48,
       "closed": 25,
-      "acceptance_rate": 0.65,
+      "acceptance_rate": 0.66,
       "status": "normal",
-      "last_evaluated": "2026-05-29T04:29:18Z"
+      "last_evaluated": "2026-05-31T04:30:05Z"
     },
     "operator": {
-      "merged": 241,
+      "merged": 252,
       "closed": 185,
-      "acceptance_rate": 0.57,
+      "acceptance_rate": 0.58,
       "status": "normal",
-      "last_evaluated": "2026-05-30T04:21:49Z"
+      "last_evaluated": "2026-05-31T04:30:05Z"
     },
     "sre": {
-      "merged": 94,
-      "closed": 43,
-      "acceptance_rate": 0.69,
+      "merged": 115,
+      "closed": 49,
+      "acceptance_rate": 0.7,
       "status": "normal",
-      "last_evaluated": "2026-05-30T04:21:49Z"
+      "last_evaluated": "2026-05-31T04:30:05Z"
     },
     "features": {
       "merged": 13,
@@ -92,13 +92,6 @@
     ]
   },
   "history": [
-    {
-      "date": "2026-03-22",
-      "total_merged": 153,
-      "total_closed": 182,
-      "categories_blocked": [],
-      "categories_boosted": []
-    },
     {
       "date": "2026-03-23",
       "total_merged": 153,
@@ -319,14 +312,21 @@
       "total_closed": 390,
       "categories_blocked": [],
       "categories_boosted": []
+    },
+    {
+      "date": "2026-05-31",
+      "total_merged": 571,
+      "total_closed": 397,
+      "categories_blocked": [],
+      "categories_boosted": []
     }
   ],
   "rotation_weights": {
     "performance": 0.89,
-    "security": 0.78,
-    "a11y": 0.98,
-    "operator": 0.86,
-    "sre": 1.03,
+    "security": 0.8,
+    "a11y": 0.99,
+    "operator": 0.87,
+    "sre": 1.05,
     "features": 0.89,
     "resilience": 0.74,
     "consistency": 0.86
@@ -336,8 +336,8 @@
   "regression_insights": {
     "focus_overrides": [],
     "repeat_issue_patterns": [],
-    "total_issues_7d": 37,
+    "total_issues_7d": 40,
     "repeat_pattern_count": 0,
-    "last_analyzed": "2026-05-30T04:21:49Z"
+    "last_analyzed": "2026-05-31T04:30:06Z"
   }
 }
