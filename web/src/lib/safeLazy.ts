@@ -1,5 +1,12 @@
 import { lazy, type ComponentType } from 'react'
 
+type LazyComponentModule = Record<string, unknown>
+type LazyLoadedComponent = ComponentType<Record<string, unknown>>
+
+function isLazyLoadedComponent(component: unknown): component is LazyLoadedComponent {
+  return typeof component === 'function' || (typeof component === 'object' && component !== null)
+}
+
 /** Maximum number of retry attempts before giving up on a failed dynamic import */
 const LAZY_IMPORT_MAX_RETRIES = 2
 /**
@@ -36,14 +43,14 @@ const LAZY_IMPORT_ATTEMPT_TIMEOUT_MS = 5_000
  *    import (e.g. during a backend restart) becomes a recoverable rejection
  *    instead of leaving the Suspense fallback stuck on a loading spinner.
  */
-export function safeLazy<T extends Record<string, unknown>>(
-  importFn: () => Promise<T>,
-  exportName: keyof T & string,
+export function safeLazy<TModule extends LazyComponentModule>(
+  importFn: () => Promise<TModule>,
+  exportName: Extract<keyof TModule, string>,
 ): ReturnType<typeof lazy> {
   return lazy(() => {
-    const importWithTimeout = (): Promise<T> => {
+    const importWithTimeout = (): Promise<TModule> => {
       let timeoutId: ReturnType<typeof setTimeout> | undefined
-      const timeoutPromise = new Promise<T>((_, reject) => {
+      const timeoutPromise = new Promise<TModule>((_, reject) => {
         timeoutId = setTimeout(() => {
           reject(
             new Error(
@@ -58,7 +65,7 @@ export function safeLazy<T extends Record<string, unknown>>(
       })
     }
 
-    const attemptImport = (retriesLeft: number): Promise<{ default: ComponentType<Record<string, unknown>> }> =>
+    const attemptImport = (retriesLeft: number): Promise<{ default: LazyLoadedComponent }> =>
       importWithTimeout()
         .then((m) => {
           // When an eagerly-loaded bundle uses .catch(() => undefined) to suppress
@@ -79,8 +86,10 @@ export function safeLazy<T extends Record<string, unknown>>(
               'Reload the page to get the latest version.',
             )
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return { default: component as ComponentType<any> }
+          if (!isLazyLoadedComponent(component)) {
+            throw new Error(`Export "${exportName}" is not a React component.`)
+          }
+          return { default: component }
         })
         .catch((err: Error) => {
           if (retriesLeft > 0) {
@@ -89,7 +98,7 @@ export function safeLazy<T extends Record<string, unknown>>(
               `[safeLazy] Import failed for "${exportName}" (${retriesLeft} retries left), ` +
               `retrying in ${delay}ms: ${err.message}`,
             )
-            return new Promise<{ default: ComponentType<Record<string, unknown>> }>((resolve) =>
+            return new Promise<{ default: LazyLoadedComponent }>((resolve) =>
               setTimeout(() => resolve(attemptImport(retriesLeft - 1)), delay),
             )
           }
