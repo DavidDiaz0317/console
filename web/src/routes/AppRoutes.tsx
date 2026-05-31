@@ -98,6 +98,21 @@ function CardHistoryWithRestore() {
 
 /** Key for preserving the intended destination through the OAuth login flow */
 const RETURN_TO_KEY = 'kubestellar-return-to'
+/** Query param that triggers a synthetic render crash for E2E tests. */
+const APP_ERROR_TEST_PARAM = '__e2e_app_error'
+/** Stable message asserted by the AppErrorBoundary recovery test. */
+const APP_ERROR_TEST_MESSAGE = 'Synthetic AppErrorBoundary crash'
+
+function AppErrorBoundaryProbe() {
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+
+  if (searchParams.has(APP_ERROR_TEST_PARAM)) {
+    throw new Error(APP_ERROR_TEST_MESSAGE)
+  }
+
+  return null
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -168,18 +183,18 @@ function FeatureRedirect() {
 function LightweightShell({ children }: { children: React.ReactNode }) {
   return (
     <BrandingProvider>
-    <ThemeProvider>
-    <AppErrorBoundary>
-    <ChunkErrorBoundary>
-    <PageErrorBoundary>
-    <PageViewTracker />
-    <Suspense fallback={<LoadingFallback />}>
-      {children}
-    </Suspense>
-    </PageErrorBoundary>
-    </ChunkErrorBoundary>
-    </AppErrorBoundary>
-    </ThemeProvider>
+      <ThemeProvider>
+        <AppErrorBoundary>
+          <ChunkErrorBoundary>
+            <PageErrorBoundary>
+              <PageViewTracker />
+              <Suspense fallback={<LoadingFallback />}>
+                {children}
+              </Suspense>
+            </PageErrorBoundary>
+          </ChunkErrorBoundary>
+        </AppErrorBoundary>
+      </ThemeProvider>
     </BrandingProvider>
   )
 }
@@ -242,6 +257,7 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
       <DashboardProvider>
       <DrillDownProvider>
       <AppErrorBoundary>
+      <AppErrorBoundaryProbe />
       <PageErrorBoundary>
         <Suspense fallback={null}><DrillDownModal /></Suspense>
       </PageErrorBoundary>
@@ -346,6 +362,8 @@ function FullDashboardApp({ liveLocation }: { liveLocation: Location }) {
           {/* /feature, /features open the feedback modal on the feature tab */}
           <Route path={ROUTES.FEATURE} element={<FeatureRedirect />} />
           <Route path={ROUTES.FEATURES} element={<FeatureRedirect />} />
+          {/* Catch-all for unknown routes within the authenticated app */}
+          <Route path="*" element={<SuspenseRoute><NotFound /></SuspenseRoute>} />
         </Route>
 
         {/* ── Enterprise Compliance Portal ─────────────────────────────
