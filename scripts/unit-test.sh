@@ -45,16 +45,16 @@ fi
 # Run with forks so worker heaps are isolated instead of sharing one threaded heap.
 # Use project directory for output file to avoid /tmp restrictions (#16250).
 # Limit to 3 workers on CI to prevent OOM while keeping runtime reasonable.
-# Test count grew from 1453 to 1800+ files — 2 workers caused nightly timeouts
-# (2087→2464→2605s trend, issue #16380). 3 workers targets ~1700s runtime.
-# Actual RSS per fork is ~400-600MB so 3 forks fit within the 7 GB runner.
+# Forked Vitest workers typically use a few hundred MB of RSS each, so 3 forks
+# fit within the 7 GB runner even though the Node heap limit is 8 GB per worker.
+# This keeps the nightly unit suite from timing out as file count continues growing.
 OUTPUT_FILE="vitest-output.log"
 EXIT_CODE=0
 WORKER_ARGS=""
 if [ -n "${CI:-}" ]; then
   WORKER_ARGS="--maxWorkers=3"
 fi
-npx vitest run $EXTRA_ARGS --pool=forks $WORKER_ARGS --reporter=verbose 2>&1 | tee "$OUTPUT_FILE" || EXIT_CODE=$?
+npx vitest run $EXTRA_ARGS --pool=forks $WORKER_ARGS --testTimeout=30000 --reporter=verbose 2>&1 | tee "$OUTPUT_FILE" || EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ne 0 ]; then
   # Check if all tests actually passed despite the non-zero exit
