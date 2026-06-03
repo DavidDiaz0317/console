@@ -279,6 +279,11 @@ func (h *GPUHandler) GetReservation(c *fiber.Ctx) error {
 	}
 
 
+	// SECURITY: Non-admin users can only view their own reservations (#16711).
+	if err := requireOwnerOrAdmin(c, user, reservation.UserID); err != nil {
+		return err
+	}
+
 	return c.JSON(reservation)
 }
 
