@@ -57,6 +57,9 @@ const FORCE_REFRESH_COOLDOWN_MS = 60_000;
 // Handler
 // ---------------------------------------------------------------------------
 
+const FORCE_COOLDOWN_MS = 60_000;
+const LAST_FORCE_KEY = "acmm-scan:last-force";
+
 export default async (req: Request) => {
   const origin = req.headers.get("Origin");
   const headers = corsHeaders(origin);
@@ -74,7 +77,7 @@ export default async (req: Request) => {
 
   const url = new URL(req.url);
   const repo = url.searchParams.get("repo") || "";
-  const force = url.searchParams.get("force") === "true";
+  let force = url.searchParams.get("force") === "true";
 
   if (!REPO_RE.test(repo)) {
     return new Response(
@@ -99,8 +102,25 @@ export default async (req: Request) => {
   const token =
     Netlify.env.get("GITHUB_TOKEN") || process.env.GITHUB_TOKEN || "";
 
-  // Check blob cache (per-repo key) — skipped when ?force=true
   const store = getStore(CACHE_STORE);
+  // Rate-limit forced refreshes: max once per minute to protect API quota.
+  if (force) {
+    try {
+      const lastForceTs = await store.get(LAST_FORCE_KEY, { type: "text" });
+      if (
+        lastForceTs &&
+        Date.now() - Number(lastForceTs) < FORCE_COOLDOWN_MS
+      ) {
+        force = false;
+      } else {
+        await store.set(LAST_FORCE_KEY, String(Date.now()));
+      }
+    } catch {
+      // blob-store failure should not block refreshes
+    }
+  }
+
+  // Check blob cache (per-repo key) — skipped when ?force=true
   const cacheKey = `scan:${repo}`;
 
   // Rate-limit force-refresh to prevent API quota exhaustion (CWE-400, #16904).
