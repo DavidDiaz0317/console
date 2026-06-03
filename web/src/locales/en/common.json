@@ -2499,6 +2499,10 @@
     },
     "projectAdded": "Project added to mission"
   },
+  "auth": {
+    "sessionExpiresSoon": "Session expires soon",
+    "refreshNow": "Refresh Now"
+  },
   "feedback": {
     "share": "Share",
     "shareOnLinkedIn": "Share on LinkedIn",
@@ -2580,6 +2584,7 @@
     "reopenRequestFailed": "Failed to reopen request",
     "verifyFixFailed": "Failed to record verification",
     "closeRequestFailed": "Failed to close request",
+    "viewFullLeaderboard": "View Full Leaderboard",
     "releases": "Releases",
     "status": {
       "open": "Open",
@@ -2787,6 +2792,9 @@
     "upgrading": "Upgrading...",
     "upgradeComplete": "Upgrade complete — reloading...",
     "upgradeFailed": "Upgrade failed"
+  },
+  "updates": {
+    "loadingPullRequests": "Loading recent pull requests…"
   },
   "drilldown": {
     "goBack": "Go back",
@@ -3613,6 +3621,7 @@
     "saving": "Saving...",
     "deleting": "Deleting...",
     "updating": "Updating",
+    "updatingEllipsis": "Updating...",
     "checking": "Checking...",
     "generating": "Generating...",
     "retrying": "Retrying...",
@@ -3693,6 +3702,7 @@
     "searchQuotas": "Search quotas...",
     "noMatchingItems": "No matching items",
     "sortBy": "Sort by",
+    "sortByPlaceholder": "Sort by...",
     "groupBy": "Group by",
     "export": "Export",
     "import": "Import",
@@ -3828,7 +3838,9 @@
     "resetFilters": "Reset filters",
     "moreFilters": "More filters",
     "ascending": "Ascending",
+    "ascendingShort": "Asc",
     "descending": "Descending",
+    "descendingShort": "Desc",
     "newest": "Newest",
     "oldest": "Oldest",
     "alphabetical": "A-Z",
