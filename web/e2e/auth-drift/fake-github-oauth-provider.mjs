@@ -71,8 +71,16 @@ function logRequest(request, details = {}) {
 const server = http.createServer(async (request, response) => {
   const requestUrl = new URL(request.url, `http://${host}:${port}`)
 
-  if (request.method === 'GET' && requestUrl.pathname === '/health') {
+  if ((request.method === 'GET' || request.method === 'HEAD') && requestUrl.pathname === '/health') {
     logRequest(request)
+    if (request.method === 'HEAD') {
+      response.writeHead(200, {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/json',
+      })
+      response.end()
+      return
+    }
     writeJson(response, 200, {
       status: 'ok',
       provider: 'fake-github-oauth',
