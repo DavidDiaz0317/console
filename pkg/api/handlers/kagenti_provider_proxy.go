@@ -307,12 +307,13 @@ func (h *KagentiProviderProxyHandler) CallTool(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "agent, namespace, and tool are required"})
 	}
 
-	argsJSON, err := json.Marshal(req.Args)
+	message, err := buildToolInvocationPrompt(req.Tool, req.Args)
 	if err != nil {
+		if errors.Is(err, errInvalidPromptToolName) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid tool name"})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "failed to serialize tool args"})
 	}
-
-	message := fmt.Sprintf("Please use the tool %s with args %s", req.Tool, string(argsJSON))
 
 	stream, err := h.client.Invoke(c.Context(), req.Namespace, req.Agent, message, "", nil)
 	if err != nil {
