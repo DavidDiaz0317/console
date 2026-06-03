@@ -37,8 +37,10 @@ export default defineConfig({
   // PLAYWRIGHT_BASE_URL points at a standalone Vite preview (CI default).
   // When PLAYWRIGHT_BASE_URL is unset, Playwright starts the Go backend itself
   // (see webServer config below), so mission tests can run locally.
+  // Auth drift tests use their own config, server lifecycle, and baselines.
   testIgnore: [
     '**/visual/**',
+    '**/auth-drift/**',
     ...(env.PLAYWRIGHT_BASE_URL
       ? ['**/nightly/mission-deeplink.spec.ts', '**/nightly/mission-explorer-import.spec.ts']
       : []),
