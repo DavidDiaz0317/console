@@ -170,9 +170,8 @@ func gitopsCloneRepo(ctx context.Context, repoURL, branch string) (string, error
 
 	tempDir, err := os.MkdirTemp("", "gitops-")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
+		return "", fmt.Errorf("create temp directory: %w", err)
 	}
-	// Verify the created dir passes the cleanup safety check
 	if !strings.HasPrefix(tempDir, filepath.Join(os.TempDir(), "gitops-")) {
 		os.RemoveAll(tempDir)
 		return "", fmt.Errorf("temp dir in unexpected location: %s", tempDir)

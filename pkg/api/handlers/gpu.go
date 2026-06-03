@@ -278,6 +278,7 @@ func (h *GPUHandler) GetReservation(c *fiber.Ctx) error {
 		return authErr
 	}
 
+
 	return c.JSON(reservation)
 }
 
