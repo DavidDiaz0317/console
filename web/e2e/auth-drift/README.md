@@ -7,15 +7,18 @@ The suite protects these contracts:
 1. Public demo no-login contract: `console.kubestellar.io` must land on the dashboard without showing a login page or login controls.
 2. OAuth login UI contract: an OAuth-enabled login page must render the expected login card, GitHub button, branding, and mobile layout.
 3. Localhost dev-mode contract: a local console must require login, click the GitHub entry point, and then reach the dashboard.
-4. Optional external OAuth contract: `/auth/github` must redirect to GitHub authorize with safe params and no token leakage.
+4. Fake OAuth contract: a local console must complete the real OAuth-style authorize, callback, token exchange, fake GitHub user fetch, cookie setup, and dashboard flow without real credentials.
+5. Optional external OAuth contract: `/auth/github` must redirect to GitHub authorize with safe params and no token leakage.
 
-The tests do not use GitHub credentials and do not complete a real GitHub OAuth session.
+The tests do not use real GitHub credentials. The fake OAuth test completes the console's actual OAuth code path against a local GitHub-compatible fake provider.
 
 ## Layout
 
 ```text
 e2e/auth-drift/
 |-- auth-ui-drift.config.ts
+|-- fake-github-oauth-provider.mjs
+|-- fake-oauth-login-dashboard-drift.spec.ts
 |-- hosted-demo-auth-drift.spec.ts
 |-- localhost-login-dashboard-drift.spec.ts
 |-- oauth-staging-login-drift.spec.ts
@@ -35,6 +38,7 @@ This directory uses a standalone Playwright config. The main Playwright config i
 | `oauth-staging-login-drift.spec.ts` | `OAuth staging login button points at backend auth route` | The button routes to `/auth/github` without leaking tokens. |
 | `oauth-staging-login-drift.spec.ts` | `OAuth backend authorize redirect contract is stable` | External OAuth staging redirects to GitHub authorize with `client_id`, `redirect_uri`, `state`, and `scope=user:email`. |
 | `localhost-login-dashboard-drift.spec.ts` | `localhost console requires login and reaches dashboard after GitHub entry point` | Local backend plus Vite requires login, enters dev-mode auth through the GitHub button, and lands on dashboard. |
+| `fake-oauth-login-dashboard-drift.spec.ts` | `localhost console completes full fake OAuth flow and reaches dashboard` | Local backend plus Vite requires login, performs authorize/callback/token/user exchange through `fake-github-oauth-provider.mjs`, sets HttpOnly cookies, verifies `/api/me`, and lands on dashboard. |
 
 The backend authorize redirect test only runs when `AUTH_DRIFT_LOGIN_URL` points at an OAuth-configured backend.
 
@@ -87,6 +91,55 @@ AUTH_DRIFT_DISABLE_WEBSERVER=1 \
   npm run test:auth-drift -- e2e/auth-drift/localhost-login-dashboard-drift.spec.ts
 ```
 
+To run the fake OAuth login-to-dashboard spec, start the fake provider, a non-dev backend, and Vite:
+
+```bash
+mkdir -p /tmp/auth-drift-fake-oauth
+go build -o /tmp/auth-drift-fake-oauth/console-bin ./cmd/console
+```
+
+In a second terminal:
+
+```bash
+cd web
+GITHUB_CLIENT_ID="auth-drift-client-id-12345" \
+GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" \
+  node e2e/auth-drift/fake-github-oauth-provider.mjs
+```
+
+In a third terminal:
+
+```bash
+JWT_SECRET="auth-drift-local" \
+DEV_MODE=false \
+GITHUB_URL="http://127.0.0.1:4180" \
+GITHUB_CLIENT_ID="auth-drift-client-id-12345" \
+GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" \
+PORT=8082 \
+FRONTEND_URL="http://127.0.0.1:4177" \
+DATABASE_PATH="/tmp/auth-drift-fake-oauth/console.db" \
+KC_AGENT_TOKEN="auth-drift-local-agent-token" \
+NO_LOCAL_AGENT=true \
+SKIP_ONBOARDING=true \
+IGNORE_PERSISTED_OAUTH_CREDENTIALS=true \
+  /tmp/auth-drift-fake-oauth/console-bin
+```
+
+In a fourth terminal:
+
+```bash
+cd web
+BACKEND_LISTEN_PORT=8082 VITE_DEV_MODE=false npm run dev -- --host 127.0.0.1 --port 4177
+```
+
+In a fifth terminal:
+
+```bash
+cd web
+AUTH_DRIFT_DISABLE_WEBSERVER=1 \
+  npm run test:auth-drift -- e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts
+```
+
 ## Environment Variables
 
 | Variable | Default | Purpose |
@@ -95,6 +148,9 @@ AUTH_DRIFT_DISABLE_WEBSERVER=1 \
 | `AUTH_DRIFT_LOGIN_URL` | `http://127.0.0.1:4176/login` | OAuth login URL. Set this for an external OAuth-enabled staging target. |
 | `AUTH_DRIFT_LOCAL_CONSOLE_URL` | `http://127.0.0.1:4176` | Localhost console URL for the login-to-dashboard spec. |
 | `AUTH_DRIFT_LOCAL_BACKEND_URL` | `http://127.0.0.1:8081` | Localhost backend URL for the login-to-dashboard spec. |
+| `AUTH_DRIFT_FAKE_OAUTH_CONSOLE_URL` | `http://127.0.0.1:4177` | Localhost console URL for the fake OAuth login-to-dashboard spec. |
+| `AUTH_DRIFT_FAKE_OAUTH_BACKEND_URL` | `http://127.0.0.1:8082` | Localhost backend URL for the fake OAuth login-to-dashboard spec. |
+| `AUTH_DRIFT_FAKE_OAUTH_PORT` | `4180` | Local fake GitHub-compatible OAuth provider port. |
 | `AUTH_DRIFT_DISABLE_WEBSERVER` | unset | Set to `1` when the target server is already running or external. |
 | `CI` | unset | Enables CI timeouts and one retry. |
 
@@ -117,7 +173,7 @@ For upstream CI stability, prefer regenerating on Linux because GitHub Actions r
 
 `.github/workflows/auth-drift.yml` runs on:
 
-- Pull requests that touch related auth, login, UI, Playwright, package, or auth-drift workflow files.
+- All pull requests.
 - Pushes to `main` that touch those same paths.
 - A scheduled run every 4 hours.
 - Manual `workflow_dispatch`.
@@ -129,6 +185,7 @@ Jobs:
 | `local-login-ui-drift` | yes | yes | Local mocked OAuth login card and visual baselines. |
 | `hosted-demo-no-login-drift` | yes | yes | `console.kubestellar.io` goes straight to dashboard with no login workflow. |
 | `localhost-login-dashboard-drift` | yes | yes | Builds the backend, starts Vite, clicks the GitHub entry point, and reaches dashboard in dev mode. |
+| `fake-oauth-login-dashboard-drift` | yes | yes | Builds the backend, starts Vite and a local fake GitHub provider, completes the OAuth flow, verifies the fake user through `/api/me`, and reaches dashboard. |
 | `oauth-staging-drift` | no | yes, when `AUTH_DRIFT_LOGIN_URL` is configured | External OAuth staging login UI and authorize redirect contract. |
 
 Every Auth Drift job uploads artifacts for diagnostics, including Playwright JSON results, HTML report output, screenshots/traces/diffs, context JSON, and local backend/Vite logs where applicable.

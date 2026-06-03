@@ -17,18 +17,6 @@ on:
       - '.github/workflows/auth-drift.yml'
       - '.github/workflows/auth-drift-failure-issue.yml'
   pull_request:
-    paths:
-      - 'web/src/components/auth/**'
-      - 'web/src/lib/auth.tsx'
-      - 'web/src/lib/api.ts'
-      - 'web/vite.config.ts'
-      - 'web/e2e/auth-drift/**'
-      - 'web/package.json'
-      - 'web/package-lock.json'
-      - 'web/playwright.config.ts'
-      - '.github/actions/auth-drift-setup/**'
-      - '.github/workflows/auth-drift.yml'
-      - '.github/workflows/auth-drift-failure-issue.yml'
   schedule:
     # Every 4 hours
     - cron: '0 */4 * * *'
@@ -264,6 +252,145 @@ jobs:
             web/e2e/test-results/auth-drift-context/
             /tmp/auth-drift/*.log
             /tmp/auth-drift/*health*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+  fake-oauth-login-dashboard-drift:
+    name: Fake OAuth Login Dashboard Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AUTH_DRIFT_JOB_NAME: Fake OAuth Login Dashboard Drift
+      AUTH_DRIFT_FAKE_OAUTH_URL: http://127.0.0.1:4180
+      AUTH_DRIFT_FAKE_OAUTH_CONSOLE_URL: http://127.0.0.1:4177
+      AUTH_DRIFT_FAKE_OAUTH_BACKEND_URL: http://127.0.0.1:8082
+      AUTH_DRIFT_DISABLE_WEBSERVER: '1'
+      BACKEND_LISTEN_PORT: '8082'
+      GITHUB_CLIENT_ID: auth-drift-client-id-12345
+      GITHUB_CLIENT_SECRET: auth-drift-client-secret-1234567890
+      KC_AGENT_TOKEN: auth-drift-ci-agent-token
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+
+      - uses: ./.github/actions/auth-drift-setup
+
+      - name: Build backend
+        run: |
+          mkdir -p /tmp/auth-drift-fake-oauth
+          go build -o /tmp/auth-drift-fake-oauth/console-bin ./cmd/console
+
+      - name: Start fake OAuth provider
+        working-directory: web
+        run: |
+          node e2e/auth-drift/fake-github-oauth-provider.mjs > /tmp/auth-drift-fake-oauth/fake-oauth.log 2>&1 &
+          echo $! > /tmp/auth-drift-fake-oauth/fake-oauth.pid
+          npx wait-on "${AUTH_DRIFT_FAKE_OAUTH_URL}/health" --timeout 120000
+
+      - name: Start backend
+        run: |
+          JWT_SECRET="auth-drift-ci-jwt-secret-placeholder-not-a-real-key" \
+          DEV_MODE=false \
+          GITHUB_URL="${AUTH_DRIFT_FAKE_OAUTH_URL}" \
+          GITHUB_CLIENT_ID="${GITHUB_CLIENT_ID}" \
+          GITHUB_CLIENT_SECRET="${GITHUB_CLIENT_SECRET}" \
+          PORT=8082 \
+          FRONTEND_URL="${AUTH_DRIFT_FAKE_OAUTH_CONSOLE_URL}" \
+          DATABASE_PATH="/tmp/auth-drift-fake-oauth/console.db" \
+          KC_AGENT_TOKEN="${KC_AGENT_TOKEN}" \
+          NO_LOCAL_AGENT=true \
+          SKIP_ONBOARDING=true \
+          IGNORE_PERSISTED_OAUTH_CREDENTIALS=true \
+          /tmp/auth-drift-fake-oauth/console-bin > /tmp/auth-drift-fake-oauth/backend.log 2>&1 &
+          echo $! > /tmp/auth-drift-fake-oauth/backend.pid
+
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf "${AUTH_DRIFT_FAKE_OAUTH_BACKEND_URL}/health" >/tmp/auth-drift-fake-oauth/backend-health.json; then
+              echo "Backend healthy after ${i}s"
+              cat /tmp/auth-drift-fake-oauth/backend-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Backend did not become healthy"
+          cat /tmp/auth-drift-fake-oauth/backend.log || true
+          exit 1
+
+      - name: Start Vite frontend
+        working-directory: web
+        run: |
+          BACKEND_LISTEN_PORT="${BACKEND_LISTEN_PORT}" \
+          VITE_DEV_MODE=false \
+          npm run dev -- --host 127.0.0.1 --port 4177 > /tmp/auth-drift-fake-oauth/vite.log 2>&1 &
+          echo $! > /tmp/auth-drift-fake-oauth/vite.pid
+          npx wait-on "${AUTH_DRIFT_FAKE_OAUTH_CONSOLE_URL}/login" --timeout 120000
+
+      - name: Write auth drift context
+        working-directory: web
+        run: |
+          mkdir -p e2e/test-results/auth-drift-context
+          node <<'NODE'
+          const fs = require('fs');
+          const context = {
+            job: process.env.AUTH_DRIFT_JOB_NAME,
+            suite: 'fake-oauth-login-dashboard-drift.spec.ts',
+            target: {
+              type: 'localhost-fake-oauth-login-dashboard',
+              consoleUrl: process.env.AUTH_DRIFT_FAKE_OAUTH_CONSOLE_URL,
+              backendUrl: process.env.AUTH_DRIFT_FAKE_OAUTH_BACKEND_URL,
+              providerUrl: process.env.AUTH_DRIFT_FAKE_OAUTH_URL,
+              devMode: false,
+            },
+            expectedContract: 'Localhost requires login, then completes a real OAuth-style authorize, callback, token exchange, fake GitHub user fetch, HttpOnly cookie setup, and dashboard session without real credentials.',
+          };
+          fs.writeFileSync('e2e/test-results/auth-drift-context/context.json', JSON.stringify(context, null, 2));
+          NODE
+
+      - name: Run fake OAuth login dashboard drift tests
+        working-directory: web
+        run: npm run test:auth-drift -- e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts
+
+      - name: Dump fake OAuth server logs on failure
+        if: failure()
+        run: |
+          echo "---- fake-oauth.log ----"
+          cat /tmp/auth-drift-fake-oauth/fake-oauth.log || true
+          echo "---- backend.log ----"
+          cat /tmp/auth-drift-fake-oauth/backend.log || true
+          echo "---- vite.log ----"
+          cat /tmp/auth-drift-fake-oauth/vite.log || true
+
+      - name: Stop fake OAuth local servers
+        if: always()
+        run: |
+          if [ -f /tmp/auth-drift-fake-oauth/vite.pid ]; then
+            kill "$(cat /tmp/auth-drift-fake-oauth/vite.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/auth-drift-fake-oauth/backend.pid ]; then
+            kill "$(cat /tmp/auth-drift-fake-oauth/backend.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/auth-drift-fake-oauth/fake-oauth.pid ]; then
+            kill "$(cat /tmp/auth-drift-fake-oauth/fake-oauth.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload auth drift artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: auth-drift-fake-oauth-login-dashboard
+          path: |
+            web/e2e/test-results/auth-drift/
+            web/e2e/test-results/auth-drift-report/
+            web/e2e/test-results/auth-drift-results/
+            web/e2e/test-results/auth-drift-context/
+            /tmp/auth-drift-fake-oauth/*.log
+            /tmp/auth-drift-fake-oauth/*health*.json
           retention-days: 14
           if-no-files-found: ignore
 
