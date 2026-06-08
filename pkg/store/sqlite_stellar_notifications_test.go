@@ -136,6 +136,7 @@ func TestMarkStellarNotificationRead(t *testing.T) {
 
 	got, err := s.GetStellarNotification(ctx, testNotifUserID, n.ID)
 	require.NoError(t, err)
+	require.NotNil(t, got)
 	assert.True(t, got.Read)
 	assert.NotNil(t, got.ReadAt)
 }
@@ -192,6 +193,7 @@ func TestUpdateStellarNotification(t *testing.T) {
 
 	got, err := s.GetStellarNotification(ctx, testNotifUserID, n.ID)
 	require.NoError(t, err)
+	require.NotNil(t, got)
 	assert.Equal(t, "updated-title", got.Title)
 	assert.Equal(t, "critical", got.Severity)
 	assert.Equal(t, "memory leak", got.RootCause)
@@ -223,6 +225,7 @@ func TestUpdateNotificationBody(t *testing.T) {
 
 	got, err := s.GetStellarNotification(ctx, testNotifUserID, n.ID)
 	require.NoError(t, err)
+	require.NotNil(t, got)
 	assert.Equal(t, "new body content", got.Body)
 }
 
