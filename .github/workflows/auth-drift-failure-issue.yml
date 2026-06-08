@@ -191,6 +191,7 @@ jobs:
             function suiteNameFromSpec(specPath) {
               const value = String(specPath || '');
               if (value.includes('hosted-demo-auth-drift')) return 'Hosted demo no-login drift';
+              if (value.includes('fake-oauth-login-dashboard-drift')) return 'Fake OAuth login dashboard drift';
               if (value.includes('localhost-login-dashboard-drift')) return 'Localhost login dashboard drift';
               if (value.includes('oauth-staging-login-drift')) return 'OAuth login UI drift';
               return 'Auth drift';
@@ -237,6 +238,27 @@ jobs:
                   '# In another terminal:',
                   'cd web',
                   'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              if (includeAll || sourceText.includes('fake-oauth-login-dashboard-drift') || sourceText.includes('localhost-fake-oauth-login-dashboard')) {
+                commands.push([
+                  'Fake OAuth login to dashboard drift:',
+                  '```bash',
+                  'mkdir -p /tmp/auth-drift-fake-oauth',
+                  'go build -o /tmp/auth-drift-fake-oauth/console-bin ./cmd/console',
+                  '# Terminal 1:',
+                  'cd web',
+                  'GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" node e2e/auth-drift/fake-github-oauth-provider.mjs',
+                  '# Terminal 2:',
+                  'JWT_SECRET="auth-drift-local" DEV_MODE=false GITHUB_URL="http://127.0.0.1:4180" GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" PORT=8082 FRONTEND_URL="http://127.0.0.1:4177" DATABASE_PATH="/tmp/auth-drift-fake-oauth/console.db" KC_AGENT_TOKEN="auth-drift-local-agent-token" NO_LOCAL_AGENT=true SKIP_ONBOARDING=true IGNORE_PERSISTED_OAUTH_CREDENTIALS=true /tmp/auth-drift-fake-oauth/console-bin',
+                  '# Terminal 3:',
+                  'cd web',
+                  'BACKEND_LISTEN_PORT=8082 VITE_DEV_MODE=false npm run dev -- --host 127.0.0.1 --port 4177',
+                  '# Terminal 4:',
+                  'cd web',
+                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
                   '```',
                 ].join('\n'));
               }
@@ -480,6 +502,7 @@ jobs:
               '',
               '- Public demo must land on the dashboard with no login page or login controls.',
               '- Localhost must require the login page, click the GitHub entry point, and then land on the dashboard in dev mode.',
+              '- Fake OAuth localhost must complete authorize, callback, token exchange, fake GitHub user fetch, HttpOnly cookie setup, and dashboard session without real credentials.',
               '- OAuth login card, GitHub button, branding, and mobile layout must remain visually stable.',
               '- OAuth authorize redirects must not leak access tokens, ID tokens, refresh tokens, secrets, or credential-like query values.',
               '',
