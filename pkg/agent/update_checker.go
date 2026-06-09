@@ -152,7 +152,7 @@ func (uc *UpdateChecker) TriggerNow(channelOverride string) bool {
 	atomic.StoreInt32(&uc.updateCancelled, 0)
 
 	if !atomic.CompareAndSwapInt32(&uc.updating, 0, 1) {
-		slog.Info("[AutoUpdate] Update already in progress, ignoring duplicate trigger")
+		slog.Debug("[AutoUpdate] Update already in progress, ignoring duplicate trigger")
 		return false
 	}
 
@@ -178,6 +178,9 @@ func (uc *UpdateChecker) TriggerNow(channelOverride string) bool {
 	if channelOverride != "" {
 		safego.GoWith("auto-update-override", func() {
 			defer cleanup()
+			if uc.onUpdateStart != nil {
+				uc.onUpdateStart()
+			}
 
 			uc.mu.Lock()
 			origChannel := uc.channel
@@ -193,6 +196,9 @@ func (uc *UpdateChecker) TriggerNow(channelOverride string) bool {
 	} else {
 		safego.GoWith("auto-update", func() {
 			defer cleanup()
+			if uc.onUpdateStart != nil {
+				uc.onUpdateStart()
+			}
 			uc.checkAndUpdate()
 		})
 	}
