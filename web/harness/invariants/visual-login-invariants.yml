@@ -1,0 +1,84 @@
+invariants:
+  - id: hosted-demo-no-login
+    area: auth
+    severity: critical
+    description: Hosted demo must not require GitHub login.
+    required:
+      - recognizable demo/dashboard content is visible
+    forbidden:
+      - URL matches login|signin|auth
+      - blocking GitHub sign-in button is visible
+      - blank page
+      - unrecoverable loading state
+
+  - id: local-auth-mode-correct
+    area: auth
+    severity: critical
+    description: Local/full Console auth behavior must match configured auth mode.
+    required:
+      - when auth is enabled, expected login affordance appears
+      - when demo/mock mode is enabled, login does not block the demo/dashboard shell
+    forbidden:
+      - wrong auth mode for configured environment
+
+  - id: auth-mode-separation
+    area: auth
+    severity: critical
+    description: Hosted demo and local/full auth behavior must not be accidentally swapped.
+    required:
+      - hosted/demo mode renders without a blocking login
+      - self-hosted/full mode follows its configured auth expectation
+    forbidden:
+      - hosted demo behavior and local/full auth behavior are swapped
+
+  - id: login-layout-stable
+    area: visual
+    severity: major
+    description: Login page must render without overlap, clipping, or missing primary controls.
+    required:
+      - primary login controls are visible and inside the viewport
+    forbidden:
+      - clipped primary controls
+      - overlapping primary controls
+
+  - id: demo-dashboard-visual-smoke
+    area: visual
+    severity: major
+    description: Demo dashboard shell must render primary navigation/content and not be blank or stuck loading.
+    required:
+      - primary navigation or dashboard content is visible
+      - dashboard shell contains meaningful text
+    forbidden:
+      - blank page
+      - unrecoverable loading state
+      - missing primary app shell
+
+  - id: ai-mission-entrypoint-usable-if-enabled
+    area: visual-ai
+    severity: major
+    description: AI Mission entry point should remain visible and usable when the feature is enabled. It should be skipped or marked config-dependent if the feature is not present/enabled.
+    required:
+      - AI Mission entry point is visible when enabled
+    forbidden:
+      - enabled AI Mission entry point is hidden or outside the viewport
+
+  - id: cluster-dashboard-groundtruth-match
+    area: semantic-visual
+    severity: critical
+    description: Cluster dashboard UI should match Kubernetes ground truth when live clusters are configured.
+    required:
+      - UI cluster and workload claims match normalized Kubernetes ground truth
+    forbidden:
+      - wrong cluster count
+      - wrong pod or workload status
+
+  - id: no-critical-runtime-errors
+    area: reliability
+    severity: major
+    description: Important visual/login routes should not emit critical browser console/runtime errors during startup.
+    required:
+      - no unexpected critical console or page errors are emitted during startup
+    forbidden:
+      - uncaught runtime error
+      - framework error overlay
+      - route-breaking failed network request

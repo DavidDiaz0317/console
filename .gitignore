@@ -73,6 +73,9 @@ vendor/
 web/.netlify/
 web/e2e/test-results/
 web/e2e/user-flows/test-results/
+web/e2e/visual-login/test-results/
+web/e2e/visual-login/visual-login-pr-report/
+web/e2e/visual-login/visual-login-intensive-report/
 
 # Storybook
 web/storybook-static/
