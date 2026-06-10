@@ -63,7 +63,7 @@ jobs:
                 color: 'd93f0b',
                 description: 'Automated issue for Auth Drift workflow failures',
               },
-              bug: {
+              'kind/bug': {
                 color: 'd73a4a',
                 description: 'Something is not working',
               },
@@ -71,11 +71,82 @@ jobs:
                 color: 'f9d0c4',
                 description: 'Automated test failure',
               },
+              'kind/regression': {
+                color: 'e11d21',
+                description: 'Categorizes issue or PR as related to a regression from a prior release.',
+              },
               'priority/critical': {
                 color: 'b60205',
                 description: 'Critical priority',
               },
             };
+
+            const GENERIC_SUGGESTED_FILES = [
+              'web/src/components/auth/**',
+              'web/src/lib/auth.tsx',
+              'web/src/lib/api.ts',
+              'web/vite.config.ts',
+              'web/e2e/auth-drift/**',
+              '.github/workflows/auth-drift.yml',
+              '.github/workflows/auth-drift-failure-issue.yml',
+              '.github/actions/auth-drift-setup/action.yml',
+            ];
+
+            const SUITE_DETAILS = [
+              {
+                match: 'hosted-demo-auth-drift',
+                name: 'Hosted demo no-login drift',
+                routes: ['/', '/login'],
+                contract: 'The public demo must land on the dashboard and never expose login UI.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'web/e2e/auth-drift/hosted-demo-auth-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'oauth-staging-login-drift',
+                name: 'OAuth login UI drift',
+                routes: ['/login', '/auth/github'],
+                contract: 'The OAuth login card, GitHub button, branding, and mobile layout must stay stable.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'web/e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'localhost-login-dashboard-drift',
+                name: 'Localhost login dashboard drift',
+                routes: ['/login', '/'],
+                contract: 'Localhost must require login, route through the GitHub entry point, and land on the dashboard.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'cmd/console/**',
+                  'pkg/api/**',
+                  'web/e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'fake-oauth-login-dashboard-drift',
+                name: 'Fake OAuth login dashboard drift',
+                routes: ['/login', '/auth/github', '/auth/github/callback', '/api/me', '/'],
+                contract: 'Fake OAuth must complete authorize, callback, token exchange, fake GitHub user fetch, cookie setup, and dashboard session.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'cmd/console/**',
+                  'pkg/api/**',
+                  'web/e2e/auth-drift/fake-github-oauth-provider.mjs',
+                  'web/e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
+                ],
+              },
+            ];
 
             function escapeCell(value) {
               return String(value ?? '')
@@ -189,12 +260,87 @@ jobs:
             }
 
             function suiteNameFromSpec(specPath) {
-              const value = String(specPath || '');
-              if (value.includes('hosted-demo-auth-drift')) return 'Hosted demo no-login drift';
-              if (value.includes('fake-oauth-login-dashboard-drift')) return 'Fake OAuth login dashboard drift';
-              if (value.includes('localhost-login-dashboard-drift')) return 'Localhost login dashboard drift';
-              if (value.includes('oauth-staging-login-drift')) return 'OAuth login UI drift';
-              return 'Auth drift';
+              return getSuiteDetails(specPath).name;
+            }
+
+            function dedupe(items) {
+              return [...new Set((items || []).filter(Boolean))];
+            }
+
+            function getSuiteDetails(specPath = '', contextSuite = '') {
+              const value = `${String(specPath || '')} ${String(contextSuite || '')}`;
+              return SUITE_DETAILS.find((detail) => value.includes(detail.match)) || {
+                name: 'Auth drift',
+                routes: [],
+                contract: 'Auth-related UI and OAuth contracts must remain stable.',
+                suggestedFiles: GENERIC_SUGGESTED_FILES,
+              };
+            }
+
+            function findContextForFailure(failure, contexts) {
+              const specPath = String(failure?.specPath || '');
+              return contexts.find((ctx) => {
+                const suite = String(ctx?.suite || '').replace(/\.spec\.ts$/, '');
+                return suite && specPath.includes(suite);
+              }) || null;
+            }
+
+            function inferFailureType(failure) {
+              const text = `${failure?.title || ''}\n${failure?.error || ''}`.toLowerCase();
+              if (/tohavescreenshot|screenshot|pixel|snapshot/.test(text)) {
+                return 'visual mismatch';
+              }
+              if (/err_connection|econnrefused|page\.goto|browser has been closed|target page, context or browser has been closed|timed out|timeout|webserver|failed to fetch|net::err/.test(text)) {
+                return 'environment/setup failure';
+              }
+              return 'missing or wrong ui state';
+            }
+
+            function buildTargetSummary(contextValue, details) {
+              const urls = dedupe([
+                sanitizeUrl(contextValue?.target?.loginUrl),
+                sanitizeUrl(contextValue?.target?.demoUrl),
+                sanitizeUrl(contextValue?.target?.consoleUrl),
+                sanitizeUrl(contextValue?.target?.backendUrl),
+                sanitizeUrl(contextValue?.target?.providerUrl),
+              ]);
+              if (urls.length) return urls.join('<br>');
+              return details.routes.length ? details.routes.join('<br>') : 'Not captured';
+            }
+
+            function buildLikelyFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              const prioritizedChanged = changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+              return dedupe([
+                ...prioritizedChanged,
+                ...details.suggestedFiles,
+                ...GENERIC_SUGGESTED_FILES,
+              ]).slice(0, 8);
+            }
+
+            function buildFailureSummaryRows(failures, contexts, prSummaries) {
+              return failures.slice(0, 12).map((failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                const likelyFiles = buildLikelyFiles(details, prSummaries)
+                  .slice(0, 3)
+                  .map((file) => `\`${file}\``)
+                  .join('<br>');
+                const protectedContract = ctx?.expectedContract || details.contract;
+                return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(buildTargetSummary(ctx, details))} | ${escapeCell(protectedContract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
+              });
+            }
+
+            function primaryFailureType(failures) {
+              const counts = failures.reduce((acc, failure) => {
+                const key = inferFailureType(failure);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
             }
 
             function buildReproCommands(failures, contexts) {
@@ -406,9 +552,22 @@ jobs:
               return `| ${escapeCell(suiteNameFromSpec(failure.specPath))} | ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`;
             });
 
+            const summaryRows = buildFailureSummaryRows(failures, contexts, prSummaries);
+
+            const suggestedFiles = dedupe([
+              ...failures.flatMap((failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                return buildLikelyFiles(details, prSummaries);
+              }),
+              ...GENERIC_SUGGESTED_FILES,
+            ]).slice(0, 14);
+
             const errorBlocks = failures.slice(0, 10).map((failure, index) => {
               return [
                 `#### ${index + 1}. ${suiteNameFromSpec(failure.specPath)} - ${failure.title}`,
+                '',
+                `Failure type: \`${inferFailureType(failure)}\``,
                 '',
                 '```text',
                 truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
@@ -444,13 +603,23 @@ jobs:
             const titleSuffix = failedJobs.length
               ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
               : 'workflow';
-            const title = `[Auth Drift] ${titleSuffix} failed`;
+            const title = `[Auth Drift][${primaryFailureType(failures)}] ${titleSuffix} failed`;
 
             let body = [
               marker,
               '# Auth Drift Failure',
               '',
               'Auth Drift failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
+              '',
+              '## AI Triage Summary',
+              '',
+              `- Primary failure type: \`${primaryFailureType(failures)}\``,
+              `- Failed jobs: ${failedJobs.length || 0}`,
+              `- Failed Playwright results parsed: ${failures.length || 0}`,
+              '',
+              '| Suite | Failure Type | Route / Target | Protected Contract | First Files To Inspect |',
+              '|---|---|---|---|---|',
+              summaryRows.length ? summaryRows.join('\n') : '| Auth drift | not parsed | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
               '',
               '## Run Context',
               '',
@@ -512,15 +681,7 @@ jobs:
               '',
               '## Suggested Files to Inspect',
               '',
-              '- `web/src/components/auth/**`',
-              '- `web/src/lib/auth.tsx`',
-              '- `web/src/lib/api.ts`',
-              '- `web/vite.config.ts`',
-              '- backend auth handlers and routes under `cmd/`, `pkg/`, or `internal/`',
-              '- `web/e2e/auth-drift/**`',
-              '- `.github/workflows/auth-drift.yml`',
-              '- `.github/workflows/auth-drift-failure-issue.yml`',
-              '- `.github/actions/auth-drift-setup/action.yml`',
+              ...suggestedFiles.map((file) => `- \`${file}\``),
             ].join('\n');
 
             if (body.length > 60000) {
@@ -547,6 +708,7 @@ jobs:
                 `- Commit: \`${run.head_sha}\``,
                 failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
                 failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
+                `- Primary failure type: \`${primaryFailureType(failures)}\``,
               ].join('\n');
 
               await github.rest.issues.createComment({
