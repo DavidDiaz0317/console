@@ -15,6 +15,8 @@ Supported configuration:
 - `KUBECONFIG_CONTENT`: raw kubeconfig content
 - `KUBECONFIG_PATH`: path to an existing kubeconfig
 - `LIVE_CLUSTER_CONTEXTS`: optional comma-separated context allowlist
+- `LIVE_CLUSTER_EXPECTED_CONTEXTS`: expected reachable context count for required live checks, defaults to `3`
+- `LIVE_CLUSTER_EXPECTED_READY_NODES`: expected Ready node count for required live checks, defaults to `6`
 - `SELF_HOSTED_CONSOLE_URL`: URL of a self-hosted Console connected to the same clusters
 - `KC_AGENT_TOKEN`: optional token for self-hosted agent-backed flows
 
@@ -39,4 +41,4 @@ Not collected:
 - raw kubeconfig
 - cookies or tokens
 
-If `LIVE_CLUSTER_TESTS` is not `true`, the test skips with a clear config-dependent reason. When `LIVE_CLUSTER_TESTS=true`, `kubectl`, kubeconfig access, and `SELF_HOSTED_CONSOLE_URL` are required; the OCI OKE v1 live target expects one reachable context and three Ready nodes.
+If `LIVE_CLUSTER_TESTS` is not `true`, the test skips with a clear config-dependent reason. When `LIVE_CLUSTER_TESTS=true`, `kubectl`, kubeconfig access, and `SELF_HOSTED_CONSOLE_URL` are required. The OCI OKE v1 live target expects three reachable contexts, six total nodes, and six Ready nodes: `ks-console-ci-1`, `ks-console-ci-2`, and `ks-console-ci-3`.

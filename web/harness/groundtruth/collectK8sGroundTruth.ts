@@ -33,6 +33,10 @@ function jsonList<T>(args: string[], kubeconfigPath?: string): T[] {
   }
 }
 
+function jsonListAcrossContexts<T>(contexts: string[], args: string[], kubeconfigPath?: string): T[] {
+  return contexts.flatMap(context => jsonList<T>(['--context', context, ...args], kubeconfigPath))
+}
+
 function configuredContexts(kubeconfigPath?: string): string[] {
   const raw = kubectl(['config', 'get-contexts', '-o', 'name'], kubeconfigPath)
   const contexts = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
@@ -82,15 +86,14 @@ export function collectK8sGroundTruth(runId = process.env.GITHUB_RUN_ID || Strin
     }
   })
 
-  const contextArg = reachable[0] ? ['--context', reachable[0]] : []
   const groundTruth = normalizeK8sState({
     runId,
     contextNames: contexts,
     reachableContexts: reachable,
-    nodes: jsonList<K8sNode>([...contextArg, 'get', 'nodes'], kubeconfigPath),
-    pods: jsonList<K8sPod>([...contextArg, 'get', 'pods', '-A'], kubeconfigPath),
-    namespaces: jsonList<unknown>([...contextArg, 'get', 'namespaces'], kubeconfigPath),
-    deployments: jsonList<K8sDeployment>([...contextArg, 'get', 'deployments', '-A'], kubeconfigPath),
+    nodes: jsonListAcrossContexts<K8sNode>(reachable, ['get', 'nodes'], kubeconfigPath),
+    pods: jsonListAcrossContexts<K8sPod>(reachable, ['get', 'pods', '-A'], kubeconfigPath),
+    namespaces: jsonListAcrossContexts<unknown>(reachable, ['get', 'namespaces'], kubeconfigPath),
+    deployments: jsonListAcrossContexts<K8sDeployment>(reachable, ['get', 'deployments', '-A'], kubeconfigPath),
     createdNamespaces: [],
   })
 

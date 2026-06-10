@@ -1,8 +1,17 @@
 import { test, expect, type Page } from '@playwright/test'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
 
-const EXPECTED_LIVE_CONTEXTS = 1
-const EXPECTED_OCI_OKE_NODES = 3
+function readPositiveIntEnv(name: string, fallback: number) {
+  const rawValue = process.env[name]
+  const value = Number(rawValue || fallback)
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer, got ${rawValue}`)
+  }
+  return value
+}
+
+const EXPECTED_LIVE_CONTEXTS = readPositiveIntEnv('LIVE_CLUSTER_EXPECTED_CONTEXTS', 3)
+const EXPECTED_OCI_OKE_READY_NODES = readPositiveIntEnv('LIVE_CLUSTER_EXPECTED_READY_NODES', 6)
 
 async function expectGroundTruthField(page: Page, field: string, expected: number) {
   const marker = page.locator(`[data-groundtruth-field="${field}"]`)
@@ -34,9 +43,9 @@ test('cluster dashboard can be checked against live Kubernetes ground truth @int
     return
   }
 
-  expect(groundTruth.contexts.reachable, 'expected one reachable live cluster context').toBe(EXPECTED_LIVE_CONTEXTS)
-  expect(groundTruth.nodes.total, 'OKE live cluster must expose exactly three nodes').toBe(EXPECTED_OCI_OKE_NODES)
-  expect(groundTruth.nodes.ready, 'all OKE live cluster nodes must be Ready').toBe(EXPECTED_OCI_OKE_NODES)
+  expect(groundTruth.contexts.reachable, `expected ${EXPECTED_LIVE_CONTEXTS} reachable live cluster contexts`).toBe(EXPECTED_LIVE_CONTEXTS)
+  expect(groundTruth.nodes.total, `OKE live clusters must expose exactly ${EXPECTED_OCI_OKE_READY_NODES} nodes`).toBe(EXPECTED_OCI_OKE_READY_NODES)
+  expect(groundTruth.nodes.ready, `all ${EXPECTED_OCI_OKE_READY_NODES} OKE live cluster nodes must be Ready`).toBe(EXPECTED_OCI_OKE_READY_NODES)
 
   const response = await page.goto(new URL('/clusters?groundtruth=1', selfHostedUrl).toString(), { waitUntil: 'domcontentloaded' })
   expect(response?.ok(), 'self-hosted Console /clusters route must be reachable').toBeTruthy()
