@@ -321,6 +321,42 @@ jobs:
               ]).slice(0, 8);
             }
 
+            function getRelevantChangedFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              return changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+            }
+
+            function inferChangeAssessment(failure, details, prSummaries) {
+              const failureType = inferFailureType(failure);
+              const relevantChangedFiles = getRelevantChangedFiles(details, prSummaries);
+              if (failureType === 'environment/setup failure') {
+                return 'needs human review';
+              }
+              if (failureType === 'missing or wrong ui state') {
+                return 'likely regression';
+              }
+              if (failureType === 'visual mismatch' && relevantChangedFiles.length > 0) {
+                return 'likely intentional ui change';
+              }
+              if (failureType === 'visual mismatch') {
+                return 'likely regression';
+              }
+              return 'needs human review';
+            }
+
+            function suggestedActionForAssessment(assessment) {
+              if (assessment === 'likely intentional ui change') {
+                return 'Review screenshot diff and update baseline only if the UI change is expected.';
+              }
+              if (assessment === 'likely regression') {
+                return 'Inspect the suggested files first and treat this as a regression until disproven.';
+              }
+              return 'Review logs, artifacts, and PR context before deciding whether to update tests or fix code.';
+            }
+
             function buildFailureSummaryRows(failures, contexts, prSummaries) {
               return failures.slice(0, 12).map((failure) => {
                 const ctx = findContextForFailure(failure, contexts);
@@ -330,13 +366,25 @@ jobs:
                   .map((file) => `\`${file}\``)
                   .join('<br>');
                 const protectedContract = ctx?.expectedContract || details.contract;
-                return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(buildTargetSummary(ctx, details))} | ${escapeCell(protectedContract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
+                const assessment = inferChangeAssessment(failure, details, prSummaries);
+                return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(buildTargetSummary(ctx, details))} | ${escapeCell(protectedContract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
               });
             }
 
             function primaryFailureType(failures) {
               const counts = failures.reduce((acc, failure) => {
                 const key = inferFailureType(failure);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function primaryChangeAssessment(failures, contexts, prSummaries) {
+              const counts = failures.reduce((acc, failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                const key = inferChangeAssessment(failure, details, prSummaries);
                 acc[key] = (acc[key] || 0) + 1;
                 return acc;
               }, {});
@@ -568,6 +616,8 @@ jobs:
                 `#### ${index + 1}. ${suiteNameFromSpec(failure.specPath)} - ${failure.title}`,
                 '',
                 `Failure type: \`${inferFailureType(failure)}\``,
+                `Change assessment: \`${inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries)}\``,
+                `Suggested action: ${suggestedActionForAssessment(inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries))}`,
                 '',
                 '```text',
                 truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
@@ -603,7 +653,7 @@ jobs:
             const titleSuffix = failedJobs.length
               ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
               : 'workflow';
-            const title = `[Auth Drift][${primaryFailureType(failures)}] ${titleSuffix} failed`;
+            const title = `[Auth Drift][${primaryFailureType(failures)}][${primaryChangeAssessment(failures, contexts, prSummaries)}] ${titleSuffix} failed`;
 
             let body = [
               marker,
@@ -614,12 +664,19 @@ jobs:
               '## Failure Summary',
               '',
               `- Primary failure type: \`${primaryFailureType(failures)}\``,
+              `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
               `- Failed jobs: ${failedJobs.length || 0}`,
               `- Failed Playwright results parsed: ${failures.length || 0}`,
               '',
-              '| Suite | Failure Type | Route / Target | Protected Contract | First Files To Inspect |',
-              '|---|---|---|---|---|',
-              summaryRows.length ? summaryRows.join('\n') : '| Auth drift | not parsed | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              '| Suite | Failure Type | Change Assessment | Route / Target | Protected Contract | First Files To Inspect |',
+              '|---|---|---|---|---|---|',
+              summaryRows.length ? summaryRows.join('\n') : '| Auth drift | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              '',
+              '### Suggested Decision Rule',
+              '',
+              '- `likely intentional ui change`: review the diff and update baselines only if the product change is expected.',
+              '- `likely regression`: treat as a product regression until disproven.',
+              '- `needs human review`: use logs, artifacts, and PR context to decide whether this is expected or broken.',
               '',
               '## Run Context',
               '',
@@ -709,6 +766,7 @@ jobs:
                 failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
                 failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
                 `- Primary failure type: \`${primaryFailureType(failures)}\``,
+                `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
               ].join('\n');
 
               await github.rest.issues.createComment({
