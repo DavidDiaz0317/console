@@ -82,8 +82,26 @@ func TestGetClusterHealth_Success(t *testing.T) {
 		},
 		Status: corev1.PodStatus{Phase: corev1.PodRunning},
 	}
+	pendingPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod2", Namespace: "default"},
+		Status:     corev1.PodStatus{Phase: corev1.PodPending},
+	}
+	crashLoopPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod3", Namespace: "default"},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name: "c1",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"},
+					},
+				},
+			},
+		},
+	}
 
-	m.clients["test-cluster"] = k8sfake.NewSimpleClientset(node, pod)
+	m.clients["test-cluster"] = k8sfake.NewSimpleClientset(node, pod, pendingPod, crashLoopPod)
 
 	health, err := m.GetClusterHealth(context.Background(), "test-cluster")
 	if err != nil {
@@ -96,8 +114,11 @@ func TestGetClusterHealth_Success(t *testing.T) {
 	if health.NodeCount != 1 || health.ReadyNodes != 1 {
 		t.Errorf("Expected 1/1 nodes, got %d/%d", health.ReadyNodes, health.NodeCount)
 	}
-	if health.PodCount != 1 {
-		t.Errorf("Expected 1 pod, got %d", health.PodCount)
+	if health.PodCount != 3 {
+		t.Errorf("Expected 3 pods, got %d", health.PodCount)
+	}
+	if health.RunningPods != 2 || health.PendingPods != 1 || health.CrashLoopPods != 1 {
+		t.Errorf("Expected running/pending/crashloop pods 2/1/1, got %d/%d/%d", health.RunningPods, health.PendingPods, health.CrashLoopPods)
 	}
 	if health.CpuCores != 2 {
 		t.Errorf("Expected 2 CPU cores, got %d", health.CpuCores)

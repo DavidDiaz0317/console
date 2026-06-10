@@ -26,7 +26,11 @@ type ClusterInfo struct {
 	NeverConnected bool   `json:"neverConnected,omitempty"` // true if cluster failed every health probe since startup
 	Source         string `json:"source,omitempty"`
 	NodeCount      int    `json:"nodeCount,omitempty"`
+	ReadyNodes     int    `json:"readyNodes"`
 	PodCount       int    `json:"podCount,omitempty"`
+	RunningPods    int    `json:"runningPods"`
+	PendingPods    int    `json:"pendingPods"`
+	CrashLoopPods  int    `json:"crashLoopBackOffPods"`
 	IsCurrent      bool   `json:"isCurrent,omitempty"`
 }
 
@@ -42,6 +46,9 @@ type ClusterHealth struct {
 	NodeCount    int    `json:"nodeCount"`
 	ReadyNodes   int    `json:"readyNodes"`
 	PodCount     int    `json:"podCount"`
+	RunningPods  int    `json:"runningPods"`
+	PendingPods  int    `json:"pendingPods"`
+	CrashLoopPods int    `json:"crashLoopBackOffPods"`
 	// Total allocatable resources (capacity)
 	CpuCores     int     `json:"cpuCores"`
 	MemoryBytes  int64   `json:"memoryBytes"`  // Total allocatable memory in bytes

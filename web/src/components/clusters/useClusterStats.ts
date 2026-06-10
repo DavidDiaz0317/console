@@ -19,6 +19,9 @@ export interface ClusterStats {
   totalMemoryGB: number
   totalStorageGB: number
   totalPods: number
+  runningPods: number
+  pendingPods: number
+  crashLoopBackOffPods: number
   totalGPUs: number
   allocatedGPUs: number
   hasResourceData: boolean
@@ -83,7 +86,9 @@ export function useClusterStats({
       unreachable,
       staleContexts,
       healthyNodes: globalFilteredClusters.reduce(
-        (sum, c) => sum + (!isClusterUnreachable(c) && isClusterHealthy(c) ? (c.nodeCount || 0) : 0),
+        (sum, c) => sum + (typeof c.readyNodes === 'number'
+          ? c.readyNodes
+          : (!isClusterUnreachable(c) && isClusterHealthy(c) ? (c.nodeCount || 0) : 0)),
         0,
       ),
       totalNodes: globalFilteredClusters.reduce((sum, c) => sum + (c.nodeCount || 0), 0),
@@ -91,6 +96,9 @@ export function useClusterStats({
       totalMemoryGB: globalFilteredClusters.reduce((sum, c) => sum + (c.memoryGB || 0), 0),
       totalStorageGB: globalFilteredClusters.reduce((sum, c) => sum + (c.storageGB || 0), 0),
       totalPods: globalFilteredClusters.reduce((sum, c) => sum + (c.podCount || 0), 0),
+      runningPods: globalFilteredClusters.reduce((sum, c) => sum + (c.runningPods ?? c.podCount ?? 0), 0),
+      pendingPods: globalFilteredClusters.reduce((sum, c) => sum + (c.pendingPods ?? 0), 0),
+      crashLoopBackOffPods: globalFilteredClusters.reduce((sum, c) => sum + (c.crashLoopBackOffPods ?? 0), 0),
       totalGPUs,
       allocatedGPUs,
       hasResourceData,

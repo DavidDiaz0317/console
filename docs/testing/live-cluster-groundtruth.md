@@ -39,4 +39,4 @@ Not collected:
 - raw kubeconfig
 - cookies or tokens
 
-If `kubectl`, kubeconfig, secrets, or `LIVE_CLUSTER_TESTS=true` are absent, the test skips with a clear config-dependent reason.
+If `LIVE_CLUSTER_TESTS` is not `true`, the test skips with a clear config-dependent reason. When `LIVE_CLUSTER_TESTS=true`, `kubectl`, kubeconfig access, and `SELF_HOSTED_CONSOLE_URL` are required; the OCI OKE v1 live target expects one reachable context and three Ready nodes.

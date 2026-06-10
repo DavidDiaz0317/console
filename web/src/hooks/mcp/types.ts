@@ -11,7 +11,11 @@ export interface ClusterInfo {
   neverConnected?: boolean
   source?: string
   nodeCount?: number
+  readyNodes?: number
   podCount?: number
+  runningPods?: number
+  pendingPods?: number
+  crashLoopBackOffPods?: number
   // Total allocatable resources (capacity)
   cpuCores?: number
   memoryBytes?: number
@@ -64,6 +68,9 @@ export interface ClusterHealth {
   nodeCount: number
   readyNodes: number
   podCount?: number
+  runningPods?: number
+  pendingPods?: number
+  crashLoopBackOffPods?: number
   // Total allocatable resources (capacity)
   cpuCores?: number
   memoryBytes?: number

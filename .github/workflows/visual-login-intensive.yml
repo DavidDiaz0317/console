@@ -64,6 +64,39 @@ jobs:
         if: env.LIVE_CLUSTER_TESTS == 'true'
         uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
 
+      - name: Live ground truth preflight
+        if: env.LIVE_CLUSTER_TESTS == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/visual-login"
+          if [ -n "${KUBECONFIG_B64:-}" ]; then
+            printf '%s' "$KUBECONFIG_B64" | base64 -d > "$RUNNER_TEMP/visual-login/kubeconfig"
+            chmod 600 "$RUNNER_TEMP/visual-login/kubeconfig"
+            export KUBECONFIG="$RUNNER_TEMP/visual-login/kubeconfig"
+            echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+          elif [ -n "${KUBECONFIG_CONTENT:-}" ]; then
+            printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/visual-login/kubeconfig"
+            chmod 600 "$RUNNER_TEMP/visual-login/kubeconfig"
+            export KUBECONFIG="$RUNNER_TEMP/visual-login/kubeconfig"
+            echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+          elif [ -z "${KUBECONFIG:-}" ]; then
+            echo "::error::KUBECONFIG_B64 or KUBECONFIG_CONTENT is required when LIVE_CLUSTER_TESTS=true"
+            exit 1
+          fi
+
+          kubectl config get-contexts
+          if [ -n "${LIVE_CLUSTER_CONTEXTS:-}" ]; then
+            for ctx in ${LIVE_CLUSTER_CONTEXTS//,/ }; do
+              [ -z "$ctx" ] && continue
+              kubectl --context "$ctx" auth can-i list nodes
+              kubectl --context "$ctx" get nodes --no-headers
+            done
+          else
+            kubectl auth can-i list nodes
+            kubectl get nodes --no-headers
+          fi
+
       - name: Run intensive visual/login loop
         id: intensive-tests
         continue-on-error: true
