@@ -34,10 +34,15 @@ import { collectConsoleErrors } from '../helpers/ux-assertions'
 const QUANTUM_ROUTE = '/quantum'
 const SIDEBAR_TIMEOUT_MS = 15_000
 
-const HEADING_QUBIT_GRID = /Quantum Qubit Display/i
-const HEADING_HISTOGRAM = /Execution Histogram/i
-const HEADING_CIRCUIT = /Quantum Circuit/i
-const HEADING_CONTROL_PANEL = /Quantum Demonstration Controls/i
+// Card wrapper titles (CardWrapper renders these as h2). Match the
+// `title` field in `web/src/config/dashboards/quantum.ts`. We use exact
+// strings (not partial regexes) so we don't double-match a body subheading
+// that happens to share text — e.g. "Execution Histogram" appears as both
+// the h2 wrapper title and an h3 body subheading on the histogram card.
+const HEADING_QUBIT_GRID = 'Quantum Qubit Grid'
+const HEADING_HISTOGRAM = 'Execution Histogram'
+const HEADING_CIRCUIT = 'Quantum Circuit Viewer'
+const HEADING_CONTROL_PANEL = 'Quantum Control Panel'
 
 const BADGE_NOT_CONFIGURED = /Not configured/i
 
@@ -55,16 +60,27 @@ async function waitForQuantumPage(page: Page) {
 }
 
 /**
- * Locate a quantum card by its heading text. Mirrors the ancestor-axis pattern
- * used by `web/e2e/visual/app-quantum-visual.spec.ts` so we can scope per-card
- * assertions without depending on internal DOM structure.
+ * Locate a quantum card by its CardWrapper title (h2). Scopes to the dashboard
+ * cards grid (so headings reused elsewhere in the app — sidebar, nav, help
+ * panels — cannot false-match), then selects the `[data-card-type]` wrapper
+ * whose subtree contains a matching level-2 heading.
+ *
+ * Note on `has:` semantics — the inner heading locator is built from `page`,
+ * not from `cardsGrid`. Playwright's `has:` filter applies the inner locator
+ * RELATIVE TO each candidate (each `[data-card-type]`), not against the page
+ * as a whole. Building it off a chained scope like `cardsGrid` breaks this
+ * relative resolution and matches zero cards. Page-rooted is the documented
+ * pattern; the outer `cardsGrid` chain still constrains the candidates.
+ *
+ * Level-2 + `exact: true` anchors on the CardWrapper title and avoids
+ * collisions with body subheadings (e.g. "Execution Histogram" renders as
+ * both an h2 wrapper title AND an h3 body subheading on the histogram card).
  */
-function findQuantumCardByHeading(page: Page, heading: RegExp) {
+function findQuantumCardByHeading(page: Page, heading: string) {
   return page
-    .locator('h2, h3')
-    .filter({ hasText: heading })
-    .first()
-    .locator('xpath=ancestor::*[@data-card-type][1]')
+    .getByTestId('dashboard-cards-grid')
+    .locator('[data-card-type]')
+    .filter({ has: page.getByRole('heading', { level: 2, name: heading, exact: true }) })
 }
 
 test.describe('Quantum demo user flows', () => {
@@ -74,27 +90,29 @@ test.describe('Quantum demo user flows', () => {
     await setupDemoAndNavigate(page, QUANTUM_ROUTE)
     await waitForQuantumPage(page)
 
-    // All four card headings must render. We don't assert visibility on the
-    // ControlPanel's h3 specifically because it lives inside a card body — but
-    // the heading text itself is enough to confirm the card mounted.
-    await expect(
-      page.locator('h2, h3').filter({ hasText: HEADING_QUBIT_GRID }).first()
-    ).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
-    await expect(
-      page.locator('h2, h3').filter({ hasText: HEADING_HISTOGRAM }).first()
-    ).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
-    await expect(
-      page.locator('h2, h3').filter({ hasText: HEADING_CIRCUIT }).first()
-    ).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
-    await expect(
-      page.locator('h2, h3').filter({ hasText: HEADING_CONTROL_PANEL }).first()
-    ).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    const cardsGrid = page.getByTestId('dashboard-cards-grid')
 
-    // Each card must mount with a `data-card-type` ancestor, proving the
+    // Each card's CardWrapper title (h2) must render exactly once AND be
+    // visible to the user. `toHaveCount(1)` catches duplicate-render
+    // regressions that `.first()` would silently mask; `toBeVisible` ensures
+    // the card is actually painted (not collapsed, hidden, or offscreen).
+    // level=2+exact pins the assertion to the wrapper title and not a body
+    // subheading.
+    for (const heading of [HEADING_QUBIT_GRID, HEADING_HISTOGRAM, HEADING_CIRCUIT, HEADING_CONTROL_PANEL]) {
+      const cardHeading = cardsGrid.getByRole('heading', {
+        level: 2,
+        name: heading,
+        exact: true,
+      })
+      await expect(cardHeading).toHaveCount(1, { timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+      await expect(cardHeading).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    }
+
+    // Each card must mount with a `data-card-type` wrapper, proving the
     // CardWrapper rendered the body (not just the heading from a fallback).
     for (const heading of [HEADING_QUBIT_GRID, HEADING_HISTOGRAM, HEADING_CIRCUIT, HEADING_CONTROL_PANEL]) {
       const card = findQuantumCardByHeading(page, heading)
-      await expect(card).toBeAttached({ timeout: PAGE_LOAD_TIMEOUT_MS })
+      await expect(card).toHaveCount(1, { timeout: PAGE_LOAD_TIMEOUT_MS })
     }
 
     // No render-error / cache-hydration crashes should reach the console.
@@ -110,10 +128,14 @@ test.describe('Quantum demo user flows', () => {
     await waitForQuantumPage(page)
 
     const controlPanelCard = findQuantumCardByHeading(page, HEADING_CONTROL_PANEL)
-    await expect(controlPanelCard).toBeAttached({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    await expect(controlPanelCard).toHaveCount(1, { timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-    await expect(
-      controlPanelCard.getByText(BADGE_NOT_CONFIGURED).first()
-    ).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    // Assert uniqueness BEFORE visibility. `toBeVisible` runs in strict mode
+    // (no implicit `.first()`), so if the badge text appears more than once
+    // in the card body — e.g., a tooltip, status pill, or sr-only label —
+    // we want a clear strict-mode error, not a confusing visibility failure.
+    const badge = controlPanelCard.getByText(BADGE_NOT_CONFIGURED)
+    await expect(badge).toHaveCount(1, { timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+    await expect(badge).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
   })
 })
