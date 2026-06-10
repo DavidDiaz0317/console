@@ -1,7 +1,4 @@
 import { defineConfig } from '@playwright/test'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 /**
  * Playwright configuration for full-app visual regression testing.
  *
@@ -16,10 +13,11 @@ import { fileURLToPath } from 'node:url'
  *   cd web && npx playwright test --config e2e/visual/app-visual.config.ts --update-snapshots
  */
 
-const IS_CI = !!process.env.CI
-const BASE_URL = process.env.APP_VISUAL_BASE_URL || 'http://localhost:4173'
+const env =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
 
-const WEB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const IS_CI = !!env.CI
+const BASE_URL = env.APP_VISUAL_BASE_URL || 'http://localhost:4173'
 
 export default defineConfig({
   globalTeardown: '../global-teardown.ts',
@@ -37,6 +35,7 @@ export default defineConfig({
   workers: 1,
   reporter: [
     ['html', { open: 'never', outputFolder: '../app-visual-report' }],
+    ['json', { outputFile: '../test-results/app-visual-results/results.json' }],
     ['list'],
   ],
   use: {
@@ -46,7 +45,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
-  webServer: process.env.APP_VISUAL_BASE_URL
+  webServer: env.APP_VISUAL_BASE_URL
     ? undefined
     : {
         command: 'npm run build && npm run preview -- --port 4173',

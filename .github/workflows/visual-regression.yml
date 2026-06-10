@@ -45,6 +45,33 @@ jobs:
             echo "::notice::No baseline snapshots found — will generate new baselines."
           fi
 
+      - name: Write visual regression context
+        run: |
+          mkdir -p e2e/test-results/app-visual-context
+          node <<'NODE'
+          const fs = require('fs');
+          const context = {
+            suite: 'app-visual-regression',
+            target: {
+              type: 'full-app-visual-regression',
+              baseUrl: 'http://localhost:4173',
+              routes: [
+                '/',
+                '/clusters',
+                '/settings',
+                '/ci-cd',
+                '/cluster-admin',
+                '/compliance',
+                '/workloads',
+                '/quantum'
+              ],
+            },
+            expectedContract: 'Core console routes and visual states must remain stable against committed Chromium/Linux baselines.',
+            baselinePolicy: 'Committed Linux baselines are the source of truth for PR visual regression checks.',
+          };
+          fs.writeFileSync('e2e/test-results/app-visual-context/context.json', JSON.stringify(context, null, 2));
+          NODE
+
       - name: Build frontend
         run: npm run build
 
@@ -86,5 +113,9 @@ jobs:
           name: app-visual-diff
           path: |
             web/e2e/test-results/app-visual/
+            web/e2e/test-results/app-visual-results/
+            web/e2e/test-results/app-visual-context/
             web/e2e/app-visual-report/
+            /tmp/preview.log
           retention-days: 14
+          if-no-files-found: ignore
