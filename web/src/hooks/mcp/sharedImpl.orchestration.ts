@@ -162,14 +162,9 @@ export async function fullFetchClusters() {
       return
     }
 
-    // Skip backend if not authenticated
-    const token = localStorage.getItem(STORAGE_KEY_TOKEN)
-    if (!token) {
-      await finishWithMinDuration({ isLoading: false, isRefreshing: false })
-      return
-    }
-
-    // Fall back to backend API (/api/mcp/clusters works regardless of agent backend)
+    // Fall back to backend API (/api/mcp/clusters works regardless of agent backend).
+    // Let the API wrapper decide auth validity: cookie-only sessions have no
+    // JS-readable bearer token, but authenticate through the HttpOnly cookie.
     const { data } = await api.get<{ clusters: ClusterInfo[] }>('/api/mcp/clusters')
     // Merge new cluster list with existing cached data (preserve distribution, health, etc.)
     const existingClusters = clusterCache.clusters
