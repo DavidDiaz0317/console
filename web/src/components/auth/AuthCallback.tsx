@@ -8,7 +8,8 @@ import { useToast } from '../ui/Toast'
 import { safeGetItem, safeRemoveItem, safeSetItem } from '../../lib/utils/localStorage'
 import { setAgentToken } from '../../hooks/mcp/agentFetch'
 import { emitError, emitGitHubConnected } from '../../lib/analytics'
-import { STORAGE_KEY_HAS_SESSION } from '../../lib/constants/storage'
+import { DEMO_TOKEN_VALUE, STORAGE_KEY_HAS_SESSION, STORAGE_KEY_TOKEN } from '../../lib/constants/storage'
+import { setDemoMode } from '../../lib/demoMode'
 
 /** Timeout (ms) for the /auth/refresh call that confirms the HttpOnly cookie session. */
 const AUTH_REFRESH_TIMEOUT_MS = 5_000
@@ -95,6 +96,10 @@ export function AuthCallback() {
         // Persist the "we have a session" hint so future page loads attempt
         // /auth/refresh from the cookie rather than going straight to login.
         safeSetItem(STORAGE_KEY_HAS_SESSION, 'true')
+        if (safeGetItem(STORAGE_KEY_TOKEN) === DEMO_TOKEN_VALUE) {
+          safeRemoveItem(STORAGE_KEY_TOKEN)
+        }
+        setDemoMode(false, true)
 
         emitGitHubConnected()
         tokenExchangeSucceeded = true
