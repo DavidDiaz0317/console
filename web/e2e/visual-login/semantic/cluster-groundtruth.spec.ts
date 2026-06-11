@@ -30,6 +30,12 @@ async function establishSelfHostedDevSession(page: Page, selfHostedUrl: string) 
       timeout: 15_000,
     })
     .toBe('true')
+  await page.evaluate(() => {
+    localStorage.setItem('kc-demo-mode', 'false')
+    if (localStorage.getItem('token') === 'demo-token') {
+      localStorage.removeItem('token')
+    }
+  })
 }
 
 test('cluster dashboard can be checked against live Kubernetes ground truth @intensive @groundtruth @invariant:cluster-dashboard-groundtruth-match', async ({ page }, testInfo) => {
