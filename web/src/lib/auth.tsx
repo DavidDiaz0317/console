@@ -281,12 +281,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Complete failure — fall through to demo mode
       }
 
-      if (backendUp && oauthConfigured) {
+      const hadPriorSession = !!localStorage.getItem(STORAGE_KEY_HAS_SESSION)
+
+      if (backendUp && (oauthConfigured || hadPriorSession)) {
         // #6925 — Only attempt /auth/refresh if we have evidence of a prior
         // session. The HttpOnly cookie is invisible to JS, so we check the
         // kc-has-session localStorage hint set during the OAuth callback.
         // Without this gate, fresh visitors see a spurious 401 in DevTools.
-        const hadPriorSession = !!localStorage.getItem(STORAGE_KEY_HAS_SESSION)
         if (!hadPriorSession) {
           // No prior session — go straight to login page, no network call
           return
@@ -371,8 +372,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // login page. Do NOT clear kc-has-session here: the server may be
           // temporarily unreachable and the session could still be valid.
         }
-        // OAuth configured + no valid cookie — show login page
-        return
+        if (oauthConfigured) {
+          // OAuth configured + no valid cookie — show login page.
+          return
+        }
       }
       setDemoMode()
       return
