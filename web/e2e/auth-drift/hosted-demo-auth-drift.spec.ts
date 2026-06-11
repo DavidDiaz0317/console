@@ -18,7 +18,8 @@ async function waitForDashboardWithoutLogin(page: Page): Promise<void> {
   })
 
   await expect(page).not.toHaveURL(/\/login(?:[?#]|$)|\/auth\/github/)
-  await expect(page.getByTestId('login-page')).toHaveCount(0)
+  // Demo branch: intentionally inverted for CI failure demonstration.
+  await expect(page.getByTestId('login-page')).toHaveCount(1)
   await expect(page.getByTestId('github-login-button')).toHaveCount(0)
   await expect(page.getByTestId('github-setup-button')).toHaveCount(0)
   await expect(page.getByTestId('demo-mode-button')).toHaveCount(0)
