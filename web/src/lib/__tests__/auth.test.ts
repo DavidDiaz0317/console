@@ -479,6 +479,7 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    window.history.pushState({}, '', '/')
     document.getElementById('session-expiry-warning')?.remove()
     document.getElementById('session-banner-animation')?.remove()
     // Default: backend down, no OAuth
@@ -592,6 +593,23 @@ describe('AuthProvider', () => {
     expect(result.current.token).toBeNull()
     expect(result.current.user).toMatchObject(realUser)
     expect(result.current.isAuthenticated).toBe(true)
+    expect(mockSetGlobalDemoMode).not.toHaveBeenCalled()
+  })
+
+  it('does not auto-enable demo mode while auth callback is establishing a session', async () => {
+    window.history.pushState({}, '', '/auth/callback?onboarded=true')
+    mockCheckOAuthWithRetry.mockResolvedValue({ backendUp: true, oauthConfigured: false })
+
+    const { result } = await renderWithAuthProvider()
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toBeNull()
+    expect(result.current.isAuthenticated).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
     expect(mockSetGlobalDemoMode).not.toHaveBeenCalled()
   })
 

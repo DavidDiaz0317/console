@@ -282,6 +282,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const hadPriorSession = !!localStorage.getItem(STORAGE_KEY_HAS_SESSION)
+      const isAuthCallbackRoute = window.location.pathname.startsWith('/auth/callback')
+
+      if (isAuthCallbackRoute && !hadPriorSession) {
+        return
+      }
 
       if (backendUp && (oauthConfigured || hadPriorSession)) {
         // #6925 — Only attempt /auth/refresh if we have evidence of a prior
