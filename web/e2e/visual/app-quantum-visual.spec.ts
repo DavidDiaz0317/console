@@ -89,4 +89,8 @@ test.describe('Quantum dashboard cards', () => {
     await circuitCard.getByRole('button', { name: '15%', exact: true }).click()
     await expectCardScreenshot(circuitCard, 'app-quantum-circuit-card-zoom-15.png')
   })
+
+  // TODO(#17750): add visual test for the amber QuantumWorkloadBanner state
+  // (data-testid="quantum-workload-banner-not-detected" already present).
+  // Deferred until the upstream build-on-main blocker is resolved.
 })
