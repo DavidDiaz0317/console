@@ -275,8 +275,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // OAUTH_STARTUP_RETRY_ATTEMPTS times before giving up.
       let backendUp = false
       let oauthConfigured = false
+      let inCluster = false
       try {
-        ({ backendUp, oauthConfigured } = await checkOAuthConfiguredWithRetry())
+        ({ backendUp, oauthConfigured, inCluster } = await checkOAuthConfiguredWithRetry())
       } catch {
         // Complete failure — fall through to demo mode
       }
@@ -382,6 +383,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
       }
+      if (backendUp && inCluster && !oauthConfigured) {
+        // In-cluster Helm installs can use backend dev auth even when GitHub
+        // OAuth is not configured. Do not force demo mode over live cluster data.
+        return
+      }
       setDemoMode()
       return
     }
@@ -406,9 +412,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (effectiveToken === DEMO_TOKEN_VALUE) {
       const userExplicitlyEnabledDemo = localStorage.getItem(STORAGE_KEY_DEMO_MODE) === 'true'
       if (!userExplicitlyEnabledDemo) {
-        const { backendUp, oauthConfigured } = await checkOAuthConfigured()
+        const { backendUp, oauthConfigured, inCluster } = await checkOAuthConfigured()
         if (backendUp) {
-          if (!oauthConfigured) {
+          if (!oauthConfigured && !inCluster) {
             // No OAuth — stay in demo mode. The Layout will auto-enable demo mode
             // when the agent is disconnected, providing the same experience as
             // console.kubestellar.io. If an agent connects later, demo mode will
@@ -416,11 +422,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setDemoMode()
             return
           }
-          // OAuth configured — clear demo token so login page appears
+          // OAuth configured, or in-cluster dev auth is available: clear demo
+          // state so the login/session path can use the live backend.
           localStorage.removeItem(STORAGE_KEY_TOKEN)
           cacheUser(null)
           setTokenState(null)
           setUser(null)
+          setGlobalDemoMode(false, true)
           return
         }
       }
@@ -545,16 +553,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Single check: backend availability + OAuth config (the /health endpoint returns both)
     let backendUp = false
     let oauthConfigured = false
+    let inCluster = false
     try {
-      ({ backendUp, oauthConfigured } = await checkOAuthConfigured())
+      ({ backendUp, oauthConfigured, inCluster } = await checkOAuthConfigured())
     } catch {
       // Backend unreachable — fall through to demo mode
     }
 
-    // When backend is up but no OAuth is configured (e.g. Helm install with no agent),
-    // go straight to demo mode — same auto-login behavior as console.kubestellar.io.
-    // If an agent connects later, Layout will auto-disable demo mode for live data.
-    const shouldUseDemoMode = explicitDemoMode || !backendUp || !oauthConfigured
+    // Generic self-hosted/no-OAuth installs use demo mode. In-cluster installs
+    // keep the backend auth route available because they can serve live data
+    // directly from the cluster without a local agent.
+    const shouldUseDemoMode = explicitDemoMode || !backendUp || (!oauthConfigured && !inCluster)
 
     if (shouldUseDemoMode) {
       emitLogin('demo')

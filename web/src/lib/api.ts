@@ -354,6 +354,12 @@ const OAUTH_STARTUP_RETRY_ATTEMPTS = 5
 /** #6055 — delay (ms) between retry attempts. */
 const OAUTH_STARTUP_RETRY_DELAY_MS = 2_000
 
+export interface OAuthConfigStatus {
+  backendUp: boolean
+  oauthConfigured: boolean
+  inCluster: boolean
+}
+
 /**
  * #6055 — Retry wrapper around checkOAuthConfigured() for bootstrap races
  * where the frontend loads before the backend is accepting connections.
@@ -361,8 +367,8 @@ const OAUTH_STARTUP_RETRY_DELAY_MS = 2_000
  * OAUTH_STARTUP_RETRY_DELAY_MS between attempts, exiting early as soon as
  * the backend comes up.
  */
-export async function checkOAuthConfiguredWithRetry(): Promise<{ backendUp: boolean; oauthConfigured: boolean }> {
-  let lastResult: { backendUp: boolean; oauthConfigured: boolean } = { backendUp: false, oauthConfigured: false }
+export async function checkOAuthConfiguredWithRetry(): Promise<OAuthConfigStatus> {
+  let lastResult: OAuthConfigStatus = { backendUp: false, oauthConfigured: false, inCluster: false }
   for (let attempt = 0; attempt < OAUTH_STARTUP_RETRY_ATTEMPTS; attempt++) {
     try {
       const result = await checkOAuthConfigured()
@@ -384,28 +390,30 @@ export async function checkOAuthConfiguredWithRetry(): Promise<{ backendUp: bool
 
 /**
  * Check if the backend has OAuth configured by reading the /health endpoint.
- * Returns { backendUp, oauthConfigured }.
+ * Returns backend availability, OAuth config, and whether the backend is
+ * authoritative for live cluster data.
  */
-export async function checkOAuthConfigured(): Promise<{ backendUp: boolean; oauthConfigured: boolean }> {
+export async function checkOAuthConfigured(): Promise<OAuthConfigStatus> {
   try {
     const response = await fetch(`${API_BASE}/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(BACKEND_HEALTH_CHECK_TIMEOUT_MS),
     })
-    if (!response.ok) return { backendUp: false, oauthConfigured: false }
+    if (!response.ok) return { backendUp: false, oauthConfigured: false, inCluster: false }
     // Parse JSON through the shared helper to avoid unhandled-rejection races in
     // Firefox and keep fallback behavior consistent.
-    const data = await safeParseJsonOrNull<{ oauth_configured?: boolean }>(
+    const data = await safeParseJsonOrNull<{ oauth_configured?: boolean; in_cluster?: boolean }>(
       response,
       '[api] /health OAuth config parse failed',
     )
-    if (!data) return { backendUp: false, oauthConfigured: false }
+    if (!data) return { backendUp: false, oauthConfigured: false, inCluster: false }
     return {
       // Any successful /health response means the backend is reachable.
       // A "degraded" status (e.g. all clusters unreachable) should NOT
       // flip the app into demo mode — only a network failure should (#5401).
       backendUp: true,
       oauthConfigured: !!data.oauth_configured,
+      inCluster: !!data.in_cluster,
     }
   } catch (error: unknown) {
     reportAppError(error, {
@@ -413,7 +421,7 @@ export async function checkOAuthConfigured(): Promise<{ backendUp: boolean; oaut
       level: 'warn',
       fallbackMessage: 'oauth configured check failed',
     })
-    return { backendUp: false, oauthConfigured: false }
+    return { backendUp: false, oauthConfigured: false, inCluster: false }
   }
 }
 

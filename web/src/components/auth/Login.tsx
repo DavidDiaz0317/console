@@ -267,8 +267,8 @@ export function Login() {
     // When the backend is up but OAuth is not configured, show the login page
     // with setup instructions rather than silently auto-logging in as a demo
     // user. Users can still choose "Continue in Demo Mode" from the page.
-    checkOAuthConfiguredWithRetry().then(({ backendUp, oauthConfigured }) => {
-      if (backendUp && !oauthConfigured) {
+    checkOAuthConfiguredWithRetry().then(({ backendUp, oauthConfigured, inCluster }) => {
+      if (backendUp && !oauthConfigured && !inCluster) {
         setShowOAuthSetup(true)
       }
     }).catch(() => { /* checkOAuthConfiguredWithRetry always resolves — defensive catch */ })
