@@ -1,4 +1,5 @@
 name: Visual Regression Failure Issue
+# Demo pass PR: comment-only change to show a normal PR that should not trigger failure issues.
 
 on:
   workflow_run:
