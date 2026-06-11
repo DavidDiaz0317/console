@@ -17,7 +17,8 @@ concurrency:
 jobs:
   app-visual-regression:
     name: App Visual Regression
-    if: github.repository == 'kubestellar/console'
+    # Demo PR in fork: allow running visual regression in this repository too.
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
