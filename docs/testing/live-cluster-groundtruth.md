@@ -43,7 +43,7 @@ Not collected:
 
 If `LIVE_CLUSTER_TESTS` is not `true`, the test skips with a clear config-dependent reason. When `LIVE_CLUSTER_TESTS=true`, `kubectl`, kubeconfig access, and `SELF_HOSTED_CONSOLE_URL` are required. The OCI OKE v1 live target expects three reachable contexts, six total nodes, and six Ready nodes: `ks-console-ci-1`, `ks-console-ci-2`, and `ks-console-ci-3`.
 
-For the OKE LoadBalancer target, deploy Console with the fork image and set `FRONTEND_URL` to the same URL used by `SELF_HOSTED_CONSOLE_URL`; otherwise dev-mode auth redirects back to localhost instead of the load balancer:
+For the OKE LoadBalancer target, deploy Console with the fork image, set `FRONTEND_URL` to the same URL used by `SELF_HOSTED_CONSOLE_URL`, and set `CLUSTER_BACKED_MODE=true` so the frontend treats backend kubeconfig access as live cluster data instead of falling back to local-agent demo mode:
 
 ```bash
 helm upgrade --install kc-live ./deploy/helm/kubestellar-console \
@@ -57,6 +57,8 @@ helm upgrade --install kc-live ./deploy/helm/kubestellar-console \
   --set-string extraEnv[0].value=true \
   --set extraEnv[1].name=FRONTEND_URL \
   --set-string extraEnv[1].value=http://<oci-load-balancer-host>:8080 \
+  --set extraEnv[2].name=CLUSTER_BACKED_MODE \
+  --set-string extraEnv[2].value=true \
   --wait \
   --timeout 10m
 ```

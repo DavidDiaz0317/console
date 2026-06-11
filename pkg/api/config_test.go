@@ -92,6 +92,15 @@ func TestLoadConfigFromEnv_DoesNotAutoEnableDevMode(t *testing.T) {
 	}
 }
 
+func TestLoadConfigFromEnv_ReadsClusterBackedMode(t *testing.T) {
+	t.Setenv("CLUSTER_BACKED_MODE", "true")
+
+	cfg := LoadConfigFromEnv()
+
+	assert.True(t, cfg.ClusterBackedMode,
+		"CLUSTER_BACKED_MODE=true should mark the backend as authoritative for live cluster data")
+}
+
 func TestNewServer_ExplicitDevModeStartsWithoutOAuth(t *testing.T) {
 	cfg := Config{
 		ServerConfig: ServerConfig{

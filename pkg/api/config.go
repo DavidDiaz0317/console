@@ -52,6 +52,7 @@ type ServerConfig struct {
 	EnabledDashboards string // Comma-separated list of dashboard IDs to show in sidebar (empty = all)
 	ConsoleProject    string // White-label project context (e.g., "kubestellar", "crossplane", "istio")
 	NoLocalAgent      bool   // Suppress local kc-agent connections in in-cluster deployments
+	ClusterBackedMode bool   // Treat backend kubeconfig/SA access as authoritative live cluster data
 }
 
 // AuthConfig holds authentication and authorization configuration
@@ -207,6 +208,7 @@ func LoadConfigFromEnv() Config {
 			EnabledDashboards: os.Getenv("ENABLED_DASHBOARDS"),
 			ConsoleProject:    getEnvOrDefault("CONSOLE_PROJECT", "kubestellar"),
 			NoLocalAgent:      os.Getenv("NO_LOCAL_AGENT") == "true",
+			ClusterBackedMode: os.Getenv("CLUSTER_BACKED_MODE") == "true",
 		},
 		AuthConfig: AuthConfig{
 			GitHubClientID: githubClientID,
