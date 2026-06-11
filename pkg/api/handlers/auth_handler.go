@@ -180,6 +180,7 @@ func (h *AuthHandler) GitHubLogin(c *fiber.Ctx) error {
 // devModeLogin creates a test user without GitHub OAuth
 func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 	var devLogin, devEmail, avatarURL, devGitHubID string
+	redirectBase := h.frontendRedirectBase(c)
 
 	// If we have a GitHub token, fetch real user info
 	if h.githubToken != "" {
@@ -204,7 +205,7 @@ func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 	// Find or create dev user
 	user, err := h.store.GetUserByGitHubID(c.UserContext(), devGitHubID)
 	if err != nil {
-		return c.Redirect(h.frontendURL+"/login?error=db_error", fiber.StatusTemporaryRedirect)
+		return c.Redirect(redirectBase+"/login?error=db_error", fiber.StatusTemporaryRedirect)
 	}
 
 	// Build avatar URL if not set from GitHub API
@@ -239,7 +240,7 @@ func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 			Onboarded:   true, // Skip onboarding in dev mode
 		}
 		if err := h.store.CreateUser(c.UserContext(), user); err != nil {
-			return c.Redirect(h.frontendURL+"/login?error=create_user_failed", fiber.StatusTemporaryRedirect)
+			return c.Redirect(redirectBase+"/login?error=create_user_failed", fiber.StatusTemporaryRedirect)
 		}
 	} else {
 		// Update existing user info to match config.
@@ -251,7 +252,7 @@ func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 		user.Role = models.UserRoleAdmin
 		if err := h.store.UpdateUser(c.UserContext(), user); err != nil {
 			slog.Warn("[Auth] failed to update dev user", "user", devLogin, "error", err)
-			return c.Redirect(h.frontendURL+"/login?error=db_error", fiber.StatusTemporaryRedirect)
+			return c.Redirect(redirectBase+"/login?error=db_error", fiber.StatusTemporaryRedirect)
 		}
 	}
 
@@ -265,7 +266,7 @@ func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 	// Generate JWT
 	jwtToken, err := h.generateJWT(user)
 	if err != nil {
-		return c.Redirect(h.frontendURL+"/login?error=jwt_failed", fiber.StatusTemporaryRedirect)
+		return c.Redirect(redirectBase+"/login?error=jwt_failed", fiber.StatusTemporaryRedirect)
 	}
 
 	// Set HttpOnly cookie (primary auth) — the token is NOT passed in the URL
@@ -275,7 +276,7 @@ func (h *AuthHandler) devModeLogin(c *fiber.Ctx) error {
 	audit.Log(c, audit.ActionUserLogin, "user", user.ID.String(), user.GitHubLogin)
 
 	c.Set("Cache-Control", "no-store")
-	redirectURL := fmt.Sprintf("%s/auth/callback?onboarded=%t", h.frontendURL, user.Onboarded)
+	redirectURL := fmt.Sprintf("%s/auth/callback?onboarded=%t", redirectBase, user.Onboarded)
 	return c.Redirect(redirectURL, fiber.StatusTemporaryRedirect)
 }
 
