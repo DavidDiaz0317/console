@@ -111,7 +111,11 @@ export async function fullFetchClusters() {
             // Preserve health data if available
             ...(existing.nodeCount !== undefined ? {
               nodeCount: existing.nodeCount,
+              readyNodes: existing.readyNodes,
               podCount: existing.podCount,
+              runningPods: existing.runningPods,
+              pendingPods: existing.pendingPods,
+              crashLoopBackOffPods: existing.crashLoopBackOffPods,
               cpuCores: existing.cpuCores,
               memoryGB: existing.memoryGB,
               storageGB: existing.storageGB,
@@ -179,7 +183,11 @@ export async function fullFetchClusters() {
           // Preserve health data if available
           ...(existing.nodeCount !== undefined ? {
             nodeCount: existing.nodeCount,
+            readyNodes: existing.readyNodes,
             podCount: existing.podCount,
+            runningPods: existing.runningPods,
+            pendingPods: existing.pendingPods,
+            crashLoopBackOffPods: existing.crashLoopBackOffPods,
             cpuCores: existing.cpuCores,
             memoryGB: existing.memoryGB,
             storageGB: existing.storageGB,
@@ -257,7 +265,11 @@ export async function refreshSingleCluster(clusterName: string): Promise<void> {
       healthy: health.healthy,
       reachable: isReachable,
       nodeCount: health.nodeCount,
+      readyNodes: health.readyNodes,
       podCount: health.podCount,
+      runningPods: health.runningPods,
+      pendingPods: health.pendingPods,
+      crashLoopBackOffPods: health.crashLoopBackOffPods,
       cpuCores: health.cpuCores,
       cpuRequestsCores: health.cpuRequestsCores,
       // Memory/storage metrics
