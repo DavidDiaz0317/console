@@ -13,7 +13,7 @@ export function DashboardView() {
   }
 
   return (
-    <div data-testid="dashboard-page" className="pt-4">
+    <div data-testid="dashboard-page-auth-drift-demo-failure" className="pt-4">
       <DashboardTopSection
         activeNudge={state.activeNudge}
         autoRefresh={state.autoRefresh}
