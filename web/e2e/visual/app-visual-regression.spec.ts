@@ -29,7 +29,8 @@ test.describe('Full-app layout — desktop (1440×900)', () => {
   test.use({ viewport: DESKTOP_VIEWPORT })
 
   test('dashboard with sidebar and card grid', async ({ page }) => {
-    await setupAndNavigate(page)
+    // Demo branch: intentionally navigate to a different page so the screenshot mismatches the dashboard baseline.
+    await setupAndNavigate(page, '/settings')
 
     const grid = page.getByTestId('dashboard-cards-grid')
     await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch((e: Error) => {
