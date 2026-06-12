@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/kubestellar/console/pkg/safego"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,6 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kubestellar/console/pkg/api/handlers"
+	"github.com/kubestellar/console/pkg/safego"
 )
 
 const (
@@ -208,7 +210,7 @@ func (h *NightlyE2EHandler) fetchAllWithContext(ctx context.Context) (*NightlyE2
 
 func (h *NightlyE2EHandler) fetchWorkflowRuns(ctx context.Context, wf NightlyWorkflow) ([]NightlyRun, error) {
 	url := fmt.Sprintf("%s/repos/%s/actions/workflows/%s/runs?per_page=%d",
-		ResolveGitHubAPIBase(), wf.Repo, wf.WorkflowFile, nightlyRunsPerPage)
+		handlers.ResolveGitHubAPIBase(), wf.Repo, wf.WorkflowFile, nightlyRunsPerPage)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -309,7 +311,7 @@ func (h *NightlyE2EHandler) classifyFailures(ctx context.Context, repo string, r
 // detectGPUFailure checks if a run failed due to GPU unavailability.
 func (h *NightlyE2EHandler) detectGPUFailure(ctx context.Context, repo string, runID int64) string {
 	url := fmt.Sprintf("%s/repos/%s/actions/runs/%d/jobs?per_page=30",
-		ResolveGitHubAPIBase(), repo, runID)
+		handlers.ResolveGitHubAPIBase(), repo, runID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -446,7 +448,7 @@ type treeEntry struct {
 // fetchGuideYAMLFiles fetches the repo tree and returns YAML files under guides/
 // that are likely to contain image references (values.yaml, decode.yaml, etc.).
 func (h *NightlyE2EHandler) fetchGuideYAMLFiles(ctx context.Context) []treeEntry {
-	url := fmt.Sprintf("%s/repos/%s/git/trees/main?recursive=1", ResolveGitHubAPIBase(), imageRepo)
+	url := fmt.Sprintf("%s/repos/%s/git/trees/main?recursive=1", handlers.ResolveGitHubAPIBase(), imageRepo)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -502,7 +504,7 @@ func (h *NightlyE2EHandler) fetchGuideYAMLFiles(ctx context.Context) []treeEntry
 
 // fetchBlob fetches a git blob's content by SHA and returns it decoded.
 func (h *NightlyE2EHandler) fetchBlob(ctx context.Context, sha string) string {
-	url := fmt.Sprintf("%s/repos/%s/git/blobs/%s", ResolveGitHubAPIBase(), imageRepo, sha)
+	url := fmt.Sprintf("%s/repos/%s/git/blobs/%s", handlers.ResolveGitHubAPIBase(), imageRepo, sha)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -621,7 +623,7 @@ func isGPUStep(name string) bool {
 // fetchJobLog fetches the plain-text log for a single GitHub Actions job,
 // truncated to the last maxLogBytes bytes (failure info is at the tail).
 func (h *NightlyE2EHandler) fetchJobLog(ctx context.Context, repo string, jobID int64) string {
-	logURL := fmt.Sprintf("%s/repos/%s/actions/jobs/%d/logs", ResolveGitHubAPIBase(), repo, jobID)
+	logURL := fmt.Sprintf("%s/repos/%s/actions/jobs/%d/logs", handlers.ResolveGitHubAPIBase(), repo, jobID)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", logURL, nil)
 	if err != nil {
