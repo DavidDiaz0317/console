@@ -72,6 +72,20 @@ export default tseslint.config(
       }],
     },
   },
+  {
+    files: [
+      'e2e/**/*.ts',
+      'harness/**/*.ts',
+      'playwright.config.ts',
+      'vite.config.ts',
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
   // The shared form components themselves necessarily render native elements —
   // disable the raw-element guards for those files only.
   {
