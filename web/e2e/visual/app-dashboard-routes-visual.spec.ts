@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { setupDemoMode } from '../helpers/setup'
+import { waitForDashboardCardsGrid, waitForDocumentHeightStable } from './visual-settle'
 
 /**
  * Visual regression tests for additional dashboard routes (#11791).
@@ -60,17 +61,14 @@ test.describe('Dashboard routes — desktop (1440×900)', () => {
     test(`${route} page has visual baseline`, async ({ page }) => {
       await setupAndNavigate(page, route)
 
-      // Wait for dashboard page or main content to render
-      const pageLocator = page.getByTestId(testId)
-      await pageLocator.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch(() => {
+      await expect(page.getByTestId(testId)).toBeVisible({
+        timeout: DASHBOARD_SETTLE_TIMEOUT_MS,
+      }).catch(() => {
         // Some routes may use #main-content instead of dashboard-page testid
       })
 
-      // Wait for card grid if present (most dashboard routes render cards)
-      const grid = page.getByTestId('dashboard-cards-grid')
-      await grid.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch(() => {
-        // Not all routes have a cards grid — that's OK
-      })
+      await waitForDashboardCardsGrid(page, DASHBOARD_SETTLE_TIMEOUT_MS)
+      await waitForDocumentHeightStable(page)
 
       await expect(page).toHaveScreenshot(`${prefix}-desktop-1440.png`, {
         fullPage: false,
@@ -80,10 +78,15 @@ test.describe('Dashboard routes — desktop (1440×900)', () => {
     test(`${route} page full-page scroll`, async ({ page }) => {
       await setupAndNavigate(page, route)
 
-      const pageLocator = page.getByTestId(testId)
-      await pageLocator.waitFor({ state: 'visible', timeout: DASHBOARD_SETTLE_TIMEOUT_MS }).catch(() => {
+      await page.getByTestId(testId).waitFor({
+        state: 'visible',
+        timeout: DASHBOARD_SETTLE_TIMEOUT_MS,
+      }).catch(() => {
         // Fallback — main content may render differently
       })
+
+      await waitForDashboardCardsGrid(page, DASHBOARD_SETTLE_TIMEOUT_MS)
+      await waitForDocumentHeightStable(page)
 
       await expect(page).toHaveScreenshot(`${prefix}-fullpage-1440.png`, {
         fullPage: true,
