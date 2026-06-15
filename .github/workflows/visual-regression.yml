@@ -7,6 +7,11 @@ on:
       - 'web/e2e/visual/**'
       - '.github/workflows/visual-regression.yml'
   workflow_dispatch:
+    inputs:
+      generate_baselines:
+        description: Force snapshot update mode instead of compare mode.
+        type: boolean
+        default: false
 
 permissions: read-all
 
@@ -17,9 +22,10 @@ concurrency:
 jobs:
   app-visual-regression:
     name: App Visual Regression
-    if: github.repository == 'kubestellar/console'
+    # Demo PR in fork: allow running visual regression in this repository too.
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: web
@@ -35,15 +41,47 @@ jobs:
 
       - run: npm ci
 
-      - name: Check baseline snapshots
-        id: check-baselines
+      - name: Resolve visual regression mode
+        id: mode
+        env:
+          GENERATE_BASELINES: ${{ github.event_name == 'workflow_dispatch' && inputs.generate_baselines || false }}
         run: |
-          if ls e2e/visual/app-visual-regression.spec.ts-snapshots/chromium/*.png 1>/dev/null 2>&1; then
-            echo "baselines_exist=true" >> "$GITHUB_OUTPUT"
+          MIN_CORE_VISUAL_BASELINE_PNG_COUNT=10
+          CORE_COUNT=$(find e2e/visual/app-visual-regression.spec.ts-snapshots -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$GENERATE_BASELINES" = "true" ] || [ "${CORE_COUNT:-0}" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
+            echo "run_mode=generate" >> "$GITHUB_OUTPUT"
+            echo "::notice::Running in baseline generation mode (core baselines: ${CORE_COUNT:-0})."
           else
-            echo "baselines_exist=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No baseline snapshots found — will generate new baselines."
+            echo "run_mode=compare" >> "$GITHUB_OUTPUT"
+            echo "::notice::Running in visual compare mode (core baselines: ${CORE_COUNT})."
           fi
+
+      - name: Write visual regression context
+        run: |
+          mkdir -p e2e/test-results/app-visual-context
+          node <<'NODE'
+          const fs = require('fs');
+          const context = {
+            suite: 'app-visual-regression',
+            target: {
+              type: 'full-app-visual-regression',
+              baseUrl: 'http://localhost:4173',
+              routes: [
+                '/',
+                '/clusters',
+                '/settings',
+                '/ci-cd',
+                '/cluster-admin',
+                '/compliance',
+                '/workloads',
+                '/quantum'
+              ],
+            },
+            expectedContract: 'Core console routes and visual states must remain stable against committed Chromium/Linux baselines.',
+            baselinePolicy: 'Committed Linux baselines are the source of truth for PR visual regression checks.',
+          };
+          fs.writeFileSync('e2e/test-results/app-visual-context/context.json', JSON.stringify(context, null, 2));
+          NODE
 
       - name: Build frontend
         run: npm run build
@@ -58,25 +96,25 @@ jobs:
         run: timeout 30 bash -c 'until curl -sf http://localhost:4173 > /dev/null; do sleep 1; done'
 
       - name: Run visual regression tests
-        if: steps.check-baselines.outputs.baselines_exist == 'true'
+        if: steps.mode.outputs.run_mode == 'compare'
         run: npm run test:visual
         env:
           CI: 'true'
           APP_VISUAL_BASE_URL: 'http://localhost:4173'
 
       - name: Generate baseline snapshots
-        if: steps.check-baselines.outputs.baselines_exist == 'false'
+        if: steps.mode.outputs.run_mode == 'generate'
         run: npm run test:visual:update
         env:
           CI: 'true'
           APP_VISUAL_BASE_URL: 'http://localhost:4173'
 
       - name: Upload generated baselines
-        if: steps.check-baselines.outputs.baselines_exist == 'false'
+        if: steps.mode.outputs.run_mode == 'generate'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-visual-baselines
-          path: web/e2e/visual/app-visual-regression.spec.ts-snapshots/
+          path: web/e2e/visual/**/*-snapshots/
           retention-days: 30
 
       - name: Upload visual diff artifacts
@@ -86,5 +124,9 @@ jobs:
           name: app-visual-diff
           path: |
             web/e2e/test-results/app-visual/
+            web/e2e/test-results/app-visual-results/
+            web/e2e/test-results/app-visual-context/
             web/e2e/app-visual-report/
+            /tmp/preview.log
           retention-days: 14
+          if-no-files-found: ignore

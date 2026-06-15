@@ -1,15 +1,15 @@
-name: Auth Drift Failure Issue
+name: Visual Regression Failure Issue
 
 on:
   workflow_run:
     workflows:
-      - Auth Drift
+      - Visual Regression
     types:
       - completed
   workflow_dispatch:
     inputs:
       run_id:
-        description: Auth Drift workflow run ID to summarize.
+        description: Visual Regression workflow run ID to summarize.
         required: true
         type: string
 
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   create-or-update-issue:
-    name: Create or Update Auth Drift Failure Issue
+    name: Create or Update Visual Regression Failure Issue
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
@@ -29,23 +29,23 @@ jobs:
       SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
 
     steps:
-      - name: Download Auth Drift artifacts
+      - name: Download visual regression artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
           RUN_ID: ${{ env.SOURCE_RUN_ID }}
         run: |
-          mkdir -p auth-drift-artifacts
+          mkdir -p visual-regression-artifacts
           gh run download "$RUN_ID" \
             --repo "$REPOSITORY" \
-            --dir auth-drift-artifacts || true
-          find auth-drift-artifacts -maxdepth 6 -type f | sort || true
+            --dir visual-regression-artifacts || true
+          find visual-regression-artifacts -maxdepth 6 -type f | sort || true
 
       - name: Create or update failure issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
-          ARTIFACT_ROOT: auth-drift-artifacts
+          ARTIFACT_ROOT: visual-regression-artifacts
         with:
           script: |
             const fs = require('fs');
@@ -59,91 +59,125 @@ jobs:
             const runUrlBase = `${context.serverUrl}/${owner}/${repo}/actions/runs`;
 
             const labelDefs = {
-              'auth-drift-failure': {
+              'visual-regression-failure': {
                 color: 'd93f0b',
-                description: 'Automated issue for Auth Drift workflow failures',
+                description: 'Automated issue for Visual Regression workflow failures',
               },
               'kind/bug': {
                 color: 'd73a4a',
-                description: 'Something is not working',
-              },
-              'test-failure': {
-                color: 'f9d0c4',
-                description: 'Automated test failure',
+                description: 'Categorizes issue or PR as related to a bug.',
               },
               'kind/regression': {
                 color: 'e11d21',
                 description: 'Categorizes issue or PR as related to a regression from a prior release.',
               },
-              'priority/critical': {
-                color: 'b60205',
-                description: 'Critical priority',
+              'test-failure': {
+                color: 'f9d0c4',
+                description: 'Automated test failure',
               },
             };
 
             const GENERIC_SUGGESTED_FILES = [
-              'web/src/components/auth/**',
-              'web/src/lib/auth.tsx',
-              'web/src/lib/api.ts',
-              'web/vite.config.ts',
-              'web/e2e/auth-drift/**',
-              '.github/workflows/auth-drift.yml',
-              '.github/workflows/auth-drift-failure-issue.yml',
-              '.github/actions/auth-drift-setup/action.yml',
+              'web/e2e/visual/**',
+              'web/e2e/helpers/setup.ts',
+              'web/src/App.tsx',
+              'web/src/config/routes.ts',
+              'web/src/components/**',
+              'web/src/hooks/**',
+              'web/src/lib/**',
+              '.github/workflows/visual-regression.yml',
+              '.github/workflows/visual-regression-failure-issue.yml',
             ];
 
             const SUITE_DETAILS = [
               {
-                match: 'hosted-demo-auth-drift',
-                name: 'Hosted demo no-login drift',
-                routes: ['/', '/login'],
-                contract: 'The public demo must land on the dashboard and never expose login UI.',
+                match: 'app-visual-regression.spec.ts',
+                name: 'Core app visual regression',
+                routes: ['/', '/clusters', '/settings'],
+                contract: 'Core dashboard, clusters, and settings layouts must stay stable against committed baselines.',
                 suggestedFiles: [
-                  'web/src/components/auth/**',
-                  'web/src/lib/auth.tsx',
-                  'web/src/lib/api.ts',
-                  'web/e2e/auth-drift/hosted-demo-auth-drift.spec.ts',
+                  'web/e2e/visual/app-visual-regression.spec.ts',
+                  'web/src/App.tsx',
+                  'web/src/config/routes.ts',
+                  'web/src/components/**',
                 ],
               },
               {
-                match: 'oauth-staging-login-drift',
-                name: 'OAuth login UI drift',
-                routes: ['/login', '/auth/github'],
-                contract: 'The OAuth login card, GitHub button, branding, and mobile layout must stay stable.',
+                match: 'app-dashboard-routes-visual.spec.ts',
+                name: 'Dashboard routes visual regression',
+                routes: ['/ci-cd', '/ai-ml', '/workloads', '/alerts', '/gitops', '/pods', '/nodes', '/deploy', '/security', '/cost', '/network', '/storage', '/events', '/compliance', '/helm', '/compute', '/deployments', '/services'],
+                contract: 'Dashboard route layouts must remain visually stable across key product routes.',
                 suggestedFiles: [
-                  'web/src/components/auth/**',
-                  'web/src/lib/auth.tsx',
-                  'web/src/lib/api.ts',
-                  'web/e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                  'web/e2e/visual/app-dashboard-routes-visual.spec.ts',
+                  'web/src/config/routes.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
                 ],
               },
               {
-                match: 'localhost-login-dashboard-drift',
-                name: 'Localhost login dashboard drift',
-                routes: ['/login', '/'],
-                contract: 'Localhost must require login, route through the GitHub entry point, and land on the dashboard.',
+                match: 'app-dashboard-filter-panel-layout.spec.ts',
+                name: 'Dashboard filter panel layout',
+                routes: ['/'],
+                contract: 'The global filter panel must open without shifting dashboard stats or layout.',
                 suggestedFiles: [
-                  'web/src/components/auth/**',
-                  'web/src/lib/auth.tsx',
-                  'web/src/lib/api.ts',
-                  'cmd/console/**',
-                  'pkg/api/**',
-                  'web/e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
+                  'web/e2e/visual/app-dashboard-filter-panel-layout.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
                 ],
               },
               {
-                match: 'fake-oauth-login-dashboard-drift',
-                name: 'Fake OAuth login dashboard drift',
-                routes: ['/login', '/auth/github', '/auth/github/callback', '/api/me', '/'],
-                contract: 'Fake OAuth must complete authorize, callback, token exchange, fake GitHub user fetch, cookie setup, and dashboard session.',
+                match: 'app-compliance-filter-panel-visual.spec.ts',
+                name: 'Compliance filter panel visual regression',
+                routes: ['/compliance'],
+                contract: 'The global filter panel must overlay the compliance page without layout shift.',
                 suggestedFiles: [
-                  'web/src/components/auth/**',
-                  'web/src/lib/auth.tsx',
-                  'web/src/lib/api.ts',
-                  'cmd/console/**',
-                  'pkg/api/**',
-                  'web/e2e/auth-drift/fake-github-oauth-provider.mjs',
-                  'web/e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
+                  'web/e2e/visual/app-compliance-filter-panel-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-cluster-admin-visual.spec.ts',
+                name: 'Cluster admin visual regression',
+                routes: ['/cluster-admin'],
+                contract: 'Cluster admin page layouts must remain visually stable across desktop and tablet viewports.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-cluster-admin-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-cicd-visual.spec.ts',
+                name: 'CI/CD visual regression',
+                routes: ['/ci-cd'],
+                contract: 'CI/CD dashboard screenshots must stay stable across initial, populated, full-page, and tablet views.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-cicd-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-workloads-visual.spec.ts',
+                name: 'Workloads visual regression',
+                routes: ['/workloads'],
+                contract: 'Workloads page layouts and grouped sections must stay visually stable.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-workloads-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-quantum-visual.spec.ts',
+                name: 'Quantum visual regression',
+                routes: ['/quantum'],
+                contract: 'Quantum cards, control panel, and circuit viewer visuals must remain stable.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-quantum-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
                 ],
               },
             ];
@@ -189,7 +223,7 @@ jobs:
                 url.hash = '';
                 return url.toString();
               } catch {
-                return String(value).replace(/([?&][^=]*(?:token|secret|key|password|code)[^=]*=)[^&#\s]+/gi, '$1[redacted]');
+                return String(value);
               }
             }
 
@@ -199,14 +233,25 @@ jobs:
                 if (typeof value === 'string' && /^https?:\/\//i.test(value)) return sanitizeUrl(value);
                 return value;
               }
-              return Object.fromEntries(Object.entries(value).map(([key, child]) => {
-                if (/token|secret|password|key|code/i.test(key)) return [key, '[redacted]'];
-                return [key, sanitizeObject(child)];
-              }));
+              return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, sanitizeObject(child)]));
             }
 
             function testStatusFailed(status) {
               return status && !['passed', 'skipped', 'expected'].includes(status);
+            }
+
+            function dedupe(items) {
+              return [...new Set((items || []).filter(Boolean))];
+            }
+
+            function getSuiteDetails(specPath = '') {
+              const value = String(specPath || '');
+              return SUITE_DETAILS.find((detail) => value.includes(detail.match)) || {
+                name: 'Visual regression',
+                routes: [],
+                contract: 'Visual baselines must remain stable against committed snapshots.',
+                suggestedFiles: GENERIC_SUGGESTED_FILES,
+              };
             }
 
             function collectPlaywrightFailures(report, sourceFile) {
@@ -259,53 +304,37 @@ jobs:
               return failures;
             }
 
-            function suiteNameFromSpec(specPath) {
-              return getSuiteDetails(specPath).name;
-            }
-
-            function dedupe(items) {
-              return [...new Set((items || []).filter(Boolean))];
-            }
-
-            function getSuiteDetails(specPath = '', contextSuite = '') {
-              const value = `${String(specPath || '')} ${String(contextSuite || '')}`;
-              return SUITE_DETAILS.find((detail) => value.includes(detail.match)) || {
-                name: 'Auth drift',
-                routes: [],
-                contract: 'Auth-related UI and OAuth contracts must remain stable.',
-                suggestedFiles: GENERIC_SUGGESTED_FILES,
-              };
-            }
-
-            function findContextForFailure(failure, contexts) {
-              const specPath = String(failure?.specPath || '');
-              return contexts.find((ctx) => {
-                const suite = String(ctx?.suite || '').replace(/\.spec\.ts$/, '');
-                return suite && specPath.includes(suite);
-              }) || null;
-            }
-
             function inferFailureType(failure) {
               const text = `${failure?.title || ''}\n${failure?.error || ''}`.toLowerCase();
               if (/tohavescreenshot|screenshot|pixel|snapshot/.test(text)) {
                 return 'visual mismatch';
               }
-              if (/err_connection|econnrefused|page\.goto|browser has been closed|target page, context or browser has been closed|timed out|timeout|webserver|failed to fetch|net::err/.test(text)) {
+              if (/locator|not.toBeVisible|toBeVisible|toHaveCount|toHaveText|toContainText|waiting for/.test(text)) {
+                return 'missing or wrong ui state';
+              }
+              if (/econnrefused|timed out|timeout|preview|webserver|page\.goto|failed to fetch|net::err|browser has been closed/.test(text)) {
                 return 'environment/setup failure';
               }
-              return 'missing or wrong ui state';
+              return 'visual mismatch';
             }
 
-            function buildTargetSummary(contextValue, details) {
-              const urls = dedupe([
-                sanitizeUrl(contextValue?.target?.loginUrl),
-                sanitizeUrl(contextValue?.target?.demoUrl),
-                sanitizeUrl(contextValue?.target?.consoleUrl),
-                sanitizeUrl(contextValue?.target?.backendUrl),
-                sanitizeUrl(contextValue?.target?.providerUrl),
-              ]);
-              if (urls.length) return urls.join('<br>');
-              return details.routes.length ? details.routes.join('<br>') : 'Not captured';
+            function primaryFailureType(failures) {
+              const counts = failures.reduce((acc, failure) => {
+                const key = inferFailureType(failure);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function primaryChangeAssessment(failures, prSummaries) {
+              const counts = failures.reduce((acc, failure) => {
+                const details = getSuiteDetails(failure.specPath);
+                const key = inferChangeAssessment(failure, details, prSummaries);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
             }
 
             function buildLikelyFiles(details, prSummaries) {
@@ -349,135 +378,38 @@ jobs:
 
             function suggestedActionForAssessment(assessment) {
               if (assessment === 'likely intentional ui change') {
-                return 'Review screenshot diff and update baseline only if the UI change is expected.';
+                return 'Review the screenshot diff and update baselines only if the UI change is expected.';
               }
               if (assessment === 'likely regression') {
-                return 'Inspect the suggested files first and treat this as a regression until disproven.';
+                return 'Treat this as a regression first and inspect the suggested files before updating baselines.';
               }
-              return 'Review logs, artifacts, and PR context before deciding whether to update tests or fix code.';
+              return 'Review logs, visual diffs, and PR intent before deciding whether to update baselines or fix code.';
             }
 
-            function buildFailureSummaryRows(failures, contexts, prSummaries) {
-              return failures.slice(0, 12).map((failure) => {
-                const ctx = findContextForFailure(failure, contexts);
-                const details = getSuiteDetails(failure.specPath, ctx?.suite);
-                const likelyFiles = buildLikelyFiles(details, prSummaries)
-                  .slice(0, 3)
-                  .map((file) => `\`${file}\``)
-                  .join('<br>');
-                const protectedContract = ctx?.expectedContract || details.contract;
-                const assessment = inferChangeAssessment(failure, details, prSummaries);
-                return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(buildTargetSummary(ctx, details))} | ${escapeCell(protectedContract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
-              });
-            }
-
-            function primaryFailureType(failures) {
-              const counts = failures.reduce((acc, failure) => {
-                const key = inferFailureType(failure);
-                acc[key] = (acc[key] || 0) + 1;
-                return acc;
-              }, {});
-              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
-            }
-
-            function primaryChangeAssessment(failures, contexts, prSummaries) {
-              const counts = failures.reduce((acc, failure) => {
-                const ctx = findContextForFailure(failure, contexts);
-                const details = getSuiteDetails(failure.specPath, ctx?.suite);
-                const key = inferChangeAssessment(failure, details, prSummaries);
-                acc[key] = (acc[key] || 0) + 1;
-                return acc;
-              }, {});
-              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
-            }
-
-            function buildReproCommands(failures, contexts) {
-              const sourceText = [
-                ...failures.map((failure) => `${failure.specPath} ${failure.title}`),
-                ...contexts.map((ctx) => `${ctx.suite || ''} ${ctx.target?.type || ''}`),
-              ].join('\n');
-              const includeAll = !sourceText.trim();
-              const commands = [];
-
-              if (includeAll || sourceText.includes('oauth-staging-login-drift') || sourceText.includes('local-vite-mocked-oauth-ui')) {
+            function buildReproCommands(failures) {
+              const specPaths = dedupe(failures.map((failure) => failure.specPath).filter(Boolean));
+              const commands = specPaths.slice(0, 6).map((specPath) => [
+                `${path.basename(specPath)}:`,
+                '```bash',
+                'cd web',
+                `npm run test:visual -- ${specPath}`,
+                '```',
+              ].join('\n'));
+              if (!commands.length) {
                 commands.push([
-                  'Local mocked OAuth login UI drift:',
+                  'Full visual regression suite:',
                   '```bash',
                   'cd web',
-                  'npm run test:auth-drift -- e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                  'npm run test:visual',
                   '```',
                 ].join('\n'));
               }
-
-              if (includeAll || sourceText.includes('hosted-demo-auth-drift') || sourceText.includes('hosted-demo-no-login')) {
-                commands.push([
-                  'Hosted public demo no-login drift:',
-                  '```bash',
-                  'cd web',
-                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/hosted-demo-auth-drift.spec.ts',
-                  '```',
-                ].join('\n'));
-              }
-
-              if (includeAll || sourceText.includes('localhost-login-dashboard-drift') || sourceText.includes('localhost-dev-mode-login-dashboard')) {
-                commands.push([
-                  'Localhost login to dashboard drift:',
-                  '```bash',
-                  'mkdir -p /tmp/auth-drift',
-                  'go build -o /tmp/auth-drift/console-bin ./cmd/console',
-                  'JWT_SECRET="auth-drift-local" DEV_MODE=true PORT=8081 FRONTEND_URL="http://127.0.0.1:4176" DATABASE_PATH="/tmp/auth-drift/console.db" KC_AGENT_TOKEN="auth-drift-local-agent-token" NO_LOCAL_AGENT=true /tmp/auth-drift/console-bin',
-                  '# In another terminal:',
-                  'cd web',
-                  'BACKEND_LISTEN_PORT=8081 VITE_DEV_MODE=true npm run dev -- --host 127.0.0.1 --port 4176',
-                  '# In another terminal:',
-                  'cd web',
-                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
-                  '```',
-                ].join('\n'));
-              }
-
-              if (includeAll || sourceText.includes('fake-oauth-login-dashboard-drift') || sourceText.includes('localhost-fake-oauth-login-dashboard')) {
-                commands.push([
-                  'Fake OAuth login to dashboard drift:',
-                  '```bash',
-                  'mkdir -p /tmp/auth-drift-fake-oauth',
-                  'go build -o /tmp/auth-drift-fake-oauth/console-bin ./cmd/console',
-                  '# Terminal 1:',
-                  'cd web',
-                  'GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" node e2e/auth-drift/fake-github-oauth-provider.mjs',
-                  '# Terminal 2:',
-                  'JWT_SECRET="auth-drift-local" DEV_MODE=false GITHUB_URL="http://127.0.0.1:4180" GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" PORT=8082 FRONTEND_URL="http://127.0.0.1:4177" DATABASE_PATH="/tmp/auth-drift-fake-oauth/console.db" KC_AGENT_TOKEN="auth-drift-local-agent-token" NO_LOCAL_AGENT=true SKIP_ONBOARDING=true IGNORE_PERSISTED_OAUTH_CREDENTIALS=true /tmp/auth-drift-fake-oauth/console-bin',
-                  '# Terminal 3:',
-                  'cd web',
-                  'BACKEND_LISTEN_PORT=8082 VITE_DEV_MODE=false npm run dev -- --host 127.0.0.1 --port 4177',
-                  '# Terminal 4:',
-                  'cd web',
-                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
-                  '```',
-                ].join('\n'));
-              }
-
-              if (includeAll || sourceText.includes('external-oauth-staging')) {
-                commands.push([
-                  'External OAuth staging drift:',
-                  '```bash',
-                  'cd web',
-                  'AUTH_DRIFT_LOGIN_URL="https://<oauth-staging-host>/login" AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/oauth-staging-login-drift.spec.ts',
-                  '```',
-                ].join('\n'));
-              }
-
               return commands.join('\n\n');
-            }
-
-            function markdownList(items) {
-              if (!items.length) return '- None captured';
-              return items.map((item) => `- ${item}`).join('\n');
             }
 
             const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
             if (!repoInfo.has_issues) {
-              core.warning(`GitHub Issues are disabled for ${owner}/${repo}; cannot create an Auth Drift failure issue.`);
+              core.warning(`GitHub Issues are disabled for ${owner}/${repo}; cannot create a Visual Regression failure issue.`);
               return;
             }
 
@@ -487,13 +419,13 @@ jobs:
               run_id: runId,
             });
 
-            if (run.name !== 'Auth Drift') {
-              core.warning(`Run ${runId} is "${run.name}", not "Auth Drift"; skipping.`);
+            if (run.name !== 'Visual Regression') {
+              core.warning(`Run ${runId} is "${run.name}", not "Visual Regression"; skipping.`);
               return;
             }
 
             if (run.conclusion !== 'failure') {
-              core.info(`Auth Drift run ${runId} concluded with ${run.conclusion}; no issue needed.`);
+              core.info(`Visual Regression run ${runId} concluded with ${run.conclusion}; no issue needed.`);
               return;
             }
 
@@ -521,8 +453,8 @@ jobs:
             });
 
             const files = walk(artifactRoot);
-            const jsonResultFiles = files.filter((file) => /auth-drift-results[\\/]+results\.json$|[\\/]results\.json$/i.test(file));
-            const contextFiles = files.filter((file) => /auth-drift-context[\\/]+context\.json$|[\\/]context\.json$/i.test(file));
+            const jsonResultFiles = files.filter((file) => /app-visual-results[\\/]+results\.json$|[\\/]results\.json$/i.test(file));
+            const contextFiles = files.filter((file) => /app-visual-context[\\/]+context\.json$|[\\/]context\.json$/i.test(file));
             const failures = jsonResultFiles.flatMap((file) => {
               const report = readJsonFile(file);
               return report ? collectPlaywrightFailures(report, path.relative(process.cwd(), file)) : [];
@@ -564,9 +496,9 @@ jobs:
             const signatureSource = [
               ...failures.map((failure) => `${failure.specPath}:${failure.title}`).sort(),
               ...failedJobs.map((job) => job.name).sort(),
-            ].filter(Boolean).join('|') || `auth-drift:${runId}`;
+            ].filter(Boolean).join('|') || `visual-regression:${runId}`;
             const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16);
-            const marker = `<!-- auth-drift-signature:${signature} -->`;
+            const marker = `<!-- visual-regression-signature:${signature} -->`;
 
             for (const [name, def] of Object.entries(labelDefs)) {
               try {
@@ -597,36 +529,38 @@ jobs:
             });
 
             const testRows = failures.map((failure) => {
-              return `| ${escapeCell(suiteNameFromSpec(failure.specPath))} | ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`;
+              return `| ${escapeCell(getSuiteDetails(failure.specPath).name)} | ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`;
             });
 
-            const summaryRows = buildFailureSummaryRows(failures, contexts, prSummaries);
+            const summaryRows = failures.slice(0, 12).map((failure) => {
+              const details = getSuiteDetails(failure.specPath);
+              const likelyFiles = buildLikelyFiles(details, prSummaries)
+                .slice(0, 3)
+                .map((file) => `\`${file}\``)
+                .join('<br>');
+              const assessment = inferChangeAssessment(failure, details, prSummaries);
+              return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(details.routes.join(', ') || 'Not captured')} | ${escapeCell(details.contract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
+            });
 
             const suggestedFiles = dedupe([
-              ...failures.flatMap((failure) => {
-                const ctx = findContextForFailure(failure, contexts);
-                const details = getSuiteDetails(failure.specPath, ctx?.suite);
-                return buildLikelyFiles(details, prSummaries);
-              }),
+              ...failures.flatMap((failure) => buildLikelyFiles(getSuiteDetails(failure.specPath), prSummaries)),
               ...GENERIC_SUGGESTED_FILES,
             ]).slice(0, 14);
 
-            const errorBlocks = failures.slice(0, 10).map((failure, index) => {
-              return [
-                `#### ${index + 1}. ${suiteNameFromSpec(failure.specPath)} - ${failure.title}`,
-                '',
-                `Failure type: \`${inferFailureType(failure)}\``,
-                `Change assessment: \`${inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries)}\``,
-                `Suggested action: ${suggestedActionForAssessment(inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries))}`,
-                '',
-                '```text',
-                truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
-                '```',
-                failure.attachments.length
-                  ? `Attachments referenced by Playwright: ${failure.attachments.map((item) => `\`${path.basename(item)}\``).join(', ')}`
-                  : 'No parsed Playwright attachments for this result.',
-              ].join('\n');
-            });
+            const errorBlocks = failures.slice(0, 10).map((failure, index) => [
+              `#### ${index + 1}. ${getSuiteDetails(failure.specPath).name} - ${failure.title}`,
+              '',
+              `Failure type: \`${inferFailureType(failure)}\``,
+              `Change assessment: \`${inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries)}\``,
+              `Suggested action: ${suggestedActionForAssessment(inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries))}`,
+              '',
+              '```text',
+              truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
+              '```',
+              failure.attachments.length
+                ? `Attachments referenced by Playwright: ${failure.attachments.map((item) => `\`${path.basename(item)}\``).join(', ')}`
+                : 'No parsed Playwright attachments for this result.',
+            ].join('\n'));
 
             const prSection = prSummaries.length
               ? prSummaries.map((pr) => [
@@ -636,47 +570,47 @@ jobs:
                   `- Author: ${pr.author}`,
                   `- Branches: ${pr.head} -> ${pr.base}`,
                   `- Changed files (${pr.fileCount}, capped at 50):`,
-                  markdownList(pr.files.map((file) => `\`${file}\``)),
+                  (pr.files || []).length ? (pr.files || []).map((file) => `- \`${file}\``).join('\n') : '- None captured',
                 ].join('\n')).join('\n\n')
               : 'No pull request context was attached to this workflow run.';
 
             const contextSection = contexts.length
               ? contexts.map((ctx, index) => [
-                  `### Context ${index + 1}: ${ctx.job || 'Auth Drift job'}`,
+                  `### Context ${index + 1}: ${ctx.suite || 'Visual Regression context'}`,
                   '',
                   '```json',
                   truncate(JSON.stringify(ctx, null, 2), 2000),
                   '```',
                 ].join('\n')).join('\n\n')
-              : 'No auth drift context JSON artifact was found.';
+              : 'No visual regression context JSON artifact was found.';
 
             const titleSuffix = failedJobs.length
               ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
               : 'workflow';
-            const title = `[Auth Drift][${primaryFailureType(failures)}][${primaryChangeAssessment(failures, contexts, prSummaries)}] ${titleSuffix} failed`;
+            const title = `[Visual Regression][${primaryFailureType(failures)}][${primaryChangeAssessment(failures, prSummaries)}] ${titleSuffix} failed`;
 
             let body = [
               marker,
-              '# Auth Drift Failure',
+              '# Visual Regression Failure',
               '',
-              'Auth Drift failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
+              'Visual Regression failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
               '',
               '## Failure Summary',
               '',
               `- Primary failure type: \`${primaryFailureType(failures)}\``,
-              `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
+              `- Primary change assessment: \`${primaryChangeAssessment(failures, prSummaries)}\``,
               `- Failed jobs: ${failedJobs.length || 0}`,
               `- Failed Playwright results parsed: ${failures.length || 0}`,
               '',
               '| Suite | Failure Type | Change Assessment | Route / Target | Protected Contract | First Files To Inspect |',
               '|---|---|---|---|---|---|',
-              summaryRows.length ? summaryRows.join('\n') : '| Auth drift | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              summaryRows.length ? summaryRows.join('\n') : '| Visual regression | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
               '',
               '### Suggested Decision Rule',
               '',
-              '- `likely intentional ui change`: review the diff and update baselines only if the product change is expected.',
-              '- `likely regression`: treat as a product regression until disproven.',
-              '- `needs human review`: use logs, artifacts, and PR context to decide whether this is expected or broken.',
+              '- `likely intentional ui change`: review the screenshot diff and update baselines only if the product change is expected.',
+              '- `likely regression`: treat the diff as a regression until disproven.',
+              '- `needs human review`: compare the diff, PR intent, and logs before deciding whether to update baselines or fix code.',
               '',
               '## Run Context',
               '',
@@ -718,23 +652,13 @@ jobs:
               '|---|---:|---|',
               artifactRows.length ? artifactRows.join('\n') : '| None found | 0 | n/a |',
               '',
-              'Expected useful artifacts include Playwright JSON results, HTML report, screenshots, traces, visual diffs, backend logs, Vite logs, and health JSON.',
-              '',
               '## Target Context',
               '',
               contextSection,
               '',
-              '## Expected Contracts',
-              '',
-              '- Public demo must land on the dashboard with no login page or login controls.',
-              '- Localhost must require the login page, click the GitHub entry point, and then land on the dashboard in dev mode.',
-              '- Fake OAuth localhost must complete authorize, callback, token exchange, fake GitHub user fetch, HttpOnly cookie setup, and dashboard session without real credentials.',
-              '- OAuth login card, GitHub button, branding, and mobile layout must remain visually stable.',
-              '- OAuth authorize redirects must not leak access tokens, ID tokens, refresh tokens, secrets, or credential-like query values.',
-              '',
               '## Reproduction Commands',
               '',
-              buildReproCommands(failures, contexts),
+              buildReproCommands(failures),
               '',
               '## Suggested Files to Inspect',
               '',
@@ -749,7 +673,7 @@ jobs:
               owner,
               repo,
               state: 'open',
-              labels: 'auth-drift-failure',
+              labels: 'visual-regression-failure',
               per_page: 100,
             });
             const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
@@ -757,7 +681,7 @@ jobs:
             if (existing) {
               const comment = [
                 marker,
-                'Auth Drift is still failing with the same signature.',
+                'Visual Regression is still failing with the same signature.',
                 '',
                 `- Run: [#${runId}](${run.html_url})`,
                 `- Event: \`${run.event}\``,
@@ -766,7 +690,7 @@ jobs:
                 failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
                 failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
                 `- Primary failure type: \`${primaryFailureType(failures)}\``,
-                `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
+                `- Primary change assessment: \`${primaryChangeAssessment(failures, prSummaries)}\``,
               ].join('\n');
 
               await github.rest.issues.createComment({
@@ -775,7 +699,7 @@ jobs:
                 issue_number: existing.number,
                 body: comment,
               });
-              core.info(`Updated existing Auth Drift failure issue #${existing.number}.`);
+              core.info(`Updated existing Visual Regression failure issue #${existing.number}.`);
               return;
             }
 
@@ -786,4 +710,4 @@ jobs:
               body,
               labels: Object.keys(labelDefs),
             });
-            core.info(`Created Auth Drift failure issue #${created.data.number}.`);
+            core.info(`Created Visual Regression failure issue #${created.data.number}.`);
