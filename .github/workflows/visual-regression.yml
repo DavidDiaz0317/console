@@ -47,7 +47,7 @@ jobs:
           GENERATE_BASELINES: ${{ github.event_name == 'workflow_dispatch' && inputs.generate_baselines || false }}
         run: |
           MIN_CORE_VISUAL_BASELINE_PNG_COUNT=10
-          CORE_COUNT=$(find e2e/visual/app-visual-regression.spec.ts-snapshots/chromium -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+          CORE_COUNT=$(find e2e/visual/app-visual-regression.spec.ts-snapshots -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
           if [ "$GENERATE_BASELINES" = "true" ] || [ "${CORE_COUNT:-0}" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
             echo "run_mode=generate" >> "$GITHUB_OUTPUT"
             echo "::notice::Running in baseline generation mode (core baselines: ${CORE_COUNT:-0})."
