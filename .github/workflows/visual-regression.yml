@@ -17,9 +17,10 @@ concurrency:
 jobs:
   app-visual-regression:
     name: App Visual Regression
-    if: github.repository == 'kubestellar/console'
+    # Demo PR in fork: allow running visual regression in this repository too.
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: web
@@ -38,7 +39,7 @@ jobs:
       - name: Check baseline snapshots
         id: check-baselines
         run: |
-          if ls e2e/visual/app-visual-regression.spec.ts-snapshots/chromium/*.png 1>/dev/null 2>&1; then
+          if find e2e/visual -path '*-snapshots/*.png' -print -quit | grep -q .; then
             echo "baselines_exist=true" >> "$GITHUB_OUTPUT"
           else
             echo "baselines_exist=false" >> "$GITHUB_OUTPUT"
@@ -103,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-visual-baselines
-          path: web/e2e/visual/app-visual-regression.spec.ts-snapshots/
+          path: web/e2e/visual/**/*-snapshots/
           retention-days: 30
 
       - name: Upload visual diff artifacts
