@@ -337,7 +337,7 @@
       "[nightly:error-resilience] Error Resilience failed — N-N-N"
     ],
     "total_issues_7d": 75,
-    "repeat_pattern_count": 22,
-    "last_analyzed": "2026-06-14T04:30:54Z"
+    "repeat_pattern_count": 23,
+    "last_analyzed": "2026-06-15T04:31:56Z"
   }
 }
