@@ -1,0 +1,4 @@
+web/src/components/dashboard/DashboardView.tsx
+web/src/components/cards/ClusterStatus.tsx
+web/src/components/clusters/Clusters.tsx
+web/src/components/settings/Settings.tsx

@@ -48,6 +48,11 @@ web/playwright/.cache/
 web/playwright/.auth/
 web/auth.json
 
+# Visual Hive generated plans, baselines, reports, and screenshots
+.visual-hive/
+web/.visual-hive/
+web/e2e/.visual-hive/
+
 # Temp directories
 a2a-rebase/
 a2a-temp/

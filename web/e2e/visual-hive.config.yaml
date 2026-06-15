@@ -1,0 +1,307 @@
+project:
+  name: kubestellar-console
+  type: dashboard
+  defaultBranch: main
+
+targets:
+  # Public hosted demo canary. It must stay login-free and PR-safe because it
+  # does not use repository secrets.
+  hostedDemo:
+    kind: url
+    url: "https://console.kubestellar.io"
+    prSafe: true
+    cost: cheap
+
+  # Frontend-only production preview. Commands are relative to this web/e2e/
+  # config file so Playwright resolves the repo's existing web/node_modules.
+  localPreview:
+    kind: command
+    install: "cd .. && npm ci"
+    build: "cd .. && npm exec -- vite build"
+    serve: "cd .. && npm run preview -- --host 127.0.0.1 --port 4173"
+    url: "http://127.0.0.1:4173"
+    prSafe: true
+    cost: cheap
+
+  # Modeled from web/e2e/auth-drift, but kept out of the default PR run until
+  # Visual Hive owns a stable commandGroup promotion path in this repository.
+  fakeOAuthFullstackPlanOnly:
+    kind: commandGroup
+    setup:
+      - "mkdir -p .visual-hive/tmp/fake-oauth"
+      - "cd ../.. && go build -o web/e2e/.visual-hive/tmp/fake-oauth/console-bin ./cmd/console"
+      - "cd .. && npm ci"
+    services:
+      - name: fake-github-oauth
+        command: "GITHUB_CLIENT_ID=auth-drift-client-id-12345 GITHUB_CLIENT_SECRET=auth-drift-client-secret-1234567890 node auth-drift/fake-github-oauth-provider.mjs"
+        url: "http://127.0.0.1:4180/health"
+        readinessTimeoutMs: 30000
+      - name: backend
+        command: "JWT_SECRET=auth-drift-local DEV_MODE=false GITHUB_URL=http://127.0.0.1:4180 GITHUB_CLIENT_ID=auth-drift-client-id-12345 GITHUB_CLIENT_SECRET=auth-drift-client-secret-1234567890 PORT=8082 FRONTEND_URL=http://127.0.0.1:4177 DATABASE_PATH=.visual-hive/tmp/fake-oauth/console.db KC_AGENT_TOKEN=auth-drift-local-agent-token NO_LOCAL_AGENT=true SKIP_ONBOARDING=true IGNORE_PERSISTED_OAUTH_CREDENTIALS=true .visual-hive/tmp/fake-oauth/console-bin"
+        url: "http://127.0.0.1:8082/healthz"
+        readinessTimeoutMs: 60000
+      - name: frontend
+        command: "cd .. && BACKEND_LISTEN_PORT=8082 VITE_DEV_MODE=false npm run dev -- --host 127.0.0.1 --port 4177"
+        url: "http://127.0.0.1:4177"
+        readinessTimeoutMs: 60000
+    teardown:
+      - "rm -rf .visual-hive/tmp/fake-oauth"
+    url: "http://127.0.0.1:4177"
+    prSafe: false
+    cost: medium
+
+contracts:
+  - id: hosted-demo-never-login
+    description: Public KubeStellar Console demo should render the dashboard without exposing login controls.
+    target: hostedDemo
+    severity: critical
+    runOn:
+      pullRequest: true
+      schedule: true
+    waitFor:
+      - selector: "[data-testid='dashboard-page']"
+        state: visible
+        timeoutMs: 45000
+    selectors:
+      mustExist:
+        - "[data-testid='dashboard-page']"
+        - "[data-testid='dashboard-header']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+        - "[data-testid='github-setup-button']"
+        - "[data-testid='oauth-setup-notice']"
+      textMustNotExist:
+        - "Sign in with GitHub"
+
+  - id: local-preview-dashboard-visual
+    description: Local production preview should render the primary dashboard shell and card grid without secrets.
+    target: localPreview
+    severity: high
+    runOn:
+      pullRequest: true
+      schedule: true
+    waitFor:
+      - selector: "[data-testid='dashboard-page']"
+        state: visible
+        timeoutMs: 45000
+      - selector: "[data-testid='dashboard-cards-grid']"
+        state: visible
+        timeoutMs: 45000
+    selectors:
+      mustExist:
+        - "[data-testid='dashboard-page']"
+        - "[data-testid='dashboard-header']"
+        - "[data-testid='dashboard-cards-grid']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+    screenshots:
+      - name: local-dashboard-desktop
+        route: "/"
+        viewport: desktop
+        mask:
+          - "[data-testid='navbar-agent-status-btn']"
+          - "[data-testid='dashboard-refresh-button']"
+      - name: local-dashboard-mobile
+        route: "/"
+        viewport: mobile
+        mask:
+          - "[data-testid='navbar-agent-status-btn']"
+          - "[data-testid='dashboard-refresh-button']"
+
+  - id: local-preview-dashboard-desktop-shell
+    description: Local production preview should render the desktop dashboard sidebar, header, and card grid.
+    target: localPreview
+    severity: high
+    runOn:
+      pullRequest: true
+      schedule: true
+    waitFor:
+      - selector: "[data-testid='dashboard-page']"
+        state: visible
+        timeoutMs: 45000
+      - selector: "[data-testid='sidebar']"
+        state: visible
+        timeoutMs: 45000
+    selectors:
+      mustExist:
+        - "[data-testid='dashboard-page']"
+        - "[data-testid='dashboard-header']"
+        - "[data-testid='dashboard-cards-grid']"
+        - "[data-testid='sidebar']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+
+  - id: local-preview-clusters-visual
+    description: Local production preview should render the clusters route shell.
+    target: localPreview
+    severity: high
+    runOn:
+      pullRequest: true
+      schedule: true
+    waitFor:
+      - selector: "[data-testid='clusters-page']"
+        state: visible
+        timeoutMs: 45000
+    selectors:
+      mustExist:
+        - "[data-testid='clusters-page']"
+        - "[data-testid='dashboard-header']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+    screenshots:
+      - name: local-clusters-desktop
+        route: "/clusters"
+        viewport: desktop
+        mask:
+          - "[data-testid='navbar-agent-status-btn']"
+          - "[data-testid='dashboard-refresh-button']"
+
+  - id: local-preview-settings-visual
+    description: Local production preview should render the settings route shell.
+    target: localPreview
+    severity: medium
+    runOn:
+      pullRequest: true
+      schedule: true
+    waitFor:
+      - selector: "[data-testid='settings-page']"
+        state: visible
+        timeoutMs: 45000
+    selectors:
+      mustExist:
+        - "[data-testid='settings-page']"
+        - "[data-testid='settings-title']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+    screenshots:
+      - name: local-settings-desktop
+        route: "/settings"
+        viewport: desktop
+        mask:
+          - "[data-testid='navbar-agent-status-btn']"
+
+  - id: fake-oauth-login-dashboard-plan
+    description: Plan-only contract for the existing fake OAuth fullstack flow; not executed from untrusted PRs yet.
+    target: fakeOAuthFullstackPlanOnly
+    severity: critical
+    runOn:
+      pullRequest: false
+      schedule: false
+    waitFor:
+      - selector: "[data-testid='dashboard-page']"
+        state: visible
+        timeoutMs: 60000
+    selectors:
+      mustExist:
+        - "[data-testid='dashboard-page']"
+        - "[data-testid='navbar-profile-btn']"
+      mustNotExist:
+        - "[data-testid='login-page']"
+        - "[data-testid='github-login-button']"
+    screenshots:
+      - name: fake-oauth-dashboard
+        route: "/"
+        viewport: desktop
+
+viewports:
+  desktop:
+    width: 1440
+    height: 900
+  tablet:
+    width: 768
+    height: 1024
+  mobile:
+    width: 390
+    height: 844
+
+visual:
+  maxDiffPixelRatio: 0.1
+  updateSnapshots: false
+  failOnMissingBaselineInCI: true
+  snapshotDir: ".visual-hive/snapshots"
+  artifactDir: ".visual-hive/artifacts"
+
+selection:
+  changedFiles:
+    - pattern: "docs/**"
+      contracts: []
+      risk: low
+    - pattern: "web/src/components/auth/**"
+      contracts:
+        - hosted-demo-never-login
+        - fake-oauth-login-dashboard-plan
+      risk: critical
+    - pattern: "web/src/lib/auth*"
+      contracts:
+        - hosted-demo-never-login
+        - fake-oauth-login-dashboard-plan
+      risk: critical
+    - pattern: "web/e2e/auth-drift/**"
+      contracts:
+        - hosted-demo-never-login
+        - fake-oauth-login-dashboard-plan
+      risk: critical
+    - pattern: "pkg/api/**auth**"
+      contracts:
+        - fake-oauth-login-dashboard-plan
+      risk: high
+    - pattern: "web/src/components/dashboard/**"
+      contracts:
+        - local-preview-dashboard-desktop-shell
+        - local-preview-dashboard-visual
+      risk: high
+    - pattern: "web/src/components/cards/**"
+      contracts:
+        - local-preview-dashboard-desktop-shell
+        - local-preview-dashboard-visual
+      risk: high
+    - pattern: "web/src/lib/dashboards/**"
+      contracts:
+        - local-preview-dashboard-desktop-shell
+        - local-preview-dashboard-visual
+      risk: high
+    - pattern: "web/src/components/clusters/**"
+      contracts:
+        - local-preview-clusters-visual
+      risk: high
+    - pattern: "web/src/hooks/mcp/**"
+      contracts:
+        - local-preview-clusters-visual
+      risk: medium
+    - pattern: "web/src/components/settings/**"
+      contracts:
+        - local-preview-settings-visual
+      risk: medium
+
+mutation:
+  enabled: true
+  runOn:
+    schedule: false
+  minScore: 0.75
+  operators:
+    - id: force-login-on-demo
+      contracts:
+        - hosted-demo-never-login
+    - api-500
+    - empty-data
+    - mobile-overflow
+
+ai:
+  enabled: false
+  provider: none
+  neverSoleOracle: true
+  createIssuePrompt: true
+  maxDailyRuns: 5
+
+github:
+  enabled: true
+  issueLabels:
+    - visual-hive
+    - kubestellar-console
+    - test-failure
+  commentMarker: "<!-- visual-hive-report -->"

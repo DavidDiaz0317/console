@@ -1,0 +1,122 @@
+name: Visual Hive PR
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - "pkg/**"
+      - "cmd/**"
+      - "docs/**"
+      - ".github/workflows/visual-hive-pr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  visual-hive:
+    name: PR-safe visual contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout console
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout Visual Hive
+        uses: actions/checkout@v4
+        with:
+          repository: DavidDiaz0317/visual-hive
+          ref: codex/v0.2-core-completion
+          path: visual-hive-tooling
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            visual-hive-tooling/package-lock.json
+
+      - name: Install Visual Hive
+        working-directory: visual-hive-tooling
+        run: npm ci
+
+      - name: Build Visual Hive
+        working-directory: visual-hive-tooling
+        run: npm run build
+
+      - name: Install console frontend
+        working-directory: web
+        run: npm ci
+
+      - name: Build console frontend for Visual Hive
+        working-directory: web
+        run: npm exec -- vite build
+
+      - name: Install Playwright browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Collect changed files
+        shell: bash
+        run: |
+          mkdir -p .visual-hive
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}"...HEAD > .visual-hive/changed-files.txt
+          cat .visual-hive/changed-files.txt
+
+      - name: Visual Hive doctor
+        run: node visual-hive-tooling/packages/cli/dist/index.js doctor --config web/e2e/visual-hive.config.yaml
+
+      - name: Visual Hive plan
+        run: >
+          node visual-hive-tooling/packages/cli/dist/index.js plan
+          --config web/e2e/visual-hive.config.yaml
+          --mode pr
+          --changed-files .visual-hive/changed-files.txt
+          --ci
+
+      - name: Visual Hive run (seed local baselines)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+        run: >
+          node visual-hive-tooling/packages/cli/dist/index.js run
+          --config web/e2e/visual-hive.config.yaml
+          --skip-install
+          --skip-build
+
+      - name: Visual Hive run (CI verification)
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+        run: >
+          node visual-hive-tooling/packages/cli/dist/index.js run
+          --config web/e2e/visual-hive.config.yaml
+          --skip-install
+          --skip-build
+          --ci
+
+      - name: Visual Hive triage
+        if: always()
+        run: node visual-hive-tooling/packages/cli/dist/index.js triage --config web/e2e/visual-hive.config.yaml
+
+      - name: Visual Hive report
+        if: always()
+        run: >
+          node visual-hive-tooling/packages/cli/dist/index.js report
+          --config web/e2e/visual-hive.config.yaml
+          --github-step-summary
+
+      - name: Upload Visual Hive artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-hive-pr
+          path: |
+            .visual-hive
+            web/.visual-hive
+            web/e2e/.visual-hive
+          include-hidden-files: true
+          if-no-files-found: warn

@@ -1,0 +1,3 @@
+web/src/lib/auth.tsx
+web/src/components/auth/Login.tsx
+web/e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts

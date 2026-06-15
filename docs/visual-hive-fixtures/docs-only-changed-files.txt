@@ -1,0 +1,2 @@
+docs/visual-hive.md
+docs/getting-started.md
