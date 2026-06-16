@@ -17,9 +17,11 @@ node visual-hive-tooling/packages/cli/dist/index.js triage --config web/e2e/visu
 node visual-hive-tooling/packages/cli/dist/index.js report --config web/e2e/visual-hive.config.yaml --github-step-summary
 ```
 
-The first run creates deterministic local baselines in `web/e2e/.visual-hive/snapshots` for that CI job. The second run enforces those baselines with `--ci`. The generated `.visual-hive` artifacts are uploaded for review.
+The workflow sets `VISUAL_HIVE_CI=false` for the first run so Visual Hive can create deterministic local baselines even though GitHub Actions sets `CI=true`. The second run sets `VISUAL_HIVE_CI=true` and enforces those baselines with `--ci`. The generated `.visual-hive` artifacts are uploaded for review.
 
 The visual tolerance is intentionally broad for this dogfood pass because the console demo data, banners, and agent status surfaces can change between page loads. The selector contracts are the strict oracle; screenshots provide route-level drift evidence without making PRs fail on expected demo data churn.
+
+The frontend-only local preview also records expected API/backend console noise such as `502`, `503`, `ERR_CONNECTION_REFUSED`, and CORS messages. Those messages are captured in `report.json` for evidence, but they are not the pass/fail oracle for this no-secret PR lane.
 
 The current PR-safe lanes are:
 
@@ -28,6 +30,8 @@ The current PR-safe lanes are:
 - `local-preview-dashboard-desktop-shell`: checks the desktop sidebar, header, and card grid without reusing that sidebar assertion for mobile.
 - `local-preview-clusters-visual`: checks the `/clusters` route-level shell.
 - `local-preview-settings-visual`: checks the `/settings` route-level shell.
+
+Docs-only PRs are intentionally modeled as a no-op. The config uses `selection.ignoreChangedFiles` for documentation and Markdown-only changes, so `docs/visual-hive-fixtures/docs-only-changed-files.txt` should produce an empty plan with ignored-file evidence instead of starting the preview server.
 
 ## What Does Not Run on PRs Yet
 

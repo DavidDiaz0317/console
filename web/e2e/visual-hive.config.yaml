@@ -78,6 +78,13 @@ contracts:
     description: Local production preview should render the primary dashboard shell and card grid without secrets.
     target: localPreview
     severity: high
+    failOnConsoleError: false
+    expectedConsoleErrors:
+      - "Failed to load resource: the server responded with a status of 502"
+      - "Failed to load resource: the server responded with a status of 503"
+      - "net::ERR_CONNECTION_REFUSED"
+      - "net::ERR_FAILED"
+      - "blocked by CORS policy"
     runOn:
       pullRequest: true
       schedule: true
@@ -114,6 +121,13 @@ contracts:
     description: Local production preview should render the desktop dashboard sidebar, header, and card grid.
     target: localPreview
     severity: high
+    failOnConsoleError: false
+    expectedConsoleErrors:
+      - "Failed to load resource: the server responded with a status of 502"
+      - "Failed to load resource: the server responded with a status of 503"
+      - "net::ERR_CONNECTION_REFUSED"
+      - "net::ERR_FAILED"
+      - "blocked by CORS policy"
     runOn:
       pullRequest: true
       schedule: true
@@ -138,6 +152,13 @@ contracts:
     description: Local production preview should render the clusters route shell.
     target: localPreview
     severity: high
+    failOnConsoleError: false
+    expectedConsoleErrors:
+      - "Failed to load resource: the server responded with a status of 502"
+      - "Failed to load resource: the server responded with a status of 503"
+      - "net::ERR_CONNECTION_REFUSED"
+      - "net::ERR_FAILED"
+      - "blocked by CORS policy"
     runOn:
       pullRequest: true
       schedule: true
@@ -164,6 +185,13 @@ contracts:
     description: Local production preview should render the settings route shell.
     target: localPreview
     severity: medium
+    failOnConsoleError: false
+    expectedConsoleErrors:
+      - "Failed to load resource: the server responded with a status of 502"
+      - "Failed to load resource: the server responded with a status of 503"
+      - "net::ERR_CONNECTION_REFUSED"
+      - "net::ERR_FAILED"
+      - "blocked by CORS policy"
     runOn:
       pullRequest: true
       schedule: true
@@ -227,6 +255,13 @@ visual:
   artifactDir: ".visual-hive/artifacts"
 
 selection:
+  ignoreChangedFiles:
+    - pattern: "docs/**"
+      reason: "documentation-only change"
+    - pattern: "**/*.md"
+      reason: "markdown-only change"
+    - pattern: "*.md"
+      reason: "root markdown-only change"
   changedFiles:
     - pattern: "docs/**"
       contracts: []

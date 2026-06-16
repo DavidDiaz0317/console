@@ -82,6 +82,7 @@ jobs:
       - name: Visual Hive run (seed local baselines)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          VISUAL_HIVE_CI: "false"
         run: >
           node visual-hive-tooling/packages/cli/dist/index.js run
           --config web/e2e/visual-hive.config.yaml
@@ -91,6 +92,7 @@ jobs:
       - name: Visual Hive run (CI verification)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
+          VISUAL_HIVE_CI: "true"
         run: >
           node visual-hive-tooling/packages/cli/dist/index.js run
           --config web/e2e/visual-hive.config.yaml
