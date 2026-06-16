@@ -100,6 +100,18 @@ jobs:
           --skip-build
           --ci
 
+      - name: Visual Hive management artifacts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node visual-hive-tooling/packages/cli/dist/index.js coverage --config web/e2e/visual-hive.config.yaml --mode pr --changed-files .visual-hive/changed-files.txt
+          node visual-hive-tooling/packages/cli/dist/index.js targets --config web/e2e/visual-hive.config.yaml --mode pr --changed-files .visual-hive/changed-files.txt
+          node visual-hive-tooling/packages/cli/dist/index.js contracts --config web/e2e/visual-hive.config.yaml --mode pr --changed-files .visual-hive/changed-files.txt
+          node visual-hive-tooling/packages/cli/dist/index.js schedules --config web/e2e/visual-hive.config.yaml --changed-files .visual-hive/changed-files.txt
+          node visual-hive-tooling/packages/cli/dist/index.js workflows --config web/e2e/visual-hive.config.yaml --workflow-dir ../../.github/workflows
+          node visual-hive-tooling/packages/cli/dist/index.js providers --config web/e2e/visual-hive.config.yaml --mock-results
+
       - name: Visual Hive triage
         if: always()
         run: node visual-hive-tooling/packages/cli/dist/index.js triage --config web/e2e/visual-hive.config.yaml
@@ -110,6 +122,14 @@ jobs:
           node visual-hive-tooling/packages/cli/dist/index.js report
           --config web/e2e/visual-hive.config.yaml
           --github-step-summary
+
+      - name: Visual Hive history and artifact index
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node visual-hive-tooling/packages/cli/dist/index.js history --config web/e2e/visual-hive.config.yaml --record
+          node visual-hive-tooling/packages/cli/dist/index.js artifacts --config web/e2e/visual-hive.config.yaml
 
       - name: Upload Visual Hive artifacts
         if: always()

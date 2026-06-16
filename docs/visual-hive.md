@@ -19,6 +19,19 @@ node visual-hive-tooling/packages/cli/dist/index.js report --config web/e2e/visu
 
 The workflow sets `VISUAL_HIVE_CI=false` for the first run so Visual Hive can create deterministic local baselines even though GitHub Actions sets `CI=true`. The second run sets `VISUAL_HIVE_CI=true` and enforces those baselines with `--ci`. The generated `.visual-hive` artifacts are uploaded for review.
 
+After the deterministic verification pass, the workflow also writes the management-plane artifacts consumed by the Visual Hive Control Plane:
+
+- `coverage.json`
+- `targets.json`
+- `contracts.json`
+- `schedules.json`
+- `workflows.json`
+- `provider-results.json`
+- `history.json`
+- `artifacts-index.json`
+
+These commands do not introduce secrets or paid provider calls. `providers --mock-results` normalizes Playwright and optional-provider metadata from local artifacts only, and `workflows` audits GitHub Actions YAML for least-privilege Visual Hive safety invariants.
+
 The visual tolerance is intentionally broad for this dogfood pass because the console demo data, banners, and agent status surfaces can change between page loads. The selector contracts are the strict oracle; screenshots provide route-level drift evidence without making PRs fail on expected demo data churn.
 
 The frontend-only local preview also records expected API/backend console noise such as `502`, `503`, `ERR_CONNECTION_REFUSED`, and CORS messages. Those messages are captured in `report.json` for evidence, but they are not the pass/fail oracle for this no-secret PR lane.
@@ -82,8 +95,16 @@ node ../vis-hive/packages/cli/dist/index.js doctor --config web/e2e/visual-hive.
 node ../vis-hive/packages/cli/dist/index.js plan --config web/e2e/visual-hive.config.yaml --mode pr --changed-files docs/visual-hive-fixtures/ui-changed-files.txt
 $env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:4173"
 node ../vis-hive/packages/cli/dist/index.js run --config web/e2e/visual-hive.config.yaml --skip-install
+node ../vis-hive/packages/cli/dist/index.js coverage --config web/e2e/visual-hive.config.yaml --mode pr --changed-files docs/visual-hive-fixtures/ui-changed-files.txt
+node ../vis-hive/packages/cli/dist/index.js targets --config web/e2e/visual-hive.config.yaml --mode pr --changed-files docs/visual-hive-fixtures/ui-changed-files.txt
+node ../vis-hive/packages/cli/dist/index.js contracts --config web/e2e/visual-hive.config.yaml --mode pr --changed-files docs/visual-hive-fixtures/ui-changed-files.txt
+node ../vis-hive/packages/cli/dist/index.js schedules --config web/e2e/visual-hive.config.yaml --changed-files docs/visual-hive-fixtures/ui-changed-files.txt
+node ../vis-hive/packages/cli/dist/index.js workflows --config web/e2e/visual-hive.config.yaml --workflow-dir ../../.github/workflows
+node ../vis-hive/packages/cli/dist/index.js providers --config web/e2e/visual-hive.config.yaml --mock-results
 node ../vis-hive/packages/cli/dist/index.js triage --config web/e2e/visual-hive.config.yaml
 node ../vis-hive/packages/cli/dist/index.js report --config web/e2e/visual-hive.config.yaml
+node ../vis-hive/packages/cli/dist/index.js history --config web/e2e/visual-hive.config.yaml --record
+node ../vis-hive/packages/cli/dist/index.js artifacts --config web/e2e/visual-hive.config.yaml
 ```
 
 Use these fixtures to verify planning without relying on a live PR diff:
