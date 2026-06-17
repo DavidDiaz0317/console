@@ -6,7 +6,7 @@ The config lives at `web/e2e/visual-hive.config.yaml` so generated Visual Hive s
 
 ## What Runs on PRs
 
-`.github/workflows/visual-hive-pr.yml` runs on `pull_request` with read-only permissions and no secrets. It checks out this repo, checks out `DavidDiaz0317/visual-hive` from `codex/v0.2-core-completion`, builds Visual Hive, creates a Vite production bundle for the frontend visual lane, then runs:
+`.github/workflows/visual-hive-pr.yml` runs on `pull_request` with read-only permissions and no secrets. It checks out this repo, checks out `DavidDiaz0317/visual-hive` from `main`, builds Visual Hive, creates the frontend production bundle with the existing `web` build script, then runs:
 
 ```bash
 node visual-hive-tooling/packages/cli/dist/index.js doctor --config web/e2e/visual-hive.config.yaml
@@ -40,7 +40,6 @@ The current PR-safe lanes are:
 
 - `hosted-demo-never-login`: checks `https://console.kubestellar.io` renders the dashboard and does not expose login/OAuth controls. It intentionally does not capture a hosted screenshot because live demo content drifts too often for a stable PR baseline.
 - `local-preview-dashboard-visual`: builds the frontend and checks the dashboard header/card grid on desktop and mobile.
-- `local-preview-dashboard-desktop-shell`: checks the desktop sidebar, header, and card grid without reusing that sidebar assertion for mobile.
 - `local-preview-clusters-visual`: checks the `/clusters` route-level shell.
 - `local-preview-settings-visual`: checks the `/settings` route-level shell.
 
