@@ -27,18 +27,20 @@ const bearerPrefixLen = len(bearerPrefix)
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	GitHubClientID string
-	GitHubSecret   string
-	GitHubURL      string // Base GitHub URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
-	JWTSecret      string
-	FrontendURL    string
-	BackendURL     string // Backend URL for OAuth callback (defaults to http://localhost:8080)
-	DevUserLogin   string
-	DevUserEmail   string
-	DevUserAvatar  string
-	GitHubToken    string // Personal access token for dev mode profile lookup
-	DevMode        bool   // Force dev mode bypass even if OAuth credentials present
-	SkipOnboarding bool   // Skip onboarding questionnaire for new users
+	GitHubClientID      string
+	GitHubSecret        string
+	GitHubURL           string // Base GitHub URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
+	JWTSecret           string
+	FrontendURL         string
+	BackendURL          string // Backend URL for OAuth callback (defaults to http://localhost:8080)
+	AllowedGitHubLogins string // Comma-separated OAuth allowlist; empty means any GitHub login may sign in
+	AdminGitHubLogins   string // Comma-separated logins promoted/kept as admin after OAuth sign-in
+	DevUserLogin        string
+	DevUserEmail        string
+	DevUserAvatar       string
+	GitHubToken         string // Personal access token for dev mode profile lookup
+	DevMode             bool   // Force dev mode bypass even if OAuth credentials present
+	SkipOnboarding      bool   // Skip onboarding questionnaire for new users
 }
 
 // SessionDisconnecter is the subset of Hub needed to close WebSocket sessions
@@ -49,25 +51,56 @@ type SessionDisconnecter interface {
 
 // AuthHandler handles authentication
 type AuthHandler struct {
-	store          store.Store
-	oauthConfig    *oauth2.Config
-	githubAPIBase  string // API base URL: "https://api.github.com" or "https://github.ibm.com/api/v3"
-	jwtSecret      string
-	frontendURL    string
-	devUserLogin   string
-	devUserEmail   string
-	devUserAvatar  string
-	githubToken    string
-	devMode        bool
-	skipOnboarding bool
-	wsHub          SessionDisconnecter // optional — set via SetHub to disconnect WS sessions on logout
-	cleanupCtx     context.Context     // cancelled by Stop to terminate the OAuth state cleanup goroutine
-	cleanupCancel  context.CancelFunc  // call to stop the OAuth state cleanup goroutine
+	store               store.Store
+	oauthConfig         *oauth2.Config
+	githubAPIBase       string // API base URL: "https://api.github.com" or "https://github.ibm.com/api/v3"
+	jwtSecret           string
+	frontendURL         string
+	allowedGitHubLogins map[string]struct{}
+	adminGitHubLogins   map[string]struct{}
+	devUserLogin        string
+	devUserEmail        string
+	devUserAvatar       string
+	githubToken         string
+	devMode             bool
+	skipOnboarding      bool
+	wsHub               SessionDisconnecter // optional — set via SetHub to disconnect WS sessions on logout
+	cleanupCtx          context.Context     // cancelled by Stop to terminate the OAuth state cleanup goroutine
+	cleanupCancel       context.CancelFunc  // call to stop the OAuth state cleanup goroutine
 	// githubHTTPClient is a shared HTTP client for GitHub API calls (#6582).
 	// Previously getGitHubUser / getGitHubPrimaryEmail created a new
 	// http.Client per call, defeating connection reuse and leaking idle
 	// TCP connections during bursts of OAuth callbacks.
 	githubHTTPClient *http.Client
+}
+
+func parseGitHubLoginSet(raw string) map[string]struct{} {
+	logins := make(map[string]struct{})
+	for _, part := range strings.Split(raw, ",") {
+		login := normalizeGitHubLogin(part)
+		if login == "" {
+			continue
+		}
+		logins[login] = struct{}{}
+	}
+	return logins
+}
+
+func normalizeGitHubLogin(login string) string {
+	return strings.ToLower(strings.TrimSpace(login))
+}
+
+func (h *AuthHandler) isGitHubLoginAllowed(login string) bool {
+	if len(h.allowedGitHubLogins) == 0 {
+		return true
+	}
+	_, ok := h.allowedGitHubLogins[normalizeGitHubLogin(login)]
+	return ok
+}
+
+func (h *AuthHandler) isConfiguredGitHubAdmin(login string) bool {
+	_, ok := h.adminGitHubLogins[normalizeGitHubLogin(login)]
+	return ok
 }
 
 // NewAuthHandler creates a new auth handler
@@ -121,18 +154,20 @@ func NewAuthHandler(s store.Store, cfg AuthConfig) *AuthHandler {
 			Scopes:       []string{"user:email"},
 			Endpoint:     oauthEndpoint,
 		},
-		githubAPIBase:    apiBase,
-		jwtSecret:        cfg.JWTSecret,
-		frontendURL:      cfg.FrontendURL,
-		devUserLogin:     cfg.DevUserLogin,
-		devUserEmail:     cfg.DevUserEmail,
-		devUserAvatar:    cfg.DevUserAvatar,
-		githubToken:      cfg.GitHubToken,
-		devMode:          cfg.DevMode,
-		skipOnboarding:   cfg.SkipOnboarding,
-		cleanupCtx:       cleanupCtx,
-		cleanupCancel:    cleanupCancel,
-		githubHTTPClient: client.GitHub,
+		githubAPIBase:       apiBase,
+		jwtSecret:           cfg.JWTSecret,
+		frontendURL:         cfg.FrontendURL,
+		allowedGitHubLogins: parseGitHubLoginSet(cfg.AllowedGitHubLogins),
+		adminGitHubLogins:   parseGitHubLoginSet(cfg.AdminGitHubLogins),
+		devUserLogin:        cfg.DevUserLogin,
+		devUserEmail:        cfg.DevUserEmail,
+		devUserAvatar:       cfg.DevUserAvatar,
+		githubToken:         cfg.GitHubToken,
+		devMode:             cfg.DevMode,
+		skipOnboarding:      cfg.SkipOnboarding,
+		cleanupCtx:          cleanupCtx,
+		cleanupCancel:       cleanupCancel,
+		githubHTTPClient:    client.GitHub,
 	}
 
 	// Periodically purge expired OAuth states from the persistent store so the
@@ -360,6 +395,10 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 		slog.Error("[Auth] failed to get GitHub user", "error", err)
 		return h.oauthErrorRedirect(c, "user_fetch_failed", "Failed to retrieve GitHub user profile")
 	}
+	if !h.isGitHubLoginAllowed(ghUser.Login) {
+		slog.Warn("[Auth] GitHub login is not allowed for this Console", "user", ghUser.Login)
+		return h.oauthErrorRedirect(c, "unauthorized_user", "This GitHub account is not approved for this Console")
+	}
 
 	// Find or create user
 	user, err := h.store.GetUserByGitHubID(c.UserContext(), fmt.Sprintf("%d", ghUser.ID))
@@ -372,10 +411,11 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 		slog.Error("[Auth] failed to count admin users", "error", err)
 		return h.oauthErrorRedirect(c, "db_error", "")
 	}
+	configuredAdmin := h.isConfiguredGitHubAdmin(ghUser.Login)
 
 	if user == nil {
 		role := models.UserRoleViewer
-		if bootstrapAdmin {
+		if bootstrapAdmin || configuredAdmin {
 			role = models.UserRoleAdmin
 		}
 		// Create new user
@@ -396,7 +436,7 @@ func (h *AuthHandler) GitHubCallback(c *fiber.Ctx) error {
 		user.GitHubLogin = ghUser.Login
 		user.Email = ghUser.Email
 		user.AvatarURL = ghUser.AvatarURL
-		if bootstrapAdmin {
+		if bootstrapAdmin || configuredAdmin {
 			user.Role = models.UserRoleAdmin
 		}
 		if err := h.store.UpdateUser(c.UserContext(), user); err != nil {

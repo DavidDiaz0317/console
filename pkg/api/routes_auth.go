@@ -65,18 +65,20 @@ func (s *Server) reloadOAuth(clientID, clientSecret string) {
 	}
 
 	s.auth.handler = handlers.NewAuthHandler(s.store, handlers.AuthConfig{
-		GitHubClientID: clientID,
-		GitHubSecret:   clientSecret,
-		GitHubURL:      s.config.GitHubURL,
-		JWTSecret:      s.config.JWTSecret,
-		FrontendURL:    s.config.FrontendURL,
-		BackendURL:     s.backendURL(),
-		DevUserLogin:   s.config.DevUserLogin,
-		DevUserEmail:   s.config.DevUserEmail,
-		DevUserAvatar:  s.config.DevUserAvatar,
-		GitHubToken:    s.config.GitHubToken,
-		DevMode:        s.config.DevMode,
-		SkipOnboarding: s.config.SkipOnboarding,
+		GitHubClientID:      clientID,
+		GitHubSecret:        clientSecret,
+		GitHubURL:           s.config.GitHubURL,
+		JWTSecret:           s.config.JWTSecret,
+		FrontendURL:         s.config.FrontendURL,
+		BackendURL:          s.backendURL(),
+		AllowedGitHubLogins: s.config.AllowedGitHubLogins,
+		AdminGitHubLogins:   s.config.AdminGitHubLogins,
+		DevUserLogin:        s.config.DevUserLogin,
+		DevUserEmail:        s.config.DevUserEmail,
+		DevUserAvatar:       s.config.DevUserAvatar,
+		GitHubToken:         s.config.GitHubToken,
+		DevMode:             s.config.DevMode,
+		SkipOnboarding:      s.config.SkipOnboarding,
 	})
 	s.auth.handler.SetHub(s.hub)
 	slog.Info("[Server] OAuth config hot-reloaded after manifest flow")
@@ -85,18 +87,20 @@ func (s *Server) reloadOAuth(clientID, clientSecret string) {
 // setupAuthRoutes registers auth, OAuth manifest, and shared rate-limiter setup.
 func (s *Server) setupAuthRoutes(app *fiber.App) *routeSetupContext {
 	auth := handlers.NewAuthHandler(s.store, handlers.AuthConfig{
-		GitHubClientID: s.config.GitHubClientID,
-		GitHubSecret:   s.config.GitHubSecret,
-		GitHubURL:      s.config.GitHubURL,
-		JWTSecret:      s.config.JWTSecret,
-		FrontendURL:    s.config.FrontendURL,
-		BackendURL:     s.backendURL(),
-		DevUserLogin:   s.config.DevUserLogin,
-		DevUserEmail:   s.config.DevUserEmail,
-		DevUserAvatar:  s.config.DevUserAvatar,
-		GitHubToken:    s.config.GitHubToken,
-		DevMode:        s.config.DevMode,
-		SkipOnboarding: s.config.SkipOnboarding,
+		GitHubClientID:      s.config.GitHubClientID,
+		GitHubSecret:        s.config.GitHubSecret,
+		GitHubURL:           s.config.GitHubURL,
+		JWTSecret:           s.config.JWTSecret,
+		FrontendURL:         s.config.FrontendURL,
+		BackendURL:          s.backendURL(),
+		AllowedGitHubLogins: s.config.AllowedGitHubLogins,
+		AdminGitHubLogins:   s.config.AdminGitHubLogins,
+		DevUserLogin:        s.config.DevUserLogin,
+		DevUserEmail:        s.config.DevUserEmail,
+		DevUserAvatar:       s.config.DevUserAvatar,
+		GitHubToken:         s.config.GitHubToken,
+		DevMode:             s.config.DevMode,
+		SkipOnboarding:      s.config.SkipOnboarding,
 	})
 	s.auth.handler = auth
 

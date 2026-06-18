@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kubestellar/console/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -239,4 +240,119 @@ func TestAuthOAuth_GitHubLoginAndCallback_SuccessFlow(t *testing.T) {
 	assert.Equal(t, "https://avatars.example/octocat.png", createdUser.AvatarURL)
 
 	assert.False(t, h.validateAndConsumeOAuthState(context.Background(), state), "OAuth state should be single-use after callback")
+}
+
+func TestAuthOAuth_GitHubCallback_LoginAllowlistAndAdmins(t *testing.T) {
+	testCases := []struct {
+		name        string
+		login       string
+		allowLogins string
+		adminLogins string
+		wantAllowed bool
+		wantRole    models.UserRole
+	}{
+		{
+			name:        "empty allowlist preserves existing OAuth behavior",
+			login:       "anyone",
+			wantAllowed: true,
+			wantRole:    models.UserRoleViewer,
+		},
+		{
+			name:        "allowed matching trims spaces and ignores case",
+			login:       "OctoCat",
+			allowLogins: "  octocat , another-user ",
+			adminLogins: " OCTOCAT ",
+			wantAllowed: true,
+			wantRole:    models.UserRoleAdmin,
+		},
+		{
+			name:        "denied login redirects before user or session is created",
+			login:       "intruder",
+			allowLogins: "DavidDiaz0317,octocat",
+			adminLogins: "intruder",
+			wantAllowed: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			app := fiber.New()
+			h, s := newRealStoreAuthHandler(t)
+			h.allowedGitHubLogins = parseGitHubLoginSet(tc.allowLogins)
+			h.adminGitHubLogins = parseGitHubLoginSet(tc.adminLogins)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+
+				switch r.URL.Path {
+				case "/login/oauth/access_token":
+					require.NoError(t, r.ParseForm())
+					assert.Equal(t, "test-code", r.Form.Get("code"))
+					_ = json.NewEncoder(w).Encode(map[string]string{
+						"access_token": "gh-access-token",
+						"token_type":   "bearer",
+					})
+				case "/user":
+					assert.Equal(t, "Bearer gh-access-token", r.Header.Get("Authorization"))
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"id":         5150,
+						"login":      tc.login,
+						"email":      "login-policy@example.com",
+						"avatar_url": "https://avatars.example/login-policy.png",
+					})
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			h.oauthConfig.Endpoint.TokenURL = server.URL + "/login/oauth/access_token"
+			h.githubAPIBase = server.URL
+			h.githubHTTPClient = server.Client()
+
+			app.Get("/auth/github/callback", h.GitHubCallback)
+
+			const state = "login-policy-state"
+			require.NoError(t, h.storeOAuthState(context.Background(), state))
+			callbackReq, err := http.NewRequest(http.MethodGet, "/auth/github/callback?code=test-code&state="+url.QueryEscape(state), nil)
+			require.NoError(t, err)
+			callbackResp, err := app.Test(callbackReq, 5000)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusTemporaryRedirect, callbackResp.StatusCode)
+
+			callbackLocation, err := callbackResp.Location()
+			require.NoError(t, err)
+
+			if !tc.wantAllowed {
+				assert.Equal(t, "/login", callbackLocation.Path)
+				assert.Equal(t, "unauthorized_user", callbackLocation.Query().Get("error"))
+				assert.Empty(t, findOptionalResponseCookie(callbackResp, jwtCookieName))
+
+				createdUser, err := s.GetUserByGitHubID(context.Background(), "5150")
+				require.NoError(t, err)
+				assert.Nil(t, createdUser)
+				return
+			}
+
+			assert.Equal(t, "/auth/callback", callbackLocation.Path)
+			authCookie := findResponseCookie(t, callbackResp, jwtCookieName)
+			assert.NotEmpty(t, authCookie.Value)
+
+			createdUser, err := s.GetUserByGitHubID(context.Background(), "5150")
+			require.NoError(t, err)
+			require.NotNil(t, createdUser)
+			assert.Equal(t, tc.login, createdUser.GitHubLogin)
+			assert.Equal(t, tc.wantRole, createdUser.Role)
+		})
+	}
+}
+
+func findOptionalResponseCookie(resp *http.Response, name string) string {
+	for _, cookie := range resp.Cookies() {
+		if cookie.Name == name {
+			return cookie.Value
+		}
+	}
+	return ""
 }

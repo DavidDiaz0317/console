@@ -113,6 +113,13 @@ const OAUTH_ERROR_INFO: Record<string, OAuthErrorEntry> = {
       'If you did not deny access, check that the GitHub OAuth app is not restricted by your organization\'s policies',
       'Contact your GitHub organization admin if SSO enforcement is blocking access',
     ] },
+  unauthorized_user: {
+    title: 'Account Not Allowed',
+    message: 'This GitHub account is not approved to access this Console.',
+    steps: [
+      'Sign in with an approved GitHub account',
+      'Ask the Console administrator to add your GitHub login to the allowed users list',
+    ] },
   github_error: {
     title: 'GitHub Authorization Error',
     message: 'GitHub returned an error during the authorization process.',
@@ -185,6 +192,14 @@ const UNKNOWN_ERROR_FALLBACK: OAuthErrorEntry = {
     'Check the backend logs for more details',
   ] }
 
+const STAR_COUNT = 30
+const LOGIN_STAR_STYLES = Array.from({ length: STAR_COUNT }, () => ({
+  width: Math.random() * 3 + 1 + 'px',
+  height: Math.random() * 3 + 1 + 'px',
+  left: Math.random() * 100 + '%',
+  top: Math.random() * 100 + '%',
+  animationDelay: Math.random() * 3 + 's' }))
+
 export function Login() {
   const { t } = useTranslation('common')
   const { login, isAuthenticated, isLoading } = useAuth()
@@ -231,14 +246,7 @@ export function Login() {
     copiedTimerRef.current = setTimeout(() => setCopiedStep(null), UI_FEEDBACK_TIMEOUT_MS)
   }
 
-  // Pre-compute random star positions so render stays pure (no Math.random() in JSX)
-  const STAR_COUNT = 30
-  const starStyles = Array.from({ length: STAR_COUNT }, () => ({
-      width: Math.random() * 3 + 1 + 'px',
-      height: Math.random() * 3 + 1 + 'px',
-      left: Math.random() * 100 + '%',
-      top: Math.random() * 100 + '%',
-      animationDelay: Math.random() * 3 + 's' }))
+  const starStyles = LOGIN_STAR_STYLES
 
   // Auto-login for Netlify deploy previews and the hosted demo domain.
   // When the backend is up but OAuth is NOT configured, show the login page

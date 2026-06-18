@@ -182,6 +182,14 @@ spec:
                   name: {{ include "kubestellar-console.fullname" . }}
                   key: github-client-secret
             {{- end }}
+            {{- if .Values.auth.allowedGitHubLogins }}
+            - name: AUTH_ALLOWED_GITHUB_LOGINS
+              value: {{ .Values.auth.allowedGitHubLogins | quote }}
+            {{- end }}
+            {{- if .Values.auth.adminGitHubLogins }}
+            - name: AUTH_ADMIN_GITHUB_LOGINS
+              value: {{ .Values.auth.adminGitHubLogins | quote }}
+            {{- end }}
             {{- if or .Values.claude.existingSecret .Values.claude.apiKey }}
             - name: CLAUDE_API_KEY
               valueFrom:
