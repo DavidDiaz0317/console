@@ -188,10 +188,12 @@ func NewAuthHandler(s store.Store, cfg AuthConfig) *AuthHandler {
 
 // GitHubLogin initiates GitHub OAuth flow
 func (h *AuthHandler) GitHubLogin(c *fiber.Ctx) error {
-	// Bypass OAuth only when no client ID is configured (true dev/demo mode).
-	// When OAuth credentials are present, always use real GitHub login even in dev mode.
 	if h.oauthConfig.ClientID == "" {
-		return h.devModeLogin(c)
+		if h.devMode {
+			return h.devModeLogin(c)
+		}
+		slog.Warn("[Auth] GitHub OAuth login requested but OAuth is not configured and dev mode is disabled")
+		return h.oauthErrorRedirect(c, "oauth_not_configured", "GitHub OAuth is not configured for this Console")
 	}
 
 	// Generate cryptographically secure state for CSRF protection

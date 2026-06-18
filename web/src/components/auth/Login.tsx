@@ -120,6 +120,13 @@ const OAUTH_ERROR_INFO: Record<string, OAuthErrorEntry> = {
       'Sign in with an approved GitHub account',
       'Ask the Console administrator to add your GitHub login to the allowed users list',
     ] },
+  oauth_not_configured: {
+    title: 'GitHub Sign-In Not Configured',
+    message: 'This Console is not configured for GitHub sign-in yet.',
+    steps: [
+      'Ask the Console administrator to configure GitHub OAuth credentials',
+      'For local development, set DEV_MODE=true only when the instance is not publicly reachable',
+    ] },
   github_error: {
     title: 'GitHub Authorization Error',
     message: 'GitHub returned an error during the authorization process.',
