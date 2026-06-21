@@ -165,6 +165,7 @@ function KeyValueItem({
             onClick={handleCopy}
             className="p-1 rounded-md"
             title="Copy to clipboard"
+            aria-label="Copy to clipboard"
             icon={copied ? (
               <Check className="w-3 h-3 text-green-400" />
             ) : (
