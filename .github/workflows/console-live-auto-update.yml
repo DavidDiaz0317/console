@@ -29,8 +29,12 @@ env:
   LIVE_URL: https://console-live.kubestellar.io
   LIVE_TLS_SECRET: console-live-kubestellar-io-tls
   KUBECONFIG_SECRET_NAME: kc-live-kubeconfig
+  OAUTH_SECRET_NAME: kc-live-github-oauth
+  JWT_SECRET_NAME: kc-live-jwt
   GATE_SERVICE: console-live-gate
   GATE_CONFIGMAP: console-live-gate-nginx
+  CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
+  CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
 
 jobs:
   deploy:
@@ -57,12 +61,14 @@ jobs:
       - name: Validate secrets
         env:
           CONSOLE_LIVE_KUBECONFIG_B64: ${{ secrets.CONSOLE_LIVE_KUBECONFIG_B64 }}
-          CONSOLE_LIVE_GATE_TOKEN: ${{ secrets.CONSOLE_LIVE_GATE_TOKEN }}
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
           missing=()
-          for name in CONSOLE_LIVE_KUBECONFIG_B64 CONSOLE_LIVE_GATE_TOKEN; do
+          for name in CONSOLE_LIVE_KUBECONFIG_B64 CONSOLE_LIVE_OAUTH_CLIENT_ID CONSOLE_LIVE_OAUTH_CLIENT_SECRET CONSOLE_LIVE_JWT_SECRET; do
             if [ -z "${!name:-}" ]; then
               missing+=("$name")
             fi
@@ -83,6 +89,22 @@ jobs:
           chmod 600 "$deploy_kubeconfig"
           echo "KUBECONFIG=$deploy_kubeconfig" >> "$GITHUB_ENV"
           KUBECONFIG="$deploy_kubeconfig" kubectl -n "$LIVE_NAMESPACE" get deploy "$LIVE_DEPLOYMENT"
+
+      - name: Apply live auth secrets
+        env:
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$LIVE_NAMESPACE" create secret generic "$OAUTH_SECRET_NAME" \
+            --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
+            --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$LIVE_NAMESPACE" create secret generic "$JWT_SECRET_NAME" \
+            --from-literal=jwt-secret="$CONSOLE_LIVE_JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Resolve candidate image
         id: candidate
@@ -114,119 +136,6 @@ jobs:
           echo "::error::Candidate image is not available in GHCR: $candidate_image"
           exit 1
 
-      - name: Apply cookie gate
-        env:
-          CONSOLE_LIVE_GATE_TOKEN: ${{ secrets.CONSOLE_LIVE_GATE_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat > "$RUNNER_TEMP/console-live-gate.yaml" <<EOF
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: ${GATE_CONFIGMAP}
-            namespace: ${LIVE_NAMESPACE}
-          data:
-            nginx.conf: |
-              events {}
-              http {
-                map \$http_upgrade \$connection_upgrade {
-                  default upgrade;
-                  '' close;
-                }
-
-                server {
-                  listen 8080;
-                  absolute_redirect off;
-
-                  location = /__gate_health {
-                    access_log off;
-                    return 200 "ok\n";
-                  }
-
-                  location = /unlock/${CONSOLE_LIVE_GATE_TOKEN} {
-                    add_header Set-Cookie "console_live_gate=${CONSOLE_LIVE_GATE_TOKEN}; Path=/; Secure; HttpOnly; SameSite=Lax" always;
-                    return 302 ${LIVE_URL}/;
-                  }
-
-                  location / {
-                    if (\$cookie_console_live_gate != "${CONSOLE_LIVE_GATE_TOKEN}") {
-                      return 403;
-                    }
-
-                    proxy_http_version 1.1;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto \$scheme;
-                    proxy_set_header Upgrade \$http_upgrade;
-                    proxy_set_header Connection \$connection_upgrade;
-                    proxy_read_timeout 3600s;
-                    proxy_send_timeout 3600s;
-                    proxy_pass http://${LIVE_RELEASE}-kubestellar-console:8080;
-                  }
-                }
-              }
-          ---
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: ${GATE_SERVICE}
-            namespace: ${LIVE_NAMESPACE}
-            labels:
-              app.kubernetes.io/name: ${GATE_SERVICE}
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app.kubernetes.io/name: ${GATE_SERVICE}
-            template:
-              metadata:
-                labels:
-                  app.kubernetes.io/name: ${GATE_SERVICE}
-              spec:
-                containers:
-                  - name: nginx
-                    image: nginx:1.27-alpine
-                    imagePullPolicy: IfNotPresent
-                    ports:
-                      - name: http
-                        containerPort: 8080
-                    volumeMounts:
-                      - name: nginx-config
-                        mountPath: /etc/nginx/nginx.conf
-                        subPath: nginx.conf
-                    readinessProbe:
-                      httpGet:
-                        path: /__gate_health
-                        port: http
-                      initialDelaySeconds: 3
-                      periodSeconds: 5
-                volumes:
-                  - name: nginx-config
-                    configMap:
-                      name: ${GATE_CONFIGMAP}
-          ---
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: ${GATE_SERVICE}
-            namespace: ${LIVE_NAMESPACE}
-            labels:
-              app.kubernetes.io/name: ${GATE_SERVICE}
-          spec:
-            type: ClusterIP
-            selector:
-              app.kubernetes.io/name: ${GATE_SERVICE}
-            ports:
-              - name: http
-                port: 8080
-                targetPort: http
-          EOF
-          kubectl apply -f "$RUNNER_TEMP/console-live-gate.yaml"
-          kubectl -n "$LIVE_NAMESPACE" rollout restart "deployment/$GATE_SERVICE"
-          kubectl -n "$LIVE_NAMESPACE" rollout status "deployment/$GATE_SERVICE" --timeout=3m
-
       - name: Upgrade Console release
         shell: bash
         run: |
@@ -241,6 +150,13 @@ jobs:
             type: ClusterIP
           kubeconfig:
             existingSecret: "$KUBECONFIG_SECRET_NAME"
+          github:
+            existingSecret: "$OAUTH_SECRET_NAME"
+          jwt:
+            existingSecret: "$JWT_SECRET_NAME"
+          auth:
+            allowedGitHubLogins: "$CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS"
+            adminGitHubLogins: "$CONSOLE_LIVE_ADMIN_GITHUB_LOGINS"
           ingress:
             enabled: true
             className: nginx
@@ -261,8 +177,12 @@ jobs:
             namespaceCreationEnabled: false
           extraEnv:
             - name: DEV_MODE
-              value: "true"
+              value: "false"
             - name: CLUSTER_BACKED_MODE
+              value: "true"
+            - name: BACKEND_URL
+              value: "$LIVE_URL"
+            - name: SKIP_ONBOARDING
               value: "true"
           EOF
           helm upgrade --install "$LIVE_RELEASE" ./deploy/helm/kubestellar-console \
@@ -274,7 +194,7 @@ jobs:
             --wait \
             --timeout 10m
 
-      - name: Route ingress through gate
+      - name: Remove temporary gate resources
         shell: bash
         run: |
           set -euo pipefail
@@ -284,13 +204,11 @@ jobs:
             nginx.ingress.kubernetes.io/auth-secret- \
             nginx.ingress.kubernetes.io/auth-realm- \
             --overwrite || true
-          kubectl -n "$LIVE_NAMESPACE" patch ingress "${LIVE_RELEASE}-kubestellar-console" \
-            --type=json \
-            -p="[{\"op\":\"replace\",\"path\":\"/spec/rules/0/http/paths/0/backend/service/name\",\"value\":\"$GATE_SERVICE\"}]"
+          kubectl -n "$LIVE_NAMESPACE" delete deployment "$GATE_SERVICE" --ignore-not-found
+          kubectl -n "$LIVE_NAMESPACE" delete service "$GATE_SERVICE" --ignore-not-found
+          kubectl -n "$LIVE_NAMESPACE" delete configmap "$GATE_CONFIGMAP" --ignore-not-found
 
       - name: Verify live update
-        env:
-          CONSOLE_LIVE_GATE_TOKEN: ${{ secrets.CONSOLE_LIVE_GATE_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -300,23 +218,29 @@ jobs:
             echo "::error::Live image mismatch. got=$live_image want=${{ steps.candidate.outputs.image }}"
             exit 1
           fi
-          public_code=""
-          unlocked_code=""
+          root_code=""
+          api_me_code=""
+          oauth_code=""
           for i in {1..12}; do
-            public_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/" || true)"
-            unlocked_code="$(curl -sS -o /dev/null -w '%{http_code}' --cookie "console_live_gate=$CONSOLE_LIVE_GATE_TOKEN" "$LIVE_URL/health" || true)"
-            if [ "$public_code" = "403" ] && [ "$unlocked_code" = "200" ]; then
+            root_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/" || true)"
+            api_me_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/api/me" || true)"
+            oauth_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/auth/github" || true)"
+            if [ "$root_code" = "200" ] && [ "$api_me_code" = "401" ] && { [ "$oauth_code" = "307" ] || [ "$oauth_code" = "302" ]; }; then
               break
             fi
-            echo "Waiting for ingress gate verification; attempt $i/12 public=$public_code unlocked=$unlocked_code"
+            echo "Waiting for OAuth verification; attempt $i/12 root=$root_code api_me=$api_me_code oauth=$oauth_code"
             sleep 10
           done
-          if [ "$public_code" != "403" ]; then
-            echo "::error::Expected locked live URL to return 403 without gate cookie, got $public_code"
+          if [ "$root_code" != "200" ]; then
+            echo "::error::Expected live root to return 200 for the login shell, got $root_code"
             exit 1
           fi
-          if [ "$unlocked_code" != "200" ]; then
-            echo "::error::Expected unlocked live health to return 200, got $unlocked_code"
+          if [ "$api_me_code" != "401" ]; then
+            echo "::error::Expected unauthenticated /api/me to return 401, got $api_me_code"
             exit 1
           fi
-          echo "console-live now runs $live_image behind the cookie gate."
+          if [ "$oauth_code" != "307" ] && [ "$oauth_code" != "302" ]; then
+            echo "::error::Expected /auth/github to redirect to GitHub OAuth, got $oauth_code"
+            exit 1
+          fi
+          echo "console-live now runs $live_image with GitHub OAuth enabled."
