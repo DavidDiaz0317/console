@@ -560,16 +560,31 @@ describe('fullFetchClusters', () => {
     expect(clusterCache.clusters.some(c => c.name === 'kagenti-cluster')).toBe(true)
   })
 
-  it('skips backend when no auth token', async () => {
+  it('delegates unauthenticated no-token state to the API wrapper', async () => {
     // The previous test may have set a token; clear it all
     localStorage.clear()
     mockApiGet.mockClear()
+    mockApiGet.mockRejectedValue(new Error('unauthenticated'))
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('agent down'))
 
     await fullFetchClusters()
 
-    expect(mockApiGet).not.toHaveBeenCalled()
+    expect(mockApiGet).toHaveBeenCalledWith('/api/mcp/clusters')
     expect(clusterCache.isLoading).toBe(false)
+  })
+
+  it('fetches backend clusters for cookie-only sessions without a bearer token', async () => {
+    localStorage.clear()
+    localStorage.setItem('kc-has-session', 'true')
+    const BACKEND_CLUSTERS = [makeCluster({ name: 'cookie-session-cluster' })]
+    mockApiGet.mockResolvedValue({ data: { clusters: BACKEND_CLUSTERS } })
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('agent down'))
+
+    await fullFetchClusters()
+
+    expect(mockApiGet).toHaveBeenCalledWith('/api/mcp/clusters')
+    expect(clusterCache.isLoading).toBe(false)
+    expect(clusterCache.clusters.some(c => c.name === 'cookie-session-cluster')).toBe(true)
   })
 
   it('deduplicates concurrent calls (only one runs at a time)', async () => {

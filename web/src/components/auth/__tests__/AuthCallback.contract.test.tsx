@@ -26,6 +26,10 @@ const {
   mockShowToast,
   mockEmitGitHubConnected,
   mockEmitError,
+  mockSetDemoMode,
+  mockSafeGetItem,
+  mockSafeSetItem,
+  mockSafeRemoveItem,
 } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSetToken: vi.fn(),
@@ -33,6 +37,10 @@ const {
   mockShowToast: vi.fn(),
   mockEmitGitHubConnected: vi.fn(),
   mockEmitError: vi.fn(),
+  mockSetDemoMode: vi.fn(),
+  mockSafeGetItem: vi.fn(),
+  mockSafeSetItem: vi.fn(),
+  mockSafeRemoveItem: vi.fn(),
 }))
 
 vi.mock('../../../hooks/mcp/shared', () => ({
@@ -76,9 +84,14 @@ vi.mock('../../../lib/analytics', () => ({
 }))
 
 vi.mock('../../../lib/utils/localStorage', () => ({
-  safeGetItem: () => null,
-  safeSetItem: vi.fn(),
-  safeRemoveItem: vi.fn(),
+  safeGetItem: mockSafeGetItem,
+  safeSetItem: mockSafeSetItem,
+  safeRemoveItem: mockSafeRemoveItem,
+}))
+
+vi.mock('../../../lib/demoMode', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/demoMode')>()),
+  setDemoMode: mockSetDemoMode,
 }))
 
 // Must import AFTER mocks are set up
@@ -112,6 +125,7 @@ const flushTimers = async () => {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
+  mockSafeGetItem.mockReturnValue(null)
   // Reset the hasProcessed ref by clearing module state
   vi.stubGlobal('fetch', vi.fn())
 })
@@ -142,6 +156,24 @@ describe('AuthCallback /auth/refresh contract (#6590)', () => {
     // refreshUser(), which calls /api/me with cookie credentials.
     expect(mockRefreshUser).toHaveBeenCalled()
     expect(mockSetToken).not.toHaveBeenCalled()
+    expect(mockSafeSetItem).toHaveBeenCalledWith('kc-has-session', 'true')
+    expect(mockSetDemoMode).toHaveBeenCalledWith(false, true)
+    expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('clears a stale demo token after confirming the cookie session', async () => {
+    mockSafeGetItem.mockImplementation((key: string) => key === 'token' ? 'demo-token' : null)
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ refreshed: true, onboarded: true }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    renderAuthCallback()
+    await flushTimers()
+
+    expect(mockSafeRemoveItem).toHaveBeenCalledWith('token')
+    expect(mockSetDemoMode).toHaveBeenCalledWith(false, true)
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 

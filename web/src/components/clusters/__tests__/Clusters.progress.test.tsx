@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Clusters } from '../Clusters'
 
@@ -6,11 +7,13 @@ type StatValue = {
   value: string | number
   sublabel?: string
   max?: number
+  progressValue?: number
   isClickable?: boolean
 }
 
 type DashboardPageProps = {
   getStatValue: (blockId: string) => StatValue
+  beforeCards?: ReactNode
 }
 
 const {
@@ -81,7 +84,7 @@ vi.mock('../../../lib/unified/demo', () => ({
 vi.mock('../../../lib/dashboards/DashboardPage', () => ({
   DashboardPage: (props: unknown) => {
     mockDashboardPage(props)
-    return null
+    return <div data-testid="dashboard-page">{(props as DashboardPageProps).beforeCards}</div>
   },
 }))
 
@@ -200,11 +203,15 @@ describe('Clusters progress scaling', () => {
       healthy: 11,
       unhealthy: 1,
       unreachable: 0,
+      healthyNodes: 22,
       totalNodes: 24,
       totalCPUs: 96,
       totalMemoryGB: 128,
       totalStorageGB: 512,
       totalPods: 240,
+      runningPods: 220,
+      pendingPods: 3,
+      crashLoopBackOffPods: 1,
       totalGPUs: 0,
       staleContexts: 0,
       hasResourceData: true,
@@ -228,5 +235,18 @@ describe('Clusters progress scaling', () => {
 
     expect(props.getStatValue('pods')).toMatchObject({ value: 240 })
     expect(props.getStatValue('pods').max).toBeUndefined()
+  })
+
+  it('renders live groundtruth markers from cluster stats', () => {
+    render(<Clusters />)
+
+    const markerText = (field: string) => document.querySelector(`[data-groundtruth-field="${field}"]`)?.textContent
+
+    expect(markerText('clusters-total')).toBe('12')
+    expect(markerText('nodes-ready')).toBe('22')
+    expect(markerText('nodes-total')).toBe('24')
+    expect(markerText('pods-running')).toBe('220')
+    expect(markerText('pods-pending')).toBe('3')
+    expect(markerText('pods-crashloop')).toBe('1')
   })
 })

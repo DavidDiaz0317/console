@@ -16,7 +16,7 @@ vi.mock('../../lib/auth', () => ({
 }))
 
 /** Resolved value for the OAuth probe — overridden per-test when needed. */
-let oauthProbeResult = { backendUp: false, oauthConfigured: false }
+let oauthProbeResult = { backendUp: false, oauthConfigured: false, inCluster: false }
 
 vi.mock('../../lib/api', () => ({
   checkOAuthConfiguredWithRetry: () => Promise.resolve(oauthProbeResult),
@@ -38,7 +38,7 @@ describe('Login Component', () => {
     )
 
   beforeEach(() => {
-    oauthProbeResult = { backendUp: false, oauthConfigured: false }
+    oauthProbeResult = { backendUp: false, oauthConfigured: false, inCluster: false }
     mockLogin.mockClear()
   })
 
@@ -70,7 +70,7 @@ describe('Login Component', () => {
 
   describe('OAuth setup wizard (backendUp && !oauthConfigured)', () => {
     beforeEach(() => {
-      oauthProbeResult = { backendUp: true, oauthConfigured: false }
+      oauthProbeResult = { backendUp: true, oauthConfigured: false, inCluster: false }
     })
 
     it('shows the setup notice when backend is up but OAuth is not configured', async () => {
@@ -95,5 +95,16 @@ describe('Login Component', () => {
         expect(screen.getByTestId('demo-mode-button')).toBeInTheDocument()
       })
     })
+  })
+
+  it('keeps the normal login button for in-cluster no-OAuth installs', async () => {
+    oauthProbeResult = { backendUp: true, oauthConfigured: false, inCluster: true }
+
+    renderLogin()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('github-login-button')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('oauth-setup-notice')).not.toBeInTheDocument()
   })
 })

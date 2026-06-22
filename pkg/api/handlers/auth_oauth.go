@@ -79,6 +79,53 @@ func isLocalhostURL(rawURL string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+func isLoopbackHost(host string) bool {
+	u, err := url.Parse("//" + host)
+	if err != nil {
+		return false
+	}
+	hostname := strings.ToLower(u.Hostname())
+	if hostname == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(hostname)
+	return ip != nil && ip.IsLoopback()
+}
+
+func requestLoopbackOrigin(c *fiber.Ctx) string {
+	host := strings.TrimSpace(string(c.Context().Host()))
+	if host == "" {
+		host = strings.TrimSpace(c.Get(fiber.HeaderHost))
+	}
+	if host == "" || strings.ContainsAny(host, "\r\n") {
+		return ""
+	}
+	if !isLoopbackHost(host) {
+		return ""
+	}
+
+	proto := strings.TrimSpace(c.Get(fiber.HeaderXForwardedProto))
+	if proto == "" {
+		proto = c.Protocol()
+	}
+	if strings.EqualFold(proto, "https") {
+		proto = "https"
+	} else {
+		proto = "http"
+	}
+
+	return proto + "://" + host
+}
+
+func (h *AuthHandler) frontendRedirectBase(c *fiber.Ctx) string {
+	if h.oauthConfig != nil && h.oauthConfig.ClientID == "" {
+		if origin := requestLoopbackOrigin(c); origin != "" {
+			return origin
+		}
+	}
+	return strings.TrimRight(h.frontendURL, "/")
+}
+
 const (
 	// jwtCookieName is the HttpOnly cookie that carries the JWT.
 	jwtCookieName = "kc_auth"

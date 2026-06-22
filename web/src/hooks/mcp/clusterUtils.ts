@@ -39,20 +39,28 @@ export function shareMetricsBetweenSameServerClusters(clusters: ClusterInfo[]): 
     const source = serverMetrics.get(cluster.server)
     if (!source) return cluster
 
-    // Check if we need to copy anything - include nodeCount, podCount, and capacity/requests
+    // Check if we need to copy anything - include node/pod health metrics and capacity/requests
     const needsNodes = cluster.nodeCount === undefined && source.nodeCount !== undefined && source.nodeCount > 0
     const needsPods = cluster.podCount === undefined && source.podCount !== undefined && source.podCount > 0
+    const needsReadyNodes = cluster.readyNodes === undefined && source.readyNodes !== undefined
+    const needsRunningPods = cluster.runningPods === undefined && source.runningPods !== undefined
+    const needsPendingPods = cluster.pendingPods === undefined && source.pendingPods !== undefined
+    const needsCrashLoopPods = cluster.crashLoopBackOffPods === undefined && source.crashLoopBackOffPods !== undefined
     const needsCapacity = !cluster.cpuCores && source.cpuCores
     const needsRequests = !cluster.cpuRequestsCores && source.cpuRequestsCores
 
-    if (!needsNodes && !needsPods && !needsCapacity && !needsRequests) return cluster
+    if (!needsNodes && !needsPods && !needsReadyNodes && !needsRunningPods && !needsPendingPods && !needsCrashLoopPods && !needsCapacity && !needsRequests) return cluster
 
     // Copy all health metrics from the source cluster (node/pod counts, capacity, requests)
     return {
       ...cluster,
       // Node and pod counts - critical for dashboard display
       nodeCount: needsNodes ? source.nodeCount : cluster.nodeCount,
+      readyNodes: needsReadyNodes ? source.readyNodes : cluster.readyNodes,
       podCount: needsPods ? source.podCount : cluster.podCount,
+      runningPods: needsRunningPods ? source.runningPods : cluster.runningPods,
+      pendingPods: needsPendingPods ? source.pendingPods : cluster.pendingPods,
+      crashLoopBackOffPods: needsCrashLoopPods ? source.crashLoopBackOffPods : cluster.crashLoopBackOffPods,
       // Also copy healthy and reachable flags when we copy node data
       healthy: needsNodes ? source.healthy : cluster.healthy,
       reachable: needsNodes ? source.reachable : cluster.reachable,
@@ -178,7 +186,11 @@ export function deduplicateClustersByServer(clusters: ClusterInfo[]): ClusterInf
           storageBytes: cluster.storageBytes,
           storageGB: cluster.storageGB,
           nodeCount: cluster.nodeCount,
+          readyNodes: cluster.readyNodes,
           podCount: cluster.podCount,
+          runningPods: cluster.runningPods,
+          pendingPods: cluster.pendingPods,
+          crashLoopBackOffPods: cluster.crashLoopBackOffPods,
           cpuRequestsMillicores: cluster.cpuRequestsMillicores,
           cpuRequestsCores: cluster.cpuRequestsCores,
           memoryRequestsBytes: cluster.memoryRequestsBytes,
@@ -201,11 +213,35 @@ export function deduplicateClustersByServer(clusters: ClusterInfo[]): ClusterInf
       const alias = group.find(c => c !== primary && c.nodeCount !== undefined)
       if (alias) bestMetrics.nodeCount = alias.nodeCount
     }
+    if (primary.readyNodes !== undefined) {
+      bestMetrics.readyNodes = primary.readyNodes
+    } else {
+      const alias = group.find(c => c !== primary && c.readyNodes !== undefined)
+      if (alias) bestMetrics.readyNodes = alias.readyNodes
+    }
     if (primary.podCount !== undefined) {
       bestMetrics.podCount = primary.podCount
     } else {
       const alias = group.find(c => c !== primary && c.podCount !== undefined)
       if (alias) bestMetrics.podCount = alias.podCount
+    }
+    if (primary.runningPods !== undefined) {
+      bestMetrics.runningPods = primary.runningPods
+    } else {
+      const alias = group.find(c => c !== primary && c.runningPods !== undefined)
+      if (alias) bestMetrics.runningPods = alias.runningPods
+    }
+    if (primary.pendingPods !== undefined) {
+      bestMetrics.pendingPods = primary.pendingPods
+    } else {
+      const alias = group.find(c => c !== primary && c.pendingPods !== undefined)
+      if (alias) bestMetrics.pendingPods = alias.pendingPods
+    }
+    if (primary.crashLoopBackOffPods !== undefined) {
+      bestMetrics.crashLoopBackOffPods = primary.crashLoopBackOffPods
+    } else {
+      const alias = group.find(c => c !== primary && c.crashLoopBackOffPods !== undefined)
+      if (alias) bestMetrics.crashLoopBackOffPods = alias.crashLoopBackOffPods
     }
     // Legacy merge loop: fill in request/usage metrics that may come from a
     // different cluster context than the one that reported capacity.

@@ -89,6 +89,50 @@ func TestDevModeLogin(t *testing.T) {
 	})
 }
 
+func TestDevModeLogin_UsesLoopbackRequestOrigin(t *testing.T) {
+	testCases := []struct {
+		name        string
+		frontendURL string
+		requestURL  string
+		wantURL     string
+	}{
+		{
+			name:        "localhost port-forward overrides configured public frontend",
+			frontendURL: "http://141.148.80.135:8080",
+			requestURL:  "http://localhost:8080/auth/dev",
+			wantURL:     "http://localhost:8080/auth/callback?onboarded=true",
+		},
+		{
+			name:        "remote request keeps configured frontend",
+			frontendURL: "https://console.example.com",
+			requestURL:  "http://console.example.com/auth/dev",
+			wantURL:     "https://console.example.com/auth/callback?onboarded=true",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, mockStore, handler := setupAuthTest()
+			handler.frontendURL = tc.frontendURL
+			app.Get("/auth/dev", handler.devModeLogin)
+
+			mockStore.On("GetUserByGitHubID", "dev-dev-user").Return(nil, nil).Once()
+			mockStore.On("CreateUser", mock.Anything).Return(nil).Once()
+			mockStore.On("UpdateLastLogin", mock.Anything).Return(nil).Once()
+
+			req, err := http.NewRequest(http.MethodGet, tc.requestURL, nil)
+			require.NoError(t, err)
+			resp, err := app.Test(req, 5000)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+
+			loc, err := resp.Location()
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantURL, loc.String())
+		})
+	}
+}
+
 // refreshReq builds a POST /auth/refresh request with the CSRF header
 // set so the RequireCSRF middleware allows it through (#6588). Tests that
 // want to exercise the CSRF gate should build requests directly.

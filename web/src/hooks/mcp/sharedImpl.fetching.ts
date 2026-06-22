@@ -64,7 +64,11 @@ export async function fetchClusterListFromAgent(): Promise<ClusterInfo[] | null>
         reachable: undefined, // Unknown until health check completes
         source: 'kubeconfig',
         nodeCount: undefined, // undefined = still checking, 0 = unreachable
+        readyNodes: undefined,
         podCount: undefined,
+        runningPods: undefined,
+        pendingPods: undefined,
+        crashLoopBackOffPods: undefined,
         isCurrent: c.isCurrent,
         authMethod: c.authMethod,
       }))

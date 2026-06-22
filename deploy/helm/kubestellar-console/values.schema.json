@@ -53,6 +53,19 @@
         }
       }
     },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "allowedGitHubLogins": {
+          "type": "string",
+          "description": "Comma-separated GitHub logins allowed to sign in through OAuth. Empty preserves default behavior."
+        },
+        "adminGitHubLogins": {
+          "type": "string",
+          "description": "Comma-separated GitHub logins promoted or kept as admins after OAuth sign-in."
+        }
+      }
+    },
     "backup": {
       "type": "object",
       "properties": {

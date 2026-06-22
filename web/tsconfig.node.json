@@ -17,6 +17,7 @@
     "postcss.config.js",
     "eslint.config.js",
     "e2e/**/*.ts",
+    "harness/**/*.ts",
     "playwright.config.ts"
   ]
 }

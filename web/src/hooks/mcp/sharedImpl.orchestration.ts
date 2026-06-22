@@ -111,7 +111,11 @@ export async function fullFetchClusters() {
             // Preserve health data if available
             ...(existing.nodeCount !== undefined ? {
               nodeCount: existing.nodeCount,
+              readyNodes: existing.readyNodes,
               podCount: existing.podCount,
+              runningPods: existing.runningPods,
+              pendingPods: existing.pendingPods,
+              crashLoopBackOffPods: existing.crashLoopBackOffPods,
               cpuCores: existing.cpuCores,
               memoryGB: existing.memoryGB,
               storageGB: existing.storageGB,
@@ -162,14 +166,9 @@ export async function fullFetchClusters() {
       return
     }
 
-    // Skip backend if not authenticated
-    const token = localStorage.getItem(STORAGE_KEY_TOKEN)
-    if (!token) {
-      await finishWithMinDuration({ isLoading: false, isRefreshing: false })
-      return
-    }
-
-    // Fall back to backend API (/api/mcp/clusters works regardless of agent backend)
+    // Fall back to backend API (/api/mcp/clusters works regardless of agent backend).
+    // Let the API wrapper decide auth validity: cookie-only sessions have no
+    // JS-readable bearer token, but authenticate through the HttpOnly cookie.
     const { data } = await api.get<{ clusters: ClusterInfo[] }>('/api/mcp/clusters')
     // Merge new cluster list with existing cached data (preserve distribution, health, etc.)
     const existingClusters = clusterCache.clusters
@@ -184,7 +183,11 @@ export async function fullFetchClusters() {
           // Preserve health data if available
           ...(existing.nodeCount !== undefined ? {
             nodeCount: existing.nodeCount,
+            readyNodes: existing.readyNodes,
             podCount: existing.podCount,
+            runningPods: existing.runningPods,
+            pendingPods: existing.pendingPods,
+            crashLoopBackOffPods: existing.crashLoopBackOffPods,
             cpuCores: existing.cpuCores,
             memoryGB: existing.memoryGB,
             storageGB: existing.storageGB,
@@ -262,7 +265,11 @@ export async function refreshSingleCluster(clusterName: string): Promise<void> {
       healthy: health.healthy,
       reachable: isReachable,
       nodeCount: health.nodeCount,
+      readyNodes: health.readyNodes,
       podCount: health.podCount,
+      runningPods: health.runningPods,
+      pendingPods: health.pendingPods,
+      crashLoopBackOffPods: health.crashLoopBackOffPods,
       cpuCores: health.cpuCores,
       cpuRequestsCores: health.cpuRequestsCores,
       // Memory/storage metrics

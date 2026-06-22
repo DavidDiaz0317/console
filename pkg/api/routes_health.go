@@ -35,6 +35,7 @@ func (s *Server) setupHealthRoutes() {
 			return c.JSON(fiber.Map{"status": "shutting_down", "version": Version})
 		}
 		inCluster := s.k8sClient != nil && s.k8sClient.IsInCluster()
+		clusterBacked := inCluster || s.config.ClusterBackedMode
 
 		healthStatus := "ok"
 		if s.k8sClient != nil {
@@ -53,15 +54,15 @@ func (s *Server) setupHealthRoutes() {
 			}
 		}
 
-		noLocalAgent := s.config.NoLocalAgent || inCluster
+		noLocalAgent := s.config.NoLocalAgent || clusterBacked
 
 		resp := fiber.Map{
 			"status":           healthStatus,
 			"version":          Version,
 			"oauth_configured": s.oauthConfigured(),
-			"in_cluster":       inCluster,
+			"in_cluster":       clusterBacked,
 			"no_local_agent":   noLocalAgent,
-			"install_method":   detectInstallMethod(inCluster),
+			"install_method":   detectInstallMethod(clusterBacked),
 			"project":          s.config.ConsoleProject,
 			"workloads": fiber.Map{
 				"quantum_kc_demo_available": s.isQuantumWorkloadRunning(),
