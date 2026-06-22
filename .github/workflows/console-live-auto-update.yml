@@ -37,7 +37,7 @@ jobs:
     name: Deploy Latest Main To Console Live
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    if: github.repository == 'DavidDiaz0317/console' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: github.repository == 'DavidDiaz0317/console'
 
     steps:
       - name: Checkout repository
