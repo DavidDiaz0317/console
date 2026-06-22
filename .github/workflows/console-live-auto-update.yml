@@ -300,12 +300,21 @@ jobs:
             echo "::error::Live image mismatch. got=$live_image want=${{ steps.candidate.outputs.image }}"
             exit 1
           fi
-          public_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/")"
+          public_code=""
+          unlocked_code=""
+          for i in {1..12}; do
+            public_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/" || true)"
+            unlocked_code="$(curl -sS -o /dev/null -w '%{http_code}' --cookie "console_live_gate=$CONSOLE_LIVE_GATE_TOKEN" "$LIVE_URL/health" || true)"
+            if [ "$public_code" = "403" ] && [ "$unlocked_code" = "200" ]; then
+              break
+            fi
+            echo "Waiting for ingress gate verification; attempt $i/12 public=$public_code unlocked=$unlocked_code"
+            sleep 10
+          done
           if [ "$public_code" != "403" ]; then
             echo "::error::Expected locked live URL to return 403 without gate cookie, got $public_code"
             exit 1
           fi
-          unlocked_code="$(curl -sS -o /dev/null -w '%{http_code}' --cookie "console_live_gate=$CONSOLE_LIVE_GATE_TOKEN" "$LIVE_URL/health")"
           if [ "$unlocked_code" != "200" ]; then
             echo "::error::Expected unlocked live health to return 200, got $unlocked_code"
             exit 1
