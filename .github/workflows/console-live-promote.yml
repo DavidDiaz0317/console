@@ -13,13 +13,6 @@ on:
         default: 'true'
         type: choice
         options: ['true', 'false']
-  schedule:
-    - cron: '17 */6 * * *'
-  workflow_run:
-    workflows: ['Build and Deploy KC']
-    types: [completed]
-    branches: [main]
-
 permissions:
   contents: read
   packages: read
