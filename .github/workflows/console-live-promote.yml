@@ -13,6 +13,10 @@ on:
         default: 'true'
         type: choice
         options: ['true', 'false']
+  workflow_run:
+    workflows: ['Build and Deploy KC']
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
   packages: read
@@ -37,6 +41,10 @@ env:
   LIVE_CLUSTER_CONTEXTS: ${{ vars.LIVE_CLUSTER_CONTEXTS || 'ks-console-ci-1,ks-console-ci-2,ks-console-ci-3' }}
   LIVE_CLUSTER_EXPECTED_CONTEXTS: ${{ vars.LIVE_CLUSTER_EXPECTED_CONTEXTS || '3' }}
   LIVE_CLUSTER_EXPECTED_READY_NODES: ${{ vars.LIVE_CLUSTER_EXPECTED_READY_NODES || '6' }}
+  LIVE_CLUSTER_FIXTURES: ${{ vars.LIVE_CLUSTER_FIXTURES || 'false' }}
+  LIVE_CLUSTER_FIXTURE_CONTEXT: ${{ vars.LIVE_CLUSTER_FIXTURE_CONTEXT || 'ks-console-ci-1' }}
+  LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
+  LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
   PROMOTE_PRODUCTION: ${{ inputs.promoteProduction || 'true' }}
@@ -129,6 +137,8 @@ jobs:
           set -euo pipefail
           if [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
             candidate_sha="$CANDIDATE_SHA_INPUT"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            candidate_sha="${{ github.event.workflow_run.head_sha }}"
           else
             candidate_sha="$(git ls-remote "https://github.com/${FORK_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
           fi
@@ -249,7 +259,12 @@ jobs:
         working-directory: web
         env:
           KUBECONFIG: ${{ steps.groundtruth-kubeconfig.outputs.path }}
+          LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64: ${{ secrets.LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64 }}
           LIVE_CLUSTER_TESTS: 'true'
+          LIVE_SITE_TESTS: 'true'
+          LIVE_SITE_AUTH_MODE: dev
+          LIVE_CANARY_CONSOLE_URL: http://127.0.0.1:18080
+          LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18080
         run: npm run test:visual:groundtruth
 

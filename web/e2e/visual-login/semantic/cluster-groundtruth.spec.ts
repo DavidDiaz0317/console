@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
+import { establishLiveCanarySession, liveCanaryUrl } from '../helpers/liveSiteAssertions'
 
 function readPositiveIntEnv(name: string, fallback: number) {
   const rawValue = process.env[name]
@@ -21,23 +22,6 @@ async function expectGroundTruthField(page: Page, field: string, expected: numbe
   })
 }
 
-async function establishSelfHostedDevSession(page: Page, selfHostedUrl: string) {
-  await page.goto(new URL('/auth/github', selfHostedUrl).toString(), { waitUntil: 'domcontentloaded' })
-  await page.waitForURL(url => !url.pathname.startsWith('/auth/callback'), { timeout: 15_000 }).catch(() => undefined)
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('kc-has-session')), {
-      message: 'self-hosted dev login must establish a cookie-backed session marker',
-      timeout: 15_000,
-    })
-    .toBe('true')
-  await page.evaluate(() => {
-    localStorage.setItem('kc-demo-mode', 'false')
-    if (localStorage.getItem('token') === 'demo-token') {
-      localStorage.removeItem('token')
-    }
-  })
-}
-
 test('cluster dashboard can be checked against live Kubernetes ground truth @intensive @groundtruth @invariant:cluster-dashboard-groundtruth-match', async ({ page }, testInfo) => {
   testInfo.annotations.push({ type: 'invariant', description: 'cluster-dashboard-groundtruth-match' })
 
@@ -51,7 +35,7 @@ test('cluster dashboard can be checked against live Kubernetes ground truth @int
     expect(groundTruth.skipped, 'live ground truth must be configured when LIVE_CLUSTER_TESTS=true').toBeUndefined()
   }
 
-  const selfHostedUrl = process.env.SELF_HOSTED_CONSOLE_URL || process.env.VISUAL_LOGIN_BASE_URL || process.env.PLAYWRIGHT_BASE_URL
+  const selfHostedUrl = liveCanaryUrl()
   if (!selfHostedUrl) {
     if (!liveChecksRequired) {
       test.skip(true, 'SELF_HOSTED_CONSOLE_URL, VISUAL_LOGIN_BASE_URL, or PLAYWRIGHT_BASE_URL is required for UI ground-truth comparison.')
@@ -64,9 +48,7 @@ test('cluster dashboard can be checked against live Kubernetes ground truth @int
   expect(groundTruth.nodes.total, `OKE live clusters must expose exactly ${EXPECTED_OCI_OKE_READY_NODES} nodes`).toBe(EXPECTED_OCI_OKE_READY_NODES)
   expect(groundTruth.nodes.ready, `all ${EXPECTED_OCI_OKE_READY_NODES} OKE live cluster nodes must be Ready`).toBe(EXPECTED_OCI_OKE_READY_NODES)
 
-  if (liveChecksRequired && process.env.LIVE_CLUSTER_DEV_LOGIN !== 'false') {
-    await establishSelfHostedDevSession(page, selfHostedUrl)
-  }
+  await establishLiveCanarySession(page, selfHostedUrl)
 
   const response = await page.goto(new URL('/clusters?groundtruth=1', selfHostedUrl).toString(), { waitUntil: 'domcontentloaded' })
   expect(response?.ok(), 'self-hosted Console /clusters route must be reachable').toBeTruthy()

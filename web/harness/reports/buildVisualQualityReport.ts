@@ -19,6 +19,8 @@ export function buildVisualQualityReport() {
   const mutationResults = readMutationResults()
   const adequacy = analyzeTestDirectory(undefined, mutationResults)
   const groundTruth = readOptionalJson(path.join(outDir, 'groundtruth.json'))
+  const liveSite = readOptionalJson(path.join(outDir, 'live-site.json'))
+  const liveFixtures = readOptionalJson(path.join(outDir, 'live-fixtures.json'))
   const survived = mutationResults.filter(result => result.status === 'survived')
   const weakTests = adequacy.weakTests
   const json = {
@@ -26,10 +28,14 @@ export function buildVisualQualityReport() {
     mutationResults,
     adequacy,
     groundTruth,
+    liveSite,
+    liveFixtures,
     executiveSummary: {
       survivedMutants: survived.length,
       weakTests: weakTests.length,
       liveGroundTruthConfigured: Boolean(groundTruth && !(groundTruth as { skipped?: string }).skipped),
+      liveSiteConfigured: Boolean(liveSite),
+      liveFixturesEnabled: Boolean(liveFixtures && (liveFixtures as { enabled?: boolean }).enabled),
     },
   }
   const markdown = [
@@ -40,6 +46,8 @@ export function buildVisualQualityReport() {
     `- Survived mutants: ${survived.length}`,
     `- Weak tests detected: ${weakTests.length}`,
     `- Live cluster ground truth: ${json.executiveSummary.liveGroundTruthConfigured ? 'configured' : 'skipped or unavailable'}`,
+    `- Live site checks: ${json.executiveSummary.liveSiteConfigured ? 'recorded' : 'skipped or unavailable'}`,
+    `- Live fixture injection: ${json.executiveSummary.liveFixturesEnabled ? 'enabled' : 'disabled or skipped'}`,
     '',
     '## Mutation/Fault-Injection Results',
     '',
@@ -55,6 +63,14 @@ export function buildVisualQualityReport() {
     '## Live Cluster Groundtruth Results',
     '',
     groundTruth ? 'See `groundtruth.json` for sanitized normalized counts.' : 'Skipped: no groundtruth artifact was produced.',
+    '',
+    '## Live Site Results',
+    '',
+    liveSite ? 'See `live-site.json` for sanitized production/canary checks.' : 'Skipped: no live-site artifact was produced.',
+    '',
+    '## Live Fixture Results',
+    '',
+    liveFixtures ? 'See `live-fixtures.json` for sanitized fixture state.' : 'Skipped: no live-fixture artifact was produced.',
     '',
     '## Recommended Follow-Up PRs/Issues',
     '',

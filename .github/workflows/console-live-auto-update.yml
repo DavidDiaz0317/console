@@ -7,10 +7,6 @@ on:
         description: Optional image SHA to deploy
         required: false
         type: string
-  workflow_run:
-    workflows: ['Build and Deploy KC']
-    types: [completed]
-    branches: [main]
 
 permissions:
   contents: read
