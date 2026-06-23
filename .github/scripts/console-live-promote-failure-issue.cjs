@@ -55,7 +55,7 @@ function sanitizeText(value) {
 }
 
 function isSensitiveLogLine(line) {
-  return /\b[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|COOKIE|KUBECONFIG|CLIENT_SECRET|JWT)[A-Z0-9_]*\b/i.test(line)
+  return /\b[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|COOKIE|KUBECONFIG|CLIENT_ID|CLIENT_SECRET|JWT)[A-Z0-9_]*\b/i.test(line)
 }
 
 function dedupe(items) {
@@ -195,12 +195,16 @@ function inferLiveUiFailuresFromText(textValue) {
   return mergeLiveUiFailureObjects(failures)
 }
 
-function invariantIdsFrom(failures, evidenceItems) {
+function invariantIdsFrom(failures, evidenceItems, logText = '') {
   const fromEvidence = evidenceItems.flatMap((item) => item.invariantIds || [])
   const fromFailures = failures.flatMap((failure) =>
     [...`${failure.title || ''}\n${failure.error || ''}\n${failure.specPath || ''}`.matchAll(/@invariant:([A-Za-z0-9_-]+)/g)].map((match) => match[1])
   )
-  return dedupe([...fromEvidence, ...fromFailures])
+  const fromFailedLogLines = sanitizeText(logText)
+    .split(/\r?\n/)
+    .filter((line) => /@invariant:/.test(line) && /(✘|##\[error\]|\bfailed\b)/i.test(line))
+    .flatMap((line) => [...line.matchAll(/@invariant:([A-Za-z0-9_-]+)/g)].map((match) => match[1]))
+  return dedupe([...fromEvidence, ...fromFailures, ...fromFailedLogLines])
 }
 
 function artifactPathsFromText(logText) {
@@ -273,26 +277,41 @@ async function fetchFailedJobLogs({ github, owner, repo, failedJobs }) {
 }
 
 function logExcerpt(logs) {
-  const patterns = [
+  const primaryPatterns = [
     /visible text must not severely overlap/i,
     /live ui must/i,
+    /"first":/i,
+    /"second":/i,
+    /"ratio":/i,
+    /attachment #/i,
+    /Error Context:/i,
+    /@invariant:/i,
+  ]
+  const fallbackPatterns = [
     /groundtruth/i,
     /\/api\/me/i,
     /oauth/i,
-    /error:/i,
-    /failed/i,
+    /##\[error\]/i,
+    /Process completed with exit code/i,
   ]
-  const excerpts = []
-  for (const log of logs) {
-    const lines = sanitizeText(log.text).split(/\r?\n/).filter((line) => !isSensitiveLogLine(line))
-    const matched = new Set()
-    lines.forEach((line, index) => {
-      if (!patterns.some((pattern) => pattern.test(line))) return
-      for (let i = Math.max(0, index - 4); i <= Math.min(lines.length - 1, index + 8); i += 1) matched.add(i)
-    })
-    const selected = [...matched].sort((a, b) => a - b).map((index) => lines[index]).join('\n')
-    if (selected) excerpts.push(`### ${log.job}\n\n\`\`\`text\n${truncate(selected, 3500)}\n\`\`\``)
+
+  function collect(patterns) {
+    const excerpts = []
+    for (const log of logs) {
+      const lines = sanitizeText(log.text).split(/\r?\n/).filter((line) => !isSensitiveLogLine(line))
+      const matched = new Set()
+      lines.forEach((line, index) => {
+        if (!patterns.some((pattern) => pattern.test(line))) return
+        for (let i = Math.max(0, index - 4); i <= Math.min(lines.length - 1, index + 8); i += 1) matched.add(i)
+      })
+      const selected = [...matched].sort((a, b) => a - b).map((index) => lines[index]).join('\n')
+      if (selected) excerpts.push(`### ${log.job}\n\n\`\`\`text\n${truncate(selected, 3500)}\n\`\`\``)
+    }
+    return excerpts
   }
+
+  let excerpts = collect(primaryPatterns)
+  if (!excerpts.length) excerpts = collect(fallbackPatterns)
   return excerpts.join('\n\n') || 'No concise log excerpt could be extracted. Use the run link and artifacts.'
 }
 
@@ -506,7 +525,7 @@ module.exports = async ({ github, context, core }) => {
     mergeLiveUiFailures(evidenceItems),
     inferLiveUiFailuresFromText(combinedLogText),
   )
-  const invariantIds = invariantIdsFrom(failures, evidenceItems)
+  const invariantIds = invariantIdsFrom(failures, evidenceItems, combinedLogText)
   const logArtifactPaths = artifactPathsFromText(combinedLogText)
   const failureType = classifyFailure({ failures, evidenceItems, liveUiFailures, logText: combinedLogText })
   const imageState = parseImageState(combinedLogText, run)
