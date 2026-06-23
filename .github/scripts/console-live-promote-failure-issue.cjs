@@ -321,15 +321,18 @@ function artifactPathsFromText(logText) {
 function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
+  const hasLiveNetworkFailure = (liveUiFailures.unexpectedNetworkResponses || []).length
+    || (liveUiFailures.unexpectedRequestFailures || []).length
+    || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
+    || /live-network-error|startup-error|infrastructure connection error|too many requests|http 429|rate limited|unexpected app-origin|4xx|5xx|bad request/.test(text)
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
+  if (hasLiveNetworkFailure) return 'live-network-error'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
   if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
   if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
   if ((liveUiFailures.fixtureMismatches || []).length || text.includes('live-fixture-ui-match')) return 'fixture-state-mismatch'
-  if ((liveUiFailures.unexpectedNetworkResponses || []).length || (liveUiFailures.unexpectedRequestFailures || []).length || /unexpected app-origin|4xx|5xx|bad request/.test(text)) return 'live-network-error'
-  if (browserMatrixFailures.some(failure => failure.classification === 'live-network-error') || text.includes('live-network-error')) return 'live-network-error'
   if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
