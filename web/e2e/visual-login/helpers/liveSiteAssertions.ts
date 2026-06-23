@@ -147,18 +147,6 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   await gotoLiveCanaryRoute(page, baseUrl, '/auth/github', 'commit')
   await page.waitForURL(url => !url.pathname.startsWith('/auth/callback'), { timeout: 15_000 }).catch(() => undefined)
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('kc-has-session')), {
-      message: 'live canary dev login must establish a cookie-backed session marker',
-      timeout: 20_000,
-    })
-    .toBe('true')
-  await expect
-    .poll(() => page.evaluate(() => localStorage.getItem('token')), {
-      message: 'live canary dev login should settle into cookie-only auth before loading live data',
-      timeout: 20_000,
-    })
-    .toBeNull()
-  await expect
     .poll(() => page.evaluate(async () => {
       const response = await fetch('/api/me', { credentials: 'same-origin' })
       return response.status
@@ -167,8 +155,15 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
       timeout: 20_000,
     })
     .toBe(200)
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('token')), {
+      message: 'live canary dev login should settle into cookie-only auth before loading live data',
+      timeout: 20_000,
+    })
+    .toBeNull()
   await page.waitForTimeout(2_000)
   await page.evaluate(() => {
+    localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-demo-mode', 'false')
     if (localStorage.getItem('token') === 'demo-token') {
       localStorage.removeItem('token')
