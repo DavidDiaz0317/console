@@ -252,7 +252,11 @@ func (s *Server) setupAuthRoutes(app *fiber.App) *routeSetupContext {
 		"/api/feedback/requests": true,
 		"/api/me":                true,
 		"/api/version":           true,
+		"/api/agent/token":       true,
+		"/api/kagent/status":     true,
 		"/api/mcp/clusters":      true,
+		"/api/stellar/health":    true,
+		"/api/stellar/state":     true,
 	}
 	apiLimiterSkipPrefixes := []string{"/api/github/"}
 	apiLimiterWithSkip := func(c *fiber.Ctx) error {

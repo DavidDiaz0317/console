@@ -55,10 +55,11 @@ vi.mock('react-i18next', () => ({
 }))
 
 const mockRefetch = vi.fn()
-const mockClusters = [
+const defaultMockClusters: Array<Record<string, unknown>> = [
   { name: 'prod', healthy: true, podCount: 50, nodeCount: 3, namespaces: ['default', 'kube-system'] },
   { name: 'staging', healthy: false, podCount: 20, nodeCount: 1, namespaces: ['default'] },
 ]
+let mockClusters = defaultMockClusters.map(cluster => ({ ...cluster }))
 vi.mock('../../../hooks/useMCP', () => ({
   useClusters: () => ({
     deduplicatedClusters: mockClusters,
@@ -285,6 +286,7 @@ describe('Dashboard', () => {
     mockLocation.key = 'test-key'
     capturedGetStatValue = null
     mockDashboardHealthStatus = 'healthy'
+    mockClusters = defaultMockClusters.map(cluster => ({ ...cluster }))
     // Reset global filter to default (all clusters)
     mockGlobalFilters.selectedClusters = []
     mockGlobalFilters.isAllClustersSelected = true
@@ -482,6 +484,24 @@ describe('Dashboard', () => {
       expect(capturedGetStatValue!('clusters').value).toBe(0)
       expect(capturedGetStatValue!('pods').value).toBe(0)
       expect(capturedGetStatValue!('nodes').value).toBe(0)
+    })
+
+    it('counts reachable live clusters with node data as operational dashboard clusters', () => {
+      mockClusters = [
+        { name: 'ks-console-ci-1', healthy: false, reachable: true, podCount: 17, nodeCount: 2, readyNodes: 2, namespaces: ['default', 'kube-system', 'cert-manager', 'ingress-nginx', 'kubestellar-console-live'] },
+        { name: 'ks-console-ci-2', healthUnknown: true, reachable: true, podCount: 16, nodeCount: 2, readyNodes: 2, namespaces: ['default', 'kube-system', 'cert-manager', 'ingress-nginx', 'monitoring'] },
+        { name: 'ks-console-ci-3', reachable: true, podCount: 17, nodeCount: 2, readyNodes: 2, namespaces: ['default', 'kube-system', 'cert-manager', 'ingress-nginx', 'ks-live-ui-fixtures', 'oci-system'] },
+      ]
+
+      render(<Dashboard />)
+
+      expect(capturedGetStatValue).toBeTruthy()
+      expect(capturedGetStatValue!('clusters').value).toBe(3)
+      expect(capturedGetStatValue!('healthy').value).toBe(3)
+      expect(capturedGetStatValue!('errors').value).toBe(0)
+      expect(capturedGetStatValue!('nodes').value).toBe(6)
+      expect(capturedGetStatValue!('pods').value).toBe(50)
+      expect(capturedGetStatValue!('namespaces').value).toBe(16)
     })
   })
 

@@ -21,6 +21,7 @@ import { safeRevokeObjectURL } from '../../lib/download'
 import { emitCardAdded, emitCardRemoved, emitCardDragged, emitCardConfigured } from '../../lib/analytics'
 import { useDashboards } from '../../hooks/useDashboards'
 import { useClusters } from '../../hooks/useMCP'
+import type { ClusterInfo } from '../../hooks/mcp/types'
 import { useCardHistory } from '../../hooks/useCardHistory'
 import { useDrillDownActions } from '../../hooks/useDrillDown'
 import { useDashboardContext } from '../../hooks/useDashboardContext'
@@ -47,7 +48,7 @@ import { useModalState } from '../../lib/modals'
 import { setAutoRefreshPaused } from '../../lib/cache'
 import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { STORAGE_KEY_MAIN_DASHBOARD_CARDS } from '../../lib/constants/storage'
-import { isClusterHealthy } from '../clusters/utils'
+import { getClusterHealthState, isClusterHealthy, isClusterUnreachable } from '../clusters/utils'
 import type { DashboardTemplate } from './templates'
 
 const AUTO_REFRESH_INTERVAL_MS = 30_000
@@ -70,6 +71,15 @@ let dashboardCache: CachedDashboard | null = null
 
 const DASHBOARD_STORAGE_KEY = STORAGE_KEY_MAIN_DASHBOARD_CARDS
 const DEFAULT_DASHBOARD_CARDS: Card[] = getDefaultCardsForDashboard('main')
+
+function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean }): boolean {
+  return (cluster.readyNodes ?? 0) > 0 || (cluster.nodeCount ?? 0) > 0 || cluster.reachable === true
+}
+
+function isDashboardOperationalCluster(cluster: ClusterInfo): boolean {
+  if (isClusterUnreachable(cluster)) return false
+  return isClusterHealthy(cluster) || hasLiveResourceData(cluster)
+}
 
 export function useDashboardState() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(() => dashboardCache?.dashboard || null)
@@ -176,10 +186,12 @@ export function useDashboardState() {
   } = useMemo(() => {
     return filteredClusters.reduce((stats, cluster) => {
       stats.clusterCount += 1
-      if (isClusterHealthy(cluster)) {
+      const operational = isDashboardOperationalCluster(cluster)
+      const healthState = getClusterHealthState(cluster)
+      if (operational) {
         stats.healthyClusters += 1
-        stats.healthyNodes += cluster.nodeCount || 0
-      } else {
+        stats.healthyNodes += typeof cluster.readyNodes === 'number' ? cluster.readyNodes : (cluster.nodeCount || 0)
+      } else if (healthState === 'unhealthy' || healthState === 'unreachable') {
         stats.unhealthyClusters += 1
       }
       stats.totalPods += cluster.podCount || 0

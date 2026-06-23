@@ -450,7 +450,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
           <FeatureHintTooltip
             message={`Press ${searchShortcut} to search dashboards, cards, clusters, and more`}
             onDismiss={cmdKHint.dismiss}
-            placement="bottom"
+            placement="right"
           />
         )}
 
