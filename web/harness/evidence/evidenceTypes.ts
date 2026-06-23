@@ -19,6 +19,14 @@ export interface BoundingBoxEvidence {
   height: number
 }
 
+export interface LiveUiFailureEvidence {
+  forbiddenMatches?: Array<{ label: string; text: string }>
+  warningBadges?: Array<{ text: string; count: number }>
+  textCollisions?: Array<{ first: string; second: string; ratio: number }>
+  unexpectedNetworkResponses?: string[]
+  unexpectedRequestFailures?: string[]
+}
+
 export interface VisualLoginEvidence {
   testTitle: string
   invariantIds: string[]
@@ -41,6 +49,7 @@ export interface VisualLoginEvidence {
   domSnippet?: string
   ariaSnapshot?: string
   boundingBoxes?: BoundingBoxEvidence[]
+  liveUiFailures?: LiveUiFailureEvidence
 }
 
 export interface EvidenceCollectors {
@@ -49,4 +58,5 @@ export interface EvidenceCollectors {
   pageErrors: string[]
   failedRequests: NetworkEvidenceEntry[]
   errorResponses: NetworkEvidenceEntry[]
+  liveUiFailures?: LiveUiFailureEvidence
 }

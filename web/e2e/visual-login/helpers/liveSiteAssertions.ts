@@ -2,7 +2,7 @@ import { expect, type Page, type TestInfo } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import { safeJsonStringify } from '../../../harness/evidence/sanitizeEvidence'
-import type { EvidenceCollectors } from '../../../harness/evidence/evidenceTypes'
+import type { EvidenceCollectors, LiveUiFailureEvidence } from '../../../harness/evidence/evidenceTypes'
 import {
   assertDashboardContentVisible,
   assertNoSevereOverlap,
@@ -35,6 +35,16 @@ const forbiddenLiveUiPatterns = [
   { label: 'AI prediction load failure', source: String.raw`/predictions/ai\s*-\s*Load failed`, flags: 'i' },
   { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
 ]
+
+async function recordLiveUiFailures(page: Page, failures: LiveUiFailureEvidence) {
+  await page.evaluate((nextFailures) => {
+    const target = window as unknown as { __KC_LIVE_UI_FAILURES__?: LiveUiFailureEvidence }
+    target.__KC_LIVE_UI_FAILURES__ = {
+      ...(target.__KC_LIVE_UI_FAILURES__ || {}),
+      ...nextFailures,
+    }
+  }, failures).catch(() => undefined)
+}
 
 export function normalizeBaseUrl(value: string | undefined): string | undefined {
   if (!value) return undefined
@@ -261,6 +271,10 @@ export async function assertNoForbiddenLiveUi(page: Page) {
     }
   }, forbiddenLiveUiPatterns)
 
+  await recordLiveUiFailures(page, {
+    forbiddenMatches: state.forbiddenMatches,
+    warningBadges: process.env.LIVE_UI_ALLOW_WARNING_BADGES === 'true' ? [] : state.warningBadges,
+  })
   expect(state.demoModeStorage, 'live UI must not keep demo mode enabled in localStorage').not.toBe('true')
   expect(state.forbiddenMatches, 'live UI must not show demo/local-agent/error drawer artifacts').toEqual([])
   if (process.env.LIVE_UI_ALLOW_WARNING_BADGES !== 'true') {
@@ -336,6 +350,7 @@ export async function assertNoVisibleTextCollisions(page: Page) {
     return failures
   }, TEXT_COLLISION_RATIO_LIMIT)
 
+  await recordLiveUiFailures(page, { textCollisions: collisions })
   expect(collisions, 'live UI visible text must not severely overlap').toEqual([])
 }
 
@@ -370,6 +385,11 @@ export function assertNoUnexpectedLiveNetworkErrors(
     .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
     .map(entry => `${entry.method} ${entry.url} ${entry.failureText || ''}`.trim())
 
+  collectors.liveUiFailures = {
+    ...(collectors.liveUiFailures || {}),
+    unexpectedNetworkResponses: unexpectedResponses,
+    unexpectedRequestFailures: unexpectedFailures,
+  }
   expect(unexpectedResponses, 'live UI must not produce unexpected app-origin 4xx/5xx responses').toEqual([])
   expect(unexpectedFailures, 'live UI must not produce unexpected app-origin request failures').toEqual([])
 }

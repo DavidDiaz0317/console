@@ -5,6 +5,7 @@ import { safeJsonStringify, sanitizeJson, sanitizeText } from './sanitizeEvidenc
 import type {
   BoundingBoxEvidence,
   EvidenceCollectors,
+  LiveUiFailureEvidence,
   NetworkEvidenceEntry,
   VisualLoginEvidence,
 } from './evidenceTypes'
@@ -75,6 +76,18 @@ async function selectedDomSnippet(page: Page): Promise<string | undefined> {
   }, MAX_DOM_TEXT_LENGTH).then(sanitizeText).catch(() => undefined)
 }
 
+async function collectLiveUiFailures(page: Page, collectors: EvidenceCollectors): Promise<LiveUiFailureEvidence | undefined> {
+  const pageFailures = await page.evaluate(() => {
+    return (window as unknown as { __KC_LIVE_UI_FAILURES__?: LiveUiFailureEvidence }).__KC_LIVE_UI_FAILURES__
+  }).catch(() => undefined)
+  const merged: LiveUiFailureEvidence = {
+    ...(pageFailures || {}),
+    ...(collectors.liveUiFailures || {}),
+  }
+  const hasFailures = Object.values(merged).some(value => Array.isArray(value) && value.length > 0)
+  return hasFailures ? merged : undefined
+}
+
 async function collectBoundingBoxes(items: Array<{ label: string; locator: Locator }>): Promise<BoundingBoxEvidence[]> {
   const boxes: BoundingBoxEvidence[] = []
   for (const item of items) {
@@ -128,6 +141,7 @@ export async function collectEvidence(options: {
     },
     domSnippet: await selectedDomSnippet(page),
     boundingBoxes: options.boundingBoxes ? await collectBoundingBoxes(options.boundingBoxes) : undefined,
+    liveUiFailures: await collectLiveUiFailures(page, collectors),
   })
 
   const evidencePath = path.join(dir, 'evidence.json')
