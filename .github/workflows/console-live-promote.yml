@@ -234,18 +234,24 @@ jobs:
             --wait \
             --timeout 10m
 
-      - name: Install web test dependencies
+      - name: Mark canary deployed
+        id: canary-state
         if: steps.live-state.outputs.skip != 'true'
+        shell: bash
+        run: echo "deployed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install web test dependencies
+        if: steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         run: npm ci
 
       - name: Install Playwright browsers
-        if: steps.live-state.outputs.skip != 'true'
+        if: steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Port-forward private canary
-        if: steps.live-state.outputs.skip != 'true'
+        if: steps.canary-state.outputs.deployed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -264,7 +270,7 @@ jobs:
           exit 1
 
       - name: Run canary live groundtruth tests
-        if: steps.live-state.outputs.skip != 'true'
+        if: steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         env:
           PROMOTE_PRODUCTION: ''
@@ -281,7 +287,7 @@ jobs:
         run: npm run test:visual:live
 
       - name: Ensure canary port-forward for browser matrix
-        if: always() && steps.live-state.outputs.skip != 'true'
+        if: always() && steps.canary-state.outputs.deployed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -308,7 +314,7 @@ jobs:
           exit 1
 
       - name: Run canary browser matrix tests
-        if: always() && steps.live-state.outputs.skip != 'true'
+        if: always() && steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         env:
           PROMOTE_PRODUCTION: ''
@@ -355,7 +361,7 @@ jobs:
           exit "$status"
 
       - name: Compare canary browser matrix
-        if: always() && steps.live-state.outputs.skip != 'true'
+        if: always() && steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         run: npm run test:visual:browser-matrix:compare
 
@@ -382,12 +388,12 @@ jobs:
           retention-days: 14
 
       - name: Run test adequacy analyzer
-        if: steps.live-state.outputs.skip != 'true'
+        if: steps.canary-state.outputs.deployed == 'true'
         working-directory: web
         run: npm run test:visual:adequacy
 
       - name: Promote candidate to production
-        if: steps.live-state.outputs.skip != 'true' && env.PROMOTE_PRODUCTION == 'true'
+        if: steps.canary-state.outputs.deployed == 'true' && env.PROMOTE_PRODUCTION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -450,7 +456,7 @@ jobs:
             --timeout 10m
 
       - name: Verify production security and image
-        if: steps.live-state.outputs.skip != 'true' && env.PROMOTE_PRODUCTION == 'true'
+        if: steps.canary-state.outputs.deployed == 'true' && env.PROMOTE_PRODUCTION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -490,7 +496,7 @@ jobs:
           fi
 
       - name: Clean up canary
-        if: always()
+        if: always() && steps.canary-state.outputs.deployed == 'true'
         shell: bash
         run: |
           set +e

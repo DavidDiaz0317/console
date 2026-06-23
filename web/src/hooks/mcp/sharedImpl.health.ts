@@ -19,7 +19,8 @@ import { HEALTH_CHECK_CONCURRENCY, MAX_HEALTH_CHECK_FAILURES, MAX_DISTRIBUTION_F
 import { FOCUS_DELAY_MS } from '../../lib/constants/network'
 import type { ClusterInfo, ClusterHealth } from './types'
 
-type NamespaceApiEntry = string | { name?: string; Name?: string; metadata?: { name?: string } }
+type NamespaceApiObject = { name?: string; Name?: string; metadata?: { name?: string } }
+type NamespaceApiEntry = string | NamespaceApiObject
 
 function normalizeNamespaceResponse(data: unknown): string[] {
   const rawNamespaces = Array.isArray(data)
@@ -32,7 +33,7 @@ function normalizeNamespaceResponse(data: unknown): string[] {
     .map((entry: NamespaceApiEntry | unknown) => {
       if (typeof entry === 'string') return entry
       if (entry && typeof entry === 'object') {
-        const namespace = entry as NamespaceApiEntry
+        const namespace = entry as NamespaceApiObject
         return namespace.name || namespace.Name || namespace.metadata?.name || ''
       }
       return ''
