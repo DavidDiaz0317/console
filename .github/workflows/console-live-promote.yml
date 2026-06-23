@@ -215,6 +215,7 @@ jobs:
             --set backup.enabled=false \
             --set jwt.existingSecret="$OAUTH_SECRET_NAME" \
             --set kubeconfig.existingSecret="$KUBECONFIG_SECRET_NAME" \
+            --set rbac.create=false \
             --set rbac.resourceQuotasReadOnly=true \
             --set rbac.namespaceCreationEnabled=false \
             --set extraEnv[0].name=DEV_MODE \
