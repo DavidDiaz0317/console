@@ -377,6 +377,6 @@ jobs:
           set +e
           if [ -n "${DEPLOY_KUBECONFIG:-}" ]; then
             export KUBECONFIG="$DEPLOY_KUBECONFIG"
-            helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m
-            kubectl delete namespace "$CANARY_NAMESPACE" --wait=false
+            helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m || true
+            kubectl delete namespace "$CANARY_NAMESPACE" --wait=false || true
           fi
