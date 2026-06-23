@@ -195,13 +195,12 @@ function inferLiveUiFailuresFromText(textValue) {
   return mergeLiveUiFailureObjects(failures)
 }
 
-function invariantIdsFrom(failures, evidenceItems, logText = '') {
+function invariantIdsFrom(failures, evidenceItems) {
   const fromEvidence = evidenceItems.flatMap((item) => item.invariantIds || [])
   const fromFailures = failures.flatMap((failure) =>
     [...`${failure.title || ''}\n${failure.error || ''}\n${failure.specPath || ''}`.matchAll(/@invariant:([A-Za-z0-9_-]+)/g)].map((match) => match[1])
   )
-  const fromLogs = [...String(logText || '').matchAll(/@invariant:([A-Za-z0-9_-]+)/g)].map((match) => match[1])
-  return dedupe([...fromEvidence, ...fromFailures, ...fromLogs])
+  return dedupe([...fromEvidence, ...fromFailures])
 }
 
 function artifactPathsFromText(logText) {
@@ -507,7 +506,7 @@ module.exports = async ({ github, context, core }) => {
     mergeLiveUiFailures(evidenceItems),
     inferLiveUiFailuresFromText(combinedLogText),
   )
-  const invariantIds = invariantIdsFrom(failures, evidenceItems, combinedLogText)
+  const invariantIds = invariantIdsFrom(failures, evidenceItems)
   const logArtifactPaths = artifactPathsFromText(combinedLogText)
   const failureType = classifyFailure({ failures, evidenceItems, liveUiFailures, logText: combinedLogText })
   const imageState = parseImageState(combinedLogText, run)
