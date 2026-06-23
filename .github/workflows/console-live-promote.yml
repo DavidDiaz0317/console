@@ -313,7 +313,39 @@ jobs:
           LIVE_CANARY_CONSOLE_URL: http://127.0.0.1:18080
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18080
-        run: npm run test:visual:browser-matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$DEPLOY_KUBECONFIG"
+
+          ensure_canary_port_forward() {
+            if curl -fsS http://127.0.0.1:18080/health >/dev/null || curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
+              return 0
+            fi
+            if [ -n "${CANARY_PORT_FORWARD_PID:-}" ]; then
+              kill "$CANARY_PORT_FORWARD_PID" >/dev/null 2>&1 || true
+            fi
+            kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
+              >> "$RUNNER_TEMP/console-live/canary-browser-matrix-port-forward.log" 2>&1 &
+            CANARY_PORT_FORWARD_PID=$!
+            echo "CANARY_PORT_FORWARD_PID=$CANARY_PORT_FORWARD_PID" >> "$GITHUB_ENV"
+            for _ in {1..60}; do
+              if curl -fsS http://127.0.0.1:18080/health >/dev/null || curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
+                return 0
+              fi
+              sleep 2
+            done
+            cat "$RUNNER_TEMP/console-live/canary-browser-matrix-port-forward.log" || true
+            echo "::error::Canary browser matrix port-forward did not become healthy"
+            return 1
+          }
+
+          status=0
+          for project in live-chromium live-firefox live-webkit; do
+            ensure_canary_port_forward || status=1
+            npx playwright test --config e2e/visual-login/browser-matrix.config.ts --project "$project" || status=1
+          done
+          exit "$status"
 
       - name: Compare canary browser matrix
         if: always() && steps.live-state.outputs.skip != 'true'

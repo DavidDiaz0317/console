@@ -47,6 +47,7 @@ function pushDifference(differences, entry) {
 }
 
 function classify(differences) {
+  if (differences.some(diff => diff.classification === 'auth-boundary')) return 'auth-boundary'
   if (differences.some(diff => diff.classification === 'safari-z-index')) return 'safari-z-index'
   if (differences.some(diff => diff.classification === 'browser-content-missing')) return 'browser-content-missing'
   if (differences.some(diff => diff.classification === 'browser-interaction-broken')) return 'browser-interaction-broken'
@@ -78,16 +79,33 @@ function main() {
   for (const report of reports) {
     const browser = browserKey(report)
     if (report.session?.status === 'failed') {
+      const sessionError = String(report.session.error || '')
       pushDifference(differences, {
-        classification: 'browser-interaction-broken',
+        classification: /\/api\/me|401|session|auth/i.test(sessionError) ? 'auth-boundary' : 'browser-interaction-broken',
         browser,
         route: 'session',
-        reason: 'browser could not establish the live canary session',
+        reason: /\/api\/me|401|session|auth/i.test(sessionError)
+          ? 'browser could not establish an authenticated live canary session'
+          : 'browser could not establish the live canary session',
         details: report.session,
       })
     }
 
     for (const route of report.routes || []) {
+      if (route.authState && route.authState !== 'authenticated') {
+        pushDifference(differences, {
+          classification: 'auth-boundary',
+          browser,
+          route: route.route,
+          reason: `route rendered ${route.authState} state instead of authenticated live content`,
+          authState: route.authState,
+          url: route.url,
+          bodyPreview: route.bodyPreview,
+          screenshotPath: route.screenshotPath,
+          error: route.error,
+        })
+        continue
+      }
       if (route.status === 'failed' || (route.missingMarkers || []).length > 0) {
         pushDifference(differences, {
           classification: 'browser-content-missing',
@@ -201,6 +219,7 @@ function main() {
       route: route.route,
       status: route.status,
       url: route.url,
+      authState: route.authState,
       missingMarkers: route.missingMarkers,
       baseline: route.baseline,
       screenshotPath: route.screenshotPath,
