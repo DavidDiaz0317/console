@@ -329,7 +329,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export KUBECONFIG="$DEPLOY_KUBECONFIG"
 
           ensure_canary_port_forward() {
             if curl -fsS http://127.0.0.1:18080/health >/dev/null || curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
@@ -338,7 +337,7 @@ jobs:
             if [ -n "${CANARY_PORT_FORWARD_PID:-}" ]; then
               kill "$CANARY_PORT_FORWARD_PID" >/dev/null 2>&1 || true
             fi
-            kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
+            KUBECONFIG="$DEPLOY_KUBECONFIG" kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
               >> "$RUNNER_TEMP/console-live/canary-browser-matrix-port-forward.log" 2>&1 &
             CANARY_PORT_FORWARD_PID=$!
             echo "CANARY_PORT_FORWARD_PID=$CANARY_PORT_FORWARD_PID" >> "$GITHUB_ENV"

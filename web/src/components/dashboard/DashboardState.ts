@@ -72,6 +72,16 @@ let dashboardCache: CachedDashboard | null = null
 const DASHBOARD_STORAGE_KEY = STORAGE_KEY_MAIN_DASHBOARD_CARDS
 const DEFAULT_DASHBOARD_CARDS: Card[] = getDefaultCardsForDashboard('main')
 
+function normalizeNamespaceCount(data: unknown): number {
+  const rawNamespaces = Array.isArray(data)
+    ? data
+    : Array.isArray((data as { namespaces?: unknown })?.namespaces)
+      ? (data as { namespaces: unknown[] }).namespaces
+      : []
+
+  return rawNamespaces.filter(Boolean).length
+}
+
 function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean }): boolean {
   return (cluster.readyNodes ?? 0) > 0 || (cluster.nodeCount ?? 0) > 0 || cluster.reachable === true
 }
@@ -174,6 +184,35 @@ export function useDashboardState() {
     if (isAllClustersSelected) return all
     return all.filter(cluster => selectedClusterSet.has(cluster.name))
   }, [clusters, isAllClustersSelected, selectedClusterSet])
+  const [liveNamespaceCounts, setLiveNamespaceCounts] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    const clustersNeedingNamespaces = filteredClusters.filter(cluster =>
+      (cluster.namespaces?.length || 0) === 0 && (cluster.context || cluster.name) && hasLiveResourceData(cluster)
+    )
+    if (clustersNeedingNamespaces.length === 0) return
+
+    let cancelled = false
+    void Promise.all(clustersNeedingNamespaces.map(async (cluster) => {
+      try {
+        const requestCluster = cluster.context || cluster.name
+        const { data } = await api.get<unknown>(`/api/namespaces?cluster=${encodeURIComponent(requestCluster)}`)
+        return [cluster.name, normalizeNamespaceCount(data)] as const
+      } catch {
+        return [cluster.name, 0] as const
+      }
+    })).then((entries) => {
+      if (cancelled) return
+      setLiveNamespaceCounts(previous => ({
+        ...previous,
+        ...Object.fromEntries(entries),
+      }))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [filteredClusters])
 
   const {
     clusterCount,
@@ -195,7 +234,7 @@ export function useDashboardState() {
         stats.unhealthyClusters += 1
       }
       stats.totalPods += cluster.podCount || 0
-      stats.totalNamespaces += cluster.namespaces?.length || 0
+      stats.totalNamespaces += cluster.namespaces?.length || liveNamespaceCounts[cluster.name] || 0
       stats.totalNodes += cluster.nodeCount || 0
       return stats
     }, {
@@ -207,7 +246,7 @@ export function useDashboardState() {
       totalNamespaces: 0,
       totalNodes: 0,
     })
-  }, [filteredClusters])
+  }, [filteredClusters, liveNamespaceCounts])
 
   const getDashboardStatValue = useCallback((blockId: string): StatBlockValue => {
     switch (blockId) {

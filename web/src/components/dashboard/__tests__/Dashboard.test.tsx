@@ -503,6 +503,29 @@ describe('Dashboard', () => {
       expect(capturedGetStatValue!('pods').value).toBe(50)
       expect(capturedGetStatValue!('namespaces').value).toBe(16)
     })
+
+    it('fills namespace totals from the backend when live cluster enrichment has not populated namespaces yet', async () => {
+      mockClusters = [
+        { name: 'ks-console-ci-1', context: 'ctx-1', reachable: true, podCount: 17, nodeCount: 2, readyNodes: 2, namespaces: [] },
+        { name: 'ks-console-ci-2', context: 'ctx-2', reachable: true, podCount: 16, nodeCount: 2, readyNodes: 2, namespaces: [] },
+      ]
+      mockApiGet.mockImplementation((url: string) => {
+        if (url.includes('/api/namespaces?cluster=ctx-1')) {
+          return Promise.resolve({ data: [{ name: 'default' }, { name: 'kube-system' }, { name: 'apps' }] })
+        }
+        if (url.includes('/api/namespaces?cluster=ctx-2')) {
+          return Promise.resolve({ data: [{ name: 'default' }, { name: 'monitoring' }] })
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      render(<Dashboard />)
+
+      await waitFor(() => {
+        expect(capturedGetStatValue).toBeTruthy()
+        expect(capturedGetStatValue!('namespaces').value).toBe(5)
+      })
+    })
   })
 
   describe('auto-refresh interval timer behavior', () => {

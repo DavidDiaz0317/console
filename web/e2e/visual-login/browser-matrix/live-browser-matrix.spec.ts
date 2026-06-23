@@ -107,6 +107,16 @@ async function readBodyText(page: Page, timeout = 10_000): Promise<string> {
   return page.evaluate(() => (document.body?.innerText || document.body?.textContent || '').trim()).catch(() => '')
 }
 
+async function waitForRouteStateText(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const text = await readBodyText(page, 500)
+    return text.replace(/\s+/g, ' ').trim()
+  }, {
+    message: 'live browser matrix route should settle into visible content or a visible startup/auth state',
+    timeout: 8_000,
+  }).not.toBe('')
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
@@ -442,6 +452,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
       try {
         const response = await gotoLiveCanaryRoute(page, baseUrl!, route.route)
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
+        await waitForRouteStateText(page).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
         if (!response?.ok()) {
           facts.status = 'failed'
