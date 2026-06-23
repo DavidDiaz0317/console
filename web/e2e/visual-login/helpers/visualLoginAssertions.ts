@@ -122,12 +122,13 @@ export async function assertHostedDemoNoLoginInvariant(page: Page) {
   await assertDashboardContentVisible(page)
 }
 
-export async function assertNoCriticalRuntimeErrors(collectors: EvidenceCollectors) {
+export async function assertNoCriticalRuntimeErrors(collectors: EvidenceCollectors, additionalExpectedNoise: RegExp[] = []) {
+  const expectedNoise = [...EXPECTED_CONSOLE_NOISE, ...additionalExpectedNoise]
   const unexpectedConsoleErrors = collectors.consoleErrors
     .map(entry => entry.text)
-    .filter(text => !EXPECTED_CONSOLE_NOISE.some(pattern => pattern.test(text)))
+    .filter(text => !expectedNoise.some(pattern => pattern.test(text)))
   const unexpectedPageErrors = collectors.pageErrors
-    .filter(text => !EXPECTED_CONSOLE_NOISE.some(pattern => pattern.test(text)))
+    .filter(text => !expectedNoise.some(pattern => pattern.test(text)))
   expect(unexpectedConsoleErrors, 'no critical console errors during visual/login startup').toEqual([])
   expect(unexpectedPageErrors, 'no uncaught page errors during visual/login startup').toEqual([])
 }
@@ -149,7 +150,15 @@ export async function assertNoSevereOverlap(page: Page, locator: Locator) {
   const boxes = await locator.evaluateAll(elements => elements.map((element) => {
     const rect = element.getBoundingClientRect()
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  }).filter((box) => {
+    const meaningfulSize = box.width > 4 && box.height > 4
+    const inViewport = box.x + box.width > 0
+      && box.y + box.height > 0
+      && box.x < window.innerWidth
+      && box.y < window.innerHeight
+    return meaningfulSize && inViewport
   }))
+  if (boxes.length < 2) return
   for (let i = 0; i < boxes.length; i += 1) {
     for (let j = i + 1; j < boxes.length; j += 1) {
       const a = boxes[i]

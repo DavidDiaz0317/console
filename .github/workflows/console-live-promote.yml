@@ -13,6 +13,10 @@ on:
         default: 'true'
         type: choice
         options: ['true', 'false']
+  workflow_run:
+    workflows: ['Build and Deploy KC']
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
   packages: read
@@ -37,6 +41,10 @@ env:
   LIVE_CLUSTER_CONTEXTS: ${{ vars.LIVE_CLUSTER_CONTEXTS || 'ks-console-ci-1,ks-console-ci-2,ks-console-ci-3' }}
   LIVE_CLUSTER_EXPECTED_CONTEXTS: ${{ vars.LIVE_CLUSTER_EXPECTED_CONTEXTS || '3' }}
   LIVE_CLUSTER_EXPECTED_READY_NODES: ${{ vars.LIVE_CLUSTER_EXPECTED_READY_NODES || '6' }}
+  LIVE_CLUSTER_FIXTURES: ${{ vars.LIVE_CLUSTER_FIXTURES || 'false' }}
+  LIVE_CLUSTER_FIXTURE_CONTEXT: ${{ vars.LIVE_CLUSTER_FIXTURE_CONTEXT || 'ks-console-ci-1' }}
+  LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
+  LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
   PROMOTE_PRODUCTION: ${{ inputs.promoteProduction || 'true' }}
@@ -129,6 +137,8 @@ jobs:
           set -euo pipefail
           if [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
             candidate_sha="$CANDIDATE_SHA_INPUT"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            candidate_sha="${{ github.event.workflow_run.head_sha }}"
           else
             candidate_sha="$(git ls-remote "https://github.com/${FORK_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
           fi
@@ -177,7 +187,6 @@ jobs:
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           for ns in "$LIVE_NAMESPACE" "$CANARY_NAMESPACE"; do
-            kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
             kubectl -n "$ns" create secret generic "$OAUTH_SECRET_NAME" \
               --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
               --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
@@ -197,13 +206,16 @@ jobs:
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$CANARY_NAMESPACE" \
-            --create-namespace \
             --set image.repository="$IMAGE_REPOSITORY" \
             --set image.tag="${{ steps.candidate.outputs.sha }}" \
             --set image.pullPolicy=Always \
             --set service.type=ClusterIP \
+            --set persistence.enabled=true \
+            --set persistence.ephemeral=true \
+            --set backup.enabled=false \
             --set jwt.existingSecret="$OAUTH_SECRET_NAME" \
             --set kubeconfig.existingSecret="$KUBECONFIG_SECRET_NAME" \
+            --set rbac.create=false \
             --set rbac.resourceQuotasReadOnly=true \
             --set rbac.namespaceCreationEnabled=false \
             --set extraEnv[0].name=DEV_MODE \
@@ -231,7 +243,7 @@ jobs:
         run: |
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
-          kubectl -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
+          kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
             > "$RUNNER_TEMP/console-live/canary-port-forward.log" 2>&1 &
           echo "CANARY_PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
           for _ in {1..60}; do
@@ -249,9 +261,14 @@ jobs:
         working-directory: web
         env:
           KUBECONFIG: ${{ steps.groundtruth-kubeconfig.outputs.path }}
+          LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64: ${{ secrets.LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64 }}
           LIVE_CLUSTER_TESTS: 'true'
+          LIVE_SITE_TESTS: 'true'
+          LIVE_SITE_AUTH_MODE: dev
+          LIVE_CANARY_CONSOLE_URL: http://127.0.0.1:18080
+          LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18080
-        run: npm run test:visual:groundtruth
+        run: npm run test:visual:live
 
       - name: Run test adequacy analyzer
         if: steps.live-state.outputs.skip != 'true'
@@ -359,6 +376,5 @@ jobs:
           set +e
           if [ -n "${DEPLOY_KUBECONFIG:-}" ]; then
             export KUBECONFIG="$DEPLOY_KUBECONFIG"
-            helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m
-            kubectl delete namespace "$CANARY_NAMESPACE" --wait=false
+            helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m || true
           fi

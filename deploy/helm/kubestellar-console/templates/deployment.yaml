@@ -383,8 +383,12 @@ spec:
           emptyDir: {}
         {{- if .Values.persistence.enabled }}
         - name: data
+          {{- if .Values.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
           persistentVolumeClaim:
             claimName: {{ include "kubestellar-console.fullname" . }}
+          {{- end }}
         {{- end }}
         {{- if or .Values.kubeconfig.content .Values.kubeconfig.existingSecret }}
         - name: kubeconfig

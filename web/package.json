@@ -63,6 +63,7 @@
     "test:visual:mutations": "playwright test --config e2e/visual-login/intensive.config.ts --grep @mutation",
     "test:visual:adequacy": "node harness/scripts/analyzeTestDirectory.cjs",
     "test:visual:groundtruth": "playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth",
+    "test:visual:live": "playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site",
     "test:visual:report:pr": "node harness/scripts/buildPrSummary.cjs",
     "test:visual:report:intensive": "node harness/scripts/buildVisualQualityReport.cjs",
     "test:visual:all": "npm run test:visual:pr && npm run test:visual:intensive && npm run test:visual:adequacy",

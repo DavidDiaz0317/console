@@ -17,6 +17,18 @@ on:
         default: 'true'
         type: choice
         options: ['true', 'false']
+      runLiveSite:
+        description: 'Run production/canary live-site checks when URLs are configured'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      runFixtures:
+        description: 'Inject temporary Kubernetes UI fixtures when write credentials are configured'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
 
 permissions: read-all
 
@@ -30,13 +42,22 @@ env:
   PR_VISUAL_USE_HOSTED_DEMO: 'false'
   LIVE_CLUSTER_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.runGroundTruth || 'true' }}
   RUN_MUTATION_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.runMutationMatrix || 'true' }}
+  LIVE_SITE_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.runLiveSite || 'true' }}
+  LIVE_CLUSTER_FIXTURES: ${{ github.event_name == 'workflow_dispatch' && inputs.runFixtures || vars.LIVE_CLUSTER_FIXTURES || 'false' }}
   KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
   KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
+  LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64: ${{ secrets.LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64 }}
   KC_AGENT_TOKEN: ${{ secrets.KC_AGENT_TOKEN }}
   SELF_HOSTED_CONSOLE_URL: ${{ secrets.SELF_HOSTED_CONSOLE_URL }}
+  LIVE_PRODUCTION_CONSOLE_URL: ${{ vars.LIVE_PRODUCTION_CONSOLE_URL || 'https://console-live.kubestellar.io' }}
+  LIVE_CANARY_CONSOLE_URL: ${{ vars.LIVE_CANARY_CONSOLE_URL }}
+  LIVE_SITE_AUTH_MODE: ${{ vars.LIVE_SITE_AUTH_MODE || 'dev' }}
   LIVE_CLUSTER_CONTEXTS: ${{ vars.LIVE_CLUSTER_CONTEXTS }}
   LIVE_CLUSTER_EXPECTED_CONTEXTS: ${{ vars.LIVE_CLUSTER_EXPECTED_CONTEXTS || '3' }}
   LIVE_CLUSTER_EXPECTED_READY_NODES: ${{ vars.LIVE_CLUSTER_EXPECTED_READY_NODES || '6' }}
+  LIVE_CLUSTER_FIXTURE_CONTEXT: ${{ vars.LIVE_CLUSTER_FIXTURE_CONTEXT || 'ks-console-ci-1' }}
+  LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
+  LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
 
 jobs:
   intensive:
@@ -93,10 +114,20 @@ jobs:
               [ -z "$ctx" ] && continue
               kubectl --context "$ctx" auth can-i list nodes
               kubectl --context "$ctx" get nodes --no-headers
+              if [ "${LIVE_CLUSTER_FIXTURES:-false}" = "true" ]; then
+                kubectl --context "$ctx" auth can-i create namespaces
+                kubectl --context "$ctx" auth can-i create pods -A
+                kubectl --context "$ctx" auth can-i create deployments -A
+              fi
             done
           else
             kubectl auth can-i list nodes
             kubectl get nodes --no-headers
+            if [ "${LIVE_CLUSTER_FIXTURES:-false}" = "true" ]; then
+              kubectl auth can-i create namespaces
+              kubectl auth can-i create pods -A
+              kubectl auth can-i create deployments -A
+            fi
           fi
 
       - name: Run intensive visual/login loop
@@ -137,7 +168,14 @@ jobs:
           const results = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : [];
           const criticalSurvivors = results.filter((r) =>
             r.status === 'survived' && (r.targetInvariants || []).some((id) =>
-              ['hosted-demo-no-login', 'local-auth-mode-correct', 'auth-mode-separation', 'cluster-dashboard-groundtruth-match'].includes(id)
+              [
+                'hosted-demo-no-login',
+                'local-auth-mode-correct',
+                'auth-mode-separation',
+                'cluster-dashboard-groundtruth-match',
+                'live-production-auth-boundary',
+                'live-fixture-ui-match',
+              ].includes(id)
             )
           );
           if (criticalSurvivors.length > 0) {

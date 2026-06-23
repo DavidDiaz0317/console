@@ -72,6 +72,42 @@ invariants:
       - wrong cluster count
       - wrong pod or workload status
 
+  - id: live-production-auth-boundary
+    area: live-security
+    severity: critical
+    description: Production console-live must expose only the public shell and OAuth redirect while protecting authenticated APIs.
+    required:
+      - health endpoint is reachable
+      - unauthenticated /api/me returns 401
+      - /auth/github redirects to OAuth
+    forbidden:
+      - unauthenticated API user data
+      - ingress 403/404/5xx page on the root route
+
+  - id: live-canary-ui-layout-stable
+    area: live-visual
+    severity: major
+    description: Authenticated live canary pages must render real cluster data without blank cards, stuck loading, overflow, or severe overlap.
+    required:
+      - authenticated dashboard shell is visible
+      - live data pages settle without layout breakage
+    forbidden:
+      - login page after canary session setup
+      - horizontal overflow
+      - blank card shells
+      - unrecoverable loading state
+
+  - id: live-fixture-ui-match
+    area: live-semantic-visual
+    severity: critical
+    description: Controlled Kubernetes fixture resources should appear in the authenticated live UI with their expected states.
+    required:
+      - injected healthy deployment is visible
+      - injected pending and image-pull-failure pods are visible
+    forbidden:
+      - fixture resources missing from UI
+      - fixture state not observable from Kubernetes
+
   - id: no-critical-runtime-errors
     area: reliability
     severity: major
