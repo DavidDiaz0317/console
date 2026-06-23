@@ -51,7 +51,7 @@ export function installEvidenceCollectors(page: Page): EvidenceCollectors {
   })
 
   page.on('response', response => {
-    if (response.status() >= 500) {
+    if (response.status() >= 400) {
       collectors.errorResponses.push({
         url: sanitizeText(response.url()),
         method: response.request().method(),
