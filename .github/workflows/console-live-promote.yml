@@ -187,7 +187,6 @@ jobs:
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           for ns in "$LIVE_NAMESPACE" "$CANARY_NAMESPACE"; do
-            kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f -
             kubectl -n "$ns" create secret generic "$OAUTH_SECRET_NAME" \
               --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
               --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
@@ -378,5 +377,4 @@ jobs:
           if [ -n "${DEPLOY_KUBECONFIG:-}" ]; then
             export KUBECONFIG="$DEPLOY_KUBECONFIG"
             helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m || true
-            kubectl delete namespace "$CANARY_NAMESPACE" --wait=false || true
           fi
