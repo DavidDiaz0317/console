@@ -235,6 +235,46 @@ function inferLiveUiFailuresFromText(textValue) {
   return mergeLiveUiFailureObjects(failures)
 }
 
+function liveFailuresFromRouteReports(routeReports) {
+  const failures = {
+    dashboardMismatches: [],
+    routeFailures: [],
+    interactiveFailures: [],
+    fixtureMismatches: [],
+  }
+
+  for (const report of routeReports || []) {
+    if (Array.isArray(report.mismatches)) {
+      failures.dashboardMismatches.push(...report.mismatches.map((mismatch) => ({
+        field: mismatch.field || 'unknown',
+        expected: mismatch.expected ?? 'unknown',
+        actual: mismatch.actual ?? null,
+        route: mismatch.route || report.route || 'unknown',
+      })))
+    }
+    if (report.kind === 'route-content' && report.matched === false) {
+      failures.routeFailures.push({
+        route: report.route || 'unknown',
+        reason: `missing expected markers: ${(report.missing || []).join(', ') || 'not parsed'}`,
+        expected: Array.isArray(report.expected) ? report.expected.join(', ') : undefined,
+        actual: report.bodyPreview || null,
+      })
+    }
+    if (report.kind === 'interactive-control-missing') {
+      failures.interactiveFailures.push({
+        control: report.control || 'unknown',
+        reason: 'required interactive control was not visible',
+        route: report.route || 'unknown',
+      })
+    }
+    if (Array.isArray(report.fixtureMismatches)) {
+      failures.fixtureMismatches.push(...report.fixtureMismatches)
+    }
+  }
+
+  return mergeLiveUiFailureObjects(failures)
+}
+
 function invariantIdsFrom(failures, evidenceItems, logText = '') {
   const fromEvidence = evidenceItems.flatMap((item) => item.invariantIds || [])
   const fromFailures = failures.flatMap((failure) =>
@@ -583,6 +623,12 @@ module.exports = async ({ github, context, core }) => {
       const parsed = readJsonFile(file)
       return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : [])
     })
+  const routeReports = files
+    .filter((file) => /(^|[\\/])live-routes\.json$/i.test(file))
+    .flatMap((file) => {
+      const parsed = readJsonFile(file)
+      return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : [])
+    })
 
   const failures = resultFiles.flatMap((file) => {
     const report = readJsonFile(file)
@@ -604,6 +650,7 @@ module.exports = async ({ github, context, core }) => {
   const liveUiFailures = mergeLiveUiFailureObjects(
     mergeLiveUiFailures(evidenceItems),
     inferLiveUiFailuresFromText(combinedLogText),
+    liveFailuresFromRouteReports(routeReports),
   )
   const invariantIds = invariantIdsFrom(failures, evidenceItems, combinedLogText)
   const logArtifactPaths = artifactPathsFromText(combinedLogText)

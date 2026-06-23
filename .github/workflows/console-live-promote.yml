@@ -283,6 +283,8 @@ jobs:
             web/test-results/evidence/
             web/test-results/reports/
             web/test-results/visual-login-intensive/
+            web/e2e/visual-login/test-results/results.json
+            web/e2e/visual-login/test-results/evidence/
             web/e2e/visual-login/test-results/visual-login-intensive/
             ${{ runner.temp }}/console-live/canary-port-forward.log
           if-no-files-found: warn
