@@ -22,7 +22,6 @@ import { sanitizeForPrompt } from '../../../hooks/useMissionPromptBuilder'
 import { useSidebarConfig, DISCOVERABLE_DASHBOARDS } from '../../../hooks/useSidebarConfig'
 import { scrollToCard } from '../../../lib/scrollToCard'
 import { useFeatureHints } from '../../../hooks/useFeatureHints'
-import { FeatureHintTooltip } from '../../ui/FeatureHintTooltip'
 import { emitGlobalSearchOpened, emitGlobalSearchQueried, emitGlobalSearchSelected, emitGlobalSearchAskAI } from '../../../lib/analytics'
 import { useModalState } from '../../../lib/modals'
 
@@ -226,8 +225,6 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
   const flatResultsRef = useRef<SearchItem[]>([])
   const totalCountRef = useRef(0)
   const cmdKHint = useFeatureHints('cmd-k')
-  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || '')
-  const searchShortcut = isMac ? '⌘K' : 'Ctrl+K'
 
   // Whether the results panel is active (mounted).
   // The panel -- and its expensive useSearchIndex hook -- only mount when
@@ -444,15 +441,6 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
         <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground bg-secondary rounded" aria-hidden="true">
           <Command className="w-3 h-3" /><span>K</span>
         </kbd>
-
-        {/* Cmd+K feature hint tooltip */}
-        {cmdKHint.isVisible && !isSearchOpen && (
-          <FeatureHintTooltip
-            message={`Press ${searchShortcut} to search dashboards, cards, clusters, and more`}
-            onDismiss={cmdKHint.dismiss}
-            placement="right"
-          />
-        )}
 
         {/* Search results panel -- only mounts when query is non-empty.
             This ensures useSearchIndex (and its 7 API hooks) never run

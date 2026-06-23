@@ -47,7 +47,7 @@ env:
   LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
-  PROMOTE_PRODUCTION: ${{ inputs.promoteProduction || 'true' }}
+  PROMOTE_PRODUCTION: ${{ github.event_name == 'workflow_dispatch' && inputs.promoteProduction || 'true' }}
   CANDIDATE_SHA_INPUT: ${{ inputs.candidate_sha || '' }}
 
 jobs:

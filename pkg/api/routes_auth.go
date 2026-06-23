@@ -107,7 +107,7 @@ func (s *Server) setupAuthRoutes(app *fiber.App) *routeSetupContext {
 	failureTracker := middleware.NewFailureTracker()
 	s.auth.failureTracker = failureTracker
 
-	authLimiterMaxRequests := 10
+	authLimiterMaxRequests := 60
 	authLimiterWindow := 1 * time.Minute
 	authLimiter := limiter.New(limiter.Config{
 		Max:          authLimiterMaxRequests,
