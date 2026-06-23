@@ -303,7 +303,7 @@ async function collectTopLayerFact(page: Page) {
       height: number
     }
 
-    const candidates = Array.from(document.querySelectorAll([
+    const semanticCandidates = Array.from(document.querySelectorAll([
       '[role="dialog"]',
       '[role="menu"]',
       '[aria-modal="true"]',
@@ -313,6 +313,22 @@ async function collectTopLayerFact(page: Page) {
       '[class*="modal" i]',
       '[class*="menu" i]',
     ].join(',')))
+    const fixedPanelCandidates = Array.from(document.querySelectorAll('body *')).filter((element) => {
+      const rect = element.getBoundingClientRect()
+      const style = window.getComputedStyle(element)
+      const area = rect.width * rect.height
+      const viewportArea = window.innerWidth * window.innerHeight
+      return style.position === 'fixed'
+        && rect.width >= 240
+        && rect.height >= 180
+        && area >= viewportArea * 0.08
+        && area <= viewportArea * 0.85
+        && rect.bottom > 0
+        && rect.right > 0
+        && rect.top < window.innerHeight
+        && rect.left < window.innerWidth
+    })
+    const candidates = Array.from(new Set([...semanticCandidates, ...fixedPanelCandidates]))
 
     const visibleCandidates = candidates
       .map((element) => {
@@ -332,7 +348,13 @@ async function collectTopLayerFact(page: Page) {
           && style.visibility !== 'hidden'
           && style.opacity !== '0'
       })
-      .sort((a, b) => (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height))
+      .sort((a, b) => {
+        const zA = Number.parseInt(a.zIndex, 10)
+        const zB = Number.parseInt(b.zIndex, 10)
+        const rankA = Number.isFinite(zA) ? zA : 0
+        const rankB = Number.isFinite(zB) ? zB : 0
+        return rankB - rankA || (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height)
+      })
 
     const overlay = visibleCandidates[0]
     if (!overlay) {

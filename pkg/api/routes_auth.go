@@ -187,7 +187,9 @@ func (s *Server) setupAuthRoutes(app *fiber.App) *routeSetupContext {
 
 	publicLimiterSkipPaths := map[string]bool{
 		"/api/feedback/requests": true,
+		"/api/kagent/status":     true,
 		"/api/me":                true,
+		"/api/stellar/state":     true,
 		"/api/version":           true,
 	}
 	publicLimiterWithSkip := func(c *fiber.Ctx) error {
