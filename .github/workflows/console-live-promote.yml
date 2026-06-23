@@ -212,6 +212,9 @@ jobs:
             --set image.tag="${{ steps.candidate.outputs.sha }}" \
             --set image.pullPolicy=Always \
             --set service.type=ClusterIP \
+            --set persistence.enabled=true \
+            --set persistence.ephemeral=true \
+            --set backup.enabled=false \
             --set jwt.existingSecret="$OAUTH_SECRET_NAME" \
             --set kubeconfig.existingSecret="$KUBECONFIG_SECRET_NAME" \
             --set rbac.resourceQuotasReadOnly=true \
@@ -241,7 +244,7 @@ jobs:
         run: |
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
-          kubectl -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
+          kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
             > "$RUNNER_TEMP/console-live/canary-port-forward.log" 2>&1 &
           echo "CANARY_PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
           for _ in {1..60}; do
@@ -266,7 +269,7 @@ jobs:
           LIVE_CANARY_CONSOLE_URL: http://127.0.0.1:18080
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18080
-        run: npm run test:visual:groundtruth
+        run: npm run test:visual:live
 
       - name: Run test adequacy analyzer
         if: steps.live-state.outputs.skip != 'true'

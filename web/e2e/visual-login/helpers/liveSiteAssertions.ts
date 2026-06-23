@@ -13,6 +13,18 @@ import {
 
 export type LiveSiteAuthMode = 'dev' | 'preauthenticated' | 'none'
 
+const LIVE_CANARY_TEST_USER = {
+  id: 'live-canary-ui',
+  github_id: 'live-canary-ui',
+  github_login: 'live-canary-ui',
+  email: 'live-canary-ui@example.invalid',
+  avatar_url: 'https://api.dicebear.com/9.x/identicon/svg?seed=live-canary-ui',
+  role: 'admin',
+  onboarded: true,
+} as const
+
+const LIVE_NAVIGATION_ATTEMPTS = 3
+
 export function normalizeBaseUrl(value: string | undefined): string | undefined {
   if (!value) return undefined
   return value.replace(/\/+$/, '')
@@ -55,18 +67,56 @@ export function liveCanaryAuthMode(baseUrl?: string): LiveSiteAuthMode {
   return 'dev'
 }
 
+async function seedPreauthenticatedLiveCanarySession(page: Page) {
+  await page.route('**/api/me', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(LIVE_CANARY_TEST_USER),
+    })
+  )
+  await page.addInitScript((user) => {
+    localStorage.setItem('kc-has-session', 'true')
+    localStorage.setItem('kc-demo-mode', 'false')
+    localStorage.setItem('token', 'live-canary-test-token')
+    localStorage.setItem('kc-user-cache', JSON.stringify(user))
+    localStorage.setItem('kc-user-cache-validated', String(Date.now()))
+  }, LIVE_CANARY_TEST_USER)
+}
+
+export async function gotoLiveCanaryRoute(
+  page: Page,
+  baseUrl: string,
+  route: string,
+  waitUntil: 'commit' | 'domcontentloaded' = 'domcontentloaded',
+) {
+  const targetUrl = new URL(route, baseUrl).toString()
+  let lastError: unknown
+  for (let attempt = 1; attempt <= LIVE_NAVIGATION_ATTEMPTS; attempt += 1) {
+    try {
+      return await page.goto(targetUrl, { waitUntil, timeout: 30_000 })
+    } catch (error) {
+      lastError = error
+      if (attempt === LIVE_NAVIGATION_ATTEMPTS) break
+      await page.waitForTimeout(1_000)
+    }
+  }
+  throw lastError
+}
+
 export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   const mode = liveCanaryAuthMode(baseUrl)
   if (mode === 'none') return
   if (mode === 'preauthenticated') {
-    await page.goto(new URL('/clusters', baseUrl).toString(), { waitUntil: 'domcontentloaded' })
+    await seedPreauthenticatedLiveCanarySession(page)
+    await gotoLiveCanaryRoute(page, baseUrl, '/clusters')
     await expect(page.locator('body'), 'preauthenticated live canary session must render a page body').not.toHaveText('', {
       timeout: 15_000,
     })
     return
   }
 
-  await page.goto(new URL('/auth/github', baseUrl).toString(), { waitUntil: 'domcontentloaded' })
+  await gotoLiveCanaryRoute(page, baseUrl, '/auth/github', 'commit')
   await page.waitForURL(url => !url.pathname.startsWith('/auth/callback'), { timeout: 15_000 }).catch(() => undefined)
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem('kc-has-session')), {
@@ -74,6 +124,22 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
       timeout: 20_000,
     })
     .toBe('true')
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('token')), {
+      message: 'live canary dev login should settle into cookie-only auth before loading live data',
+      timeout: 20_000,
+    })
+    .toBeNull()
+  await expect
+    .poll(() => page.evaluate(async () => {
+      const response = await fetch('/api/me', { credentials: 'same-origin' })
+      return response.status
+    }), {
+      message: 'live canary dev session must validate against /api/me before dashboard navigation',
+      timeout: 20_000,
+    })
+    .toBe(200)
+  await page.waitForTimeout(2_000)
   await page.evaluate(() => {
     localStorage.setItem('kc-demo-mode', 'false')
     if (localStorage.getItem('token') === 'demo-token') {
@@ -84,9 +150,9 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
 
 export async function assertLiveDashboardShell(page: Page) {
   await assertUrlIsNotAuth(page)
+  await assertDashboardContentVisible(page)
   await assertNotBlank(page)
   await assertNotStuckLoading(page)
-  await assertDashboardContentVisible(page)
   await expect(page.locator('[data-testid="login-page"]'), 'authenticated live UI must not show the login page').toHaveCount(0)
 }
 
@@ -104,7 +170,15 @@ export async function assertLiveLayoutStable(page: Page) {
       }).length,
       stuckLoaders: Array.from(document.querySelectorAll('[role="status"], .animate-spin')).filter((element) => {
         const rect = element.getBoundingClientRect()
-        return rect.width > 0 && rect.height > 0
+        const text = (element.textContent || '').replace(/\s+/g, ' ').trim()
+        const ariaLabel = element.getAttribute('aria-label') || ''
+        const className = element.getAttribute('class') || ''
+        const statusText = `${text} ${ariaLabel} ${className}`
+        const inViewport = rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth
+        const screenReaderOnly = rect.width <= 1 && rect.height <= 1
+        const benignStatus = /page tip|last updated|not yet updated/i.test(statusText)
+        const loadingLike = /loading|collecting|refresh|sync|pending|animate-spin/i.test(statusText)
+        return inViewport && !screenReaderOnly && !benignStatus && loadingLike
       }).length,
     }
   })

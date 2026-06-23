@@ -86,6 +86,15 @@
         }
       }
     },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "ephemeral": {
+          "type": "boolean",
+          "description": "Use an emptyDir data volume instead of creating or mounting a PersistentVolumeClaim."
+        }
+      }
+    },
     "kubeconfig": {
       "type": "object",
       "properties": {

@@ -182,6 +182,9 @@ database:
 # Persistence for SQLite
 persistence:
   enabled: true
+  # Use an emptyDir data volume instead of a PVC. Intended for disposable
+  # canary/test deployments that should not retain SQLite state.
+  ephemeral: false
   size: 1Gi
   storageClass: ""
   accessModes:

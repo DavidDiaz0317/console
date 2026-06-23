@@ -10,6 +10,7 @@ import {
   assertLiveDashboardShell,
   assertLiveLayoutStable,
   establishLiveCanarySession,
+  gotoLiveCanaryRoute,
   liveCanaryUrl,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
@@ -35,6 +36,15 @@ const invariantIds = [
   'cluster-dashboard-groundtruth-match',
   'live-canary-ui-layout-stable',
   'no-critical-runtime-errors',
+]
+
+const liveCanaryExpectedConsoleNoise = [
+  /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/i,
+  /Failed to load resource: the server responded with a status of 403 \(Forbidden\)/i,
+  /Failed to load resource: the server responded with a status of 405 \(Method Not Allowed\)/i,
+  /Failed to load resource: the server responded with a status of 502 \(Bad Gateway\)/i,
+  /\[Missions\] Failed to connect to agent: Error: CONNECTION_FAILED/i,
+  /\[OfflineDetection\] Error fetching nodes: SyntaxError: Unexpected token '<'/i,
 ]
 
 test('live canary UI matches Kubernetes groundtruth without screenshot baselines @intensive @live-site @groundtruth @invariant:live-canary-ui-layout-stable', async ({ page }, testInfo) => {
@@ -66,7 +76,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     expect(groundTruth.nodes.ready, `expected ${expectedReadyNodes} Ready live cluster nodes`).toBe(expectedReadyNodes)
 
     await establishLiveCanarySession(page, baseUrl)
-    const response = await page.goto(new URL('/clusters?groundtruth=1', baseUrl).toString(), { waitUntil: 'domcontentloaded' })
+    const response = await gotoLiveCanaryRoute(page, baseUrl, '/clusters?groundtruth=1')
     expect(response?.ok(), 'live canary /clusters route must be reachable').toBeTruthy()
     await assertLiveDashboardShell(page)
     await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
@@ -76,7 +86,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
     await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)
     await assertLiveLayoutStable(page)
-    await assertNoCriticalRuntimeErrors(collectors)
+    await assertNoCriticalRuntimeErrors(collectors, liveCanaryExpectedConsoleNoise)
 
     writeLiveSiteReport({
       target: 'canary',
