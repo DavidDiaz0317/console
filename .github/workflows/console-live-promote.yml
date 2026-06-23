@@ -288,8 +288,14 @@ jobs:
             repository: "$IMAGE_REPOSITORY"
             tag: "${{ steps.candidate.outputs.sha }}"
             pullPolicy: Always
+          clusterName: ks-console-ci-1
           service:
             type: ClusterIP
+          podSecurityContext:
+            seccompProfile:
+              type: RuntimeDefault
+            fsGroup: 1001
+            fsGroupChangePolicy: OnRootMismatch
           github:
             existingSecret: "$OAUTH_SECRET_NAME"
           jwt:
@@ -299,6 +305,9 @@ jobs:
           ingress:
             enabled: true
             className: nginx
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-http01
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
             hosts:
               - host: "$LIVE_HOST"
                 paths:
@@ -323,7 +332,7 @@ jobs:
           helm upgrade --install "$LIVE_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$LIVE_NAMESPACE" \
             --create-namespace \
-            --reuse-values \
+            --reset-values \
             -f "$prod_values" \
             --atomic \
             --cleanup-on-fail \
