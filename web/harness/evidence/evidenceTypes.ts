@@ -29,6 +29,14 @@ export interface LiveUiFailureEvidence {
   routeFailures?: Array<{ route: string; reason: string; expected?: string; actual?: string | null }>
   interactiveFailures?: Array<{ control: string; reason: string; route: string }>
   fixtureMismatches?: Array<{ resource: string; expected: string; actual?: string | null; route?: string }>
+  browserMatrixFailures?: Array<{
+    classification: string
+    browser?: string
+    route?: string
+    control?: string
+    reason: string
+    screenshotPath?: string
+  }>
 }
 
 export interface VisualLoginEvidence {

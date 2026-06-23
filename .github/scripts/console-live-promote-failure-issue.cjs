@@ -5,6 +5,7 @@ const crypto = require('crypto')
 const LABELS = {
   'console-live': { color: '5319e7', description: 'Issues related to console-live.kubestellar.io' },
   'live-canary': { color: '0e8a16', description: 'Console live canary validation' },
+  'browser-matrix': { color: '1d76db', description: 'Cross-browser live visual canary validation' },
   'test-failure': { color: 'f9d0c4', description: 'Automated test failure' },
   'needs-fix': { color: 'd93f0b', description: 'Needs an implementation fix' },
 }
@@ -130,6 +131,7 @@ function mergeLiveUiFailureObjects(...failureSets) {
     routeFailures: [],
     interactiveFailures: [],
     fixtureMismatches: [],
+    browserMatrixFailures: [],
   }
 
   for (const failures of failureSets) {
@@ -158,6 +160,7 @@ function inferLiveUiFailuresFromText(textValue) {
     routeFailures: [],
     interactiveFailures: [],
     fixtureMismatches: [],
+    browserMatrixFailures: [],
   }
 
   if (/visible text must not severely overlap/i.test(text)) {
@@ -275,6 +278,26 @@ function liveFailuresFromRouteReports(routeReports) {
   return mergeLiveUiFailureObjects(failures)
 }
 
+function liveFailuresFromBrowserMatrixReports(browserMatrixReports) {
+  const failures = { browserMatrixFailures: [] }
+  for (const report of browserMatrixReports || []) {
+    for (const difference of report.differences || []) {
+      failures.browserMatrixFailures.push({
+        classification: difference.classification || report.classification || 'browser-layout-drift',
+        browser: difference.browser,
+        route: difference.route,
+        control: difference.control,
+        reason: difference.reason || 'cross-browser matrix difference',
+        screenshotPath: difference.screenshotPath,
+        expectedTopLayer: difference.expectedTopLayer,
+        actualTopLayer: difference.actualTopLayer,
+        details: difference,
+      })
+    }
+  }
+  return mergeLiveUiFailureObjects(failures)
+}
+
 function invariantIdsFrom(failures, evidenceItems, logText = '') {
   const fromEvidence = evidenceItems.flatMap((item) => item.invariantIds || [])
   const fromFailures = failures.flatMap((failure) =>
@@ -297,6 +320,12 @@ function artifactPathsFromText(logText) {
 
 function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
+  const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
+  if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-layout-drift') || text.includes('browser-layout-drift')) return 'browser-layout-drift'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-visual-baseline') || text.includes('browser-visual-baseline')) return 'browser-visual-baseline'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
   if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
   if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
@@ -321,6 +350,28 @@ function likelyAreasFor(type) {
   }
   if (type === 'live-network-error') {
     return ['web/src/hooks/**', 'web/src/lib/**', 'web/src/components/cards/**', 'cmd/console/**']
+  }
+  if (type === 'safari-z-index' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
+    return [
+      'web/src/components/layout/**',
+      'web/src/components/ui/**',
+      'web/src/components/dashboard/**',
+      'web/e2e/visual-login/browser-matrix/**',
+    ]
+  }
+  if (type === 'browser-content-missing') {
+    return [
+      'web/src/pages/**',
+      'web/src/components/**',
+      'web/src/hooks/**',
+      'cmd/console/**',
+    ]
+  }
+  if (type === 'browser-visual-baseline') {
+    return [
+      'web/e2e/visual-login/browser-matrix/**',
+      'web/src/components/**',
+    ]
   }
   if (type === 'dashboard-groundtruth-mismatch') {
     return [
@@ -369,6 +420,11 @@ function shortFailure(type, failures) {
   if (type === 'live-ui-forbidden-artifact') return 'live UI shows demo or local-only artifact'
   if (type === 'live-ui-warning-flood') return 'live UI shows warning flood'
   if (type === 'live-network-error') return 'live UI has unexpected network errors'
+  if (type === 'safari-z-index') return 'WebKit overlay or text stacking differs from Chromium'
+  if (type === 'browser-layout-drift') return 'browser layout differs significantly from Chromium'
+  if (type === 'browser-content-missing') return 'browser is missing expected live content'
+  if (type === 'browser-interaction-broken') return 'browser interaction is broken'
+  if (type === 'browser-visual-baseline') return 'browser screenshot differs from its baseline'
   if (type === 'dashboard-groundtruth-mismatch') return 'Dashboard stats do not match live Kubernetes groundtruth'
   if (type === 'core-page-live-data-missing') return 'core live page is missing expected live data'
   if (type === 'interactive-surface-broken') return 'interactive live UI surface is broken'
@@ -466,7 +522,21 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
-function buildReproductionCommand() {
+function buildReproductionCommand(failureType) {
+  if (/^(safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
+    return [
+      '```bash',
+      'cd web',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_CLUSTER_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'npm run test:visual:browser-matrix',
+      'npm run test:visual:browser-matrix:compare',
+      '```',
+    ].join('\n')
+  }
   return [
     '```bash',
     'cd web',
@@ -559,13 +629,13 @@ function buildBody({
     '',
     'This command assumes the workflow has deployed and port-forwarded the private canary to `127.0.0.1:18080`:',
     '',
-    buildReproductionCommand(),
+    buildReproductionCommand(failureType),
     '',
     '## Agent Instructions',
     '',
     '1. Inspect the failed invariant and screenshot/trace evidence first.',
-    '2. Do not update screenshot baselines; live tests intentionally do not use baselines.',
-    '3. Fix the UI overlap, forbidden live artifact, network error, or groundtruth mismatch in code.',
+    '2. Do not update screenshot baselines unless the failure type is only `browser-visual-baseline` and the visual change was intentional.',
+    '3. Fix the UI overlap, browser-specific layout issue, forbidden live artifact, network error, or groundtruth mismatch in code.',
     '4. Rerun the live canary test.',
     '5. Confirm production promotion remains blocked until the canary passes.',
   ].join('\n')
@@ -629,6 +699,12 @@ module.exports = async ({ github, context, core }) => {
       const parsed = readJsonFile(file)
       return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : [])
     })
+  const browserMatrixReports = files
+    .filter((file) => /(^|[\\/])browser-matrix\.json$/i.test(file))
+    .flatMap((file) => {
+      const parsed = readJsonFile(file)
+      return parsed ? [parsed] : []
+    })
 
   const failures = resultFiles.flatMap((file) => {
     const report = readJsonFile(file)
@@ -651,6 +727,7 @@ module.exports = async ({ github, context, core }) => {
     mergeLiveUiFailures(evidenceItems),
     inferLiveUiFailuresFromText(combinedLogText),
     liveFailuresFromRouteReports(routeReports),
+    liveFailuresFromBrowserMatrixReports(browserMatrixReports),
   )
   const invariantIds = invariantIdsFrom(failures, evidenceItems, combinedLogText)
   const logArtifactPaths = artifactPathsFromText(combinedLogText)
@@ -665,7 +742,9 @@ module.exports = async ({ github, context, core }) => {
   ].join('|') || `console-live-promote:${runId}`
   const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16)
   const marker = `<!-- console-live-promote-signature:${signature} -->`
-  const title = `[console-live][canary-blocked][${failureType}] ${shortFailure(failureType, failures)}`
+  const browserMatrixFailure = /^(safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
+  const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
+  const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
 
   let body = buildBody({
     marker,
