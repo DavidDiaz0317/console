@@ -130,6 +130,21 @@ async function waitForRouteHandshakeSettled(page: Page): Promise<void> {
   }).not.toBe('loading')
 }
 
+async function waitForExpectedMarkers(
+  page: Page,
+  expectedMarkers: Array<string | RegExp>,
+  mode: 'all' | 'any' = 'all',
+): Promise<void> {
+  await expect.poll(async () => {
+    const text = await readBodyText(page, 500)
+    const missing = expectedMarkers.filter(marker => markerMissing(text, marker))
+    return mode === 'all' ? missing.map(marker => String(marker)) : missing.length < expectedMarkers.length
+  }, {
+    message: 'live browser matrix route should hydrate expected live markers before classification',
+    timeout: 30_000,
+  }).toEqual(mode === 'all' ? [] : true)
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
@@ -488,6 +503,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
         const response = await gotoLiveCanaryRoute(page, baseUrl!, route.route)
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
         await waitForRouteHandshakeSettled(page).catch(() => undefined)
+        await waitForExpectedMarkers(page, route.expectedMarkers(groundTruth)).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
         if (!response?.ok()) {
           facts.status = 'failed'

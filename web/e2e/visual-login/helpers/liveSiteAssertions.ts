@@ -451,6 +451,10 @@ function parseVisibleNumber(value: string | null): number | null {
   return match ? Number(match[0]) : null
 }
 
+function liveRouteMarkerMissing(bodyText: string, marker: string | RegExp): boolean {
+  return typeof marker === 'string' ? !bodyText.includes(marker) : !marker.test(bodyText)
+}
+
 export async function readGroundtruthFieldNumber(page: Page, field: string): Promise<number | null> {
   const marker = page.locator(`[data-groundtruth-field="${field}"]`).first()
   if (await marker.count().catch(() => 0) === 0) return null
@@ -501,6 +505,14 @@ export async function assertGroundtruthFields(page: Page, expected: Record<strin
 }
 
 export async function assertLiveRouteContainsAny(page: Page, route: string, expected: Array<string | RegExp>) {
+  await expect.poll(async () => {
+    const text = await page.locator('body').innerText({ timeout: 500 }).catch(() => '')
+    return expected.some(item => !liveRouteMarkerMissing(text, item))
+  }, {
+    message: `live route ${route} should hydrate at least one expected live-data marker`,
+    timeout: 30_000,
+  }).toBe(true).catch(() => undefined)
+
   const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
   const matched = expected.some(item => typeof item === 'string' ? bodyText.includes(item) : item.test(bodyText))
   if (!matched) {
@@ -520,8 +532,16 @@ export async function assertLiveRouteContainsAny(page: Page, route: string, expe
 }
 
 export async function assertLiveRouteContainsAll(page: Page, route: string, expected: Array<string | RegExp>) {
+  await expect.poll(async () => {
+    const text = await page.locator('body').innerText({ timeout: 500 }).catch(() => '')
+    return expected.filter(item => liveRouteMarkerMissing(text, item)).map(item => String(item))
+  }, {
+    message: `live route ${route} should hydrate all expected live-data markers`,
+    timeout: 30_000,
+  }).toEqual([]).catch(() => undefined)
+
   const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
-  const missing = expected.filter(item => !(typeof item === 'string' ? bodyText.includes(item) : item.test(bodyText)))
+  const missing = expected.filter(item => liveRouteMarkerMissing(bodyText, item))
   if (missing.length > 0) {
     const reason = `missing expected markers: ${missing.map(item => String(item)).join(', ')}`
     await recordLiveUiFailures(page, {
