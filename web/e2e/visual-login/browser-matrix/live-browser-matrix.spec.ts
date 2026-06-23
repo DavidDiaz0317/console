@@ -101,10 +101,16 @@ function markerMissing(bodyText: string, marker: string | RegExp): boolean {
   return typeof marker === 'string' ? !bodyText.includes(marker) : !marker.test(bodyText)
 }
 
+async function readBodyText(page: Page, timeout = 10_000): Promise<string> {
+  const locatorText = await page.locator('body').innerText({ timeout }).catch(() => '')
+  if (locatorText.trim()) return locatorText
+  return page.evaluate(() => (document.body?.innerText || document.body?.textContent || '').trim()).catch(() => '')
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
-  if (/infrastructure connection error|backend connectivity|too many requests|rate limited|http 429/i.test(normalizedText)) return 'startup-error'
+  if (/connecting to infrastructure|checking backend connectivity|infrastructure connection error|backend connectivity|too many requests|rate limited|http 429/i.test(normalizedText)) return 'startup-error'
   if (/session expired|redirecting to sign in/i.test(normalizedText)) return 'session-expired'
   try {
     const pathname = new URL(url).pathname
@@ -137,7 +143,7 @@ async function collectRouteFacts(
   route: MatrixRoute,
   groundTruth: ReturnType<typeof collectK8sGroundTruth>,
 ): Promise<RouteFacts> {
-  const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
+  const bodyText = await readBodyText(page)
   const currentUrl = page.url()
   const routeState = classifyRouteState(currentUrl, bodyText)
   const expectedMarkers = route.expectedMarkers(groundTruth)
@@ -448,11 +454,11 @@ test('live browser matrix records route and interaction layout facts @intensive 
           projectName: testInfo.project.name,
           route: route.route,
           url: page.url(),
-          routeState: classifyRouteState(page.url(), await page.locator('body').innerText({ timeout: 1_000 }).catch(() => '')),
+          routeState: classifyRouteState(page.url(), await readBodyText(page, 1_000)),
           viewport: page.viewportSize(),
           status: 'failed',
           missingMarkers: route.expectedMarkers(groundTruth).map(marker => String(marker)),
-          bodyPreview: (await page.locator('body').innerText({ timeout: 1_000 }).catch(() => '')).replace(/\s+/g, ' ').trim().slice(0, 500),
+          bodyPreview: (await readBodyText(page, 1_000)).replace(/\s+/g, ' ').trim().slice(0, 500),
           scrollOverflowX: 0,
           textCollisionCount: 0,
           clippedElementCount: 0,

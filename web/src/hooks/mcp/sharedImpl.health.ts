@@ -19,6 +19,27 @@ import { HEALTH_CHECK_CONCURRENCY, MAX_HEALTH_CHECK_FAILURES, MAX_DISTRIBUTION_F
 import { FOCUS_DELAY_MS } from '../../lib/constants/network'
 import type { ClusterInfo, ClusterHealth } from './types'
 
+type NamespaceApiEntry = string | { name?: string; Name?: string; metadata?: { name?: string } }
+
+function normalizeNamespaceResponse(data: unknown): string[] {
+  const rawNamespaces = Array.isArray(data)
+    ? data
+    : Array.isArray((data as { namespaces?: unknown })?.namespaces)
+      ? (data as { namespaces: unknown[] }).namespaces
+      : []
+
+  return rawNamespaces
+    .map((entry: NamespaceApiEntry | unknown) => {
+      if (typeof entry === 'string') return entry
+      if (entry && typeof entry === 'object') {
+        const namespace = entry as NamespaceApiEntry
+        return namespace.name || namespace.Name || namespace.metadata?.name || ''
+      }
+      return ''
+    })
+    .filter((namespace): namespace is string => Boolean(namespace))
+}
+
 // Track consecutive health check failures to avoid spamming
 export let healthCheckFailures = 0
 
@@ -147,10 +168,10 @@ export async function detectClusterDistribution(clusterName: string, kubectlCont
   // Cluster-mode routing: use backend API for namespace list (#11685)
   if (isClusterModeBackend()) {
     try {
-      const { data } = await api.get<{ namespaces: string[] }>(
+      const { data } = await api.get<unknown>(
         `/api/mcp/namespaces?cluster=${encodeURIComponent(clusterName)}`
       )
-      const namespaces = (data?.namespaces || [])
+      const namespaces = normalizeNamespaceResponse(data)
       const distribution = detectDistributionFromNamespaces(namespaces)
       return { distribution, namespaces }
     } catch {
