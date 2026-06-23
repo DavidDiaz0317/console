@@ -36,13 +36,20 @@ const forbiddenLiveUiPatterns = [
   { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
 ]
 
-async function recordLiveUiFailures(page: Page, failures: LiveUiFailureEvidence) {
+export async function recordLiveUiFailures(page: Page, failures: LiveUiFailureEvidence) {
   await page.evaluate((nextFailures) => {
     const target = window as unknown as { __KC_LIVE_UI_FAILURES__?: LiveUiFailureEvidence }
-    target.__KC_LIVE_UI_FAILURES__ = {
-      ...(target.__KC_LIVE_UI_FAILURES__ || {}),
-      ...nextFailures,
+    const current = target.__KC_LIVE_UI_FAILURES__ || {}
+    const merged = { ...current } as Record<string, unknown>
+    for (const [key, value] of Object.entries(nextFailures)) {
+      if (Array.isArray(value)) {
+        const existing = Array.isArray(merged[key]) ? merged[key] as unknown[] : []
+        merged[key] = [...existing, ...value]
+      } else if (value !== undefined) {
+        merged[key] = value
+      }
     }
+    target.__KC_LIVE_UI_FAILURES__ = merged as LiveUiFailureEvidence
   }, failures).catch(() => undefined)
 }
 
@@ -430,6 +437,96 @@ export function writeLiveSiteReport(entry: Record<string, unknown>) {
     : []
   existing.push({ timestamp: new Date().toISOString(), ...entry })
   fs.writeFileSync(outPath, safeJsonStringify(existing))
+}
+
+export function writeLiveRouteEvidence(entry: Record<string, unknown>) {
+  const outDir = path.resolve(process.cwd(), 'test-results/reports')
+  fs.mkdirSync(outDir, { recursive: true })
+  const outPath = path.join(outDir, 'live-routes.json')
+  const existing = fs.existsSync(outPath)
+    ? JSON.parse(fs.readFileSync(outPath, 'utf8')) as Array<Record<string, unknown>>
+    : []
+  existing.push({ timestamp: new Date().toISOString(), ...entry })
+  fs.writeFileSync(outPath, safeJsonStringify(existing))
+}
+
+function parseVisibleNumber(value: string | null): number | null {
+  if (!value) return null
+  const match = value.replace(/,/g, '').match(/-?\d+/)
+  return match ? Number(match[0]) : null
+}
+
+export async function readGroundtruthFieldNumber(page: Page, field: string): Promise<number | null> {
+  const marker = page.locator(`[data-groundtruth-field="${field}"]`).first()
+  if (await marker.count().catch(() => 0) === 0) return null
+  return parseVisibleNumber(await marker.textContent().catch(() => null))
+}
+
+export async function assertGroundtruthFields(page: Page, expected: Record<string, number>, route: string) {
+  const actual: Record<string, number | null> = {}
+  for (const field of Object.keys(expected)) {
+    actual[field] = await readGroundtruthFieldNumber(page, field)
+  }
+
+  const dashboardMismatches = Object.entries(expected)
+    .filter(([field, expectedValue]) => actual[field] !== expectedValue)
+    .map(([field, expectedValue]) => ({
+      field,
+      expected: expectedValue,
+      actual: actual[field],
+      route,
+    }))
+
+  if (dashboardMismatches.length > 0) {
+    await recordLiveUiFailures(page, { dashboardMismatches })
+  }
+  writeLiveRouteEvidence({
+    route,
+    kind: 'groundtruth-fields',
+    expected,
+    actual,
+    mismatches: dashboardMismatches,
+  })
+  expect(dashboardMismatches, `live ${route} stats must match Kubernetes ground truth`).toEqual([])
+}
+
+export async function assertLiveRouteContainsAny(page: Page, route: string, expected: Array<string | RegExp>) {
+  const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
+  const matched = expected.some(item => typeof item === 'string' ? bodyText.includes(item) : item.test(bodyText))
+  if (!matched) {
+    const reason = `none of the expected markers were visible: ${expected.map(item => String(item)).join(', ')}`
+    await recordLiveUiFailures(page, {
+      routeFailures: [{ route, reason, expected: expected.map(item => String(item)).join(', '), actual: bodyText.slice(0, 500) }],
+    })
+  }
+  writeLiveRouteEvidence({
+    route,
+    kind: 'route-content',
+    expected: expected.map(item => String(item)),
+    matched,
+    bodyPreview: bodyText.slice(0, 500),
+  })
+  expect(matched, `live route ${route} must render expected live-data markers`).toBe(true)
+}
+
+export async function assertLiveRouteContainsAll(page: Page, route: string, expected: Array<string | RegExp>) {
+  const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
+  const missing = expected.filter(item => !(typeof item === 'string' ? bodyText.includes(item) : item.test(bodyText)))
+  if (missing.length > 0) {
+    const reason = `missing expected markers: ${missing.map(item => String(item)).join(', ')}`
+    await recordLiveUiFailures(page, {
+      routeFailures: [{ route, reason, expected: expected.map(item => String(item)).join(', '), actual: bodyText.slice(0, 500) }],
+    })
+  }
+  writeLiveRouteEvidence({
+    route,
+    kind: 'route-content',
+    expected: expected.map(item => String(item)),
+    missing: missing.map(item => String(item)),
+    matched: missing.length === 0,
+    bodyPreview: bodyText.slice(0, 500),
+  })
+  expect(missing, `live route ${route} must render all expected live-data markers`).toEqual([])
 }
 
 export function annotateLiveInvariant(testInfo: TestInfo, id: string) {

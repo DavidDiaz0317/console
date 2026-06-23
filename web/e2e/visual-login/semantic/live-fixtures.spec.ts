@@ -13,7 +13,9 @@ import {
   assertLiveDashboardShell,
   assertLiveLayoutStable,
   establishLiveCanarySession,
+  gotoLiveCanaryRoute,
   liveCanaryUrl,
+  recordLiveUiFailures,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -48,27 +50,60 @@ test('live canary UI surfaces injected Kubernetes fixture states @intensive @liv
     await expect
       .poll(() => collectLiveFixtureState().observed, {
         message: 'live fixtures should reach observable Kubernetes states',
-        timeout: 90_000,
+        timeout: 120_000,
       })
       .toEqual(expect.objectContaining({
         deploymentAvailable: true,
         pods: expect.arrayContaining([
           expect.objectContaining({ name: fixture.resources.imagePullPod, reason: expect.stringMatching(/ImagePullBackOff|ErrImagePull/) }),
           expect.objectContaining({ name: fixture.resources.pendingPod, phase: 'Pending' }),
+          expect.objectContaining({ name: fixture.resources.crashLoopPod, reason: expect.stringMatching(/CrashLoopBackOff|Error/) }),
         ]),
       }))
+    const observed = collectLiveFixtureState().observed
 
     await establishLiveCanarySession(page, baseUrl)
 
-    await page.goto(new URL('/pods', baseUrl).toString(), { waitUntil: 'domcontentloaded' })
+    await gotoLiveCanaryRoute(page, baseUrl, '/pods')
     await assertLiveDashboardShell(page)
-    await assertFixtureNamesVisible(page, [fixture.resources.imagePullPod, fixture.resources.pendingPod])
+    await assertFixtureNamesVisible(page, [fixture.resources.imagePullPod, fixture.resources.pendingPod, fixture.resources.crashLoopPod])
     await assertLiveLayoutStable(page)
 
-    await page.goto(new URL('/deployments', baseUrl).toString(), { waitUntil: 'domcontentloaded' })
+    await gotoLiveCanaryRoute(page, baseUrl, '/deployments')
     await assertLiveDashboardShell(page)
     await assertFixtureNamesVisible(page, [fixture.resources.healthyDeployment])
     await assertNoCriticalRuntimeErrors(collectors)
+
+    await gotoLiveCanaryRoute(page, baseUrl, '/workloads')
+    await assertLiveDashboardShell(page)
+    await assertFixtureNamesVisible(page, [fixture.resources.healthyDeployment])
+    await assertLiveLayoutStable(page)
+
+    await gotoLiveCanaryRoute(page, baseUrl, '/namespaces')
+    await assertLiveDashboardShell(page)
+    await assertFixtureNamesVisible(page, [fixture.namespace])
+    await assertLiveLayoutStable(page)
+
+    await gotoLiveCanaryRoute(page, baseUrl, '/alerts')
+    await assertLiveDashboardShell(page)
+    const alertText = await page.locator('body').innerText().catch(() => '')
+    const alertHasFixtureState = [
+      fixture.resources.imagePullPod,
+      fixture.resources.crashLoopPod,
+      'ImagePullBackOff',
+      'CrashLoopBackOff',
+    ].some(text => alertText.includes(text))
+    if (!alertHasFixtureState) {
+      await recordLiveUiFailures(page, {
+        fixtureMismatches: [{
+          resource: `${fixture.resources.imagePullPod},${fixture.resources.crashLoopPod}`,
+          expected: 'fixture image-pull or crashloop state visible on /alerts',
+          actual: alertText.slice(0, 500),
+          route: '/alerts',
+        }],
+      })
+    }
+    expect(alertHasFixtureState, 'alerts should surface fixture image-pull or crashloop state').toBe(true)
 
     writeLiveSiteReport({
       target: 'canary',
@@ -78,6 +113,7 @@ test('live canary UI surfaces injected Kubernetes fixture states @intensive @liv
       },
       namespace: fixture.namespace,
       resources: fixture.resources,
+      observed,
     })
   } finally {
     if (applied) cleanupLiveFixtures()

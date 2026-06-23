@@ -73,6 +73,17 @@ const VALUE_COLORS: Record<string, string> = {
   privileged: 'text-red-400',
   root: 'text-orange-400' }
 
+const GROUNDTRUTH_FIELDS: Partial<Record<DashboardStatsType, Record<string, string>>> = {
+  dashboard: {
+    clusters: 'dashboard-clusters-total',
+    healthy: 'dashboard-healthy-clusters',
+    errors: 'dashboard-error-clusters',
+    nodes: 'dashboard-nodes-total',
+    pods: 'dashboard-pods-total',
+    namespaces: 'dashboard-namespaces-total',
+  },
+}
+
 /** Default denominator for percentage/progress visualizations. */
 const DEFAULT_PROGRESS_MAX = 100
 
@@ -239,10 +250,11 @@ interface StatBlockProps {
   hasData: boolean
   isLoading?: boolean
   history?: number[]
+  groundtruthField?: string
   onDisplayModeChange?: (mode: StatDisplayMode) => void
 }
 
-const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, history, onDisplayModeChange }: StatBlockProps) {
+const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, history, groundtruthField, onDisplayModeChange }: StatBlockProps) {
   const { t } = useTranslation()
   const IconComponent = ICONS[block.icon] || Server
   const colorClass = COLOR_CLASSES[block.color] || 'text-foreground'
@@ -310,6 +322,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
       // substrings (e.g. "3" matching "30 nodes"). Hook name is scoped by
       // block id so each stat is individually addressable.
       data-testid={`stat-block-${block.id}`}
+      data-groundtruth-card={groundtruthField}
       className={`group relative min-w-0 rounded-lg border border-border/50 bg-card p-4 text-card-foreground shadow-sm min-h-[100px] ${isLoading ? 'animate-pulse' : ''} ${isClickable ? 'cursor-pointer hover:bg-accent/40' : ''} ${isDemo ? 'border-yellow-500/30 bg-yellow-500/5 shadow-[0_0_12px_rgba(234,179,8,0.15)]' : ''} transition-colors`}
       onClick={() => isClickable && data.onClick?.()}
       {...(isClickable ? {
@@ -352,7 +365,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
         <>
           <div className="flex items-end justify-between gap-2">
             <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
-              {displayValue}
+              <span data-groundtruth-field={groundtruthField}>{displayValue}</span>
             </div>
             <Suspense fallback={<div style={{ height: 28, width: 64 }} className="bg-secondary/30 rounded" />}>
               <LazySparkline data={history!} color={hexColor} height={28} width={64} fill />
@@ -390,7 +403,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
       ) : effectiveMode === 'mini-bar' && !isNaN(progressNumericValue) ? (
         <>
           <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
-            {progressDisplayValue}
+            <span data-groundtruth-field={groundtruthField}>{progressDisplayValue}</span>
           </div>
           <div className="mt-1.5 flex items-center gap-2">
             <div data-testid={`stat-block-${block.id}-progress`} className="flex-1 bg-secondary rounded-full overflow-hidden" style={{ height: MINI_BAR_HEIGHT_PX }}>
@@ -434,7 +447,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
             <>
               <div className="flex items-baseline gap-2">
                 <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
-                  {displayValue}
+                  <span data-groundtruth-field={groundtruthField}>{displayValue}</span>
                 </div>
                 {delta !== undefined && (
                   <span className={`text-sm font-medium ${delta > 0 ? 'text-red-400' : delta < 0 ? 'text-green-400' : 'text-muted-foreground'}`}>
@@ -453,7 +466,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
       ) : effectiveMode === 'stacked-bar' && !isNaN(progressNumericValue) ? (
         <>
           <div data-testid={`stat-block-${block.id}-count`} className={`text-2xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}>
-            {progressDisplayValue}
+            <span data-groundtruth-field={groundtruthField}>{progressDisplayValue}</span>
           </div>
           <div className="mt-1.5 flex items-center gap-2">
             <div data-testid={`stat-block-${block.id}-progress`} className="flex-1 bg-secondary rounded-full overflow-hidden flex" style={{ height: MINI_BAR_HEIGHT_PX }}>
@@ -480,7 +493,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
             style={{ backgroundColor: hexColor, opacity: heatmapOpacity }}
           />
           <div className="relative">
-            <div data-testid={`stat-block-${block.id}-count`} className={`text-3xl font-bold ${useHeatmapHighContrastText ? HEATMAP_HIGH_CONTRAST_TEXT_CLASSES.value : valueColor}`}>{displayValue}</div>
+            <div data-testid={`stat-block-${block.id}-count`} className={`text-3xl font-bold ${useHeatmapHighContrastText ? HEATMAP_HIGH_CONTRAST_TEXT_CLASSES.value : valueColor}`}><span data-groundtruth-field={groundtruthField}>{displayValue}</span></div>
             {data.sublabel && <div className={`min-w-0 truncate text-xs ${useHeatmapHighContrastText ? HEATMAP_HIGH_CONTRAST_TEXT_CLASSES.sublabel : 'text-muted-foreground'}`} title={data.sublabel}>{wrapAbbreviations(data.sublabel)}</div>}
           </div>
         </>
@@ -493,7 +506,7 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
               ? 'text-sm font-medium text-muted-foreground/70'
               : `text-3xl font-bold ${isLoading ? 'text-muted-foreground/30' : valueColor}`}
           >
-            {displayValue}
+            <span data-groundtruth-field={groundtruthField}>{displayValue}</span>
           </div>
           {/* #9708 — Only show "Building trend…" when there is no sublabel.
               Both elements appearing together overflows the card height and
@@ -563,6 +576,7 @@ export function StatsOverview({
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('statsOverview.title')
   const { blocks, saveBlocks, visibleBlocks, defaultBlocks } = useStatsConfig(dashboardType)
+  const groundtruthFields = GROUNDTRUTH_FIELDS[dashboardType] || {}
   const { status: agentStatus } = useLocalAgent()
   const { isDemoMode } = useDemoMode()
   const isModeSwitching = useIsModeSwitching()
@@ -687,6 +701,7 @@ export function StatsOverview({
                 hasData={effectiveHasData && !effectiveIsLoading && statValue?.value !== undefined}
                 isLoading={effectiveIsLoading}
                 history={getHistory(block.id)}
+                groundtruthField={groundtruthFields[block.id]}
                 onDisplayModeChange={(mode) => handleDisplayModeChange(block.id, mode)}
               />
             )

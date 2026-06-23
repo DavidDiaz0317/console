@@ -126,6 +126,10 @@ function mergeLiveUiFailureObjects(...failureSets) {
     textCollisions: [],
     unexpectedNetworkResponses: [],
     unexpectedRequestFailures: [],
+    dashboardMismatches: [],
+    routeFailures: [],
+    interactiveFailures: [],
+    fixtureMismatches: [],
   }
 
   for (const failures of failureSets) {
@@ -150,6 +154,10 @@ function inferLiveUiFailuresFromText(textValue) {
     textCollisions: [],
     unexpectedNetworkResponses: [],
     unexpectedRequestFailures: [],
+    dashboardMismatches: [],
+    routeFailures: [],
+    interactiveFailures: [],
+    fixtureMismatches: [],
   }
 
   if (/visible text must not severely overlap/i.test(text)) {
@@ -168,6 +176,38 @@ function inferLiveUiFailuresFromText(textValue) {
         ratio: 1,
       })
     }
+  }
+
+  if (/live \/ stats must match kubernetes ground truth|live dashboard stats must match|live-dashboard-groundtruth-match/i.test(text)) {
+    failures.dashboardMismatches.push({
+      field: 'not parsed from log',
+      expected: 'see evidence artifact',
+      actual: 'see evidence artifact',
+      route: '/',
+    })
+  }
+
+  if (/live-core-pages-render-real-data|must render expected live-data markers/i.test(text)) {
+    failures.routeFailures.push({
+      route: 'not parsed from log',
+      reason: 'core page did not render expected live-data markers',
+    })
+  }
+
+  if (/live-interactive-surfaces-work|required interactive control/i.test(text)) {
+    failures.interactiveFailures.push({
+      control: 'not parsed from log',
+      reason: 'interactive control was missing or broken',
+      route: '/',
+    })
+  }
+
+  if (/live-fixture-ui-match|fixture.*should be visible|alerts should surface fixture/i.test(text)) {
+    failures.fixtureMismatches.push({
+      resource: 'not parsed from log',
+      expected: 'fixture state visible in UI',
+      actual: 'see evidence artifact',
+    })
   }
 
   const forbidden = [
@@ -217,6 +257,10 @@ function artifactPathsFromText(logText) {
 
 function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
+  if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
+  if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
+  if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
+  if ((liveUiFailures.fixtureMismatches || []).length || text.includes('live-fixture-ui-match')) return 'fixture-state-mismatch'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
@@ -238,6 +282,38 @@ function likelyAreasFor(type) {
   if (type === 'live-network-error') {
     return ['web/src/hooks/**', 'web/src/lib/**', 'web/src/components/cards/**', 'cmd/console/**']
   }
+  if (type === 'dashboard-groundtruth-mismatch') {
+    return [
+      'web/src/hooks/useUniversalStats.ts',
+      'web/src/config/dashboards/main.ts',
+      'web/src/components/ui/StatsOverview.tsx',
+      'cmd/console/**',
+    ]
+  }
+  if (type === 'core-page-live-data-missing') {
+    return [
+      'web/src/pages/**',
+      'web/src/components/**',
+      'web/src/hooks/**',
+      'cmd/console/**',
+    ]
+  }
+  if (type === 'interactive-surface-broken') {
+    return [
+      'web/src/components/layout/**',
+      'web/src/components/ui/**',
+      'web/src/components/search/**',
+      'web/src/components/dashboard/**',
+    ]
+  }
+  if (type === 'fixture-state-mismatch') {
+    return [
+      'web/harness/groundtruth/liveFixtureManager.ts',
+      'web/e2e/visual-login/semantic/live-fixtures.spec.ts',
+      'web/src/components/**',
+      'web/src/hooks/**',
+    ]
+  }
   if (type === 'groundtruth-mismatch') {
     return ['web/src/components/**', 'web/harness/groundtruth/**', 'web/e2e/visual-login/semantic/live-canary-ui.spec.ts']
   }
@@ -253,6 +329,10 @@ function shortFailure(type, failures) {
   if (type === 'live-ui-forbidden-artifact') return 'live UI shows demo or local-only artifact'
   if (type === 'live-ui-warning-flood') return 'live UI shows warning flood'
   if (type === 'live-network-error') return 'live UI has unexpected network errors'
+  if (type === 'dashboard-groundtruth-mismatch') return 'Dashboard stats do not match live Kubernetes groundtruth'
+  if (type === 'core-page-live-data-missing') return 'core live page is missing expected live data'
+  if (type === 'interactive-surface-broken') return 'interactive live UI surface is broken'
+  if (type === 'fixture-state-mismatch') return 'controlled fixture state is missing or mislabeled'
   if (type === 'groundtruth-mismatch') return 'live UI does not match cluster groundtruth'
   if (type === 'auth-boundary') return 'production auth boundary failed'
   return sanitizeText(firstError.split('\n')[0] || 'canary setup failed').slice(0, 80)
@@ -356,7 +436,7 @@ function buildReproductionCommand() {
     'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
     'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
     'LIVE_PRODUCTION_CONSOLE_URL=https://console-live.kubestellar.io \\',
-    'npm run test:visual:live -- e2e/visual-login/semantic/live-canary-ui.spec.ts',
+    'npm run test:visual:live',
     '```',
   ].join('\n')
 }

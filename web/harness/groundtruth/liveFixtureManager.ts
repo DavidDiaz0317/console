@@ -17,6 +17,7 @@ export interface LiveFixtureReport {
     healthyDeployment: string
     imagePullPod: string
     pendingPod: string
+    crashLoopPod: string
   }
   observed?: {
     pods: Array<{ name: string; phase?: string; reason?: string }>
@@ -74,6 +75,7 @@ function fixtureNames() {
     healthyDeployment: 'ks-live-ui-healthy',
     imagePullPod: 'ks-live-ui-imagepull',
     pendingPod: 'ks-live-ui-pending',
+    crashLoopPod: 'ks-live-ui-crashloop',
   }
 }
 
@@ -150,6 +152,26 @@ spec:
   containers:
     - name: pause
       image: registry.k8s.io/pause:3.10
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 64Mi`,
+    `apiVersion: v1
+kind: Pod
+metadata:
+  name: ${names.crashLoopPod}
+  namespace: ${namespace}
+  labels:
+    kubestellar.io/live-ui-fixture: "true"
+spec:
+  restartPolicy: Always
+  containers:
+    - name: crash
+      image: busybox:1.36
+      command: ["sh", "-c", "echo live-ui-fixture-crashloop && exit 1"]
       resources:
         requests:
           cpu: 10m

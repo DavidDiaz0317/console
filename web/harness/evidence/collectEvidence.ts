@@ -80,9 +80,15 @@ async function collectLiveUiFailures(page: Page, collectors: EvidenceCollectors)
   const pageFailures = await page.evaluate(() => {
     return (window as unknown as { __KC_LIVE_UI_FAILURES__?: LiveUiFailureEvidence }).__KC_LIVE_UI_FAILURES__
   }).catch(() => undefined)
-  const merged: LiveUiFailureEvidence = {
-    ...(pageFailures || {}),
-    ...(collectors.liveUiFailures || {}),
+  const merged: LiveUiFailureEvidence = {}
+  for (const failures of [pageFailures, collectors.liveUiFailures]) {
+    if (!failures) continue
+    for (const [key, value] of Object.entries(failures) as Array<[keyof LiveUiFailureEvidence, unknown]>) {
+      if (Array.isArray(value)) {
+        const existing = Array.isArray(merged[key]) ? merged[key] as unknown[] : []
+        merged[key] = [...existing, ...value] as never
+      }
+    }
   }
   const hasFailures = Object.values(merged).some(value => Array.isArray(value) && value.length > 0)
   return hasFailures ? merged : undefined

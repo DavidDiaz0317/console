@@ -263,6 +263,8 @@ jobs:
           PROMOTE_PRODUCTION: ''
           KUBECONFIG: ${{ steps.groundtruth-kubeconfig.outputs.path }}
           LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64: ${{ secrets.LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64 }}
+          LIVE_CLUSTER_FIXTURES: ${{ vars.LIVE_CLUSTER_FIXTURES || 'true' }}
+          LIVE_CLUSTER_FIXTURE_CLEANUP: ${{ vars.LIVE_CLUSTER_FIXTURE_CLEANUP || 'true' }}
           LIVE_CLUSTER_TESTS: 'true'
           LIVE_SITE_TESTS: 'true'
           LIVE_SITE_AUTH_MODE: dev

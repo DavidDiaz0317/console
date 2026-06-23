@@ -25,6 +25,10 @@ export interface LiveUiFailureEvidence {
   textCollisions?: Array<{ first: string; second: string; ratio: number }>
   unexpectedNetworkResponses?: string[]
   unexpectedRequestFailures?: string[]
+  dashboardMismatches?: Array<{ field: string; expected: number | string; actual: number | string | null; route: string }>
+  routeFailures?: Array<{ route: string; reason: string; expected?: string; actual?: string | null }>
+  interactiveFailures?: Array<{ control: string; reason: string; route: string }>
+  fixtureMismatches?: Array<{ resource: string; expected: string; actual?: string | null; route?: string }>
 }
 
 export interface VisualLoginEvidence {
