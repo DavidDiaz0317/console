@@ -12,7 +12,7 @@ import {
 const invariantIds = ['live-production-auth-boundary', 'no-critical-runtime-errors']
 
 const liveProductionExpectedConsoleNoise = [
-  /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/i,
+  /Failed to load resource: the server responded with a status of 401 \([^)]*\)/i,
 ]
 
 test('production live site keeps OAuth boundary intact @intensive @live-site @invariant:live-production-auth-boundary', async ({ page }, testInfo) => {
