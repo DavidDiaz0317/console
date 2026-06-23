@@ -48,6 +48,7 @@ function pushDifference(differences, entry) {
 
 function classify(differences) {
   if (differences.some(diff => diff.classification === 'auth-boundary')) return 'auth-boundary'
+  if (differences.some(diff => diff.classification === 'live-network-error')) return 'live-network-error'
   if (differences.some(diff => diff.classification === 'safari-z-index')) return 'safari-z-index'
   if (differences.some(diff => diff.classification === 'browser-content-missing')) return 'browser-content-missing'
   if (differences.some(diff => diff.classification === 'browser-interaction-broken')) return 'browser-interaction-broken'
@@ -92,13 +93,18 @@ function main() {
     }
 
     for (const route of report.routes || []) {
-      if (route.authState && route.authState !== 'authenticated') {
+      if (route.routeState && route.routeState !== 'live') {
+        const classification = route.routeState === 'login' || route.routeState === 'session-expired'
+          ? 'auth-boundary'
+          : route.routeState === 'startup-error'
+            ? 'live-network-error'
+            : 'browser-content-missing'
         pushDifference(differences, {
-          classification: 'auth-boundary',
+          classification,
           browser,
           route: route.route,
-          reason: `route rendered ${route.authState} state instead of authenticated live content`,
-          authState: route.authState,
+          reason: `route rendered ${route.routeState} state instead of live console content`,
+          routeState: route.routeState,
           url: route.url,
           bodyPreview: route.bodyPreview,
           screenshotPath: route.screenshotPath,
@@ -219,7 +225,7 @@ function main() {
       route: route.route,
       status: route.status,
       url: route.url,
-      authState: route.authState,
+      routeState: route.routeState,
       missingMarkers: route.missingMarkers,
       baseline: route.baseline,
       screenshotPath: route.screenshotPath,

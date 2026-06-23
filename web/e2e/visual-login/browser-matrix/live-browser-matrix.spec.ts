@@ -28,7 +28,7 @@ type RouteFacts = {
   projectName: string
   route: string
   url: string
-  authState: 'authenticated' | 'login' | 'session-expired' | 'blank'
+  routeState: 'live' | 'login' | 'session-expired' | 'startup-error' | 'blank'
   viewport: { width: number; height: number } | null
   status: 'passed' | 'failed'
   missingMarkers: string[]
@@ -101,9 +101,10 @@ function markerMissing(bodyText: string, marker: string | RegExp): boolean {
   return typeof marker === 'string' ? !bodyText.includes(marker) : !marker.test(bodyText)
 }
 
-function classifyRouteAuthState(url: string, bodyText: string): RouteFacts['authState'] {
+function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
+  if (/infrastructure connection error|backend connectivity|too many requests|rate limited|http 429/i.test(normalizedText)) return 'startup-error'
   if (/session expired|redirecting to sign in/i.test(normalizedText)) return 'session-expired'
   try {
     const pathname = new URL(url).pathname
@@ -112,7 +113,7 @@ function classifyRouteAuthState(url: string, bodyText: string): RouteFacts['auth
     // Keep the text-based classification when Playwright reports a relative URL.
   }
   if (/continue with github|welcome back|sign in to manage/i.test(normalizedText)) return 'login'
-  return 'authenticated'
+  return 'live'
 }
 
 function writeBrowserMatrixReport(report: Record<string, unknown>) {
@@ -138,7 +139,7 @@ async function collectRouteFacts(
 ): Promise<RouteFacts> {
   const bodyText = await page.locator('body').innerText({ timeout: 10_000 }).catch(() => '')
   const currentUrl = page.url()
-  const authState = classifyRouteAuthState(currentUrl, bodyText)
+  const routeState = classifyRouteState(currentUrl, bodyText)
   const expectedMarkers = route.expectedMarkers(groundTruth)
   const missingMarkers = expectedMarkers.filter(marker => markerMissing(bodyText, marker)).map(marker => String(marker))
   const baseline: RouteFacts['baseline'] = { mode: 'disabled', status: 'skipped' }
@@ -266,9 +267,9 @@ async function collectRouteFacts(
     projectName,
     route: route.route,
     url: currentUrl,
-    authState,
+    routeState,
     viewport: page.viewportSize(),
-    status: authState !== 'authenticated' || missingMarkers.length > 0 || baseline.status === 'failed' ? 'failed' : 'passed',
+    status: routeState !== 'live' || missingMarkers.length > 0 || baseline.status === 'failed' ? 'failed' : 'passed',
     missingMarkers,
     bodyPreview: bodyText.replace(/\s+/g, ' ').trim().slice(0, 500),
     ...layout,
@@ -447,7 +448,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
           projectName: testInfo.project.name,
           route: route.route,
           url: page.url(),
-          authState: classifyRouteAuthState(page.url(), await page.locator('body').innerText({ timeout: 1_000 }).catch(() => '')),
+          routeState: classifyRouteState(page.url(), await page.locator('body').innerText({ timeout: 1_000 }).catch(() => '')),
           viewport: page.viewportSize(),
           status: 'failed',
           missingMarkers: route.expectedMarkers(groundTruth).map(marker => String(marker)),

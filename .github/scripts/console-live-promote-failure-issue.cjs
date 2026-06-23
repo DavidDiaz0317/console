@@ -322,6 +322,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
   if (browserMatrixFailures.some(failure => failure.classification === 'auth-boundary') || text.includes('auth-boundary')) return 'auth-boundary'
+  if (browserMatrixFailures.some(failure => failure.classification === 'live-network-error') || text.includes('live-network-error')) return 'live-network-error'
   if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
@@ -743,7 +744,7 @@ module.exports = async ({ github, context, core }) => {
   ].join('|') || `console-live-promote:${runId}`
   const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16)
   const marker = `<!-- console-live-promote-signature:${signature} -->`
-  const browserMatrixFailure = /^(auth-boundary|safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
+  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
   const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
   const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
 
