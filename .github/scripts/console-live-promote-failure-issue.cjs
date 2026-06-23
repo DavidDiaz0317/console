@@ -54,6 +54,10 @@ function sanitizeText(value) {
     .replace(/-----BEGIN[\s\S]+?-----END [^-]+-----/g, '[REDACTED_PEM]')
 }
 
+function isSensitiveLogLine(line) {
+  return /\b[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|COOKIE|KUBECONFIG|CLIENT_SECRET|JWT)[A-Z0-9_]*\b/i.test(line)
+}
+
 function dedupe(items) {
   return [...new Set((items || []).filter(Boolean))]
 }
@@ -281,7 +285,7 @@ function logExcerpt(logs) {
   ]
   const excerpts = []
   for (const log of logs) {
-    const lines = log.text.split(/\r?\n/)
+    const lines = sanitizeText(log.text).split(/\r?\n/).filter((line) => !isSensitiveLogLine(line))
     const matched = new Set()
     lines.forEach((line, index) => {
       if (!patterns.some((pattern) => pattern.test(line))) return
@@ -294,11 +298,18 @@ function logExcerpt(logs) {
 }
 
 function parseImageState(logText, run) {
-  const currentMatch = logText.match(/Live currently runs ([^;]+); candidate is ([^\s]+)/)
-  const alreadyMatch = logText.match(/Live already runs ([^\s]+)/)
-  const candidate = currentMatch?.[2] || `${IMAGE_REPOSITORY}:${run.head_sha}`
+  const cleaned = sanitizeText(logText)
+  const currentMatches = [...cleaned.matchAll(/Live currently runs ([^;\r\n]+); candidate is ([^\s\r\n]+)/g)]
+    .map((match) => ({ current: match[1].trim(), candidate: match[2].trim().replace(/^"|"$/g, '') }))
+    .filter((match) => !match.current.includes('${') && !match.candidate.includes('${'))
+  const alreadyMatches = [...cleaned.matchAll(/Live already runs ([^\s\r\n]+)/g)]
+    .map((match) => match[1].trim().replace(/^"|"$/g, ''))
+    .filter((image) => !image.includes('$'))
+  const currentMatch = currentMatches[currentMatches.length - 1]
+  const alreadyMatch = alreadyMatches[alreadyMatches.length - 1]
+  const candidate = currentMatch?.candidate || `${IMAGE_REPOSITORY}:${run.head_sha}`
   return {
-    current: currentMatch?.[1] || alreadyMatch?.[1] || 'not parsed',
+    current: currentMatch?.current || alreadyMatch || 'not parsed',
     candidate,
   }
 }
