@@ -9,6 +9,9 @@ import {
   annotateLiveInvariant,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
+  assertNoForbiddenLiveUi,
+  assertNoUnexpectedLiveNetworkErrors,
+  assertNoVisibleTextCollisions,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -35,6 +38,10 @@ async function expectGroundTruthField(page: Page, field: string, expected: numbe
 const invariantIds = [
   'cluster-dashboard-groundtruth-match',
   'live-canary-ui-layout-stable',
+  'live-ui-no-demo-artifacts',
+  'live-ui-no-warning-flood',
+  'live-ui-no-text-collisions',
+  'live-ui-no-unexpected-network-errors',
   'no-critical-runtime-errors',
 ]
 
@@ -76,9 +83,15 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     expect(groundTruth.nodes.ready, `expected ${expectedReadyNodes} Ready live cluster nodes`).toBe(expectedReadyNodes)
 
     await establishLiveCanarySession(page, baseUrl)
+    collectors.consoleErrors.length = 0
+    collectors.consoleWarnings.length = 0
+    collectors.pageErrors.length = 0
+    collectors.failedRequests.length = 0
+    collectors.errorResponses.length = 0
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/clusters?groundtruth=1')
     expect(response?.ok(), 'live canary /clusters route must be reachable').toBeTruthy()
     await assertLiveDashboardShell(page)
+    await assertNoForbiddenLiveUi(page)
     await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
     await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
     await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
@@ -86,6 +99,8 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
     await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)
     await assertLiveLayoutStable(page)
+    await assertNoVisibleTextCollisions(page)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
     await assertNoCriticalRuntimeErrors(collectors, liveCanaryExpectedConsoleNoise)
 
     writeLiveSiteReport({
@@ -93,8 +108,10 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
       url: baseUrl,
       checks: {
         authenticatedDashboard: 'ok',
+        forbiddenLiveUi: 'ok',
         groundtruth: 'ok',
         layout: 'ok',
+        networkErrors: 'ok',
       },
       expected: {
         contexts: expectedContexts,
