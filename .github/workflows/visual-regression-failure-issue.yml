@@ -337,6 +337,23 @@ jobs:
               return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
             }
 
+            function assessmentFromTriage(classification) {
+              if (classification === 'regression') return 'likely regression';
+              if (classification === 'intended_change') return 'likely intentional ui change';
+              return 'needs human review';
+            }
+
+            function primaryTriageClassification(decisions) {
+              const priority = { regression: 4, needs_human_review: 3, intended_change: 2, noise: 1 };
+              return [...decisions]
+                .sort((left, right) => {
+                  const leftScore = priority[left.classification] || 0;
+                  const rightScore = priority[right.classification] || 0;
+                  if (leftScore !== rightScore) return rightScore - leftScore;
+                  return Number(right.confidence || 0) - Number(left.confidence || 0);
+                })[0]?.classification || '';
+            }
+
             function buildLikelyFiles(details, prSummaries) {
               const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
               const prioritizedChanged = changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
@@ -455,6 +472,7 @@ jobs:
             const files = walk(artifactRoot);
             const jsonResultFiles = files.filter((file) => /app-visual-results[\\/]+results\.json$|[\\/]results\.json$/i.test(file));
             const contextFiles = files.filter((file) => /app-visual-context[\\/]+context\.json$|[\\/]context\.json$/i.test(file));
+            const triageResultFiles = files.filter((file) => /visual-triage[\\/]triage-results\.json$/i.test(file));
             const failures = jsonResultFiles.flatMap((file) => {
               const report = readJsonFile(file);
               return report ? collectPlaywrightFailures(report, path.relative(process.cwd(), file)) : [];
@@ -463,6 +481,11 @@ jobs:
               .map(readJsonFile)
               .filter(Boolean)
               .map(sanitizeObject);
+            const triageReports = triageResultFiles
+              .map(readJsonFile)
+              .filter(Boolean)
+              .map(sanitizeObject);
+            const triageDecisions = triageReports.flatMap((report) => report.decisions || []);
 
             const prSummaries = [];
             for (const prRef of run.pull_requests || []) {
@@ -542,6 +565,20 @@ jobs:
               return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(details.routes.join(', ') || 'Not captured')} | ${escapeCell(details.contract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
             });
 
+            const triageRows = triageDecisions.slice(0, 12).map((decision) => {
+              const crop = decision.regions?.[0]?.stitched_crop || '';
+              const bbox = decision.bbox || decision.regions?.[0]?.bbox || '';
+              return `| ${escapeCell(decision.component_name || decision.test_title || 'visual diff')} | ${escapeCell(decision.classification)} | ${escapeCell(decision.confidence)} | ${escapeCell(decision.routing)} | ${escapeCell(decision.severity || 'n/a')} | ${escapeCell(Array.isArray(bbox) ? bbox.join(', ') : bbox)} | ${escapeCell(decision.suspected_component || 'n/a')} | ${escapeCell(decision.reasoning || '')} | ${escapeCell(crop || 'See artifacts')} |`;
+            });
+
+            const primaryTriage = primaryTriageClassification(triageDecisions);
+            const effectivePrimaryType = primaryTriage === 'regression'
+              ? 'visual mismatch'
+              : primaryFailureType(failures);
+            const effectivePrimaryAssessment = primaryTriage
+              ? assessmentFromTriage(primaryTriage)
+              : primaryChangeAssessment(failures, prSummaries);
+
             const suggestedFiles = dedupe([
               ...failures.flatMap((failure) => buildLikelyFiles(getSuiteDetails(failure.specPath), prSummaries)),
               ...GENERIC_SUGGESTED_FILES,
@@ -584,10 +621,20 @@ jobs:
                 ].join('\n')).join('\n\n')
               : 'No visual regression context JSON artifact was found.';
 
+            const triageSection = triageReports.length
+              ? triageReports.map((report, index) => [
+                  `### Triage Report ${index + 1}`,
+                  '',
+                  '```json',
+                  truncate(JSON.stringify(report.summary || {}, null, 2), 2000),
+                  '```',
+                ].join('\n')).join('\n\n')
+              : 'No semantic visual triage report was found. The issue falls back to Playwright failure metadata.';
+
             const titleSuffix = failedJobs.length
               ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
               : 'workflow';
-            const title = `[Visual Regression][${primaryFailureType(failures)}][${primaryChangeAssessment(failures, prSummaries)}] ${titleSuffix} failed`;
+            const title = `[Visual Regression][${effectivePrimaryType}][${effectivePrimaryAssessment}] ${titleSuffix} failed`;
 
             let body = [
               marker,
@@ -597,14 +644,26 @@ jobs:
               '',
               '## Failure Summary',
               '',
-              `- Primary failure type: \`${primaryFailureType(failures)}\``,
-              `- Primary change assessment: \`${primaryChangeAssessment(failures, prSummaries)}\``,
+              `- Primary failure type: \`${effectivePrimaryType}\``,
+              `- Primary change assessment: \`${effectivePrimaryAssessment}\``,
+              primaryTriage ? `- Semantic triage classification: \`${primaryTriage}\`` : '- Semantic triage classification: `not available`',
               `- Failed jobs: ${failedJobs.length || 0}`,
               `- Failed Playwright results parsed: ${failures.length || 0}`,
+              `- Semantic triage decisions parsed: ${triageDecisions.length || 0}`,
               '',
               '| Suite | Failure Type | Change Assessment | Route / Target | Protected Contract | First Files To Inspect |',
               '|---|---|---|---|---|---|',
               summaryRows.length ? summaryRows.join('\n') : '| Visual regression | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              '',
+              '## Semantic Triage Enrichment',
+              '',
+              'The VLM triage layer runs only after a pixel diff is detected. Cropped BEFORE/AFTER stitched images are uploaded in the workflow artifacts and referenced below.',
+              '',
+              '| Component / route | Classification | Confidence | Routing | Severity | BBox | Suspected Component | Reasoning | Stitched Crop |',
+              '|---|---|---:|---|---|---|---|---|---|',
+              triageRows.length ? triageRows.join('\n') : '| No semantic triage rows parsed | n/a | n/a | n/a | n/a | n/a | n/a | Inspect Playwright diff artifacts | See artifacts |',
+              '',
+              triageSection,
               '',
               '### Suggested Decision Rule',
               '',
@@ -689,8 +748,9 @@ jobs:
                 `- Commit: \`${run.head_sha}\``,
                 failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
                 failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
-                `- Primary failure type: \`${primaryFailureType(failures)}\``,
-                `- Primary change assessment: \`${primaryChangeAssessment(failures, prSummaries)}\``,
+                `- Primary failure type: \`${effectivePrimaryType}\``,
+                `- Primary change assessment: \`${effectivePrimaryAssessment}\``,
+                primaryTriage ? `- Semantic triage classification: \`${primaryTriage}\`` : '- Semantic triage classification: `not available`',
               ].join('\n');
 
               await github.rest.issues.createComment({
