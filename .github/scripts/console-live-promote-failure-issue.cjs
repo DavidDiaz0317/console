@@ -550,10 +550,38 @@ module.exports = async ({ github, context, core }) => {
     labels: 'console-live,live-canary,test-failure',
     per_page: 100,
   })
-  const existing = issues.find((issue) => issue.body && issue.body.includes(marker))
+  const runMarker = `actions/runs/${runId}`
+  const matchingIssues = issues.filter((issue) => {
+    const issueBody = issue.body || ''
+    return issueBody.includes(marker)
+      || issueBody.includes(runMarker)
+      || issue.title === title
+  })
+  const existing = matchingIssues.find((issue) => issue.body && issue.body.includes(marker)) || matchingIssues[0]
 
   if (existing) {
     await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body })
+    const duplicates = matchingIssues.filter((issue) => issue.number !== existing.number)
+    for (const duplicate of duplicates) {
+      await github.rest.issues.createComment({
+        owner,
+        repo,
+        issue_number: duplicate.number,
+        body: [
+          `Superseded by #${existing.number} for the same Console Live Promote run and failure.`,
+          '',
+          `- Run: [#${runId}](${run.html_url})`,
+          `- Failure type: \`${failureType}\``,
+        ].join('\n'),
+      })
+      await github.rest.issues.update({
+        owner,
+        repo,
+        issue_number: duplicate.number,
+        state: 'closed',
+        state_reason: 'not_planned',
+      })
+    }
     await github.rest.issues.createComment({
       owner,
       repo,
