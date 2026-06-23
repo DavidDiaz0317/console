@@ -458,10 +458,25 @@ export async function readGroundtruthFieldNumber(page: Page, field: string): Pro
 }
 
 export async function assertGroundtruthFields(page: Page, expected: Record<string, number>, route: string) {
-  const actual: Record<string, number | null> = {}
-  for (const field of Object.keys(expected)) {
-    actual[field] = await readGroundtruthFieldNumber(page, field)
+  const readActual = async (): Promise<Record<string, number | null>> => {
+    const actual: Record<string, number | null> = {}
+    for (const field of Object.keys(expected)) {
+      actual[field] = await readGroundtruthFieldNumber(page, field)
+    }
+    return actual
   }
+
+  await expect.poll(async () => {
+    const current = await readActual()
+    return Object.entries(expected)
+      .filter(([field, expectedValue]) => current[field] !== expectedValue)
+      .map(([field, expectedValue]) => `${field}: expected ${expectedValue}, got ${current[field]}`)
+  }, {
+    message: `live ${route} stats should hydrate to Kubernetes ground truth`,
+    timeout: 30_000,
+  }).toEqual([]).catch(() => undefined)
+
+  const actual = await readActual()
 
   const dashboardMismatches = Object.entries(expected)
     .filter(([field, expectedValue]) => actual[field] !== expectedValue)

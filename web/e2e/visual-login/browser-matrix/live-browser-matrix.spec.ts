@@ -117,6 +117,19 @@ async function waitForRouteStateText(page: Page): Promise<void> {
   }).not.toBe('')
 }
 
+async function waitForRouteHandshakeSettled(page: Page): Promise<void> {
+  await waitForRouteStateText(page)
+  await expect.poll(async () => {
+    const text = (await readBodyText(page, 500)).replace(/\s+/g, ' ').trim()
+    if (/infrastructure connection error|too many requests|rate limited|http 429/i.test(text)) return 'error'
+    if (/connecting to infrastructure|checking backend connectivity/i.test(text)) return 'loading'
+    return text ? 'settled' : 'blank'
+  }, {
+    message: 'live browser matrix route should leave the startup loading handshake before classification',
+    timeout: 25_000,
+  }).not.toBe('loading')
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
@@ -474,7 +487,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
       try {
         const response = await gotoLiveCanaryRoute(page, baseUrl!, route.route)
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
-        await waitForRouteStateText(page).catch(() => undefined)
+        await waitForRouteHandshakeSettled(page).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
         if (!response?.ok()) {
           facts.status = 'failed'
