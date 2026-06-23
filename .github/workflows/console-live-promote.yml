@@ -273,6 +273,33 @@ jobs:
           SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18080
         run: npm run test:visual:live
 
+      - name: Ensure canary port-forward for browser matrix
+        if: always() && steps.live-state.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$DEPLOY_KUBECONFIG"
+          if curl -fsS http://127.0.0.1:18080/health >/dev/null || curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
+            exit 0
+          fi
+
+          if [ -n "${CANARY_PORT_FORWARD_PID:-}" ]; then
+            kill "$CANARY_PORT_FORWARD_PID" >/dev/null 2>&1 || true
+          fi
+
+          kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18080:8080 \
+            > "$RUNNER_TEMP/console-live/canary-browser-matrix-port-forward.log" 2>&1 &
+          echo "CANARY_PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
+          for _ in {1..60}; do
+            if curl -fsS http://127.0.0.1:18080/health >/dev/null || curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/console-live/canary-browser-matrix-port-forward.log" || true
+          echo "::error::Canary browser matrix port-forward did not become healthy"
+          exit 1
+
       - name: Run canary browser matrix tests
         if: always() && steps.live-state.outputs.skip != 'true'
         working-directory: web
@@ -311,6 +338,7 @@ jobs:
             web/e2e/visual-login/test-results/evidence/
             web/e2e/visual-login/test-results/visual-login-intensive/
             ${{ runner.temp }}/console-live/canary-port-forward.log
+            ${{ runner.temp }}/console-live/canary-browser-matrix-port-forward.log
           if-no-files-found: warn
           retention-days: 14
 
