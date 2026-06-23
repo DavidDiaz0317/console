@@ -11,6 +11,10 @@ import {
 
 const invariantIds = ['live-production-auth-boundary', 'no-critical-runtime-errors']
 
+const liveProductionExpectedConsoleNoise = [
+  /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/i,
+]
+
 test('production live site keeps OAuth boundary intact @intensive @live-site @invariant:live-production-auth-boundary', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
   const collectors = installEvidenceCollectors(page)
@@ -28,7 +32,7 @@ test('production live site keeps OAuth boundary intact @intensive @live-site @in
     const response = await page.goto(productionUrl, { waitUntil: 'domcontentloaded' })
     expect(response?.ok(), 'production live root should serve the login/app shell').toBeTruthy()
     await expect(page.locator('body'), 'production live root must not serve an ingress/nginx error').not.toContainText(/403 Forbidden|404 Not Found|502 Bad Gateway|503 Service Unavailable/i)
-    await assertNoCriticalRuntimeErrors(collectors)
+    await assertNoCriticalRuntimeErrors(collectors, liveProductionExpectedConsoleNoise)
     writeLiveSiteReport({
       target: 'production',
       url: productionUrl,
