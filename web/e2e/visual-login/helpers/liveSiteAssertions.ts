@@ -2,6 +2,7 @@ import { expect, type Page, type TestInfo } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import { safeJsonStringify } from '../../../harness/evidence/sanitizeEvidence'
+import type { EvidenceCollectors } from '../../../harness/evidence/evidenceTypes'
 import {
   assertDashboardContentVisible,
   assertNoSevereOverlap,
@@ -24,6 +25,16 @@ const LIVE_CANARY_TEST_USER = {
 } as const
 
 const LIVE_NAVIGATION_ATTEMPTS = 3
+const TEXT_COLLISION_RATIO_LIMIT = 0.30
+
+const forbiddenLiveUiPatterns = [
+  { label: 'demo mode control', source: String.raw`\bDemo Mode\b`, flags: 'i' },
+  { label: 'connection log drawer', source: String.raw`\bConnection Log\b`, flags: 'i' },
+  { label: 'local agent refresh warning', source: String.raw`Refreshing local agent`, flags: 'i' },
+  { label: 'endpoint error summary', source: String.raw`endpoint errors?`, flags: 'i' },
+  { label: 'AI prediction load failure', source: String.raw`/predictions/ai\s*-\s*Load failed`, flags: 'i' },
+  { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
+]
 
 export function normalizeBaseUrl(value: string | undefined): string | undefined {
   if (!value) return undefined
@@ -191,6 +202,176 @@ export async function assertLiveLayoutStable(page: Page) {
   if (await repeatedCards.count().catch(() => 0) > 1) {
     await assertNoSevereOverlap(page, repeatedCards)
   }
+}
+
+export async function assertNoForbiddenLiveUi(page: Page) {
+  await page.waitForTimeout(2_000)
+  const state = await page.evaluate((patterns) => {
+    const compiled = patterns.map(pattern => ({
+      label: pattern.label,
+      regex: new RegExp(pattern.source, pattern.flags),
+    }))
+
+    function visibleTextNodes() {
+      const nodes: Array<{ text: string; rect: DOMRect }> = []
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+      while (node) {
+        const text = (node.textContent || '').replace(/\s+/g, ' ').trim()
+        const element = node.parentElement
+        if (text && element) {
+          const style = window.getComputedStyle(element)
+          const hidden = element.closest('[aria-hidden="true"], [hidden]')
+          if (!hidden && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            for (const rect of Array.from(range.getClientRects())) {
+              const inViewport = rect.width > 1
+                && rect.height > 1
+                && rect.bottom > 0
+                && rect.right > 0
+                && rect.top < window.innerHeight
+                && rect.left < window.innerWidth
+              if (inViewport) nodes.push({ text, rect })
+            }
+          }
+        }
+        node = walker.nextNode()
+      }
+      return nodes
+    }
+
+    const textNodes = visibleTextNodes()
+    const forbiddenMatches = compiled.flatMap(pattern =>
+      textNodes
+        .filter(node => pattern.regex.test(node.text))
+        .map(node => ({ label: pattern.label, text: node.text.slice(0, 160) }))
+    )
+    const warningBadges = textNodes
+      .map(node => {
+        const match = node.text.match(/\b(\d+)\s+warnings?\b/i)
+        return match ? { text: node.text.slice(0, 160), count: Number(match[1]) } : null
+      })
+      .filter((entry): entry is { text: string; count: number } => Boolean(entry && entry.count > 0))
+
+    return {
+      demoModeStorage: localStorage.getItem('kc-demo-mode'),
+      forbiddenMatches,
+      warningBadges,
+    }
+  }, forbiddenLiveUiPatterns)
+
+  expect(state.demoModeStorage, 'live UI must not keep demo mode enabled in localStorage').not.toBe('true')
+  expect(state.forbiddenMatches, 'live UI must not show demo/local-agent/error drawer artifacts').toEqual([])
+  if (process.env.LIVE_UI_ALLOW_WARNING_BADGES !== 'true') {
+    expect(state.warningBadges, 'live UI must not show nonzero warning badges after settling').toEqual([])
+  }
+}
+
+export async function assertNoVisibleTextCollisions(page: Page) {
+  const collisions = await page.evaluate((ratioLimit) => {
+    type TextBox = {
+      text: string
+      x: number
+      y: number
+      width: number
+      height: number
+    }
+
+    function visibleTextBoxes(): TextBox[] {
+      const boxes: TextBox[] = []
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+      while (node) {
+        const text = (node.textContent || '').replace(/\s+/g, ' ').trim()
+        const element = node.parentElement
+        if (text.length >= 2 && element) {
+          const style = window.getComputedStyle(element)
+          const hidden = element.closest('[aria-hidden="true"], [hidden], script, style')
+          if (!hidden && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            for (const rect of Array.from(range.getClientRects())) {
+              const inViewport = rect.width > 4
+                && rect.height > 4
+                && rect.bottom > 0
+                && rect.right > 0
+                && rect.top < window.innerHeight
+                && rect.left < window.innerWidth
+              if (inViewport) {
+                boxes.push({
+                  text: text.slice(0, 80),
+                  x: rect.x,
+                  y: rect.y,
+                  width: rect.width,
+                  height: rect.height,
+                })
+              }
+            }
+          }
+        }
+        node = walker.nextNode()
+      }
+      return boxes
+    }
+
+    const boxes = visibleTextBoxes()
+    const failures: Array<{ first: string; second: string; ratio: number }> = []
+    for (let i = 0; i < boxes.length; i += 1) {
+      for (let j = i + 1; j < boxes.length; j += 1) {
+        const a = boxes[i]
+        const b = boxes[j]
+        const overlapWidth = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x))
+        const overlapHeight = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y))
+        const overlapArea = overlapWidth * overlapHeight
+        if (overlapArea <= 0) continue
+        const smallerArea = Math.min(a.width * a.height, b.width * b.height)
+        const ratio = smallerArea > 0 ? overlapArea / smallerArea : 0
+        if (ratio > ratioLimit) {
+          failures.push({ first: a.text, second: b.text, ratio: Number(ratio.toFixed(2)) })
+          if (failures.length >= 12) return failures
+        }
+      }
+    }
+    return failures
+  }, TEXT_COLLISION_RATIO_LIMIT)
+
+  expect(collisions, 'live UI visible text must not severely overlap').toEqual([])
+}
+
+export function assertNoUnexpectedLiveNetworkErrors(
+  collectors: EvidenceCollectors,
+  baseUrl: string,
+  additionalAllowed: RegExp[] = [],
+) {
+  const origin = new URL(baseUrl).origin
+  const allowed = [
+    /\/favicon\.ico$/i,
+    ...additionalAllowed,
+  ]
+  const unexpectedResponses = collectors.errorResponses
+    .filter(entry => {
+      try {
+        return new URL(entry.url).origin === origin
+      } catch {
+        return false
+      }
+    })
+    .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
+    .map(entry => `${entry.method} ${entry.status} ${entry.url}`)
+  const unexpectedFailures = collectors.failedRequests
+    .filter(entry => {
+      try {
+        return new URL(entry.url).origin === origin
+      } catch {
+        return false
+      }
+    })
+    .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
+    .map(entry => `${entry.method} ${entry.url} ${entry.failureText || ''}`.trim())
+
+  expect(unexpectedResponses, 'live UI must not produce unexpected app-origin 4xx/5xx responses').toEqual([])
+  expect(unexpectedFailures, 'live UI must not produce unexpected app-origin request failures').toEqual([])
 }
 
 export async function assertProductionOAuthBoundary(page: Page, baseUrl: string) {
