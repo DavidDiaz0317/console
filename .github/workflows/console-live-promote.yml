@@ -206,7 +206,6 @@ jobs:
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$CANARY_NAMESPACE" \
-            --create-namespace \
             --set image.repository="$IMAGE_REPOSITORY" \
             --set image.tag="${{ steps.candidate.outputs.sha }}" \
             --set image.pullPolicy=Always \
