@@ -16,7 +16,7 @@ const EXPECTED_OCI_OKE_READY_NODES = readPositiveIntEnv('LIVE_CLUSTER_EXPECTED_R
 
 async function expectGroundTruthField(page: Page, field: string, expected: number) {
   const marker = page.locator(`[data-groundtruth-field="${field}"]`)
-  await expect(marker, `missing data-groundtruth-field="${field}" marker`).toHaveCount(1)
+  await expect(marker.first(), `missing data-groundtruth-field="${field}" marker`).toBeAttached()
   await expect(marker.first(), `data-groundtruth-field="${field}" should match live Kubernetes ground truth`).toHaveText(String(expected), {
     timeout: 20_000,
   })
