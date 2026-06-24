@@ -1,5 +1,159 @@
 {
   "schema_version": 1,
-  "last_updated": null,
-  "history": []
+  "last_updated": "2026-06-24T18:31:27Z",
+  "history": [
+    {
+      "timestamp": "2026-06-24T18:31:26Z",
+      "pr": {
+        "number": "41",
+        "title": "[triage-demo:intended] Demo visual triage intended path",
+        "head_sha": "df66aed11fdd47304a592d05a5f259268d77fcfa"
+      },
+      "test_title": "app-clusters-tablet-768",
+      "spec_path": "",
+      "component_name": "app-clusters-tablet-768",
+      "route": "/clusters",
+      "expected_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry2/app-clusters-tablet-768-expected.png",
+      "actual_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry2/app-clusters-tablet-768-actual.png",
+      "diff_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry2/app-clusters-tablet-768-diff.png",
+      "baseline_path": "web/e2e/visual/app-visual-regression.spec.ts-snapshots/app-clusters-tablet-768-chromium-linux.png",
+      "changed_pixels": 94835,
+      "total_pixels": 786432,
+      "changed_area_ratio": 0.1205889383951823,
+      "high_risk": false,
+      "human_outcome": null,
+      "classification": "intended_change",
+      "confidence": 0.95,
+      "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+      "suspected_component": "demo visual change",
+      "severity": null,
+      "bbox": [
+        0,
+        0,
+        768,
+        1024
+      ],
+      "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-1-region-1.png",
+      "routing": "pass",
+      "model_called": false,
+      "regions": [
+        {
+          "classification": "intended_change",
+          "confidence": 0.95,
+          "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+          "suspected_component": "demo visual change",
+          "severity": null,
+          "bbox": [
+            0,
+            0,
+            768,
+            1024
+          ],
+          "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-1-region-1.png"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-06-24T18:31:26Z",
+      "pr": {
+        "number": "41",
+        "title": "[triage-demo:intended] Demo visual triage intended path",
+        "head_sha": "df66aed11fdd47304a592d05a5f259268d77fcfa"
+      },
+      "test_title": "app-clusters-tablet-768",
+      "spec_path": "",
+      "component_name": "app-clusters-tablet-768",
+      "route": "/clusters",
+      "expected_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry1/app-clusters-tablet-768-expected.png",
+      "actual_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry1/app-clusters-tablet-768-actual.png",
+      "diff_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium-retry1/app-clusters-tablet-768-diff.png",
+      "baseline_path": "web/e2e/visual/app-visual-regression.spec.ts-snapshots/app-clusters-tablet-768-chromium-linux.png",
+      "changed_pixels": 94835,
+      "total_pixels": 786432,
+      "changed_area_ratio": 0.1205889383951823,
+      "high_risk": false,
+      "human_outcome": null,
+      "classification": "intended_change",
+      "confidence": 0.95,
+      "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+      "suspected_component": "demo visual change",
+      "severity": null,
+      "bbox": [
+        0,
+        0,
+        768,
+        1024
+      ],
+      "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-2-region-1.png",
+      "routing": "pass",
+      "model_called": false,
+      "regions": [
+        {
+          "classification": "intended_change",
+          "confidence": 0.95,
+          "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+          "suspected_component": "demo visual change",
+          "severity": null,
+          "bbox": [
+            0,
+            0,
+            768,
+            1024
+          ],
+          "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-2-region-1.png"
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-06-24T18:31:27Z",
+      "pr": {
+        "number": "41",
+        "title": "[triage-demo:intended] Demo visual triage intended path",
+        "head_sha": "df66aed11fdd47304a592d05a5f259268d77fcfa"
+      },
+      "test_title": "app-clusters-tablet-768",
+      "spec_path": "",
+      "component_name": "app-clusters-tablet-768",
+      "route": "/clusters",
+      "expected_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium/app-clusters-tablet-768-expected.png",
+      "actual_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium/app-clusters-tablet-768-actual.png",
+      "diff_path": "web/e2e/test-results/app-visual/app-visual-regression-Clus-90c8b-s-page-at-tablet-resolution-chromium/app-clusters-tablet-768-diff.png",
+      "baseline_path": "web/e2e/visual/app-visual-regression.spec.ts-snapshots/app-clusters-tablet-768-chromium-linux.png",
+      "changed_pixels": 94835,
+      "total_pixels": 786432,
+      "changed_area_ratio": 0.1205889383951823,
+      "high_risk": false,
+      "human_outcome": null,
+      "classification": "intended_change",
+      "confidence": 0.95,
+      "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+      "suspected_component": "demo visual change",
+      "severity": null,
+      "bbox": [
+        0,
+        0,
+        768,
+        1024
+      ],
+      "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-3-region-1.png",
+      "routing": "pass",
+      "model_called": false,
+      "regions": [
+        {
+          "classification": "intended_change",
+          "confidence": 0.95,
+          "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+          "suspected_component": "demo visual change",
+          "severity": null,
+          "bbox": [
+            0,
+            0,
+            768,
+            1024
+          ],
+          "stitched_crop": "web/e2e/test-results/visual-triage/crops/pair-3-region-1.png"
+        }
+      ]
+    }
+  ]
 }
