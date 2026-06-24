@@ -69,7 +69,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
       'dashboard-healthy-clusters': groundTruth.contexts.reachable,
       'dashboard-error-clusters': 0,
       'dashboard-nodes-total': groundTruth.nodes.total,
-      'dashboard-pods-total': groundTruth.pods.running,
+      'dashboard-pods-total': groundTruth.pods.total,
       'dashboard-namespaces-total': groundTruth.namespaces.total,
     }, '/')
     const apiFacts = await collectLiveApiFacts(page)
@@ -77,7 +77,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
       'dashboard-clusters-total': apiFacts.clusters.total,
       'dashboard-healthy-clusters': apiFacts.clusters.healthy,
       'dashboard-nodes-total': apiFacts.clusters.nodesTotal,
-      'dashboard-pods-total': apiFacts.clusters.podsRunning,
+      'dashboard-pods-total': apiFacts.clusters.podsTotal,
       'dashboard-namespaces-total': apiFacts.namespaces.total,
     })
     await assertNoPositiveLiveCountContradictions(page, '/', {
@@ -103,7 +103,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
         healthyClusters: groundTruth.contexts.reachable,
         errorClusters: 0,
         nodes: groundTruth.nodes.total,
-        pods: groundTruth.pods.running,
+        pods: groundTruth.pods.total,
         namespaces: groundTruth.namespaces.total,
       },
     })

@@ -88,14 +88,14 @@ const GROUNDTRUTH_FIELDS: Partial<Record<DashboardStatsType, Record<string, stri
     healthy: 'clusters-healthy',
     unhealthy: 'clusters-unhealthy',
     unreachable: 'clusters-unreachable',
-    pods: 'pods-running',
+    pods: 'pods-total',
   },
   compute: {
     nodes: 'nodes-total',
-    pods: 'pods-running',
+    pods: 'pods-total',
   },
   pods: {
-    total_pods: 'pods-running',
+    total_pods: 'pods-total',
     healthy: 'pods-healthy',
     issues: 'pods-issues',
     pending: 'pods-pending',

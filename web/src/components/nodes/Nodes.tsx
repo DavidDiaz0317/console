@@ -177,7 +177,7 @@ export function Nodes() {
       <div className="sr-only" aria-hidden="true" data-testid="nodes-groundtruth-markers">
         <span data-groundtruth-field="nodes-total">{totalNodes}</span>
         <span data-groundtruth-field="nodes-ready">{healthyNodes}</span>
-        <span data-groundtruth-field="pods-running">{totalPods}</span>
+        <span data-groundtruth-field="pods-total">{totalPods}</span>
       </div>
 
       {/* Error Display */}

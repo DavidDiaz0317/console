@@ -244,8 +244,10 @@ function liveFailuresFromRouteReports(routeReports) {
   const failures = {
     dashboardMismatches: [],
     routeFailures: [],
+    apiUiMismatches: [],
     interactiveFailures: [],
     fixtureMismatches: [],
+    networkClassifications: [],
   }
 
   for (const report of routeReports || []) {
@@ -371,6 +373,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
   if ((liveUiFailures.fixtureMismatches || []).length || text.includes('live-fixture-ui-match')) return 'fixture-state-mismatch'
   if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-semantic-field-mismatch') || text.includes('browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-layout-drift') || text.includes('browser-layout-drift')) return 'browser-layout-drift'
@@ -419,6 +422,14 @@ function likelyAreasFor(type) {
       'web/src/components/**',
       'web/src/hooks/**',
       'cmd/console/**',
+    ]
+  }
+  if (type === 'browser-semantic-field-mismatch') {
+    return [
+      'web/src/components/**',
+      'web/src/hooks/**',
+      'web/src/lib/dashboards/**',
+      'web/e2e/visual-login/browser-matrix/**',
     ]
   }
   if (type === 'browser-visual-baseline') {
@@ -480,6 +491,7 @@ function shortFailure(type, failures) {
   if (type === 'weak-test-assertion') return 'live canary failed because the assertion was too weak'
   if (type === 'safari-z-index') return 'WebKit overlay or text stacking differs from Chromium'
   if (type === 'browser-layout-drift') return 'browser layout differs significantly from Chromium'
+  if (type === 'browser-semantic-field-mismatch') return 'browser semantic fields differ from expected live data'
   if (type === 'browser-content-missing') return 'browser is missing expected live content'
   if (type === 'browser-interaction-broken') return 'browser interaction is broken'
   if (type === 'browser-visual-baseline') return 'browser screenshot differs from its baseline'
@@ -581,7 +593,7 @@ function artifactRows(artifacts, runUrlBase, runId) {
 }
 
 function buildReproductionCommand(failureType) {
-  if (/^(safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
+  if (/^(safari-z-index|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
     return [
       '```bash',
       'cd web',
@@ -800,7 +812,7 @@ module.exports = async ({ github, context, core }) => {
   ].join('|') || `console-live-promote:${runId}`
   const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16)
   const marker = `<!-- console-live-promote-signature:${signature} -->`
-  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
+  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
   const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
   const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
 

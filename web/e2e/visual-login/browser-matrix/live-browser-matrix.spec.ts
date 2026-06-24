@@ -65,7 +65,7 @@ const coreRoutes: MatrixRoute[] = [
     expectedFields: groundTruth => ({
       'dashboard-clusters-total': groundTruth.contexts.reachable,
       'dashboard-nodes-total': groundTruth.nodes.total,
-      'dashboard-pods-total': groundTruth.pods.running,
+      'dashboard-pods-total': groundTruth.pods.total,
       'dashboard-namespaces-total': groundTruth.namespaces.total,
     }),
   },
@@ -77,7 +77,7 @@ const coreRoutes: MatrixRoute[] = [
       'clusters-total': groundTruth.contexts.reachable,
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
-      'pods-running': groundTruth.pods.running,
+      'pods-total': groundTruth.pods.total,
     }),
   },
   {
@@ -94,7 +94,7 @@ const coreRoutes: MatrixRoute[] = [
     label: 'pods',
     expectedMarkers: () => ['Pods'],
     expectedFields: groundTruth => ({
-      'pods-running': groundTruth.pods.running,
+      'pods-total': groundTruth.pods.total,
       'pods-pending': groundTruth.pods.pending,
     }),
   },

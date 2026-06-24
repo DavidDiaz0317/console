@@ -54,13 +54,13 @@ const coreRoutes: CoreRoute[] = [
       'clusters-total': groundTruth.contexts.reachable,
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
-      'pods-running': groundTruth.pods.running,
+      'pods-total': groundTruth.pods.total,
     }),
     apiFields: apiFacts => ({
       'clusters-total': apiFacts.clusters.total,
       'nodes-total': apiFacts.clusters.nodesTotal,
       'nodes-ready': apiFacts.clusters.nodesReady,
-      'pods-running': apiFacts.clusters.podsRunning,
+      'pods-total': apiFacts.clusters.podsTotal,
     }),
   },
   {
@@ -69,24 +69,24 @@ const coreRoutes: CoreRoute[] = [
     expectedFields: groundTruth => ({
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
-      'pods-running': groundTruth.pods.running,
+      'pods-total': groundTruth.pods.total,
     }),
     apiFields: apiFacts => ({
       'nodes-total': apiFacts.nodes.total,
       'nodes-ready': apiFacts.nodes.ready,
-      'pods-running': apiFacts.clusters.podsRunning,
+      'pods-total': apiFacts.clusters.podsTotal,
     }),
   },
   {
     route: '/pods',
     label: 'pods',
     expectedFields: groundTruth => ({
-      'pods-running': groundTruth.pods.running,
+      'pods-total': groundTruth.pods.total,
       'pods-pending': groundTruth.pods.pending,
       'pods-issues': groundTruth.pods.failed + groundTruth.pods.crashLoopBackOff,
     }),
     apiFields: apiFacts => ({
-      'pods-running': apiFacts.pods.running,
+      'pods-total': apiFacts.pods.total,
       'pods-pending': apiFacts.pods.pending,
     }),
   },

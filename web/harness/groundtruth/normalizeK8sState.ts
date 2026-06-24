@@ -33,6 +33,7 @@ export function normalizeK8sState(input: {
       notReady: Math.max(0, input.nodes.length - readyNodes),
     },
     pods: {
+      total: input.pods.length,
       running: input.pods.filter(pod => pod.status?.phase === 'Running').length,
       pending: input.pods.filter(pod => pod.status?.phase === 'Pending').length,
       failed: input.pods.filter(pod => pod.status?.phase === 'Failed').length,

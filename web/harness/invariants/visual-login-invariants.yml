@@ -72,6 +72,81 @@ invariants:
       - wrong cluster count
       - wrong pod or workload status
 
+  - id: live-dashboard-groundtruth-match
+    area: live-semantic-visual
+    severity: critical
+    description: Live dashboard stats must match Kubernetes ground truth and authenticated API data.
+    required:
+      - dashboard cluster, node, pod, and namespace counts match Kubernetes ground truth
+      - dashboard counts match authenticated API responses
+    forbidden:
+      - positive live resource count renders as zero
+      - dashboard shows empty-state text while live resources exist
+
+  - id: live-core-pages-render-real-data
+    area: live-semantic-visual
+    severity: critical
+    description: Core live pages must render real live resource data rather than unavailable, partial, or contradictory empty states.
+    required:
+      - core live routes load successfully
+      - semantic count fields match Kubernetes ground truth or authenticated API data
+    forbidden:
+      - infrastructure connection error on core live resource pages
+      - empty-state text when live resources exist
+      - API data exists while the UI renders zero or unavailable
+
+  - id: live-ui-no-demo-artifacts
+    area: live-visual
+    severity: major
+    description: Authenticated live UI must not show demo, local-only, or fake-data artifacts.
+    required:
+      - live UI uses real cluster-backed data source
+    forbidden:
+      - demo mode controls
+      - connection log drawer
+      - local-agent-only warning artifacts
+
+  - id: live-ui-no-warning-flood
+    area: live-reliability
+    severity: major
+    description: Authenticated live UI must not show persistent warning floods after live data settles.
+    required:
+      - live UI settles without persistent warning badges
+    forbidden:
+      - nonzero warning badge flood after live route settle
+
+  - id: live-ui-no-text-collisions
+    area: live-visual
+    severity: major
+    description: Live UI text must remain readable without severe visible overlap.
+    required:
+      - visible text boxes remain readable
+    forbidden:
+      - severe text overlap
+
+  - id: live-ui-no-unexpected-network-errors
+    area: live-reliability
+    severity: critical
+    description: Live UI must not produce blocking app-origin network errors while rendering core routes.
+    required:
+      - authenticated core resource APIs return usable responses
+    forbidden:
+      - blocking 4xx or 5xx responses from core resource APIs
+      - rate-limit data loss on live resource pages
+
+  - id: live-browser-matrix
+    area: live-browser-compat
+    severity: major
+    description: Chromium, Firefox, and WebKit must render the live canary with equivalent core content, route states, semantic fields, and interactive top layers.
+    required:
+      - all required browser matrix reports are produced
+      - core routes render live content in each browser
+      - menus, dialogs, and overlays open above the page content
+    forbidden:
+      - browser-specific missing content
+      - browser-specific semantic field mismatch
+      - browser-specific overlay or z-index breakage
+
   - id: live-production-auth-boundary
     area: live-security
     severity: critical

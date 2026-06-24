@@ -50,6 +50,7 @@ function classify(differences) {
   if (differences.some(diff => diff.classification === 'auth-boundary')) return 'auth-boundary'
   if (differences.some(diff => diff.classification === 'live-network-error')) return 'live-network-error'
   if (differences.some(diff => diff.classification === 'safari-z-index')) return 'safari-z-index'
+  if (differences.some(diff => diff.classification === 'browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
   if (differences.some(diff => diff.classification === 'browser-content-missing')) return 'browser-content-missing'
   if (differences.some(diff => diff.classification === 'browser-interaction-broken')) return 'browser-interaction-broken'
   if (differences.some(diff => diff.classification === 'browser-layout-drift')) return 'browser-layout-drift'
@@ -114,7 +115,9 @@ function main() {
       }
       if (route.status === 'failed' || (route.missingMarkers || []).length > 0 || (route.fieldMismatches || []).length > 0) {
         pushDifference(differences, {
-          classification: 'browser-content-missing',
+          classification: (route.fieldMismatches || []).length > 0
+            ? 'browser-semantic-field-mismatch'
+            : 'browser-content-missing',
           browser,
           route: route.route,
           reason: (route.fieldMismatches || []).length > 0

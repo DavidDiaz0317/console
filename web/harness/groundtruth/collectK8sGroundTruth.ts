@@ -55,7 +55,7 @@ export function collectK8sGroundTruth(runId = process.env.GITHUB_RUN_ID || Strin
       skipped: 'LIVE_CLUSTER_TESTS is not true.',
       contexts: { configured: 0, reachable: 0, names: [] },
       nodes: { total: 0, ready: 0, notReady: 0 },
-      pods: { running: 0, pending: 0, failed: 0, crashLoopBackOff: 0 },
+      pods: { total: 0, running: 0, pending: 0, failed: 0, crashLoopBackOff: 0 },
       namespaces: { total: 0, createdByHarness: [] },
       deployments: { total: 0, available: 0, unavailable: 0 },
     }
@@ -71,7 +71,7 @@ export function collectK8sGroundTruth(runId = process.env.GITHUB_RUN_ID || Strin
       skipped: 'kubectl is unavailable or kubeconfig is not configured.',
       contexts: { configured: 0, reachable: 0, names: [] },
       nodes: { total: 0, ready: 0, notReady: 0 },
-      pods: { running: 0, pending: 0, failed: 0, crashLoopBackOff: 0 },
+      pods: { total: 0, running: 0, pending: 0, failed: 0, crashLoopBackOff: 0 },
       namespaces: { total: 0, createdByHarness: [] },
       deployments: { total: 0, available: 0, unavailable: 0 },
     }

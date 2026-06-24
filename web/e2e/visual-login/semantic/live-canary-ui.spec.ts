@@ -95,6 +95,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
     await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
     await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
+    await expectGroundTruthField(page, 'pods-total', groundTruth.pods.total)
     await expectGroundTruthField(page, 'pods-running', groundTruth.pods.running)
     await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
     await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)

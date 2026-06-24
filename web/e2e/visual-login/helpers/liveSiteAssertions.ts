@@ -40,6 +40,7 @@ export type LiveApiFacts = {
     healthy: number | null
     nodesTotal: number | null
     nodesReady: number | null
+    podsTotal: number | null
     podsRunning: number | null
   }
   nodes: {
@@ -47,6 +48,7 @@ export type LiveApiFacts = {
     ready: number | null
   }
   pods: {
+    total: number | null
     running: number | null
     pending: number | null
     crashLoopBackOff: number | null
@@ -448,13 +450,12 @@ export function assertNoUnexpectedLiveNetworkErrors(
             return false
           }
         })
-        .map(entry => {
+        .flatMap(entry => {
           const classification = networkClassification(entry.status, entry.url)
           return classification
-            ? { classification, method: entry.method, status: entry.status, url: entry.url }
-            : null
+            ? [{ classification, method: entry.method, status: entry.status, url: entry.url }]
+            : []
         })
-        .filter((entry): entry is { classification: string; method: string; status?: number; url: string } => Boolean(entry)),
     ],
   }
   expect(unexpectedResponses, 'live UI must not produce unexpected app-origin 4xx/5xx responses').toEqual([])
@@ -578,7 +579,11 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
     const healthyClusters = clusters.filter(cluster => cluster.reachable !== false && cluster.healthy !== false)
     const clusterNodesTotal = clusters.reduce((sum, cluster) => sum + Number(cluster.nodeCount || 0), 0)
     const clusterNodesReady = clusters.reduce((sum, cluster) => sum + Number(cluster.readyNodes ?? cluster.nodeCount ?? 0), 0)
-    const clusterPodsRunning = clusters.reduce((sum, cluster) => sum + Number(cluster.runningPods ?? cluster.podCount ?? 0), 0)
+    const clusterPodsTotal = clusters.reduce((sum, cluster) => sum + Number(cluster.podCount || 0), 0)
+    const clustersWithRunningPods = clusters.filter(cluster => typeof cluster.runningPods === 'number')
+    const clusterPodsRunning = clustersWithRunningPods.length === clusters.length
+      ? clustersWithRunningPods.reduce((sum, cluster) => sum + Number(cluster.runningPods || 0), 0)
+      : null
 
     const nodesResponse = await getJson('/api/mcp/nodes')
     const nodes = Array.isArray((nodesResponse.data as { nodes?: unknown[] } | null)?.nodes)
@@ -624,6 +629,7 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
         healthy: clustersResponse.status && clustersResponse.status < 400 ? healthyClusters.length : null,
         nodesTotal: clustersResponse.status && clustersResponse.status < 400 ? clusterNodesTotal : null,
         nodesReady: clustersResponse.status && clustersResponse.status < 400 ? clusterNodesReady : null,
+        podsTotal: clustersResponse.status && clustersResponse.status < 400 ? clusterPodsTotal : null,
         podsRunning: clustersResponse.status && clustersResponse.status < 400 ? clusterPodsRunning : null,
       },
       nodes: {
@@ -631,6 +637,7 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
         ready: nodesResponse.status && nodesResponse.status < 400 ? readyNodes : null,
       },
       pods: {
+        total: podsResponse.status && podsResponse.status < 400 ? pods.length : null,
         running: podsResponse.status && podsResponse.status < 400 ? runningPods : null,
         pending: podsResponse.status && podsResponse.status < 400 ? pendingPods : null,
         crashLoopBackOff: podsResponse.status && podsResponse.status < 400 ? crashLoopPods : null,
@@ -737,11 +744,10 @@ export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, 
     }))
 
   const networkClassifications = Object.entries(apiFacts.endpoints)
-    .map(([url, fact]) => {
+    .flatMap(([url, fact]) => {
       const classification = networkClassification(fact.status ?? undefined, url)
-      return classification ? { classification, status: fact.status ?? undefined, url } : null
+      return classification ? [{ classification, status: fact.status ?? undefined, url }] : []
     })
-    .filter((entry): entry is { classification: string; status?: number; url: string } => Boolean(entry))
 
   if (mismatches.length || networkClassifications.length) {
     await recordLiveUiFailures(page, {

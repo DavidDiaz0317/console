@@ -242,7 +242,7 @@ export function Pods() {
       }}
     >
       <div className="sr-only" aria-hidden="true" data-testid="pods-groundtruth-markers">
-        <span data-groundtruth-field="pods-running">{stats.totalPods}</span>
+        <span data-groundtruth-field="pods-total">{stats.totalPods}</span>
         <span data-groundtruth-field="pods-pending">{stats.pending}</span>
         <span data-groundtruth-field="pods-issues">{stats.issues}</span>
       </div>
