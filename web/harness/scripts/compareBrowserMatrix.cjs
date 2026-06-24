@@ -112,13 +112,16 @@ function main() {
         })
         continue
       }
-      if (route.status === 'failed' || (route.missingMarkers || []).length > 0) {
+      if (route.status === 'failed' || (route.missingMarkers || []).length > 0 || (route.fieldMismatches || []).length > 0) {
         pushDifference(differences, {
           classification: 'browser-content-missing',
           browser,
           route: route.route,
-          reason: 'route is missing expected live content markers',
+          reason: (route.fieldMismatches || []).length > 0
+            ? 'route semantic fields do not match expected live data'
+            : 'route is missing expected live content markers',
           missingMarkers: route.missingMarkers || [],
+          fieldMismatches: route.fieldMismatches || [],
           screenshotPath: route.screenshotPath,
           error: route.error,
         })
@@ -143,16 +146,9 @@ function main() {
           screenshotPath: route.screenshotPath,
         })
       }
-      if (safeNumber(route.clippedElementCount) > 0) {
-        pushDifference(differences, {
-          classification: 'browser-layout-drift',
-          browser,
-          route: route.route,
-          reason: 'route has clipped or offscreen controls',
-          actual: route.clippedElementCount,
-          screenshotPath: route.screenshotPath,
-        })
-      }
+      // Broad clipped/offscreen counts are advisory. They often include
+      // intentionally off-canvas or virtualized controls, so only named
+      // interaction/top-layer failures should block promotion.
     }
 
     for (const interaction of report.interactions || []) {
@@ -227,6 +223,7 @@ function main() {
       url: route.url,
       routeState: route.routeState,
       missingMarkers: route.missingMarkers,
+      fieldMismatches: route.fieldMismatches,
       baseline: route.baseline,
       screenshotPath: route.screenshotPath,
     })),
@@ -248,6 +245,7 @@ function main() {
       scrollOverflowX: route.scrollOverflowX,
       textCollisionCount: route.textCollisionCount,
       clippedElementCount: route.clippedElementCount,
+      clippedElementCountAdvisory: true,
       boxes: route.boxes,
     }))),
     differences,

@@ -130,6 +130,11 @@ function DeploymentsContent() {
       </span>
     )
   }, [issueCount])
+  const liveRouteState = error
+    ? 'unavailable'
+    : totalDeployments > 0
+      ? 'loaded'
+      : 'empty'
 
   return (
     <DashboardPage
@@ -147,10 +152,17 @@ function DeploymentsContent() {
       isRefreshing={dataRefreshing}
       lastUpdated={lastUpdated}
       hasData={deployments.length > 0}
+      liveRouteState={liveRouteState}
+      liveSource={totalDeployments > 0 ? 'k8s' : 'unknown'}
       emptyState={{
         title: 'Deployments Dashboard',
         description: 'Add cards to monitor deployment health, rollout progress, and issues across your clusters.' }}
     >
+      <div className="sr-only" aria-hidden="true" data-testid="deployments-groundtruth-markers">
+        <span data-groundtruth-field="deployments-total">{totalDeployments}</span>
+        <span data-groundtruth-field="deployments-available">{healthyDeployments}</span>
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">

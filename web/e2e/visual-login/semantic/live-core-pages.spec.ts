@@ -5,12 +5,16 @@ import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGr
 import { assertNoCriticalRuntimeErrors } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
+  assertGroundtruthFields,
+  assertLiveApiUiFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
-  assertLiveRouteContainsAll,
+  assertLiveRouteStateLoaded,
   assertNoForbiddenLiveUi,
+  assertNoPositiveLiveCountContradictions,
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
+  collectLiveApiFacts,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -38,39 +42,81 @@ const liveCorePageExpectedConsoleNoise = [
 type CoreRoute = {
   route: string
   label: string
-  expectedMarkers: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Array<string | RegExp>
+  expectedFields: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Record<string, number>
+  apiFields: (apiFacts: Awaited<ReturnType<typeof collectLiveApiFacts>>) => Record<string, number | null>
 }
 
 const coreRoutes: CoreRoute[] = [
   {
     route: '/clusters',
     label: 'clusters',
-    expectedMarkers: groundTruth => ['Clusters', String(groundTruth.contexts.reachable), String(groundTruth.nodes.total)],
+    expectedFields: groundTruth => ({
+      'clusters-total': groundTruth.contexts.reachable,
+      'nodes-total': groundTruth.nodes.total,
+      'nodes-ready': groundTruth.nodes.ready,
+      'pods-running': groundTruth.pods.running,
+    }),
+    apiFields: apiFacts => ({
+      'clusters-total': apiFacts.clusters.total,
+      'nodes-total': apiFacts.clusters.nodesTotal,
+      'nodes-ready': apiFacts.clusters.nodesReady,
+      'pods-running': apiFacts.clusters.podsRunning,
+    }),
   },
   {
     route: '/nodes',
     label: 'nodes',
-    expectedMarkers: groundTruth => ['Nodes', String(groundTruth.nodes.ready), /Ready/i],
+    expectedFields: groundTruth => ({
+      'nodes-total': groundTruth.nodes.total,
+      'nodes-ready': groundTruth.nodes.ready,
+      'pods-running': groundTruth.pods.running,
+    }),
+    apiFields: apiFacts => ({
+      'nodes-total': apiFacts.nodes.total,
+      'nodes-ready': apiFacts.nodes.ready,
+      'pods-running': apiFacts.clusters.podsRunning,
+    }),
   },
   {
     route: '/pods',
     label: 'pods',
-    expectedMarkers: groundTruth => ['Pods', String(groundTruth.pods.running), /Running/i],
+    expectedFields: groundTruth => ({
+      'pods-running': groundTruth.pods.running,
+      'pods-pending': groundTruth.pods.pending,
+      'pods-issues': groundTruth.pods.failed + groundTruth.pods.crashLoopBackOff,
+    }),
+    apiFields: apiFacts => ({
+      'pods-running': apiFacts.pods.running,
+      'pods-pending': apiFacts.pods.pending,
+    }),
   },
   {
     route: '/namespaces',
     label: 'namespaces',
-    expectedMarkers: groundTruth => ['Namespaces', String(groundTruth.namespaces.total), /kube-system/i],
+    expectedFields: groundTruth => ({
+      'namespaces-total': groundTruth.namespaces.total,
+    }),
+    apiFields: apiFacts => ({
+      'namespaces-total': apiFacts.namespaces.total,
+    }),
   },
   {
     route: '/deployments',
     label: 'deployments',
-    expectedMarkers: groundTruth => ['Deployments', String(groundTruth.deployments.available), /Available/i],
+    expectedFields: groundTruth => ({
+      'deployments-total': groundTruth.deployments.total,
+      'deployments-available': groundTruth.deployments.available,
+    }),
+    apiFields: apiFacts => ({
+      'deployments-total': apiFacts.deployments.total,
+      'deployments-available': apiFacts.deployments.available,
+    }),
   },
   {
     route: '/alerts',
     label: 'alerts',
-    expectedMarkers: () => ['Alerts', /critical|warning|normal|issue|alert/i],
+    expectedFields: () => ({}),
+    apiFields: () => ({}),
   },
 ]
 
@@ -115,11 +161,18 @@ for (const coreRoute of coreRoutes) {
       }
       expect(response?.ok(), `live canary ${coreRoute.route} route must be reachable`).toBeTruthy()
       await assertLiveDashboardShell(page)
-      await assertLiveRouteContainsAll(page, coreRoute.route, coreRoute.expectedMarkers(groundTruth))
+      await assertLiveRouteStateLoaded(page, coreRoute.route)
+      const expectedFields = coreRoute.expectedFields(groundTruth)
+      if (Object.keys(expectedFields).length > 0) {
+        await assertGroundtruthFields(page, expectedFields, coreRoute.route)
+        const apiFacts = await collectLiveApiFacts(page)
+        await assertLiveApiUiFields(page, apiFacts, coreRoute.route, coreRoute.apiFields(apiFacts))
+        await assertNoPositiveLiveCountContradictions(page, coreRoute.route, expectedFields)
+      }
       await assertNoForbiddenLiveUi(page)
       await assertLiveLayoutStable(page)
       await assertNoVisibleTextCollisions(page)
-      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
       await assertNoCriticalRuntimeErrors(collectors, liveCorePageExpectedConsoleNoise)
 
       writeLiveRouteEvidence({

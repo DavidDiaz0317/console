@@ -82,6 +82,30 @@ const GROUNDTRUTH_FIELDS: Partial<Record<DashboardStatsType, Record<string, stri
     pods: 'dashboard-pods-total',
     namespaces: 'dashboard-namespaces-total',
   },
+  clusters: {
+    clusters: 'clusters-total',
+    nodes: 'nodes-total',
+    healthy: 'clusters-healthy',
+    unhealthy: 'clusters-unhealthy',
+    unreachable: 'clusters-unreachable',
+    pods: 'pods-running',
+  },
+  compute: {
+    nodes: 'nodes-total',
+    pods: 'pods-running',
+  },
+  pods: {
+    total_pods: 'pods-running',
+    healthy: 'pods-healthy',
+    issues: 'pods-issues',
+    pending: 'pods-pending',
+  },
+  deployments: {
+    namespaces: 'deployments-total',
+    deployments: 'deployments-total',
+    healthy: 'deployments-available',
+    critical: 'deployments-issues',
+  },
 }
 
 /** Default denominator for percentage/progress visualizations. */

@@ -13,7 +13,8 @@ import { firstVisibleLocator } from '../helpers/visualLoginAssertions'
 type MatrixRoute = {
   route: string
   label: string
-  expectedMarkers: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Array<string | RegExp>
+  expectedMarkers?: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Array<string | RegExp>
+  expectedFields?: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Record<string, number>
 }
 
 type Box = {
@@ -32,6 +33,7 @@ type RouteFacts = {
   viewport: { width: number; height: number } | null
   status: 'passed' | 'failed'
   missingMarkers: string[]
+  fieldMismatches: Array<{ field: string; expected: number; actual: number | null }>
   bodyPreview: string
   scrollOverflowX: number
   textCollisionCount: number
@@ -59,32 +61,59 @@ const coreRoutes: MatrixRoute[] = [
   {
     route: '/',
     label: 'dashboard',
-    expectedMarkers: groundTruth => ['Dashboard', String(groundTruth.contexts.reachable), String(groundTruth.nodes.total)],
+    expectedMarkers: () => ['Dashboard'],
+    expectedFields: groundTruth => ({
+      'dashboard-clusters-total': groundTruth.contexts.reachable,
+      'dashboard-nodes-total': groundTruth.nodes.total,
+      'dashboard-pods-total': groundTruth.pods.running,
+      'dashboard-namespaces-total': groundTruth.namespaces.total,
+    }),
   },
   {
     route: '/clusters',
     label: 'clusters',
-    expectedMarkers: groundTruth => ['Clusters', String(groundTruth.contexts.reachable), String(groundTruth.nodes.total)],
+    expectedMarkers: () => ['Clusters'],
+    expectedFields: groundTruth => ({
+      'clusters-total': groundTruth.contexts.reachable,
+      'nodes-total': groundTruth.nodes.total,
+      'nodes-ready': groundTruth.nodes.ready,
+      'pods-running': groundTruth.pods.running,
+    }),
   },
   {
     route: '/nodes',
     label: 'nodes',
-    expectedMarkers: groundTruth => ['Nodes', String(groundTruth.nodes.ready), /Ready/i],
+    expectedMarkers: () => ['Nodes'],
+    expectedFields: groundTruth => ({
+      'nodes-total': groundTruth.nodes.total,
+      'nodes-ready': groundTruth.nodes.ready,
+    }),
   },
   {
     route: '/pods',
     label: 'pods',
-    expectedMarkers: groundTruth => ['Pods', String(groundTruth.pods.running), /Running/i],
+    expectedMarkers: () => ['Pods'],
+    expectedFields: groundTruth => ({
+      'pods-running': groundTruth.pods.running,
+      'pods-pending': groundTruth.pods.pending,
+    }),
   },
   {
     route: '/namespaces',
     label: 'namespaces',
-    expectedMarkers: groundTruth => ['Namespaces', String(groundTruth.namespaces.total), /kube-system/i],
+    expectedMarkers: () => ['Namespaces'],
+    expectedFields: groundTruth => ({
+      'namespaces-total': groundTruth.namespaces.total,
+    }),
   },
   {
     route: '/deployments',
     label: 'deployments',
-    expectedMarkers: groundTruth => ['Deployments', String(groundTruth.deployments.available), /Available/i],
+    expectedMarkers: () => ['Deployments'],
+    expectedFields: groundTruth => ({
+      'deployments-total': groundTruth.deployments.total,
+      'deployments-available': groundTruth.deployments.available,
+    }),
   },
   {
     route: '/alerts',
@@ -145,10 +174,23 @@ async function waitForExpectedMarkers(
   }).toEqual(mode === 'all' ? [] : true)
 }
 
+async function readGroundtruthFields(page: Page, expected: Record<string, number>): Promise<Record<string, number | null>> {
+  return page.evaluate((fields) => {
+    const values: Record<string, number | null> = {}
+    for (const field of fields) {
+      const marker = document.querySelector(`[data-groundtruth-field="${field}"]`)
+      const text = marker?.textContent || ''
+      const match = text.replace(/,/g, '').match(/-?\d+/)
+      values[field] = match ? Number(match[0]) : null
+    }
+    return values
+  }, Object.keys(expected))
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
-  if (/connecting to infrastructure|checking backend connectivity|infrastructure connection error|backend connectivity|too many requests|rate limited|http 429/i.test(normalizedText)) return 'startup-error'
+  if (/connecting to infrastructure|checking backend connectivity|infrastructure connection error|backend connectivity|too many requests|rate limited|http 429|unable to connect to clusters|data unavailable/i.test(normalizedText)) return 'startup-error'
   if (/session expired|redirecting to sign in/i.test(normalizedText)) return 'session-expired'
   try {
     const pathname = new URL(url).pathname
@@ -184,8 +226,13 @@ async function collectRouteFacts(
   const bodyText = await readBodyText(page)
   const currentUrl = page.url()
   const routeState = classifyRouteState(currentUrl, bodyText)
-  const expectedMarkers = route.expectedMarkers(groundTruth)
-  const missingMarkers = expectedMarkers.filter(marker => markerMissing(bodyText, marker)).map(marker => String(marker))
+  const expectedMarkers = route.expectedMarkers?.(groundTruth) || []
+  const missingMarkers = (expectedMarkers || []).filter(marker => markerMissing(bodyText, marker)).map(marker => String(marker))
+  const expectedFields = route.expectedFields?.(groundTruth) || {}
+  const actualFields = await readGroundtruthFields(page, expectedFields)
+  const fieldMismatches = Object.entries(expectedFields)
+    .filter(([field, expected]) => actualFields[field] !== expected)
+    .map(([field, expected]) => ({ field, expected, actual: actualFields[field] }))
   const baseline: RouteFacts['baseline'] = { mode: 'disabled', status: 'skipped' }
 
   if (process.env.BROWSER_MATRIX_BASELINES === 'true') {
@@ -313,8 +360,9 @@ async function collectRouteFacts(
     url: currentUrl,
     routeState,
     viewport: page.viewportSize(),
-    status: routeState !== 'live' || missingMarkers.length > 0 || baseline.status === 'failed' ? 'failed' : 'passed',
+    status: routeState !== 'live' || missingMarkers.length > 0 || fieldMismatches.length > 0 || baseline.status === 'failed' ? 'failed' : 'passed',
     missingMarkers,
+    fieldMismatches,
     bodyPreview: bodyText.replace(/\s+/g, ' ').trim().slice(0, 500),
     ...layout,
     baseline,
@@ -503,7 +551,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
         const response = await gotoLiveCanaryRoute(page, baseUrl!, route.route)
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
         await waitForRouteHandshakeSettled(page).catch(() => undefined)
-        await waitForExpectedMarkers(page, route.expectedMarkers(groundTruth)).catch(() => undefined)
+        await waitForExpectedMarkers(page, route.expectedMarkers?.(groundTruth) || []).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
         if (!response?.ok()) {
           facts.status = 'failed'
@@ -519,7 +567,9 @@ test('live browser matrix records route and interaction layout facts @intensive 
           routeState: classifyRouteState(page.url(), await readBodyText(page, 1_000)),
           viewport: page.viewportSize(),
           status: 'failed',
-          missingMarkers: route.expectedMarkers(groundTruth).map(marker => String(marker)),
+          missingMarkers: (route.expectedMarkers?.(groundTruth) || []).map(marker => String(marker)),
+          fieldMismatches: Object.entries(route.expectedFields?.(groundTruth) || {})
+            .map(([field, expected]) => ({ field, expected, actual: null })),
           bodyPreview: (await readBodyText(page, 1_000)).replace(/\s+/g, ' ').trim().slice(0, 500),
           scrollOverflowX: 0,
           textCollisionCount: 0,

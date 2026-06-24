@@ -12,8 +12,19 @@ export function DashboardView() {
     return <DashboardSkeleton />
   }
 
+  const liveRouteState = state.clustersError
+    ? 'unavailable'
+    : state.clusters.length > 0
+      ? 'loaded'
+      : 'empty'
+
   return (
-    <div data-testid="dashboard-page" className="pt-4">
+    <div
+      data-testid="dashboard-page"
+      className="pt-4"
+      data-live-route-state={liveRouteState}
+      data-live-source={state.clusters.length > 0 ? 'k8s' : 'unknown'}
+    >
       <DashboardTopSection
         activeNudge={state.activeNudge}
         autoRefresh={state.autoRefresh}

@@ -129,9 +129,11 @@ function mergeLiveUiFailureObjects(...failureSets) {
     unexpectedRequestFailures: [],
     dashboardMismatches: [],
     routeFailures: [],
+    apiUiMismatches: [],
     interactiveFailures: [],
     fixtureMismatches: [],
     browserMatrixFailures: [],
+    networkClassifications: [],
   }
 
   for (const failures of failureSets) {
@@ -263,6 +265,33 @@ function liveFailuresFromRouteReports(routeReports) {
         actual: report.bodyPreview || null,
       })
     }
+    if (report.kind === 'api-ui-fields') {
+      if (Array.isArray(report.mismatches)) {
+        failures.apiUiMismatches.push(...report.mismatches.map((mismatch) => ({
+          route: mismatch.route || report.route || 'unknown',
+          field: mismatch.field || 'unknown',
+          expected: mismatch.expected ?? 'unknown',
+          actual: mismatch.actual ?? null,
+        })))
+      }
+      if (Array.isArray(report.networkClassifications)) {
+        failures.networkClassifications.push(...report.networkClassifications)
+      }
+    }
+    if (report.kind === 'positive-count-contradiction' && Array.isArray(report.contradictions)) {
+      failures.apiUiMismatches.push(...report.contradictions.map((mismatch) => ({
+        route: mismatch.route || report.route || 'unknown',
+        field: mismatch.field || 'unknown',
+        expected: mismatch.expected ?? 'positive live count',
+        actual: mismatch.actual || 'empty-state contradiction',
+      })))
+      failures.routeFailures.push(...report.contradictions.map((mismatch) => ({
+        route: mismatch.route || report.route || 'unknown',
+        reason: mismatch.actual || 'UI shows empty-state text while live resources exist',
+        expected: `${mismatch.field || 'resource'} > 0`,
+        actual: report.bodyPreview || null,
+      })))
+    }
     if (report.kind === 'interactive-control-missing') {
       failures.interactiveFailures.push({
         control: report.control || 'unknown',
@@ -321,13 +350,21 @@ function artifactPathsFromText(logText) {
 function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
+  const networkClassifications = liveUiFailures.networkClassifications || []
+  if (
+    /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io|canary .*port-forward did not become healthy|services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
+  ) return 'canary-setup'
   const hasLiveNetworkFailure = (liveUiFailures.unexpectedNetworkResponses || []).length
     || (liveUiFailures.unexpectedRequestFailures || []).length
     || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
-    || /live-network-error|startup-error|infrastructure connection error|too many requests|http 429|rate limited|unexpected app-origin|4xx|5xx|bad request/.test(text)
+    || /live-network-error|startup-error|infrastructure connection error|unexpected app-origin|4xx|5xx|bad request/.test(text)
+  if (/weak-test-assertion|literal word [`'"]?ready|\/ready\/i/.test(text)) return 'weak-test-assertion'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
+  if (networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || /live-rate-limit-data-loss|http 429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
+  if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
   if (hasLiveNetworkFailure) return 'live-network-error'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
   if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
@@ -355,6 +392,18 @@ function likelyAreasFor(type) {
   }
   if (type === 'live-network-error') {
     return ['web/src/hooks/**', 'web/src/lib/**', 'web/src/components/cards/**', 'cmd/console/**']
+  }
+  if (type === 'live-rate-limit-data-loss') {
+    return ['cmd/console/**', 'web/src/hooks/**', 'web/src/components/namespaces/**', 'web/e2e/visual-login/helpers/liveSiteAssertions.ts']
+  }
+  if (type === 'ui-api-mismatch') {
+    return ['web/src/components/**', 'web/src/hooks/**', 'web/src/lib/dashboards/**']
+  }
+  if (type === 'local-agent-status-unreachable') {
+    return ['web/src/hooks/**', 'web/src/components/cards/**', 'cmd/console/**']
+  }
+  if (type === 'weak-test-assertion') {
+    return ['web/e2e/visual-login/**', 'web/harness/**']
   }
   if (type === 'safari-z-index' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
     return [
@@ -425,6 +474,10 @@ function shortFailure(type, failures) {
   if (type === 'live-ui-forbidden-artifact') return 'live UI shows demo or local-only artifact'
   if (type === 'live-ui-warning-flood') return 'live UI shows warning flood'
   if (type === 'live-network-error') return 'live UI has unexpected network errors'
+  if (type === 'live-rate-limit-data-loss') return 'resource API rate limiting causes live data loss'
+  if (type === 'ui-api-mismatch') return 'UI does not match authenticated API data'
+  if (type === 'local-agent-status-unreachable') return 'local agent status endpoint is unreachable'
+  if (type === 'weak-test-assertion') return 'live canary failed because the assertion was too weak'
   if (type === 'safari-z-index') return 'WebKit overlay or text stacking differs from Chromium'
   if (type === 'browser-layout-drift') return 'browser layout differs significantly from Chromium'
   if (type === 'browser-content-missing') return 'browser is missing expected live content'

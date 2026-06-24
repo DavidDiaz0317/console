@@ -440,6 +440,14 @@ export function NamespaceManager() {
     ns.name.startsWith('openshift-') ||
     ns.name === 'default'
   )
+  const unavailableClusterCount = Object.values(clusterStatuses).filter(status => status === 'unavailable' || status === 'accessDenied').length
+  const liveRouteState = error && filteredNamespaces.length === 0
+    ? 'unavailable'
+    : error || unavailableClusterCount > 0
+      ? 'partial'
+      : filteredNamespaces.length > 0
+        ? 'loaded'
+        : 'empty'
 
   const handleDeleteNamespace = async (ns: NamespaceDetails) => {
     setNamespaceToDelete(ns)
@@ -546,7 +554,17 @@ export function NamespaceManager() {
   }
 
   return (
-    <div className="min-h-full flex flex-col p-6">
+    <div
+      className="min-h-full flex flex-col p-6"
+      data-testid="namespaces-page"
+      data-live-route-state={liveRouteState}
+      data-live-source={filteredNamespaces.length > 0 ? 'k8s' : 'unknown'}
+    >
+      <div className="sr-only" aria-hidden="true" data-testid="namespaces-groundtruth-markers">
+        <span data-groundtruth-field="namespaces-total">{filteredNamespaces.length}</span>
+        <span data-groundtruth-field="namespaces-unavailable-clusters">{unavailableClusterCount}</span>
+      </div>
+
       {/* Header */}
       <DashboardHeader
         title="Namespace Manager"

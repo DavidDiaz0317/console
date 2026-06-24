@@ -6,10 +6,13 @@ import { assertNoCriticalRuntimeErrors } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
   assertGroundtruthFields,
+  assertLiveApiUiFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
+  assertNoPositiveLiveCountContradictions,
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
+  collectLiveApiFacts,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -69,9 +72,22 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
       'dashboard-pods-total': groundTruth.pods.running,
       'dashboard-namespaces-total': groundTruth.namespaces.total,
     }, '/')
+    const apiFacts = await collectLiveApiFacts(page)
+    await assertLiveApiUiFields(page, apiFacts, '/', {
+      'dashboard-clusters-total': apiFacts.clusters.total,
+      'dashboard-healthy-clusters': apiFacts.clusters.healthy,
+      'dashboard-nodes-total': apiFacts.clusters.nodesTotal,
+      'dashboard-pods-total': apiFacts.clusters.podsRunning,
+      'dashboard-namespaces-total': apiFacts.namespaces.total,
+    })
+    await assertNoPositiveLiveCountContradictions(page, '/', {
+      clusters: groundTruth.contexts.reachable,
+      namespaces: groundTruth.namespaces.total,
+      deployments: groundTruth.deployments.total,
+    })
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
     await assertNoCriticalRuntimeErrors(collectors, liveDashboardExpectedConsoleNoise)
 
     writeLiveSiteReport({

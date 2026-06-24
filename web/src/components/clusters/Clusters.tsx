@@ -347,6 +347,11 @@ export function Clusters() {
 
   const getStatValue = getDashboardStatValue
   const clusterStatusProgressMax = Math.max(stats.total, MIN_CLUSTER_PROGRESS_TOTAL)
+  const liveRouteState = stats.total > 0
+    ? 'loaded'
+    : showSkeletonContent
+      ? 'empty'
+      : 'unavailable'
   const groundTruthMarkers = (
     <div className="sr-only" aria-hidden="true" data-testid="cluster-groundtruth-markers">
       <span data-groundtruth-field="clusters-total">{stats.total}</span>
@@ -506,6 +511,8 @@ export function Clusters() {
       isRefreshing={dataRefreshing}
       lastUpdated={lastUpdated}
       hasData={stats.hasResourceData || stats.total > 0}
+      liveRouteState={liveRouteState}
+      liveSource={stats.total > 0 ? 'k8s' : 'unknown'}
       beforeCards={beforeCardsContent}
       rightExtra={<RotatingTip page="clusters" />}
       emptyState={{

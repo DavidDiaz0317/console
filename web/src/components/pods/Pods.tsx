@@ -207,6 +207,11 @@ export function Pods() {
 
   // Merged getter: dashboard-specific values first, then universal fallback
   const getStatValue = getDashboardStatValue
+  const liveRouteState = backendActionUnavailable
+    ? 'unavailable'
+    : stats.totalPods > 0
+      ? 'loaded'
+      : 'empty'
 
   return (
     <DashboardPage
@@ -229,11 +234,19 @@ export function Pods() {
       isRefreshing={isRefreshing}
       lastUpdated={lastUpdated}
       hasData={stats.totalPods > 0}
+      liveRouteState={liveRouteState}
+      liveSource={stats.totalPods > 0 ? 'k8s' : 'unknown'}
       emptyState={{
         title: 'Pods Dashboard',
         description: 'Add cards to monitor pod health, issues, and resource usage across your clusters.'
       }}
     >
+      <div className="sr-only" aria-hidden="true" data-testid="pods-groundtruth-markers">
+        <span data-groundtruth-field="pods-running">{stats.totalPods}</span>
+        <span data-groundtruth-field="pods-pending">{stats.pending}</span>
+        <span data-groundtruth-field="pods-issues">{stats.issues}</span>
+      </div>
+
       {/* Pod Issues List */}
       {backendActionUnavailable && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

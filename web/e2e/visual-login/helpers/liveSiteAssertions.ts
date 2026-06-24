@@ -27,6 +27,39 @@ const LIVE_CANARY_TEST_USER = {
 const LIVE_NAVIGATION_ATTEMPTS = 3
 const TEXT_COLLISION_RATIO_LIMIT = 0.30
 
+type LiveApiEndpointFact = {
+  status: number | null
+  count: number | null
+  error?: string
+}
+
+export type LiveApiFacts = {
+  endpoints: Record<string, LiveApiEndpointFact>
+  clusters: {
+    total: number | null
+    healthy: number | null
+    nodesTotal: number | null
+    nodesReady: number | null
+    podsRunning: number | null
+  }
+  nodes: {
+    total: number | null
+    ready: number | null
+  }
+  pods: {
+    running: number | null
+    pending: number | null
+    crashLoopBackOff: number | null
+  }
+  deployments: {
+    total: number | null
+    available: number | null
+  }
+  namespaces: {
+    total: number | null
+  }
+}
+
 const forbiddenLiveUiPatterns = [
   { label: 'demo mode control', source: String.raw`\bDemo Mode\b`, flags: 'i' },
   { label: 'connection log drawer', source: String.raw`\bConnection Log\b`, flags: 'i' },
@@ -34,6 +67,19 @@ const forbiddenLiveUiPatterns = [
   { label: 'endpoint error summary', source: String.raw`endpoint errors?`, flags: 'i' },
   { label: 'AI prediction load failure', source: String.raw`/predictions/ai\s*-\s*Load failed`, flags: 'i' },
   { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
+]
+
+const optionalLiveNetworkPatterns = [
+  /\/api\/github\/repos\//i,
+  /\/api\/agent\/auto-update\//i,
+  /\/api\/rewards\//i,
+  /\/api\/medium\/blog/i,
+  /\/api\/youtube\/playlist/i,
+  /\/api\/active-users/i,
+  /\/api\/token-usage\//i,
+  /\/api\/feedback\//i,
+  /\/api\/stellar\/(?:notifications|actions|tasks|activity|watches|solves)/i,
+  /\/api\/kagenti-provider\/status/i,
 ]
 
 export async function recordLiveUiFailures(page: Page, failures: LiveUiFailureEvidence) {
@@ -364,6 +410,7 @@ export function assertNoUnexpectedLiveNetworkErrors(
   const origin = new URL(baseUrl).origin
   const allowed = [
     /\/favicon\.ico$/i,
+    ...optionalLiveNetworkPatterns,
     ...additionalAllowed,
   ]
   const unexpectedResponses = collectors.errorResponses
@@ -391,6 +438,24 @@ export function assertNoUnexpectedLiveNetworkErrors(
     ...(collectors.liveUiFailures || {}),
     unexpectedNetworkResponses: unexpectedResponses,
     unexpectedRequestFailures: unexpectedFailures,
+    networkClassifications: [
+      ...((collectors.liveUiFailures || {}).networkClassifications || []),
+      ...collectors.errorResponses
+        .filter(entry => {
+          try {
+            return new URL(entry.url).origin === origin
+          } catch {
+            return false
+          }
+        })
+        .map(entry => {
+          const classification = networkClassification(entry.status, entry.url)
+          return classification
+            ? { classification, method: entry.method, status: entry.status, url: entry.url }
+            : null
+        })
+        .filter((entry): entry is { classification: string; method: string; status?: number; url: string } => Boolean(entry)),
+    ],
   }
   expect(unexpectedResponses, 'live UI must not produce unexpected app-origin 4xx/5xx responses').toEqual([])
   expect(unexpectedFailures, 'live UI must not produce unexpected app-origin request failures').toEqual([])
@@ -451,6 +516,136 @@ function parseVisibleNumber(value: string | null): number | null {
   return match ? Number(match[0]) : null
 }
 
+function networkClassification(status: number | undefined, url: string): string | null {
+  if (status === 429 && /\/api\/(?:mcp\/)?(?:namespaces|nodes|pods|deployments|clusters)|\/api\/namespaces/i.test(url)) {
+    return 'live-rate-limit-data-loss'
+  }
+  if (status === 502 && /\/api\/agent\/auto-update\/status/i.test(url)) {
+    return 'local-agent-status-unreachable'
+  }
+  if (status && status >= 400 && optionalLiveNetworkPatterns.some(pattern => pattern.test(url))) {
+    return 'optional-live-integration-unreachable'
+  }
+  if (status === 401) return 'auth-boundary'
+  if (status && status >= 400) return 'live-network-error'
+  return null
+}
+
+export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
+  return page.evaluate(async () => {
+    type EndpointFact = { status: number | null; count: number | null; error?: string }
+    const endpoints: Record<string, EndpointFact> = {}
+
+    async function getJson(endpoint: string): Promise<{ status: number | null; data: unknown; count: number | null; error?: string }> {
+      try {
+        const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
+        const text = await response.text()
+        let data: unknown = null
+        try {
+          data = text ? JSON.parse(text) : null
+        } catch {
+          data = text
+        }
+        const count = Array.isArray(data)
+          ? data.length
+          : Array.isArray((data as { clusters?: unknown[] } | null)?.clusters)
+            ? (data as { clusters: unknown[] }).clusters.length
+            : Array.isArray((data as { nodes?: unknown[] } | null)?.nodes)
+              ? (data as { nodes: unknown[] }).nodes.length
+              : Array.isArray((data as { pods?: unknown[] } | null)?.pods)
+                ? (data as { pods: unknown[] }).pods.length
+                : Array.isArray((data as { deployments?: unknown[] } | null)?.deployments)
+                  ? (data as { deployments: unknown[] }).deployments.length
+                  : Array.isArray((data as { namespaces?: unknown[] } | null)?.namespaces)
+                    ? (data as { namespaces: unknown[] }).namespaces.length
+                    : null
+        endpoints[endpoint] = { status: response.status, count }
+        return { status: response.status, data, count }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        endpoints[endpoint] = { status: null, count: null, error: message }
+        return { status: null, data: null, count: null, error: message }
+      }
+    }
+
+    const clustersResponse = await getJson('/api/mcp/clusters')
+    const clusters = Array.isArray((clustersResponse.data as { clusters?: unknown[] } | null)?.clusters)
+      ? (clustersResponse.data as { clusters: Array<Record<string, unknown>> }).clusters
+      : []
+    const clusterNames = clusters.map(cluster =>
+      String(cluster.context || cluster.name || '')
+    ).filter(Boolean)
+    const healthyClusters = clusters.filter(cluster => cluster.reachable !== false && cluster.healthy !== false)
+    const clusterNodesTotal = clusters.reduce((sum, cluster) => sum + Number(cluster.nodeCount || 0), 0)
+    const clusterNodesReady = clusters.reduce((sum, cluster) => sum + Number(cluster.readyNodes ?? cluster.nodeCount ?? 0), 0)
+    const clusterPodsRunning = clusters.reduce((sum, cluster) => sum + Number(cluster.runningPods ?? cluster.podCount ?? 0), 0)
+
+    const nodesResponse = await getJson('/api/mcp/nodes')
+    const nodes = Array.isArray((nodesResponse.data as { nodes?: unknown[] } | null)?.nodes)
+      ? (nodesResponse.data as { nodes: Array<Record<string, unknown>> }).nodes
+      : []
+    const readyNodes = nodes.filter(node =>
+      String(node.status || '').toLowerCase() === 'ready'
+      || (Array.isArray(node.conditions) && node.conditions.some((condition: Record<string, unknown>) =>
+        condition.type === 'Ready' && condition.status === 'True'
+      ))
+    ).length
+
+    const podsResponse = await getJson('/api/mcp/pods')
+    const pods = Array.isArray((podsResponse.data as { pods?: unknown[] } | null)?.pods)
+      ? (podsResponse.data as { pods: Array<Record<string, unknown>> }).pods
+      : []
+    const runningPods = pods.filter(pod => String(pod.status || '').toLowerCase() === 'running').length
+    const pendingPods = pods.filter(pod => String(pod.status || '').toLowerCase() === 'pending').length
+    const crashLoopPods = pods.filter(pod => /crashloopbackoff/i.test(String(pod.reason || pod.status || ''))).length
+
+    const deploymentsResponse = await getJson('/api/mcp/deployments')
+    const deployments = Array.isArray((deploymentsResponse.data as { deployments?: unknown[] } | null)?.deployments)
+      ? (deploymentsResponse.data as { deployments: Array<Record<string, unknown>> }).deployments
+      : []
+    const availableDeployments = deployments.filter(deployment =>
+      String(deployment.status || '').toLowerCase() === 'running'
+      || Number(deployment.availableReplicas || 0) > 0
+      || (Number(deployment.readyReplicas || 0) === Number(deployment.replicas || 0) && Number(deployment.replicas || 0) > 0)
+    ).length
+
+    let namespacesTotal = 0
+    for (const clusterName of clusterNames) {
+      const namespaceResponse = await getJson(`/api/namespaces?cluster=${encodeURIComponent(clusterName)}`)
+      if (namespaceResponse.status && namespaceResponse.status >= 200 && namespaceResponse.status < 300) {
+        namespacesTotal += namespaceResponse.count || 0
+      }
+    }
+
+    return {
+      endpoints,
+      clusters: {
+        total: clustersResponse.status && clustersResponse.status < 400 ? clusters.length : null,
+        healthy: clustersResponse.status && clustersResponse.status < 400 ? healthyClusters.length : null,
+        nodesTotal: clustersResponse.status && clustersResponse.status < 400 ? clusterNodesTotal : null,
+        nodesReady: clustersResponse.status && clustersResponse.status < 400 ? clusterNodesReady : null,
+        podsRunning: clustersResponse.status && clustersResponse.status < 400 ? clusterPodsRunning : null,
+      },
+      nodes: {
+        total: nodesResponse.status && nodesResponse.status < 400 ? nodes.length : null,
+        ready: nodesResponse.status && nodesResponse.status < 400 ? readyNodes : null,
+      },
+      pods: {
+        running: podsResponse.status && podsResponse.status < 400 ? runningPods : null,
+        pending: podsResponse.status && podsResponse.status < 400 ? pendingPods : null,
+        crashLoopBackOff: podsResponse.status && podsResponse.status < 400 ? crashLoopPods : null,
+      },
+      deployments: {
+        total: deploymentsResponse.status && deploymentsResponse.status < 400 ? deployments.length : null,
+        available: deploymentsResponse.status && deploymentsResponse.status < 400 ? availableDeployments : null,
+      },
+      namespaces: {
+        total: namespacesTotal,
+      },
+    }
+  })
+}
+
 function liveRouteMarkerMissing(bodyText: string, marker: string | RegExp): boolean {
   return typeof marker === 'string' ? !bodyText.includes(marker) : !marker.test(bodyText)
 }
@@ -459,6 +654,28 @@ export async function readGroundtruthFieldNumber(page: Page, field: string): Pro
   const marker = page.locator(`[data-groundtruth-field="${field}"]`).first()
   if (await marker.count().catch(() => 0) === 0) return null
   return parseVisibleNumber(await marker.textContent().catch(() => null))
+}
+
+export async function readLiveRouteState(page: Page): Promise<string | null> {
+  return page.locator('[data-live-route-state]').first().getAttribute('data-live-route-state').catch(() => null)
+}
+
+export async function assertLiveRouteStateLoaded(page: Page, route: string) {
+  const state = await readLiveRouteState(page)
+  const bodyText = await page.locator('body').innerText({ timeout: 5_000 }).catch(() => '')
+  const unavailable = state === 'unavailable'
+    || state === 'partial'
+    || /Unable to connect to clusters|Data unavailable/i.test(bodyText)
+  if (unavailable) {
+    await recordLiveUiFailures(page, {
+      routeFailures: [{
+        route,
+        reason: `route rendered incomplete live data state${state ? ` (${state})` : ''}`,
+        actual: bodyText.slice(0, 500),
+      }],
+    })
+  }
+  expect(unavailable, `live ${route} must render fully loaded live data state`).toBe(false)
 }
 
 export async function assertGroundtruthFields(page: Page, expected: Record<string, number>, route: string) {
@@ -502,6 +719,103 @@ export async function assertGroundtruthFields(page: Page, expected: Record<strin
     mismatches: dashboardMismatches,
   })
   expect(dashboardMismatches, `live ${route} stats must match Kubernetes ground truth`).toEqual([])
+}
+
+export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, route: string, expected: Record<string, number | null>) {
+  const actualEntries = await Promise.all(
+    Object.keys(expected).map(async field => [field, await readGroundtruthFieldNumber(page, field)] as const)
+  )
+  const actual = Object.fromEntries(actualEntries)
+  const mismatches = Object.entries(expected)
+    .filter(([, expectedValue]) => expectedValue !== null)
+    .filter(([field, expectedValue]) => actual[field] !== expectedValue)
+    .map(([field, expectedValue]) => ({
+      route,
+      field,
+      expected: expectedValue as number,
+      actual: actual[field],
+    }))
+
+  const networkClassifications = Object.entries(apiFacts.endpoints)
+    .map(([url, fact]) => {
+      const classification = networkClassification(fact.status ?? undefined, url)
+      return classification ? { classification, status: fact.status ?? undefined, url } : null
+    })
+    .filter((entry): entry is { classification: string; status?: number; url: string } => Boolean(entry))
+
+  if (mismatches.length || networkClassifications.length) {
+    await recordLiveUiFailures(page, {
+      apiUiMismatches: mismatches,
+      networkClassifications,
+    })
+  }
+  writeLiveRouteEvidence({
+    route,
+    kind: 'api-ui-fields',
+    expected,
+    actual,
+    api: apiFacts,
+    mismatches,
+    networkClassifications,
+  })
+  const blockingNetworkClassifications = networkClassifications.filter(item =>
+    item.classification !== 'local-agent-status-unreachable'
+    && item.classification !== 'optional-live-integration-unreachable'
+  )
+  expect(mismatches, `live ${route} UI fields must match authenticated API data`).toEqual([])
+  expect(blockingNetworkClassifications, `live ${route} authenticated resource APIs must not return blocking 4xx/5xx responses`).toEqual([])
+}
+
+export async function assertNoPositiveLiveCountContradictions(page: Page, route: string, expected: Record<string, number | null>) {
+  const bodyText = await page.locator('body').innerText({ timeout: 5_000 }).catch(() => '')
+  const checks: Array<{ field: string; value: number | null | undefined; pattern: RegExp; description: string }> = [
+    {
+      field: 'clusters',
+      value: expected.clusters ?? expected['dashboard-clusters-total'] ?? expected['clusters-total'],
+      pattern: /\b(?:0|no)\s+clusters?\s+(?:detected|found)\b/i,
+      description: 'UI says no clusters are detected while live clusters exist',
+    },
+    {
+      field: 'namespaces',
+      value: expected.namespaces ?? expected['dashboard-namespaces-total'] ?? expected['namespaces-total'],
+      pattern: /\b(?:0|no)\s+namespaces?\b/i,
+      description: 'UI says no namespaces exist while live namespaces exist',
+    },
+    {
+      field: 'deployments',
+      value: expected.deployments ?? expected['deployments-total'],
+      pattern: /\b(?:0\s+deployments|no deployments found)\b/i,
+      description: 'UI says no deployments exist while live deployments exist',
+    },
+  ]
+
+  const contradictions = checks
+    .filter(check => typeof check.value === 'number' && check.value > 0 && check.pattern.test(bodyText))
+    .map(check => ({
+      route,
+      field: check.field,
+      expected: check.value as number,
+      actual: check.description,
+    }))
+
+  if (contradictions.length) {
+    await recordLiveUiFailures(page, {
+      apiUiMismatches: contradictions,
+      routeFailures: contradictions.map(item => ({
+        route,
+        reason: item.actual,
+        expected: `${item.field} > 0`,
+        actual: bodyText.slice(0, 500),
+      })),
+    })
+    writeLiveRouteEvidence({
+      route,
+      kind: 'positive-count-contradiction',
+      contradictions,
+      bodyPreview: bodyText.slice(0, 1_000),
+    })
+  }
+  expect(contradictions, `live ${route} must not show empty-state text for resources that exist`).toEqual([])
 }
 
 export async function assertLiveRouteContainsAny(page: Page, route: string, expected: Array<string | RegExp>) {
