@@ -107,7 +107,7 @@ export function DashboardHeader({
             {icon}
             {title}
           </h1>
-          <p className="text-muted-foreground">{subtitle}</p>
+          <p className="text-muted-foreground border-l-4 border-primary/60 pl-3">{subtitle}</p>
         </div>
         {/* Reserve fixed width to prevent layout shift */}
         <span
