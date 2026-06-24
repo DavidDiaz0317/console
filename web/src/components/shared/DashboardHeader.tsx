@@ -107,7 +107,7 @@ export function DashboardHeader({
             {icon}
             {title}
           </h1>
-          <p className="text-muted-foreground">{subtitle}</p>
+          <p className="text-muted-foreground max-w-32 overflow-hidden whitespace-nowrap">{subtitle}</p>
         </div>
         {/* Reserve fixed width to prevent layout shift */}
         <span
