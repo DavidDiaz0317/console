@@ -12,6 +12,10 @@ on:
         description: Force snapshot update mode instead of compare mode.
         type: boolean
         default: false
+      triage_demo:
+        description: Enable deterministic VLM triage demo mode (same-repo dispatch only, for proof runs).
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,9 +55,15 @@ jobs:
         run: |
           MIN_CORE_VISUAL_BASELINE_PNG_COUNT=10
           CORE_COUNT=$(find e2e/visual/app-visual-regression.spec.ts-snapshots -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
-          if [ "$GENERATE_BASELINES" = "true" ] || [ "${CORE_COUNT:-0}" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
+          CORE_COUNT=${CORE_COUNT:-0}
+          if [ "$CORE_COUNT" -gt 0 ] && [ "$CORE_COUNT" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
+            # Partial baselines = anomaly (some core baselines are missing/deleted). Make it LOUD rather
+            # than silently downgrading to generate mode, which would mask a disabled visual sensor.
+            echo "::error::Partial visual baselines detected (${CORE_COUNT}/${MIN_CORE_VISUAL_BASELINE_PNG_COUNT}). The visual-regression sensor may be silently disabled — regenerating, but this needs investigation."
+          fi
+          if [ "$GENERATE_BASELINES" = "true" ] || [ "$CORE_COUNT" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
             echo "run_mode=generate" >> "$GITHUB_OUTPUT"
-            echo "::notice::Running in baseline generation mode (core baselines: ${CORE_COUNT:-0})."
+            echo "::notice::Running in baseline generation mode (core baselines: ${CORE_COUNT})."
           else
             echo "run_mode=compare" >> "$GITHUB_OUTPUT"
             echo "::notice::Running in visual compare mode (core baselines: ${CORE_COUNT})."
@@ -139,7 +149,7 @@ jobs:
           VISUAL_TRIAGE_API_URL: ${{ vars.VISUAL_TRIAGE_API_URL }}
           VISUAL_TRIAGE_API_KEY: ${{ secrets.VISUAL_TRIAGE_API_KEY }}
           VISUAL_TRIAGE_MODEL: ${{ vars.VISUAL_TRIAGE_MODEL }}
-          VISUAL_TRIAGE_DEMO_MODE: 'true'
+          VISUAL_TRIAGE_DEMO_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.triage_demo || false }}
           VISUAL_TRIAGE_AUTO_UPDATE_ALLOWED: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           python3 -m pip install --user Pillow
