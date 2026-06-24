@@ -191,16 +191,32 @@ describe('fullFetchClusters', () => {
     expect(clusterCall![0].clusters[0].name).toBe('demo-cluster')
   })
 
-  it('returns loading=false and no clusters when agent unavailable and no token', async () => {
+  it('delegates unauthenticated backend fallback to the API wrapper when no token is stored', async () => {
     mockFetchClusterListFromAgent.mockResolvedValueOnce(null)
-    // no token in localStorage
+    mockApiGet.mockRejectedValueOnce(new Error('unauthenticated'))
 
     const { fullFetchClusters } = await import('../sharedImpl.orchestration')
     await fullFetchClusters()
 
+    expect(mockApiGet).toHaveBeenCalledWith('/api/mcp/clusters')
     const finalCall = mockUpdateClusterCache.mock.calls.at(-1)![0]
     expect(finalCall.isLoading).toBe(false)
     expect(finalCall.isRefreshing).toBe(false)
+  })
+
+  it('falls back to backend API for cookie-only sessions without a bearer token', async () => {
+    mockFetchClusterListFromAgent.mockResolvedValueOnce(null)
+    localStorage.setItem('kc-has-session', 'true')
+    const backendClusters = [{ name: 'cookie-session-cluster' } as ClusterInfo]
+    mockApiGet.mockResolvedValueOnce({ data: { clusters: backendClusters } })
+
+    const { fullFetchClusters } = await import('../sharedImpl.orchestration')
+    await fullFetchClusters()
+
+    expect(mockApiGet).toHaveBeenCalledWith('/api/mcp/clusters')
+    const clusterCall = mockUpdateClusterCache.mock.calls.find(c => c[0]?.clusters)
+    expect(clusterCall![0].clusters[0].name).toBe('cookie-session-cluster')
+    expect(mockCheckHealthProgressively).toHaveBeenCalled()
   })
 
   it('falls back to backend API when agent unavailable and has token', async () => {

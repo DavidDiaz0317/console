@@ -145,7 +145,11 @@ export function saveClusterCacheToStorage(clusters: ClusterInfo[]) {
       healthy: c.healthy,
       source: c.source,
       nodeCount: c.nodeCount,
+      readyNodes: c.readyNodes,
       podCount: c.podCount,
+      runningPods: c.runningPods,
+      pendingPods: c.pendingPods,
+      crashLoopBackOffPods: c.crashLoopBackOffPods,
       cpuCores: c.cpuCores,
       cpuRequestsMillicores: c.cpuRequestsMillicores,
       cpuRequestsCores: c.cpuRequestsCores,
@@ -200,7 +204,11 @@ export function mergeWithStoredClusters(newClusters: ClusterInfo[]): ClusterInfo
         storageBytes: pickMetric(cluster.storageBytes, cached.storageBytes),
         storageGB: pickMetric(cluster.storageGB, cached.storageGB),
         nodeCount: pickMetric(cluster.nodeCount, cached.nodeCount),
+        readyNodes: pickMetric(cluster.readyNodes, cached.readyNodes),
         podCount: pickMetric(cluster.podCount, cached.podCount),
+        runningPods: pickMetric(cluster.runningPods, cached.runningPods),
+        pendingPods: pickMetric(cluster.pendingPods, cached.pendingPods),
+        crashLoopBackOffPods: pickMetric(cluster.crashLoopBackOffPods, cached.crashLoopBackOffPods),
         pvcCount: cluster.pvcCount ?? cached.pvcCount, // pvcCount can be 0
         pvcBoundCount: cluster.pvcBoundCount ?? cached.pvcBoundCount,
         healthy: cluster.healthy ?? cached.healthy, // Preserve last-known health until fresh check completes

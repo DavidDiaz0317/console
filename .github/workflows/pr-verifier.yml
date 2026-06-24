@@ -8,7 +8,10 @@ permissions: {}
 
 jobs:
   verify:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # PR verifier image lives in kubestellar GHCR; forks cannot pull it (denied).
+    if: |
+      github.repository == 'kubestellar/console' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       checks: write
       pull-requests: read

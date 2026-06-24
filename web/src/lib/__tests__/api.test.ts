@@ -146,6 +146,24 @@ describe('oauth config', () => {
     await expect(checkOAuthConfigured()).resolves.toEqual({
       backendUp: true,
       oauthConfigured: true,
+      inCluster: false,
+    })
+  })
+
+  it('returns inCluster true when /health reports cluster-backed mode', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ oauth_configured: false, in_cluster: true }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    )))
+    const { checkOAuthConfigured } = await loadApi()
+
+    await expect(checkOAuthConfigured()).resolves.toEqual({
+      backendUp: true,
+      oauthConfigured: false,
+      inCluster: true,
     })
   })
 
@@ -156,6 +174,7 @@ describe('oauth config', () => {
     await expect(checkOAuthConfigured()).resolves.toEqual({
       backendUp: false,
       oauthConfigured: false,
+      inCluster: false,
     })
   })
 
@@ -176,6 +195,7 @@ describe('oauth config', () => {
     await expect(pending).resolves.toEqual({
       backendUp: true,
       oauthConfigured: false,
+      inCluster: false,
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })

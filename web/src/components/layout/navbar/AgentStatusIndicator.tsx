@@ -274,6 +274,14 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
         Icon: Box,
         title: t('agent.demoModeTitle'),
       }
+    : isClusterBacked
+      ? {
+          bg: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20',
+          dot: 'bg-blue-400',
+          label: t('agent.cluster'),
+          Icon: Server,
+          title: t('agent.inClusterModeTitle'),
+        }
     : stableStatus === 'degraded' || (stableConnected && backendIssue)
       ? {
           bg: 'bg-red-500/10 text-red-400 hover:bg-red-500/20',
@@ -308,15 +316,7 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
                 Icon: Wifi,
                 title: t('agent.connecting'),
               }
-            : isInClusterMode
-              ? {
-                  bg: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20',
-                  dot: 'bg-blue-400',
-                  label: t('agent.cluster'),
-                  Icon: Server,
-                  title: t('agent.inClusterModeTitle'),
-                }
-              : {
+            : {
                   bg: 'bg-red-500/10 text-red-400 hover:bg-red-500/20',
                   dot: 'bg-red-400',
                   label: t('networkUtils.offline'),

@@ -78,6 +78,7 @@ vi.mock('../../hooks/mcp/shared', () => ({
 // ---------------------------------------------------------------------------
 const AUTH_USER_CACHE_KEY = 'kc-user-cache'
 const STORAGE_KEY_TOKEN = 'token'
+const STORAGE_KEY_HAS_SESSION = 'kc-has-session'
 
 // ---------------------------------------------------------------------------
 // Helper: create a valid JWT with an exp claim
@@ -478,6 +479,7 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    window.history.pushState({}, '', '/')
     document.getElementById('session-expiry-warning')?.remove()
     document.getElementById('session-banner-animation')?.remove()
     // Default: backend down, no OAuth
@@ -553,6 +555,84 @@ describe('AuthProvider', () => {
     expect(result.current.user).toBeNull()
   })
 
+  it('restores cookie session when backend is up without public OAuth config', async () => {
+    localStorage.setItem(STORAGE_KEY_HAS_SESSION, 'true')
+    mockCheckOAuthWithRetry.mockResolvedValue({ backendUp: true, oauthConfigured: false })
+    const realUser = {
+      id: 'dev-user',
+      github_id: '123',
+      github_login: 'dev-user',
+      onboarded: true,
+    }
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ refreshed: true, onboarded: true }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ token: 'agent-token' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(realUser),
+      })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { result } = await renderWithAuthProvider()
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(mockFetch).toHaveBeenCalledWith('/auth/refresh', expect.objectContaining({
+      method: 'POST',
+      credentials: 'include',
+    }))
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toMatchObject(realUser)
+    expect(result.current.isAuthenticated).toBe(true)
+    expect(mockSetGlobalDemoMode).not.toHaveBeenCalled()
+  })
+
+  it('does not auto-enable demo mode while auth callback is establishing a session', async () => {
+    window.history.pushState({}, '', '/auth/callback?onboarded=true')
+    mockCheckOAuthWithRetry.mockResolvedValue({ backendUp: true, oauthConfigured: false })
+
+    const { result } = await renderWithAuthProvider()
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toBeNull()
+    expect(result.current.isAuthenticated).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+    expect(mockSetGlobalDemoMode).not.toHaveBeenCalled()
+  })
+
+  it('does not auto-enable demo mode for in-cluster no-OAuth installs', async () => {
+    mockCheckOAuthWithRetry.mockResolvedValue({
+      backendUp: true,
+      oauthConfigured: false,
+      inCluster: true,
+    })
+
+    const { result } = await renderWithAuthProvider()
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toBeNull()
+    expect(result.current.isAuthenticated).toBe(false)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
+    expect(mockSetGlobalDemoMode).not.toHaveBeenCalled()
+  })
+
   // ---------- refreshUser: no token, checkOAuth throws -> demo mode ----------
 
   it('falls back to demo mode when checkOAuthConfigured throws', async () => {
@@ -600,6 +680,26 @@ describe('AuthProvider', () => {
 
     expect(result.current.token).toBe('demo-token')
     expect(result.current.user?.id).toBe('demo-user')
+  })
+
+  it('clears stale demo token when in-cluster no-OAuth backend is available', async () => {
+    localStorage.setItem(STORAGE_KEY_TOKEN, 'demo-token')
+    mockCheckOAuth.mockResolvedValue({
+      backendUp: true,
+      oauthConfigured: false,
+      inCluster: true,
+    })
+
+    const { result } = await renderWithAuthProvider()
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toBeNull()
+    expect(localStorage.getItem(STORAGE_KEY_TOKEN)).toBeNull()
+    expect(mockSetGlobalDemoMode).toHaveBeenCalledWith(false, true)
   })
 
   // ---------- refreshUser: demo token, backend up + OAuth -> clear token ----------
@@ -1140,6 +1240,31 @@ describe('AuthProvider', () => {
 
     expect(mockEmitLogin).toHaveBeenCalledWith('demo')
     expect(mockEmitConversionStep).toHaveBeenCalledWith(2, 'login', { method: 'demo' })
+  })
+
+  it('login() uses the auth route when in-cluster backend is up without OAuth', async () => {
+    mockCheckOAuth.mockResolvedValue({ backendUp: false, oauthConfigured: false })
+
+    const { result } = await renderWithAuthProvider()
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    vi.clearAllMocks()
+    mockCheckOAuth.mockResolvedValue({
+      backendUp: true,
+      oauthConfigured: false,
+      inCluster: true,
+    })
+
+    try {
+      await act(async () => {
+        await result.current.login()
+      })
+    } catch {
+      // jsdom may throw on location assignment.
+    }
+
+    expect(mockEmitLogin).toHaveBeenCalledWith('github-oauth')
+    expect(mockEmitConversionStep).toHaveBeenCalledWith(2, 'login', { method: 'github-oauth' })
   })
 
   // ---------- storage event: null newValue clears local state (#6065) ----------

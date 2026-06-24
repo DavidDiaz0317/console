@@ -247,6 +247,27 @@ describe('detectClusterDistribution', () => {
     expect(mockApiGet).toHaveBeenCalledWith(expect.stringContaining('/api/mcp/namespaces'))
   })
 
+  it('uses cluster-mode backend namespace array responses', async () => {
+    mockIsClusterMode = true
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        { name: 'default' },
+        { metadata: { name: 'kube-system' } },
+        { Name: 'monitoring' },
+      ],
+    })
+    mockDetectDistributionFromNamespaces.mockReturnValueOnce('vanilla')
+
+    const { detectClusterDistribution } = await import('../sharedImpl.health')
+    const result = await detectClusterDistribution('prod')
+
+    expect(result).toMatchObject({
+      distribution: 'vanilla',
+      namespaces: ['default', 'kube-system', 'monitoring'],
+    })
+    expect(mockDetectDistributionFromNamespaces).toHaveBeenCalledWith(['default', 'kube-system', 'monitoring'])
+  })
+
   it('returns empty object when cluster-mode API throws', async () => {
     mockIsClusterMode = true
     mockApiGet.mockRejectedValueOnce(new Error('api error'))

@@ -92,6 +92,25 @@ func TestLoadConfigFromEnv_DoesNotAutoEnableDevMode(t *testing.T) {
 	}
 }
 
+func TestLoadConfigFromEnv_ReadsClusterBackedMode(t *testing.T) {
+	t.Setenv("CLUSTER_BACKED_MODE", "true")
+
+	cfg := LoadConfigFromEnv()
+
+	assert.True(t, cfg.ClusterBackedMode,
+		"CLUSTER_BACKED_MODE=true should mark the backend as authoritative for live cluster data")
+}
+
+func TestLoadConfigFromEnv_ReadsGitHubLoginPolicy(t *testing.T) {
+	t.Setenv("AUTH_ALLOWED_GITHUB_LOGINS", "DavidDiaz0317,octocat")
+	t.Setenv("AUTH_ADMIN_GITHUB_LOGINS", "DavidDiaz0317")
+
+	cfg := LoadConfigFromEnv()
+
+	assert.Equal(t, "DavidDiaz0317,octocat", cfg.AllowedGitHubLogins)
+	assert.Equal(t, "DavidDiaz0317", cfg.AdminGitHubLogins)
+}
+
 func TestNewServer_ExplicitDevModeStartsWithoutOAuth(t *testing.T) {
 	cfg := Config{
 		ServerConfig: ServerConfig{

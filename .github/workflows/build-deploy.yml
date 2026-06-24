@@ -83,6 +83,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Normalize image name
+        id: image-name
+        shell: bash
+        run: echo "value=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
@@ -99,7 +104,7 @@ jobs:
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ env.REGISTRY }}/${{ steps.image-name.outputs.value }}
 
       - name: Build and push by digest
         id: build
@@ -115,7 +120,7 @@ jobs:
           # digest is referenceable until `merge` assembles the manifest.
           # On PRs we drop the push entirely so the build still verifies
           # but does not consume registry storage.
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ steps.image-name.outputs.value }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
           # Per-architecture cache scope so amd64 and arm64 don't evict
           # each other's layers from a shared scope (which would cause
           # cold rebuilds on every PR).
@@ -160,6 +165,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
+      - name: Normalize image name
+        id: image-name
+        shell: bash
+        run: echo "value=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
@@ -172,7 +182,7 @@ jobs:
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ env.REGISTRY }}/${{ steps.image-name.outputs.value }}
           tags: |
             type=ref,event=branch
             type=sha,prefix=,format=long
@@ -182,12 +192,12 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+            $(printf '${{ env.REGISTRY }}/${{ steps.image-name.outputs.value }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
           for i in 1 2 3; do
-            docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} && exit 0
+            docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ steps.image-name.outputs.value }}:${{ github.sha }} && exit 0
             echo "Attempt $i failed, retrying in 10s..."
             sleep 10
           done

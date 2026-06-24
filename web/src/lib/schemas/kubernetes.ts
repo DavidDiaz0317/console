@@ -224,8 +224,15 @@ export type GPUNodeHealthResponse = z.infer<typeof GPUNodeHealthResponseSchema>
 
 export const ClusterInfoSchema = z.object({
   name: z.string(),
+  context: z.string().optional(),
   reachable: z.boolean().optional(),
-})
+  nodeCount: z.number().optional(),
+  readyNodes: z.number().optional(),
+  podCount: z.number().optional(),
+  runningPods: z.number().optional(),
+  pendingPods: z.number().optional(),
+  crashLoopBackOffPods: z.number().optional(),
+}).passthrough()
 
 /** Envelope: `{ clusters: ClusterInfo[] }` */
 export const ClustersResponseSchema = z.object({

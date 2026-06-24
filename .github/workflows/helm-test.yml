@@ -92,6 +92,43 @@ jobs:
             > /tmp/helm-minimal.yaml
           echo "Rendered $(grep -c '^kind:' /tmp/helm-minimal.yaml) resources (minimal)"
 
+      - name: Template - secure console-live values
+        run: |
+          helm template kc-live deploy/helm/kubestellar-console \
+            --namespace kubestellar-console-live \
+            --set image.repository=ghcr.io/daviddiaz0317/console \
+            --set image.tag=test-sha \
+            --set image.pullPolicy=Always \
+            --set service.type=ClusterIP \
+            --set github.existingSecret=kc-live-github-oauth \
+            --set jwt.existingSecret=kc-live-github-oauth \
+            --set kubeconfig.existingSecret=kc-live-kubeconfig \
+            --set auth.allowedGitHubLogins=DavidDiaz0317 \
+            --set auth.adminGitHubLogins=DavidDiaz0317 \
+            --set ingress.enabled=true \
+            --set ingress.className=nginx \
+            --set ingress.hosts[0].host=console-live.kubestellar.io \
+            --set ingress.hosts[0].paths[0].path=/ \
+            --set ingress.hosts[0].paths[0].pathType=Prefix \
+            --set ingress.tls[0].secretName=console-live-kubestellar-io-tls \
+            --set ingress.tls[0].hosts[0]=console-live.kubestellar.io \
+            --set extraEnv[0].name=DEV_MODE \
+            --set-string extraEnv[0].value=false \
+            --set extraEnv[1].name=CLUSTER_BACKED_MODE \
+            --set-string extraEnv[1].value=true \
+            > /tmp/helm-console-live.yaml
+
+          grep -q 'type: ClusterIP' /tmp/helm-console-live.yaml
+          ! grep -q 'type: LoadBalancer' /tmp/helm-console-live.yaml
+          grep -q 'name: GITHUB_CLIENT_ID' /tmp/helm-console-live.yaml
+          grep -q 'name: kc-live-github-oauth' /tmp/helm-console-live.yaml
+          grep -q 'name: AUTH_ALLOWED_GITHUB_LOGINS' /tmp/helm-console-live.yaml
+          grep -q 'name: AUTH_ADMIN_GITHUB_LOGINS' /tmp/helm-console-live.yaml
+          grep -q 'name: DEV_MODE' /tmp/helm-console-live.yaml
+          grep -q 'value: "false"' /tmp/helm-console-live.yaml
+          test "$(grep -c 'name: FRONTEND_URL' /tmp/helm-console-live.yaml)" -eq 1
+          echo "Rendered $(grep -c '^kind:' /tmp/helm-console-live.yaml) resources (secure console-live values)"
+
       - name: Kubeconform — validate default
         run: |
           kubeconform -strict -summary \
@@ -121,9 +158,16 @@ jobs:
             -skip Route \
             /tmp/helm-minimal.yaml
 
+      - name: Kubeconform - validate secure console-live
+        run: |
+          kubeconform -strict -summary \
+            -kubernetes-version 1.30.0 \
+            -skip Route \
+            /tmp/helm-console-live.yaml
+
       - name: Verify no empty/broken templates
         run: |
-          for f in /tmp/helm-default.yaml /tmp/helm-openshift.yaml /tmp/helm-full.yaml /tmp/helm-minimal.yaml; do
+          for f in /tmp/helm-default.yaml /tmp/helm-openshift.yaml /tmp/helm-full.yaml /tmp/helm-minimal.yaml /tmp/helm-console-live.yaml; do
             BASENAME=$(basename "$f")
             RESOURCE_COUNT=$(grep -c '^kind:' "$f")
             if [ "$RESOURCE_COUNT" -lt 2 ]; then
@@ -140,7 +184,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Variant | Resources |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----------|" >> $GITHUB_STEP_SUMMARY
-          for f in /tmp/helm-default.yaml /tmp/helm-openshift.yaml /tmp/helm-full.yaml /tmp/helm-minimal.yaml; do
+          for f in /tmp/helm-default.yaml /tmp/helm-openshift.yaml /tmp/helm-full.yaml /tmp/helm-minimal.yaml /tmp/helm-console-live.yaml; do
             BASENAME=$(basename "$f" .yaml | sed 's/helm-//')
             COUNT=$(grep -c '^kind:' "$f" 2>/dev/null || echo 0)
             echo "| $BASENAME | $COUNT |" >> $GITHUB_STEP_SUMMARY

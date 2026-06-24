@@ -66,27 +66,33 @@
     "type_acceptance": {},
     "common_rejection_reasons": [],
     "best_change_type": "bug_fix",
-    "last_report_date": "2026-06-07"
+    "last_report_date": "2026-06-21"
   },
   "cncf_insights": {
-    "last_scan_date": "2026-06-03",
+    "last_scan_date": "2026-06-24",
     "suggested_checks": [
       {
         "pattern": "navigation_ux",
-        "count": 20,
-        "added": "2026-06-03",
+        "count": 6,
+        "added": "2026-06-24",
         "priority": "medium"
       },
       {
         "pattern": "data_viz",
-        "count": 10,
-        "added": "2026-06-03",
+        "count": 11,
+        "added": "2026-06-24",
         "priority": "medium"
       },
       {
         "pattern": "form_ux",
-        "count": 23,
-        "added": "2026-06-03",
+        "count": 18,
+        "added": "2026-06-24",
+        "priority": "medium"
+      },
+      {
+        "pattern": "realtime_ux",
+        "count": 24,
+        "added": "2026-06-24",
         "priority": "medium"
       }
     ]

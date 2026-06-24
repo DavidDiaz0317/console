@@ -120,6 +120,34 @@ func TestAuthHandler_DevMode(t *testing.T) {
 	require.Equal(t, "dev@example.com", devUser.Email)
 }
 
+func TestAuthHandler_GitHubLoginRequiresOAuthWhenDevModeDisabled(t *testing.T) {
+	s := store.OpenTestDB(t)
+	h := NewAuthHandler(s, AuthConfig{
+		DevMode:     false,
+		JWTSecret:   "test-jwt-secret",
+		FrontendURL: "https://console.example.com",
+		BackendURL:  "https://console.example.com",
+	})
+	t.Cleanup(h.Stop)
+
+	app := fiber.New()
+	app.Get("/auth/github", h.GitHubLogin)
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/github", nil)
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	require.Equal(t, fiber.StatusTemporaryRedirect, resp.StatusCode)
+
+	location, err := resp.Location()
+	require.NoError(t, err)
+	require.Equal(t, "/login", location.Path)
+	require.Equal(t, "oauth_not_configured", location.Query().Get("error"))
+
+	users, err := s.ListUsers(context.Background(), 0, 0)
+	require.NoError(t, err)
+	require.Empty(t, users, "missing OAuth config must not create a dev user unless DEV_MODE=true")
+}
+
 func TestAuthHandler_RevokeToken(t *testing.T) {
 	s := store.OpenTestDB(t)
 	ctx := context.Background()

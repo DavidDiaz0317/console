@@ -37,6 +37,11 @@ describe('AISuggestionsSection', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
   it('renders query input and generate button', () => {
     render(<AISuggestionsSection {...defaultProps} />)
     expect(screen.getByPlaceholderText('dashboard.addCard.aiPlaceholder')).toBeInTheDocument()

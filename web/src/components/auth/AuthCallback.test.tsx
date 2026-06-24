@@ -34,12 +34,18 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('../../lib/utils/localStorage', () => ({
   safeGetItem: vi.fn(() => null),
+  safeSetItem: vi.fn(),
   safeRemoveItem: vi.fn(),
 }))
 
 vi.mock('../../lib/analytics', () => ({
   emitGitHubConnected: vi.fn(),
   emitError: vi.fn(),
+}))
+
+vi.mock('../../lib/demoMode', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/demoMode')>()),
+  setDemoMode: vi.fn(),
 }))
 
 // Mock fetch to prevent real /auth/refresh request from hanging in jsdom.

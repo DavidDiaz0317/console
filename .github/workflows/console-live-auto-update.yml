@@ -1,0 +1,249 @@
+name: Console Live Auto Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Optional image SHA to deploy
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: console-live-auto-update
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPOSITORY: ghcr.io/daviddiaz0317/console
+  LIVE_NAMESPACE: kubestellar-console-live
+  LIVE_RELEASE: kc-live
+  LIVE_DEPLOYMENT: kc-live-kubestellar-console
+  LIVE_HOST: console-live.kubestellar.io
+  LIVE_URL: https://console-live.kubestellar.io
+  LIVE_TLS_SECRET: console-live-kubestellar-io-tls
+  KUBECONFIG_SECRET_NAME: kc-live-kubeconfig
+  OAUTH_SECRET_NAME: kc-live-github-oauth
+  JWT_SECRET_NAME: kc-live-jwt
+  GATE_SERVICE: console-live-gate
+  GATE_CONFIGMAP: console-live-gate-nginx
+  CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
+  CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
+
+jobs:
+  deploy:
+    name: Deploy Latest Main To Console Live
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.repository == 'DavidDiaz0317/console'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v3.19.3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate secrets
+        env:
+          CONSOLE_LIVE_KUBECONFIG_B64: ${{ secrets.CONSOLE_LIVE_KUBECONFIG_B64 }}
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in CONSOLE_LIVE_KUBECONFIG_B64 CONSOLE_LIVE_OAUTH_CLIENT_ID CONSOLE_LIVE_OAUTH_CLIENT_SECRET CONSOLE_LIVE_JWT_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure kubeconfig
+        env:
+          CONSOLE_LIVE_KUBECONFIG_B64: ${{ secrets.CONSOLE_LIVE_KUBECONFIG_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_kubeconfig="$RUNNER_TEMP/console-live-kubeconfig"
+          printf '%s' "$CONSOLE_LIVE_KUBECONFIG_B64" | base64 -d > "$deploy_kubeconfig"
+          chmod 600 "$deploy_kubeconfig"
+          echo "KUBECONFIG=$deploy_kubeconfig" >> "$GITHUB_ENV"
+          KUBECONFIG="$deploy_kubeconfig" kubectl -n "$LIVE_NAMESPACE" get deploy "$LIVE_DEPLOYMENT"
+
+      - name: Apply live auth secrets
+        env:
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$LIVE_NAMESPACE" create secret generic "$OAUTH_SECRET_NAME" \
+            --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
+            --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$LIVE_NAMESPACE" create secret generic "$JWT_SECRET_NAME" \
+            --from-literal=jwt-secret="$CONSOLE_LIVE_JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Resolve candidate image
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.candidate_sha || '' }}" ]; then
+            candidate_sha="${{ inputs.candidate_sha }}"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            candidate_sha="${{ github.event.workflow_run.head_sha }}"
+          else
+            candidate_sha="$(git ls-remote https://github.com/DavidDiaz0317/console.git refs/heads/main | awk '{print $1}')"
+          fi
+          if ! [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
+            exit 1
+          fi
+          candidate_image="${IMAGE_REPOSITORY}:${candidate_sha}"
+          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "image=$candidate_image" >> "$GITHUB_OUTPUT"
+          for i in {1..12}; do
+            if docker buildx imagetools inspect "$candidate_image" >/dev/null; then
+              echo "Resolved candidate image $candidate_image"
+              exit 0
+            fi
+            echo "Candidate image not visible yet; retry $i/12"
+            sleep 10
+          done
+          echo "::error::Candidate image is not available in GHCR: $candidate_image"
+          exit 1
+
+      - name: Upgrade Console release
+        shell: bash
+        run: |
+          set -euo pipefail
+          values="$RUNNER_TEMP/console-live-values.yaml"
+          cat > "$values" <<EOF
+          image:
+            repository: "$IMAGE_REPOSITORY"
+            tag: "${{ steps.candidate.outputs.sha }}"
+            pullPolicy: Always
+          service:
+            type: ClusterIP
+          kubeconfig:
+            existingSecret: "$KUBECONFIG_SECRET_NAME"
+          github:
+            existingSecret: "$OAUTH_SECRET_NAME"
+          jwt:
+            existingSecret: "$JWT_SECRET_NAME"
+          auth:
+            allowedGitHubLogins: "$CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS"
+            adminGitHubLogins: "$CONSOLE_LIVE_ADMIN_GITHUB_LOGINS"
+          ingress:
+            enabled: true
+            className: nginx
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-http01
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+            hosts:
+              - host: "$LIVE_HOST"
+                paths:
+                  - path: /
+                    pathType: Prefix
+            tls:
+              - secretName: "$LIVE_TLS_SECRET"
+                hosts:
+                  - "$LIVE_HOST"
+          rbac:
+            resourceQuotasReadOnly: true
+            namespaceCreationEnabled: false
+          extraEnv:
+            - name: DEV_MODE
+              value: "false"
+            - name: CLUSTER_BACKED_MODE
+              value: "true"
+            - name: BACKEND_URL
+              value: "$LIVE_URL"
+            - name: SKIP_ONBOARDING
+              value: "true"
+          EOF
+          helm upgrade --install "$LIVE_RELEASE" ./deploy/helm/kubestellar-console \
+            --namespace "$LIVE_NAMESPACE" \
+            --reuse-values \
+            -f "$values" \
+            --atomic \
+            --cleanup-on-fail \
+            --wait \
+            --timeout 10m
+
+      - name: Remove temporary gate resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$LIVE_NAMESPACE" annotate ingress "${LIVE_RELEASE}-kubestellar-console" \
+            nginx.ingress.kubernetes.io/whitelist-source-range- \
+            nginx.ingress.kubernetes.io/auth-type- \
+            nginx.ingress.kubernetes.io/auth-secret- \
+            nginx.ingress.kubernetes.io/auth-realm- \
+            --overwrite || true
+          kubectl -n "$LIVE_NAMESPACE" delete deployment "$GATE_SERVICE" --ignore-not-found
+          kubectl -n "$LIVE_NAMESPACE" delete service "$GATE_SERVICE" --ignore-not-found
+          kubectl -n "$LIVE_NAMESPACE" delete configmap "$GATE_CONFIGMAP" --ignore-not-found
+
+      - name: Verify live update
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n "$LIVE_NAMESPACE" rollout status "deployment/$LIVE_DEPLOYMENT" --timeout=3m
+          live_image="$(kubectl -n "$LIVE_NAMESPACE" get deploy "$LIVE_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+          if [ "$live_image" != "${{ steps.candidate.outputs.image }}" ]; then
+            echo "::error::Live image mismatch. got=$live_image want=${{ steps.candidate.outputs.image }}"
+            exit 1
+          fi
+          root_code=""
+          api_me_code=""
+          oauth_code=""
+          for i in {1..12}; do
+            root_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/" || true)"
+            api_me_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/api/me" || true)"
+            oauth_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LIVE_URL/auth/github" || true)"
+            if [ "$root_code" = "200" ] && [ "$api_me_code" = "401" ] && { [ "$oauth_code" = "307" ] || [ "$oauth_code" = "302" ]; }; then
+              break
+            fi
+            echo "Waiting for OAuth verification; attempt $i/12 root=$root_code api_me=$api_me_code oauth=$oauth_code"
+            sleep 10
+          done
+          if [ "$root_code" != "200" ]; then
+            echo "::error::Expected live root to return 200 for the login shell, got $root_code"
+            exit 1
+          fi
+          if [ "$api_me_code" != "401" ]; then
+            echo "::error::Expected unauthenticated /api/me to return 401, got $api_me_code"
+            exit 1
+          fi
+          if [ "$oauth_code" != "307" ] && [ "$oauth_code" != "302" ]; then
+            echo "::error::Expected /auth/github to redirect to GitHub OAuth, got $oauth_code"
+            exit 1
+          fi
+          echo "console-live now runs $live_image with GitHub OAuth enabled."

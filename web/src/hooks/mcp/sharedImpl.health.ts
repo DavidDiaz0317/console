@@ -19,6 +19,28 @@ import { HEALTH_CHECK_CONCURRENCY, MAX_HEALTH_CHECK_FAILURES, MAX_DISTRIBUTION_F
 import { FOCUS_DELAY_MS } from '../../lib/constants/network'
 import type { ClusterInfo, ClusterHealth } from './types'
 
+type NamespaceApiObject = { name?: string; Name?: string; metadata?: { name?: string } }
+type NamespaceApiEntry = string | NamespaceApiObject
+
+function normalizeNamespaceResponse(data: unknown): string[] {
+  const rawNamespaces = Array.isArray(data)
+    ? data
+    : Array.isArray((data as { namespaces?: unknown })?.namespaces)
+      ? (data as { namespaces: unknown[] }).namespaces
+      : []
+
+  return rawNamespaces
+    .map((entry: NamespaceApiEntry | unknown) => {
+      if (typeof entry === 'string') return entry
+      if (entry && typeof entry === 'object') {
+        const namespace = entry as NamespaceApiObject
+        return namespace.name || namespace.Name || namespace.metadata?.name || ''
+      }
+      return ''
+    })
+    .filter((namespace): namespace is string => Boolean(namespace))
+}
+
 // Track consecutive health check failures to avoid spamming
 export let healthCheckFailures = 0
 
@@ -147,10 +169,10 @@ export async function detectClusterDistribution(clusterName: string, kubectlCont
   // Cluster-mode routing: use backend API for namespace list (#11685)
   if (isClusterModeBackend()) {
     try {
-      const { data } = await api.get<{ namespaces: string[] }>(
+      const { data } = await api.get<unknown>(
         `/api/mcp/namespaces?cluster=${encodeURIComponent(clusterName)}`
       )
-      const namespaces = (data?.namespaces || [])
+      const namespaces = normalizeNamespaceResponse(data)
       const distribution = detectDistributionFromNamespaces(namespaces)
       return { distribution, namespaces }
     } catch {
@@ -296,7 +318,11 @@ async function processClusterHealth(cluster: ClusterInfo): Promise<void> {
           // External reachability probe result (#4202)
           externallyReachable: health.externallyReachable,
           nodeCount: health.nodeCount,
+          readyNodes: health.readyNodes,
           podCount: health.podCount,
+          runningPods: health.runningPods,
+          pendingPods: health.pendingPods,
+          crashLoopBackOffPods: health.crashLoopBackOffPods,
           cpuCores: health.cpuCores,
           cpuRequestsCores: health.cpuRequestsCores,
           // Actual usage from metrics-server
@@ -340,6 +366,11 @@ async function processClusterHealth(cluster: ClusterInfo): Promise<void> {
             healthy: false,
             reachable: false,
             nodeCount: 0,
+            readyNodes: 0,
+            podCount: 0,
+            runningPods: 0,
+            pendingPods: 0,
+            crashLoopBackOffPods: 0,
             errorType: health.errorType,
             errorMessage: health.errorMessage,
             refreshing: false,
@@ -350,6 +381,11 @@ async function processClusterHealth(cluster: ClusterInfo): Promise<void> {
             healthy: false,
             reachable: false,
             nodeCount: 0,
+            readyNodes: 0,
+            podCount: 0,
+            runningPods: 0,
+            pendingPods: 0,
+            crashLoopBackOffPods: 0,
             errorType: health.errorType,
             errorMessage: health.errorMessage,
             refreshing: false,

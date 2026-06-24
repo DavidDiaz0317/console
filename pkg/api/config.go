@@ -44,7 +44,7 @@ const (
 // ServerConfig holds infrastructure and runtime configuration
 type ServerConfig struct {
 	Port              int
-	BackendPort       int    // Watchdog support: when set, the backend listens on this port instead of Port
+	BackendPort       int // Watchdog support: when set, the backend listens on this port instead of Port
 	DatabasePath      string
 	Kubeconfig        string
 	DevMode           bool
@@ -52,18 +52,21 @@ type ServerConfig struct {
 	EnabledDashboards string // Comma-separated list of dashboard IDs to show in sidebar (empty = all)
 	ConsoleProject    string // White-label project context (e.g., "kubestellar", "crossplane", "istio")
 	NoLocalAgent      bool   // Suppress local kc-agent connections in in-cluster deployments
+	ClusterBackedMode bool   // Treat backend kubeconfig/SA access as authoritative live cluster data
 }
 
 // AuthConfig holds authentication and authorization configuration
 type AuthConfig struct {
-	GitHubClientID  string
-	GitHubSecret    string
-	GitHubURL       string // GitHub base URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
-	JWTSecret       string
-	AgentToken      string // Shared secret for authenticating with kc-agent
-	DevUserLogin    string // Dev mode user settings (used when GitHub OAuth not configured)
-	DevUserEmail    string
-	DevUserAvatar   string
+	GitHubClientID      string
+	GitHubSecret        string
+	GitHubURL           string // GitHub base URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
+	JWTSecret           string
+	AgentToken          string // Shared secret for authenticating with kc-agent
+	AllowedGitHubLogins string // Comma-separated OAuth allowlist; empty means any GitHub login may sign in
+	AdminGitHubLogins   string // Comma-separated logins promoted/kept as admin after OAuth sign-in
+	DevUserLogin        string // Dev mode user settings (used when GitHub OAuth not configured)
+	DevUserEmail        string
+	DevUserAvatar       string
 }
 
 // BrandConfig holds white-label branding configuration
@@ -207,16 +210,19 @@ func LoadConfigFromEnv() Config {
 			EnabledDashboards: os.Getenv("ENABLED_DASHBOARDS"),
 			ConsoleProject:    getEnvOrDefault("CONSOLE_PROJECT", "kubestellar"),
 			NoLocalAgent:      os.Getenv("NO_LOCAL_AGENT") == "true",
+			ClusterBackedMode: os.Getenv("CLUSTER_BACKED_MODE") == "true",
 		},
 		AuthConfig: AuthConfig{
-			GitHubClientID: githubClientID,
-			GitHubSecret:   githubSecret,
-			GitHubURL:      getEnvOrDefault("GITHUB_URL", "https://github.com"),
-			JWTSecret:      jwtSecret,
-			AgentToken:     os.Getenv("KC_AGENT_TOKEN"),
-			DevUserLogin:   getEnvOrDefault("DEV_USER_LOGIN", "dev-user"),
-			DevUserEmail:   getEnvOrDefault("DEV_USER_EMAIL", "dev@localhost"),
-			DevUserAvatar:  getEnvOrDefault("DEV_USER_AVATAR", ""),
+			GitHubClientID:      githubClientID,
+			GitHubSecret:        githubSecret,
+			GitHubURL:           getEnvOrDefault("GITHUB_URL", "https://github.com"),
+			JWTSecret:           jwtSecret,
+			AgentToken:          os.Getenv("KC_AGENT_TOKEN"),
+			AllowedGitHubLogins: os.Getenv("AUTH_ALLOWED_GITHUB_LOGINS"),
+			AdminGitHubLogins:   os.Getenv("AUTH_ADMIN_GITHUB_LOGINS"),
+			DevUserLogin:        getEnvOrDefault("DEV_USER_LOGIN", "dev-user"),
+			DevUserEmail:        getEnvOrDefault("DEV_USER_EMAIL", "dev@localhost"),
+			DevUserAvatar:       getEnvOrDefault("DEV_USER_AVATAR", ""),
 		},
 		BrandConfig: BrandConfig{
 			BrandAppName:      getEnvOrDefault("APP_NAME", "KubeStellar Console"),

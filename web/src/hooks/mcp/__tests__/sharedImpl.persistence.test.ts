@@ -40,7 +40,11 @@ type ClusterStub = {
   namespaces?: string[]
   healthy?: boolean
   nodeCount?: number
+  readyNodes?: number
   podCount?: number
+  runningPods?: number
+  pendingPods?: number
+  crashLoopBackOffPods?: number
   cpuCores?: number
   memoryGB?: number
   storageGB?: number
@@ -234,12 +238,25 @@ describe('updateDistributionCache', () => {
 describe('saveClusterCacheToStorage', () => {
   it('stores clusters to localStorage', async () => {
     const { saveClusterCacheToStorage, CLUSTER_CACHE_KEY } = await import('../sharedImpl.persistence')
-    const clusters = [makeCluster({ name: 'prod-cluster', healthy: true, nodeCount: 3 })]
+    const clusters = [makeCluster({
+      name: 'prod-cluster',
+      healthy: true,
+      nodeCount: 3,
+      readyNodes: 2,
+      podCount: 10,
+      runningPods: 8,
+      pendingPods: 1,
+      crashLoopBackOffPods: 1,
+    })]
     saveClusterCacheToStorage(clusters as never)
     const stored = JSON.parse(localStorage.getItem(CLUSTER_CACHE_KEY)!)
     expect(stored).toHaveLength(1)
     expect(stored[0].name).toBe('prod-cluster')
     expect(stored[0].nodeCount).toBe(3)
+    expect(stored[0].readyNodes).toBe(2)
+    expect(stored[0].runningPods).toBe(8)
+    expect(stored[0].pendingPods).toBe(1)
+    expect(stored[0].crashLoopBackOffPods).toBe(1)
   })
 
   it('filters out clusters whose name contains a slash', async () => {
@@ -327,11 +344,25 @@ describe('mergeWithStoredClusters', () => {
 
   it('preserves cached metric when new value is undefined', async () => {
     const { mergeWithStoredClusters, saveClusterCacheToStorage } = await import('../sharedImpl.persistence')
-    const stored = [makeCluster({ name: 'c1', nodeCount: 7, cpuCores: 16, memoryGB: 64 })]
+    const stored = [makeCluster({
+      name: 'c1',
+      nodeCount: 7,
+      readyNodes: 6,
+      podCount: 30,
+      runningPods: 27,
+      pendingPods: 2,
+      crashLoopBackOffPods: 1,
+      cpuCores: 16,
+      memoryGB: 64,
+    })]
     saveClusterCacheToStorage(stored as never)
     const newClusters = [makeCluster({ name: 'c1' })] // no metrics
     const result = mergeWithStoredClusters(newClusters as never)
     expect(result[0].nodeCount).toBe(7)
+    expect(result[0].readyNodes).toBe(6)
+    expect(result[0].runningPods).toBe(27)
+    expect(result[0].pendingPods).toBe(2)
+    expect(result[0].crashLoopBackOffPods).toBe(1)
     expect(result[0].cpuCores).toBe(16)
     expect(result[0].memoryGB).toBe(64)
   })

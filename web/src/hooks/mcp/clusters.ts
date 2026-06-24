@@ -296,8 +296,11 @@ export function useClusterHealth(cluster?: string) {
         healthy: cached.healthy ?? false,
         reachable: cached.reachable ?? true,
         nodeCount: cached.nodeCount ?? 0,
-        readyNodes: cached.nodeCount ?? 0,
+        readyNodes: cached.readyNodes ?? cached.nodeCount ?? 0,
         podCount: cached.podCount ?? 0,
+        runningPods: cached.runningPods ?? cached.podCount ?? 0,
+        pendingPods: cached.pendingPods ?? 0,
+        crashLoopBackOffPods: cached.crashLoopBackOffPods ?? 0,
         cpuCores: cached.cpuCores,
         memoryGB: cached.memoryGB,
         storageGB: cached.storageGB }
@@ -361,6 +364,9 @@ export function useClusterHealth(cluster?: string) {
             nodeCount: 0,
             readyNodes: 0,
             podCount: 0,
+            runningPods: 0,
+            pendingPods: 0,
+            crashLoopBackOffPods: 0,
             errorMessage: 'Unable to connect after 5 minutes' })
         } else {
           // Transient failure - keep showing previous good data
@@ -390,6 +396,9 @@ export function useClusterHealth(cluster?: string) {
           nodeCount: 0,
           readyNodes: 0,
           podCount: 0,
+          runningPods: 0,
+          pendingPods: 0,
+          crashLoopBackOffPods: 0,
           errorMessage: 'Unable to connect — cluster appears offline' })
       } else {
         // Keep previous data on transient error
@@ -440,6 +449,9 @@ function getDemoHealth(cluster?: string): ClusterHealth {
     nodeCount: metrics.nodeCount,
     readyNodes: metrics.nodeCount,
     podCount: metrics.podCount,
+    runningPods: metrics.podCount,
+    pendingPods: 0,
+    crashLoopBackOffPods: 0,
     cpuCores: metrics.cpuCores,
     memoryGB: metrics.memoryGB,
     memoryBytes: metrics.memoryGB * 1024 * 1024 * 1024,

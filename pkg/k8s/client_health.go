@@ -258,6 +258,18 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 		var totalCPURequests int64
 		var totalMemoryRequests int64
 		for _, pod := range pods.Items {
+			switch pod.Status.Phase {
+			case corev1.PodRunning:
+				health.RunningPods++
+			case corev1.PodPending:
+				health.PendingPods++
+			}
+			for _, containerStatus := range pod.Status.ContainerStatuses {
+				if containerStatus.State.Waiting != nil && containerStatus.State.Waiting.Reason == "CrashLoopBackOff" {
+					health.CrashLoopPods++
+					break
+				}
+			}
 			if pod.Status.Phase != corev1.PodRunning {
 				continue
 			}
@@ -279,6 +291,9 @@ func (m *MultiClusterClient) GetClusterHealth(ctx context.Context, contextName s
 	} else if prevCached != nil {
 		// Pod listing timed out — preserve previous cached pod data instead of showing 0
 		health.PodCount = prevCached.PodCount
+		health.RunningPods = prevCached.RunningPods
+		health.PendingPods = prevCached.PendingPods
+		health.CrashLoopPods = prevCached.CrashLoopPods
 		health.CpuRequestsMillicores = prevCached.CpuRequestsMillicores
 		health.CpuRequestsCores = prevCached.CpuRequestsCores
 		health.MemoryRequestsBytes = prevCached.MemoryRequestsBytes
