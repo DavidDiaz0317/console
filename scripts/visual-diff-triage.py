@@ -435,6 +435,40 @@ def mock_model(prompt: str) -> dict[str, Any]:
     }
 
 
+def demo_result_from_pr_title(title: str) -> dict[str, Any] | None:
+    """Deterministic demo-only classification for proof PRs.
+
+    This is intentionally gated by VISUAL_TRIAGE_DEMO_MODE in CI so normal
+    repository runs still require either the area-based fast paths or a real VLM.
+    """
+    lowered = title.lower()
+    if "[triage-demo:noise]" in lowered:
+        return {
+            "classification": "noise",
+            "confidence": 1.0,
+            "reasoning": "Demo mode: classify this proof PR as rendering noise so CI can demonstrate the pass path.",
+            "suspected_component": None,
+            "severity": None,
+        }
+    if "[triage-demo:intended]" in lowered:
+        return {
+            "classification": "intended_change",
+            "confidence": 0.95,
+            "reasoning": "Demo mode: classify this proof PR as an intentional UI change so CI can demonstrate the baseline-update/pass path.",
+            "suspected_component": "demo visual change",
+            "severity": None,
+        }
+    if "[triage-demo:regression]" in lowered:
+        return {
+            "classification": "regression",
+            "confidence": 0.95,
+            "reasoning": "Demo mode: classify this proof PR as a visual regression so CI can demonstrate the fail-and-issue path.",
+            "suspected_component": "demo visual change",
+            "severity": "medium",
+        }
+    return None
+
+
 def high_risk(changed_files: list[str], config: dict[str, Any]) -> bool:
     patterns = config.get("routing", {}).get("high_risk_globs", [])
     return any(fnmatch.fnmatch(file, pattern) for file in changed_files for pattern in patterns)
@@ -484,6 +518,8 @@ def triage(args: argparse.Namespace) -> int:
         "title": args.pr_title or os.getenv("PR_TITLE", ""),
         "head_sha": os.getenv("GITHUB_SHA", ""),
     }
+    demo_mode = os.getenv("VISUAL_TRIAGE_DEMO_MODE", "false").lower() == "true"
+    demo_result = demo_result_from_pr_title(pr["title"]) if demo_mode else None
     is_high_risk = high_risk(changed_files, config)
     auto_update_allowed = os.getenv("VISUAL_TRIAGE_AUTO_UPDATE_ALLOWED", "false").lower() == "true"
     confidence_cutoff = float(thresholds.get("confidence_cutoff", 0.6))
@@ -576,11 +612,14 @@ def triage(args: argparse.Namespace) -> int:
                 ]
             )
             try:
-                if args.mock_model:
+                if demo_result:
+                    result = dict(demo_result)
+                elif args.mock_model:
                     result = mock_model(prompt)
                 else:
                     result = call_vlm(config, prompt, crop_path)
-                model_calls += 1
+                if not demo_result:
+                    model_calls += 1
             except Exception as exc:  # model is last resort; do not guess silently
                 result = {
                     "classification": "needs_human_review",
@@ -613,7 +652,7 @@ def triage(args: argparse.Namespace) -> int:
                 routing = "human_review"
                 primary["reasoning"] = f"{primary.get('reasoning', '')} Could not locate the committed baseline path for auto-update."
 
-        decisions.append({**base_decision, **primary, "routing": routing, "model_called": bool(region_results), "regions": region_results})
+        decisions.append({**base_decision, **primary, "routing": routing, "model_called": bool(region_results) and not bool(demo_result), "regions": region_results})
 
     counts: dict[str, int] = {}
     for decision in decisions:

@@ -139,6 +139,7 @@ jobs:
           VISUAL_TRIAGE_API_URL: ${{ vars.VISUAL_TRIAGE_API_URL }}
           VISUAL_TRIAGE_API_KEY: ${{ secrets.VISUAL_TRIAGE_API_KEY }}
           VISUAL_TRIAGE_MODEL: ${{ vars.VISUAL_TRIAGE_MODEL }}
+          VISUAL_TRIAGE_DEMO_MODE: 'true'
           VISUAL_TRIAGE_AUTO_UPDATE_ALLOWED: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           python3 -m pip install --user Pillow
