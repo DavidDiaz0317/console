@@ -18,19 +18,34 @@ const ROOT_VISIBLE_TIMEOUT_MS = 15_000
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 }
 const LAPTOP_VIEWPORT = { width: 1280, height: 720 }
 const TABLET_VIEWPORT = { width: 768, height: 1024 }
-const SEEN_TIPS_EXCEPT_DASHBOARD_REARRANGE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+const GETTING_STARTED_GLOBAL_FILTER_TIP_INDEX = 13
+const ROTATING_HOME_SEARCH_TIP_INDEX = 4
+const SEEN_TIPS_EXCEPT_GLOBAL_FILTER = Array.from(
+  { length: 18 },
+  (_, index) => index
+).filter(index => index !== GETTING_STARTED_GLOBAL_FILTER_TIP_INDEX)
+const DISMISSED_FEATURE_HINTS_EXCEPT_VISUAL_BASELINE = ['card-drag', 'fab-add', 'missions']
 
 async function setupAndNavigate(page: Page, path = '/') {
   await setupDemoMode(page)
-  await page.addInitScript((seenTips) => {
-    const seedSeenTips = () => localStorage.setItem('ksc-seen-tips', JSON.stringify(seenTips))
-    const originalClear = Storage.prototype.clear
-    Storage.prototype.clear = function clearAndSeedTips() {
-      originalClear.call(this)
-      seedSeenTips()
+  await page.addInitScript(({ seenTips, dismissedFeatureHints, homeTipIndex }) => {
+    const seedVisualBaselineState = () => {
+      localStorage.removeItem('kc-hints-suppressed')
+      localStorage.setItem('ksc-seen-tips', JSON.stringify(seenTips))
+      localStorage.setItem('kc-feature-hints-dismissed', JSON.stringify(dismissedFeatureHints))
+      sessionStorage.setItem('ksc_tip_idx_home', String(homeTipIndex))
     }
-    seedSeenTips()
-  }, SEEN_TIPS_EXCEPT_DASHBOARD_REARRANGE)
+    const originalClear = Storage.prototype.clear
+    Storage.prototype.clear = function clearAndSeedVisualBaselineState() {
+      originalClear.call(this)
+      seedVisualBaselineState()
+    }
+    seedVisualBaselineState()
+  }, {
+    seenTips: SEEN_TIPS_EXCEPT_GLOBAL_FILTER,
+    dismissedFeatureHints: DISMISSED_FEATURE_HINTS_EXCEPT_VISUAL_BASELINE,
+    homeTipIndex: ROTATING_HOME_SEARCH_TIP_INDEX,
+  })
   await page.goto(path)
   await page.waitForLoadState('domcontentloaded')
   await expect(page.getByTestId('sidebar')).toBeVisible({ timeout: ROOT_VISIBLE_TIMEOUT_MS })
