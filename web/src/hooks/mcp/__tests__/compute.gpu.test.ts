@@ -167,6 +167,22 @@ describe('useGPUNodes', () => {
     expect(result.current.nodes[0].name).toBe('gpu-1')
   })
 
+  it('uses backend REST instead of optional GPU SSE in cluster-backed mode', async () => {
+    localStorage.setItem('kc_agent_backend_preference', 'kagenti')
+    const fakeNodes = [
+      { name: 'gpu-rest', cluster: 'ks-console-ci-1', gpuType: 'NVIDIA A10', gpuCount: 1, gpuAllocated: 0, acceleratorType: 'GPU' as const },
+    ]
+    globalThis.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ nodes: fakeNodes }), { status: 200 }))
+    )
+
+    const { result } = renderHook(() => useGPUNodes())
+
+    await waitFor(() => expect(result.current.nodes.some(node => node.name === 'gpu-rest')).toBe(true), { timeout: 3000 })
+    expect(mockFetchSSE).not.toHaveBeenCalled()
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/mcp/gpu-nodes?')
+  })
+
   it('polls every GPU_POLL_INTERVAL_MS and clears interval on unmount', async () => {
     vi.useFakeTimers()
     mockFetchSSE.mockResolvedValue([])

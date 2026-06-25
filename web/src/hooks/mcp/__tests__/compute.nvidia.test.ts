@@ -189,6 +189,21 @@ describe('useNVIDIAOperators', () => {
     expect(result.current.error).toBeNull()
   })
 
+  it('uses backend REST instead of optional NVIDIA operator SSE in cluster-backed mode', async () => {
+    localStorage.setItem('kc_agent_backend_preference', 'kagenti')
+    const fakeOps = [{ cluster: 'ks-console-ci-1', installed: false, version: '', components: [] }]
+    globalThis.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ operators: fakeOps }), { status: 200 }))
+    )
+
+    const { result } = renderHook(() => useNVIDIAOperators())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.operators).toEqual(fakeOps)
+    expect(mockFetchSSE).not.toHaveBeenCalled()
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/mcp/nvidia-operators?')
+  })
+
   it('forwards cluster when provided via SSE params', async () => {
     mockFetchSSE.mockResolvedValue([])
 

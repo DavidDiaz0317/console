@@ -1,4 +1,3 @@
-/* eslint-disable max-lines -- TODO: split this file (tracked by #15790) */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { fetchSSE } from '../../lib/sseClient'
 import { reportAgentDataSuccess, isAgentUnavailable } from '../useLocalAgent'
@@ -197,9 +196,25 @@ async function fetchGPUNodes(cluster?: string, _source?: string) {
       }
     }
 
+    if (!agentSucceeded && isClusterModeBackend()) {
+      try {
+        const resp = await agentFetch(`${getClusterModeBaseUrl()}/gpu-nodes?${params}`)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const data = await resp.json()
+        newNodes = data.nodes || []
+        fetchSucceeded = true
+        agentSucceeded = true
+      } catch {
+        if (gpuNodeCache.nodes.length === 0) {
+          throw new Error('Backend GPU REST failed')
+        }
+      }
+    }
+
     // If agent didn't work (not just "returned 0 nodes"), try SSE streaming then REST.
-    // In-cluster mode uses cookie auth (no localStorage token), so allow the fallback.
-    if (!agentSucceeded && (token || isInClusterMode())) {
+    // In-cluster mode uses cookie auth, but cluster-backed Console prefers REST above
+    // to avoid optional GPU streams consuming the live canary request budget.
+    if (!agentSucceeded && !isClusterModeBackend() && (token || isInClusterMode())) {
       try {
         // Try SSE streaming first for progressive rendering
         const sseResult = await fetchSSE<GPUNode>({
@@ -339,9 +354,13 @@ export function useGPUNodes(cluster?: string) {
   const [state, setState] = useState<GPUNodeCache>(gpuNodeCache)
   const { isDemoMode: demoMode } = useDemoMode()
 
-  // Stable refetch function for registration
-  const refetchRef = useRef(() => fetchGPUNodes(cluster, 'mode-switch'))
-  refetchRef.current = () => fetchGPUNodes(cluster, 'mode-switch')
+  const refetch = useCallback(() => {
+    fetchGPUNodes(cluster)
+  }, [cluster])
+
+  const refetchForModeSwitch = useCallback(() => {
+    fetchGPUNodes(cluster, 'mode-switch')
+  }, [cluster])
 
   // Re-fetch when demo mode changes (not on initial mount)
   const initialMountRef = useRef(true)
@@ -350,8 +369,8 @@ export function useGPUNodes(cluster?: string) {
       initialMountRef.current = false
       return
     }
-    fetchGPUNodes(cluster, 'mode-switch')
-  }, [demoMode, cluster])
+    refetchForModeSwitch()
+  }, [demoMode, refetchForModeSwitch])
 
   useEffect(() => {
     // Subscribe to cache updates
@@ -374,7 +393,7 @@ export function useGPUNodes(cluster?: string) {
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`gpu-nodes:${cluster || 'all'}`, () => {
-      refetchRef.current()
+      refetchForModeSwitch()
     })
 
     return () => {
@@ -382,11 +401,7 @@ export function useGPUNodes(cluster?: string) {
       unsubscribePolling()
       unregisterRefetch()
     }
-  }, [cluster, gpuNodeCache.consecutiveFailures])
-
-  const refetch = useCallback(() => {
-    fetchGPUNodes(cluster)
-  }, [cluster])
+  }, [cluster, refetchForModeSwitch])
 
   // Deduplicate GPU nodes by name to avoid counting same physical node twice
   // This handles cases where the same node appears under different cluster contexts
@@ -591,7 +606,9 @@ export function useNodes(cluster?: string) {
   }, [cluster])
 
   useEffect(() => {
-    refetch()
+    const initialFetchId = setTimeout(() => {
+      void refetch()
+    }, 0)
 
     // Register for unified mode transition refetch
     const unregisterRefetch = registerRefetch(`nodes:${cluster || 'all'}`, () => {
@@ -599,6 +616,7 @@ export function useNodes(cluster?: string) {
     })
 
     return () => {
+      clearTimeout(initialFetchId)
       unregisterRefetch()
     }
   }, [refetch, cluster])
@@ -633,6 +651,23 @@ export function useNVIDIAOperators(cluster?: string) {
       const agentBaseUrl = getClusterModeBaseUrl()
       if (!agentBaseUrl) {
         setOperators([])
+        setError(null)
+        return
+      }
+
+      if (isClusterModeBackend()) {
+        const urlParams = new URLSearchParams()
+        if (cluster) urlParams.append('cluster', cluster)
+        const resp = await agentFetch(`${agentBaseUrl}/nvidia-operators?${urlParams}`)
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+        const data = await resp.json()
+        if (data.operators) {
+          setOperators(data.operators)
+        } else if (data.operator) {
+          setOperators([data.operator])
+        } else {
+          setOperators([])
+        }
         setError(null)
         return
       }
@@ -684,7 +719,10 @@ export function useNVIDIAOperators(cluster?: string) {
   }, [cluster])
 
   useEffect(() => {
-    refetch()
+    const initialFetchId = setTimeout(() => {
+      void refetch()
+    }, 0)
+    return () => clearTimeout(initialFetchId)
   }, [refetch])
 
   return { operators, isLoading, error, refetch }

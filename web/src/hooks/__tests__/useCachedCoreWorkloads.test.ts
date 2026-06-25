@@ -5,9 +5,10 @@ import { renderHook, waitFor } from '@testing-library/react'
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mockUseCache, mockCreateCachedHook, mockFetchFromAllClusters, mockGetToken, mockIsClusterModeBackend } = vi.hoisted(() => ({
+const { mockUseCache, mockCreateCachedHook, mockFetchBackendAPI, mockFetchFromAllClusters, mockGetToken, mockIsClusterModeBackend } = vi.hoisted(() => ({
   mockUseCache: vi.fn(),
   mockCreateCachedHook: vi.fn((config: Record<string, unknown>) => () => mockUseCache(config)),
+  mockFetchBackendAPI: vi.fn(),
   mockFetchFromAllClusters: vi.fn(),
   mockGetToken: vi.fn(() => null),
   mockIsClusterModeBackend: vi.fn(() => false),
@@ -20,7 +21,7 @@ vi.mock('../../lib/cache', () => ({
 
 vi.mock('../../lib/cache/fetcherUtils', () => ({
   createCachedHook: vi.fn(),
-  fetchBackendAPI: vi.fn(),
+  fetchBackendAPI: (...args: unknown[]) => mockFetchBackendAPI(...args),
   fetchAPI: vi.fn(),
   fetchFromAllClusters: (...args: unknown[]) => mockFetchFromAllClusters(...args),
   fetchFromAllClustersViaBackend: vi.fn(),
@@ -144,6 +145,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetToken.mockReturnValue(null)
   mockIsClusterModeBackend.mockReturnValue(false)
+  mockFetchBackendAPI.mockResolvedValue({ deployments: [] })
   mockFetchFromAllClusters.mockResolvedValue([])
   mockUseCache.mockReturnValue(defaultCache())
 })
@@ -303,9 +305,11 @@ describe('useCachedDeployments', () => {
   it('uses the backend deployment fetcher instead of local agent in cluster-backed mode', async () => {
     mockIsClusterModeBackend.mockReturnValue(true)
     mockGetToken.mockReturnValue('test-token')
-    mockFetchFromAllClusters.mockResolvedValue([
-      { name: 'kc-live', namespace: 'kubestellar-console-live', cluster: 'ks-console-ci-1', replicas: 1, readyReplicas: 1 },
-    ])
+    mockFetchBackendAPI.mockResolvedValue({
+      deployments: [
+        { name: 'kc-live', namespace: 'kubestellar-console-live', cluster: 'ks-console-ci-1', replicas: 1, readyReplicas: 1 },
+      ],
+    })
     mockUseCache.mockImplementation((config: { fetcher?: () => Promise<unknown> }) => {
       void config.fetcher?.()
       return defaultCache()
@@ -314,7 +318,28 @@ describe('useCachedDeployments', () => {
     renderHook(() => useCachedDeployments())
 
     await waitFor(() => {
-      expect(mockFetchFromAllClusters).toHaveBeenCalledWith('deployments', 'deployments', { namespace: undefined })
+      expect(mockFetchBackendAPI).toHaveBeenCalledWith('deployments', {})
+      expect(mockFetchFromAllClusters).not.toHaveBeenCalled()
+    })
+  })
+
+  it('uses the aggregate backend deployment endpoint for cluster-backed progressive reads', async () => {
+    mockIsClusterModeBackend.mockReturnValue(true)
+    const deployments = [
+      { name: 'kc-live', namespace: 'kubestellar-console-live', cluster: 'ks-console-ci-1', replicas: 1, readyReplicas: 1 },
+    ]
+    mockFetchBackendAPI.mockResolvedValue({ deployments })
+    const onProgress = vi.fn()
+    mockUseCache.mockImplementation((config: { progressiveFetcher?: (onProgress: (data: unknown) => void) => Promise<unknown> }) => {
+      void config.progressiveFetcher?.(onProgress)
+      return defaultCache()
+    })
+
+    renderHook(() => useCachedDeployments())
+
+    await waitFor(() => {
+      expect(mockFetchBackendAPI).toHaveBeenCalledWith('deployments', {})
+      expect(onProgress).toHaveBeenCalledWith(deployments)
     })
   })
 })

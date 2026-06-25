@@ -509,6 +509,17 @@ export function useCachedDeployments(
   const { category = 'deployments' } = options || {}
   const key = `deployments:${cluster || 'all'}:${namespace || 'all'}`
 
+  const fetchBackendAggregateDeployments = async (): Promise<Deployment[]> => {
+    const raw = await fetchBackendAPI<unknown>('deployments', namespace ? { namespace } : {})
+    const data = validateArrayResponse<{ deployments: Deployment[] }>(
+      DeploymentsResponseSchema,
+      raw,
+      '/api/mcp/deployments',
+      'deployments',
+    )
+    return data.deployments || []
+  }
+
   const result = useCache({
     key,
     category,
@@ -521,6 +532,10 @@ export function useCachedDeployments(
         && !isClusterModeBackend()
 
       // Try agent first (fast, no backend needed) — skip if agent is unavailable
+      if (!cluster && isClusterModeBackend()) {
+        return fetchBackendAggregateDeployments()
+      }
+
       if (shouldUseLocalAgent) {
         if (cluster) {
           const params = new URLSearchParams()
@@ -563,6 +578,12 @@ export function useCachedDeployments(
       throw new Error("No data source available")
     },
     progressiveFetcher: cluster ? undefined : async (onProgress) => {
+      if (isClusterModeBackend()) {
+        const deployments = await fetchBackendAggregateDeployments()
+        onProgress(deployments)
+        return deployments
+      }
+
       const shouldUseLocalAgent = clusterCacheRef.clusters.length > 0
         && !isAgentUnavailable()
         && Boolean(LOCAL_AGENT_HTTP_URL)
