@@ -43,7 +43,7 @@ vi.mock('../../../hooks/useTokenUsage', () => ({
   },
 }))
 
-let mockClusters: Array<{ name: string; podCount?: number }> = []
+let mockClusters: Array<{ name: string; podCount?: number; runningPods?: number }> = []
 
 // Mock DashboardPage to isolate the component under test from the deeply nested dependency tree
 vi.mock('../../../lib/dashboards/DashboardPage', () => ({
@@ -249,7 +249,7 @@ describe('Pods Component', () => {
   })
 
   it('exposes semantic pod count markers for live canary assertions', () => {
-    mockClusters = [{ name: 'ctx/prod', podCount: 3 }]
+    mockClusters = [{ name: 'ctx/prod', podCount: 3, runningPods: 1 }]
     mockPodIssues = [
       { name: 'pending-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Pending', reason: 'Pending', restarts: 0, issues: [] },
     ]
@@ -258,7 +258,7 @@ describe('Pods Component', () => {
 
     const markerText = (field: string) => document.querySelector(`[data-groundtruth-field="${field}"]`)?.textContent
     expect(markerText('pods-total')).toBe('3')
-    expect(markerText('pods-running')).toBe('2')
+    expect(markerText('pods-running')).toBe('1')
     expect(markerText('pods-pending')).toBe('1')
     expect(markerText('pods-issues')).toBe('1')
   })

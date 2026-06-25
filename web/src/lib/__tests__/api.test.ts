@@ -273,4 +273,27 @@ describe('api client', () => {
     await expect(api.get('/api/private')).rejects.toBeInstanceOf(UnauthenticatedError)
     expect(fetch).not.toHaveBeenCalled()
   })
+
+  it('keeps the session when 401 verification is rate-limited', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('', { status: 200 }))
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(new Response('', { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+    localStorage.setItem('kc-token', 'abc123')
+    const { api, UnauthorizedError } = await loadApi()
+    const { emitSessionExpired } = await import('../analytics')
+
+    await expect(api.get('/api/private')).rejects.toBeInstanceOf(UnauthorizedError)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      '/health',
+      '/api/private',
+      '/api/me',
+    ])
+    expect(emitSessionExpired).not.toHaveBeenCalled()
+  })
 })

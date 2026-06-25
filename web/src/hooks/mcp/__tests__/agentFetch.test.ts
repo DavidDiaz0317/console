@@ -89,19 +89,17 @@ describe('getAgentToken — demo mode bypass', () => {
 })
 
 describe('agentFetch rate limit backoff', () => {
-  it('records backoff when the agent token endpoint returns 429', async () => {
+  it('records backoff and stops when the agent token endpoint returns 429', async () => {
     const tokenResp = new Response('', {
       status: 429,
       headers: { 'Retry-After': '20' },
     })
-    const dataResp = new Response('{}', { status: 200 })
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce(tokenResp)
-      .mockResolvedValueOnce(dataResp)
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(tokenResp)
 
-    await agentFetch('http://127.0.0.1:8585/pods')
+    await expect(agentFetch('http://127.0.0.1:8585/pods')).rejects.toBeInstanceOf(RateLimitError)
 
     expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('does not fetch a token or data while global backoff is active', async () => {

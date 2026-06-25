@@ -85,3 +85,13 @@ test('classifies browser semantic field mismatches distinctly', () => {
 test('keeps canary setup as fallback when no parsed product evidence exists', () => {
   assert.equal(classify({}, 'canary browser matrix port-forward did not become healthy'), 'canary-setup')
 })
+
+test('prioritizes canary setup over product-looking log noise', () => {
+  assert.equal(classify({
+    networkClassifications: [{
+      classification: 'live-rate-limit-data-loss',
+      status: 429,
+      url: '/api/mcp/pods',
+    }],
+  }, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing'), 'canary-setup')
+})

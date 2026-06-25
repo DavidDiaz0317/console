@@ -36,6 +36,30 @@ describe('rateLimitBackoff', () => {
     expect(state.retryAfter).toBe(DEFAULT_RATE_LIMIT_RETRY_AFTER_S)
   })
 
+  it('uses HTTP-date Retry-After values', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-25T12:00:00Z'))
+    const response = new Response('', {
+      status: 429,
+      headers: { 'Retry-After': 'Thu, 25 Jun 2026 12:00:30 GMT' },
+    })
+
+    const state = setRateLimitBackoffFromResponse(response)
+
+    expect(state.retryAfter).toBe(30)
+  })
+
+  it('falls back when Retry-After is invalid', () => {
+    const response = new Response('', {
+      status: 429,
+      headers: { 'Retry-After': 'not-a-date-or-seconds' },
+    })
+
+    const state = setRateLimitBackoffFromResponse(response)
+
+    expect(state.retryAfter).toBe(DEFAULT_RATE_LIMIT_RETRY_AFTER_S)
+  })
+
   it('throws a RateLimitError while the backoff is active', () => {
     setRateLimitBackoffFromResponse(new Response('', {
       status: 429,

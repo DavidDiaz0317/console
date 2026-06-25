@@ -715,13 +715,14 @@ function groundtruthFieldMismatch(
   state: GroundtruthFieldState,
   expected: number,
   route: string,
-): { field: string; expected: number; actual: number | null; actualValues: Array<number | null>; route: string; reason: string } | null {
+): { field: string; expected: number; actual: number | null; actualValues: Array<number | null>; markerCount: number; route: string; reason: string } | null {
   if (state.reason !== 'ok') {
     return {
       field: state.field,
       expected,
       actual: state.value,
       actualValues: state.values.length > 0 ? state.values : [null],
+      markerCount: state.markerCount,
       route,
       reason: state.reason,
     }
@@ -732,6 +733,7 @@ function groundtruthFieldMismatch(
       expected,
       actual: state.value,
       actualValues: state.values,
+      markerCount: state.markerCount,
       route,
       reason: 'mismatch',
     }

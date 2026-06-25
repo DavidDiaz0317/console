@@ -10,15 +10,18 @@ This branch proves that the Console UI can be checked against real live Kubernet
 - Cross-browser semantic/layout invariants for Chromium, Firefox, and WebKit.
 - AI-agent-ready failure issues with sanitized evidence, screenshots, traces, and reproduction context.
 
+After the validation checklist below passes, this branch is useful and mergeable into `DavidDiaz0317/console:main`. It should not be opened upstream as one giant PR because it mixes upstream-safe test/product hardening with fork-private live deployment infrastructure.
+
 ## Upstream-Safe Pieces
 
 These pieces are suitable to propose upstream in focused PRs:
 
-- Semantic UI markers such as `data-groundtruth-field`, `data-live-route-state`, and `data-live-source`.
-- Duplicate-safe live UI assertion helpers.
-- Kubernetes groundtruth normalization and sanitized evidence output.
-- Browser-matrix layout/semantic checks that run only when explicitly enabled.
-- Failure classification improvements that distinguish product bugs, weak assertions, rate limits, and setup failures.
+1. Semantic UI markers such as `data-groundtruth-field`, `data-live-route-state`, and `data-live-source`.
+2. Duplicate-safe live UI assertion helpers.
+3. PR-safe visual/login harness improvements that do not require private clusters.
+4. Optional live groundtruth collector and sanitized evidence output behind explicit environment flags.
+5. Browser-matrix layout/semantic checks behind explicit environment flags.
+6. Failure classification and evidence generation as an optional workflow owned by the target repository.
 
 ## Fork-Private Pieces
 
@@ -26,7 +29,9 @@ These should stay private to `DavidDiaz0317/console` unless upstream explicitly 
 
 - `Console Live Promote` deployment workflow.
 - `console-live.kubestellar.io` host, TLS, OAuth app, and GitHub allowlist.
-- OCI OKE kubeconfigs, cluster names, namespaces, and GHCR image promotion details.
+- Oracle/OKE kubeconfigs, cluster names, namespaces, and context defaults.
+- `ghcr.io/daviddiaz0317/console` image repository and promotion tags.
+- OAuth allowlist/admin defaults.
 - Any workflow defaults tied to `DavidDiaz0317/console`.
 
 The private workflow is guarded with `if: github.repository == 'DavidDiaz0317/console'` and parameterized through repository variables where possible.
@@ -38,6 +43,15 @@ The private workflow is guarded with `if: github.repository == 'DavidDiaz0317/co
 3. Add live canary semantic tests behind explicit environment flags.
 4. Add browser-matrix live checks behind explicit environment flags.
 5. Add failure issue workflow or adapt it to upstream-owned infrastructure.
+
+## Merge Readiness Checklist
+
+- Non-live static checks and targeted unit/component tests pass.
+- Branch image exists in GHCR for the commit being validated.
+- `Console Live Promote` has been run with `promoteProduction=false`.
+- The canary result is either green or its failure is classified correctly with useful artifacts.
+- Production has not been promoted from this validation pass.
+- Draft PR is opened with validation notes and this document linked.
 
 ## Validation Commands
 

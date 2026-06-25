@@ -6,6 +6,7 @@ import {
 } from '../../lib/constants'
 import { isLocalAgentSuppressed } from '../../lib/constants/network'
 import {
+  RateLimitError,
   setRateLimitBackoffFromResponse,
   throwIfRateLimited,
 } from '../../lib/rateLimitBackoff'
@@ -151,7 +152,8 @@ export function getAgentToken(): Promise<string> {
     })
       .then(r => {
         if (r.status === 429) {
-          setRateLimitBackoffFromResponse(r)
+          const backoff = setRateLimitBackoffFromResponse(r)
+          throw new RateLimitError(backoff.retryAfter)
         }
         return r.ok ? r.json() : { token: '' }
       })
@@ -170,6 +172,10 @@ export function getAgentToken(): Promise<string> {
         return token
       })
       .catch((err) => {
+        if (err instanceof RateLimitError) {
+          agentTokenPromise = null
+          throw err
+        }
         agentTokenNegativeCacheUntil = Date.now() + AGENT_TOKEN_NEGATIVE_CACHE_MS
         if (!agentTokenFailureEmitted) {
           agentTokenFailureEmitted = true
