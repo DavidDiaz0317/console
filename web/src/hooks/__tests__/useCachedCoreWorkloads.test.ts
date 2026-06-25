@@ -1,13 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mockUseCache, mockCreateCachedHook } = vi.hoisted(() => ({
+const { mockUseCache, mockCreateCachedHook, mockFetchFromAllClusters, mockGetToken, mockIsClusterModeBackend } = vi.hoisted(() => ({
   mockUseCache: vi.fn(),
   mockCreateCachedHook: vi.fn((config: Record<string, unknown>) => () => mockUseCache(config)),
+  mockFetchFromAllClusters: vi.fn(),
+  mockGetToken: vi.fn(() => null),
+  mockIsClusterModeBackend: vi.fn(() => false),
 }))
 
 vi.mock('../../lib/cache', () => ({
@@ -16,11 +19,16 @@ vi.mock('../../lib/cache', () => ({
 }))
 
 vi.mock('../../lib/cache/fetcherUtils', () => ({
-    createCachedHook: vi.fn(),
+  createCachedHook: vi.fn(),
+  fetchBackendAPI: vi.fn(),
   fetchAPI: vi.fn(),
-  fetchFromAllClusters: vi.fn(),
+  fetchFromAllClusters: (...args: unknown[]) => mockFetchFromAllClusters(...args),
+  fetchFromAllClustersViaBackend: vi.fn(),
   fetchViaSSE: vi.fn(),
-  getToken: vi.fn(() => null),
+  fetchViaBackendSSE: vi.fn(),
+  getClusterFetcher: vi.fn(() => vi.fn()),
+  getToken: () => mockGetToken(),
+  isClusterModeBackend: () => mockIsClusterModeBackend(),
   AGENT_HTTP_TIMEOUT_MS: 30000,
 }))
 
@@ -134,6 +142,9 @@ function defaultCache(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockGetToken.mockReturnValue(null)
+  mockIsClusterModeBackend.mockReturnValue(false)
+  mockFetchFromAllClusters.mockResolvedValue([])
   mockUseCache.mockReturnValue(defaultCache())
 })
 
@@ -287,6 +298,24 @@ describe('useCachedDeployments', () => {
     const { result } = renderHook(() => useCachedDeployments())
     expect(result.current).toHaveProperty('isLoading')
     expect(result.current).toHaveProperty('isDemoFallback')
+  })
+
+  it('uses the backend deployment fetcher instead of local agent in cluster-backed mode', async () => {
+    mockIsClusterModeBackend.mockReturnValue(true)
+    mockGetToken.mockReturnValue('test-token')
+    mockFetchFromAllClusters.mockResolvedValue([
+      { name: 'kc-live', namespace: 'kubestellar-console-live', cluster: 'ks-console-ci-1', replicas: 1, readyReplicas: 1 },
+    ])
+    mockUseCache.mockImplementation((config: { fetcher?: () => Promise<unknown> }) => {
+      void config.fetcher?.()
+      return defaultCache()
+    })
+
+    renderHook(() => useCachedDeployments())
+
+    await waitFor(() => {
+      expect(mockFetchFromAllClusters).toHaveBeenCalledWith('deployments', 'deployments', { namespace: undefined })
+    })
   })
 })
 

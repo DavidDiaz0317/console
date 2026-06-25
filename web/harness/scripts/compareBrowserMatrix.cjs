@@ -46,8 +46,13 @@ function pushDifference(differences, entry) {
   })
 }
 
+function isCanarySetupFailure(value) {
+  return /connection refused|ecconnrefused|port-forward|did not become healthy|candidate image|cannot connect to 127\.0\.0\.1|could not connect to 127\.0\.0\.1/i.test(String(value || ''))
+}
+
 function classify(differences) {
   if (differences.some(diff => diff.classification === 'auth-boundary')) return 'auth-boundary'
+  if (differences.some(diff => diff.classification === 'canary-setup')) return 'canary-setup'
   if (differences.some(diff => diff.classification === 'live-network-error')) return 'live-network-error'
   if (differences.some(diff => diff.classification === 'safari-z-index')) return 'safari-z-index'
   if (differences.some(diff => diff.classification === 'browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
@@ -115,12 +120,16 @@ function main() {
       }
       if (route.status === 'failed' || (route.missingMarkers || []).length > 0 || (route.fieldMismatches || []).length > 0) {
         pushDifference(differences, {
-          classification: (route.fieldMismatches || []).length > 0
+          classification: isCanarySetupFailure(route.error)
+            ? 'canary-setup'
+            : (route.fieldMismatches || []).length > 0
             ? 'browser-semantic-field-mismatch'
             : 'browser-content-missing',
           browser,
           route: route.route,
-          reason: (route.fieldMismatches || []).length > 0
+          reason: isCanarySetupFailure(route.error)
+            ? 'canary route could not be reached through the private port-forward'
+            : (route.fieldMismatches || []).length > 0
             ? 'route semantic fields do not match expected live data'
             : 'route is missing expected live content markers',
           missingMarkers: route.missingMarkers || [],

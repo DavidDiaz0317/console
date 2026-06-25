@@ -16,12 +16,12 @@ After the validation checklist below passes, this branch is useful and mergeable
 
 These pieces are suitable to propose upstream in focused PRs:
 
-1. Shared rate-limit/backoff handling and partial live route state.
+1. Shared rate-limit/backoff handling, partial live route state, and cluster-backed resource fetch correctness.
 2. Semantic UI markers such as `data-groundtruth-field`, `data-live-route-state`, and `data-live-source`.
 3. Duplicate-safe live UI assertion helpers.
 4. PR-safe visual/login harness improvements that do not require private clusters.
 5. Optional live groundtruth collector and sanitized evidence output behind explicit environment flags.
-6. Browser-matrix layout/semantic checks behind explicit environment flags.
+6. Browser-matrix layout/semantic checks behind explicit environment flags, including setup-vs-product failure classification.
 7. Failure classification and evidence generation as an optional workflow owned by the target repository.
 
 ## Fork-Private Pieces
@@ -39,7 +39,7 @@ The private workflow is guarded with `if: github.repository == 'DavidDiaz0317/co
 
 ## Suggested PR Slices
 
-1. Add rate-limit/backoff handling and partial live route state with local tests.
+1. Add rate-limit/backoff handling, cluster-backed resource fetch correctness, and partial live route state with local tests.
 2. Add semantic markers and route-state markers with no workflow changes.
 3. Add groundtruth collector/evidence helpers and local tests.
 4. Add live canary semantic tests behind explicit environment flags.

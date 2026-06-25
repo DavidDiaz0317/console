@@ -24,6 +24,7 @@ import {
   fetchViaBackendSSE,
   getToken,
   getClusterFetcher,
+  isClusterModeBackend,
   AGENT_HTTP_TIMEOUT_MS,
 } from '../lib/cache/fetcherUtils'
 import {
@@ -514,8 +515,13 @@ export function useCachedDeployments(
     initialData: [] as Deployment[],
     demoData: getDemoDeployments(),
     fetcher: async () => {
+      const shouldUseLocalAgent = clusterCacheRef.clusters.length > 0
+        && !isAgentUnavailable()
+        && Boolean(LOCAL_AGENT_HTTP_URL)
+        && !isClusterModeBackend()
+
       // Try agent first (fast, no backend needed) — skip if agent is unavailable
-      if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
+      if (shouldUseLocalAgent) {
         if (cluster) {
           const params = new URLSearchParams()
           const clusterInfo = clusterCacheRef.clusters.find(c => c.name === cluster)
@@ -557,7 +563,12 @@ export function useCachedDeployments(
       throw new Error("No data source available")
     },
     progressiveFetcher: cluster ? undefined : async (onProgress) => {
-      if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
+      const shouldUseLocalAgent = clusterCacheRef.clusters.length > 0
+        && !isAgentUnavailable()
+        && Boolean(LOCAL_AGENT_HTTP_URL)
+        && !isClusterModeBackend()
+
+      if (shouldUseLocalAgent) {
         return fetchDeploymentsViaAgent(namespace, onProgress)
       }
 

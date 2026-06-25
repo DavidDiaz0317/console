@@ -375,6 +375,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   )
   if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
   if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if (browserMatrixFailures.some(failure => failure.classification === 'canary-setup') || text.includes('canary-setup')) return 'canary-setup'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'

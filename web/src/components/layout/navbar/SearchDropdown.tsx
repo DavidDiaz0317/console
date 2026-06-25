@@ -25,6 +25,7 @@ import { useFeatureHints } from '../../../hooks/useFeatureHints'
 import { FeatureHintTooltip } from '../../ui/FeatureHintTooltip'
 import { emitGlobalSearchOpened, emitGlobalSearchQueried, emitGlobalSearchSelected, emitGlobalSearchAskAI } from '../../../lib/analytics'
 import { useEscapeLayer, useModalState } from '../../../lib/modals'
+import { STORAGE_KEY_AUTONOMOUS_BANNER_DISMISSED } from '../../../lib/constants/storage'
 
 /** Routes for dashboards that are discoverable but not shown by default in the sidebar */
 const DISCOVERABLE_ROUTES = new Set(DISCOVERABLE_DASHBOARDS.map(d => d.href))
@@ -33,6 +34,14 @@ const DISCOVERABLE_ROUTES = new Set(DISCOVERABLE_DASHBOARDS.map(d => d.href))
 const RESULT_TYPE_CHIP_CLASS = 'inline-flex shrink-0 items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-foreground'
 const AI_MISSION_TITLE_MAX_LENGTH = 50
 const AI_MISSION_TITLE_TRUNCATED_LENGTH = 47
+
+function isAutonomousBannerVisible(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY_AUTONOMOUS_BANNER_DISMISSED) !== 'true'
+  } catch {
+    return false
+  }
+}
 
 const CATEGORY_CONFIG: Record<SearchCategory, { label: string; icon: typeof Server }> = {
   page: { label: 'Dashboards', icon: LayoutDashboard },
@@ -229,6 +238,8 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
   const cmdKHint = useFeatureHints('cmd-k')
   const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || '')
   const searchShortcut = isMac ? '⌘K' : 'Ctrl+K'
+
+  const autonomousBannerVisible = isAutonomousBannerVisible()
 
   // Whether the results panel is active (mounted).
   // The panel -- and its expensive useSearchIndex hook -- only mount when
@@ -448,7 +459,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
         </kbd>
 
         {/* Cmd+K feature hint tooltip */}
-        {cmdKHint.isVisible && !isSearchOpen && (
+        {cmdKHint.isVisible && !isSearchOpen && !autonomousBannerVisible && (
           <FeatureHintTooltip
             message={`Press ${searchShortcut} to search dashboards, cards, clusters, and more`}
             onDismiss={cmdKHint.dismiss}

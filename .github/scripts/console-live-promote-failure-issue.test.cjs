@@ -95,6 +95,17 @@ test('classifies browser semantic field mismatches distinctly', () => {
   }), 'browser-semantic-field-mismatch')
 })
 
+test('classifies structured browser matrix canary setup failures', () => {
+  assert.equal(classify({
+    browserMatrixFailures: [{
+      classification: 'canary-setup',
+      route: '/namespaces',
+      reason: 'canary route could not be reached through the private port-forward',
+      error: 'page.goto: Could not connect to 127.0.0.1: Connection refused',
+    }],
+  }), 'canary-setup')
+})
+
 test('keeps canary setup as fallback when no parsed product evidence exists', () => {
   assert.equal(classify({}, 'canary browser matrix port-forward did not become healthy'), 'canary-setup')
 })

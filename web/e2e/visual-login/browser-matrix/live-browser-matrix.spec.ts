@@ -209,6 +209,25 @@ async function readGroundtruthFields(page: Page, expected: Record<string, number
   }, Object.keys(expected))
 }
 
+async function waitForExpectedFields(page: Page, expected: Record<string, number>): Promise<void> {
+  const fields = Object.keys(expected)
+  if (fields.length === 0) return
+
+  await expect.poll(async () => {
+    const actual = await readGroundtruthFields(page, expected)
+    return Object.entries(expected)
+      .map(([field, expectedValue]) => {
+        const state = actual[field]
+        if (!state || state.reason !== 'ok') return `${field}:${state?.reason || 'missing'}`
+        return state.value === expectedValue ? null : `${field}:expected:${expectedValue}:actual:${state.value}`
+      })
+      .filter((failure): failure is string => failure !== null)
+  }, {
+    message: 'live browser matrix route should hydrate expected semantic fields before classification',
+    timeout: 30_000,
+  }).toEqual([])
+}
+
 function classifyRouteState(url: string, bodyText: string): RouteFacts['routeState'] {
   const normalizedText = bodyText.replace(/\s+/g, ' ').trim()
   if (!normalizedText) return 'blank'
@@ -595,6 +614,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
         await waitForRouteHandshakeSettled(page).catch(() => undefined)
         await waitForExpectedMarkers(page, route.expectedMarkers?.(groundTruth) || []).catch(() => undefined)
+        await waitForExpectedFields(page, route.expectedFields?.(groundTruth) || {}).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
         if (!response?.ok()) {
           facts.status = 'failed'

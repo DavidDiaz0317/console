@@ -844,7 +844,8 @@ export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, 
 }
 
 export async function assertNoPositiveLiveCountContradictions(page: Page, route: string, expected: Record<string, number | null>) {
-  const bodyText = await page.locator('body').innerText({ timeout: 5_000 }).catch(() => '')
+  const routeSurfaceText = await page.locator('[data-live-route-state]').first().innerText({ timeout: 5_000 }).catch(() => '')
+  const bodyText = routeSurfaceText || await page.locator('main').innerText({ timeout: 5_000 }).catch(() => '')
   const checks: Array<{ field: string; value: number | null | undefined; pattern: RegExp; description: string }> = [
     {
       field: 'clusters',
@@ -860,7 +861,9 @@ export async function assertNoPositiveLiveCountContradictions(page: Page, route:
     },
     {
       field: 'deployments',
-      value: expected.deployments ?? expected['deployments-total'],
+      value: route === '/deployments'
+        ? expected.deployments ?? expected['deployments-total']
+        : expected['dashboard-deployments-total'] ?? null,
       pattern: /\b(?:0\s+deployments|no deployments found)\b/i,
       description: 'UI says no deployments exist while live deployments exist',
     },
