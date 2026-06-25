@@ -18,9 +18,19 @@ const ROOT_VISIBLE_TIMEOUT_MS = 15_000
 const DESKTOP_VIEWPORT = { width: 1440, height: 900 }
 const LAPTOP_VIEWPORT = { width: 1280, height: 720 }
 const TABLET_VIEWPORT = { width: 768, height: 1024 }
+const SEEN_TIPS_EXCEPT_DASHBOARD_REARRANGE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
 async function setupAndNavigate(page: Page, path = '/') {
   await setupDemoMode(page)
+  await page.addInitScript((seenTips) => {
+    const seedSeenTips = () => localStorage.setItem('ksc-seen-tips', JSON.stringify(seenTips))
+    const originalClear = Storage.prototype.clear
+    Storage.prototype.clear = function clearAndSeedTips() {
+      originalClear.call(this)
+      seedSeenTips()
+    }
+    seedSeenTips()
+  }, SEEN_TIPS_EXCEPT_DASHBOARD_REARRANGE)
   await page.goto(path)
   await page.waitForLoadState('domcontentloaded')
   await expect(page.getByTestId('sidebar')).toBeVisible({ timeout: ROOT_VISIBLE_TIMEOUT_MS })

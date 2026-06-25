@@ -87,7 +87,8 @@ function normalizeNamespaceCount(data: unknown): number {
   return rawNamespaces.filter(Boolean).length
 }
 
-function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean }): boolean {
+function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean; isDemo?: boolean }): boolean {
+  if (cluster.isDemo) return false
   return (cluster.readyNodes ?? 0) > 0 || (cluster.nodeCount ?? 0) > 0 || cluster.reachable === true
 }
 

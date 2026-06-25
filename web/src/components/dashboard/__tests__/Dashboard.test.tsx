@@ -531,6 +531,23 @@ describe('Dashboard', () => {
       })
     })
 
+    it('does not treat demo clusters with empty namespace arrays as live namespace failures', async () => {
+      mockClusters = [
+        { name: 'demo-a', healthy: true, isDemo: true, reachable: true, podCount: 10, nodeCount: 2, namespaces: [] },
+      ]
+      mockApiGet.mockRejectedValue(new Error('should not request namespaces for demo data'))
+
+      render(<Dashboard />)
+
+      await waitFor(() => {
+        expect(capturedGetStatValue).toBeTruthy()
+        expect(capturedGetStatValue!('namespaces').value).toBe(0)
+        expect(capturedGetStatValue!('namespaces').sublabel).toBe('namespaces')
+      })
+      expect(screen.getByTestId('dashboard-page')).toHaveAttribute('data-live-route-state', 'loaded')
+      expect(mockApiGet).not.toHaveBeenCalledWith(expect.stringContaining('/api/namespaces?cluster=demo-a'))
+    })
+
     it('does not show false zero namespace totals when live namespace enrichment fails', async () => {
       mockClusters = [
         { name: 'ks-console-ci-1', context: 'ctx-1', reachable: true, podCount: 17, nodeCount: 2, readyNodes: 2, namespaces: [] },
