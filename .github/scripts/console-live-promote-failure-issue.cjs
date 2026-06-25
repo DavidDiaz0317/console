@@ -766,7 +766,8 @@ module.exports = async ({ github, context, core }) => {
     core.warning(`Run ${runId} is "${run.name}", not "Console Live Promote"; skipping.`)
     return
   }
-  if (run.conclusion !== 'failure') {
+  const issueWorthyConclusions = new Set(['failure', 'cancelled', 'timed_out'])
+  if (!issueWorthyConclusions.has(run.conclusion)) {
     core.info(`Run ${runId} concluded with ${run.conclusion}; no issue needed.`)
     return
   }
@@ -782,7 +783,7 @@ module.exports = async ({ github, context, core }) => {
   }
 
   const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { owner, repo, run_id: runId, per_page: 100 })
-  const failedJobs = jobs.filter((job) => job.conclusion === 'failure' || job.conclusion === 'timed_out')
+  const failedJobs = jobs.filter((job) => issueWorthyConclusions.has(job.conclusion))
   const logs = await fetchFailedJobLogs({ github, owner, repo, failedJobs })
   const combinedLogText = logs.map((log) => log.text).join('\n')
 

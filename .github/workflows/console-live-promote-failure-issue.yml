@@ -23,7 +23,7 @@ jobs:
     name: Create or Update Console Live Promote Failure Issue
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.repository == 'DavidDiaz0317/console' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure')
+    if: github.repository == 'DavidDiaz0317/console' && (github.event_name == 'workflow_dispatch' || contains(fromJSON('["failure","cancelled","timed_out"]'), github.event.workflow_run.conclusion))
     env:
       SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
 
