@@ -35,7 +35,7 @@ env:
   IMAGE_REPOSITORY: ${{ vars.CONSOLE_LIVE_IMAGE_REPOSITORY || 'ghcr.io/daviddiaz0317/console' }}
   FORK_REPOSITORY: ${{ vars.CONSOLE_LIVE_FORK_REPOSITORY || 'DavidDiaz0317/console' }}
   LIVE_NAMESPACE: kubestellar-console-live
-  CANARY_NAMESPACE: kubestellar-console-live-macos-canary
+  CANARY_NAMESPACE: kubestellar-console-live-canary
   CANARY_RELEASE: kc-live-macos-canary
   OAUTH_SECRET_NAME: kc-live-github-oauth
   KUBECONFIG_SECRET_NAME: kc-live-kubeconfig
@@ -139,7 +139,6 @@ jobs:
         run: |
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
-          kubectl create namespace "$CANARY_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "$CANARY_NAMESPACE" create secret generic "$OAUTH_SECRET_NAME" \
             --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
             --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
@@ -248,5 +247,4 @@ jobs:
           if [ -n "${DEPLOY_KUBECONFIG:-}" ]; then
             export KUBECONFIG="$DEPLOY_KUBECONFIG"
             helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m || true
-            kubectl delete namespace "$CANARY_NAMESPACE" --ignore-not-found=true --wait=false || true
           fi
