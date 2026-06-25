@@ -85,6 +85,22 @@ test('prioritizes rate-limit data loss over secondary text-collision evidence', 
   }, 'Error: live UI visible text must not severely overlap'), 'live-rate-limit-data-loss')
 })
 
+test('prioritizes dashboard mismatches over secondary text-collision evidence', () => {
+  assert.equal(classify({
+    textCollisions: [{
+      first: 'An update is available - click here to see what is new',
+      second: 'This project is fully autonomous - maintained by AI agents.',
+      ratio: 0.9,
+    }],
+    dashboardMismatches: [{
+      field: 'dashboard-namespaces-total',
+      expected: 16,
+      actual: null,
+      route: '/',
+    }],
+  }, 'Error: live UI visible text must not severely overlap'), 'dashboard-groundtruth-mismatch')
+})
+
 test('classifies browser semantic field mismatches distinctly', () => {
   assert.equal(classify({
     browserMatrixFailures: [{

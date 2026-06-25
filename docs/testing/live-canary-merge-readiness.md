@@ -6,114 +6,125 @@ Branch: `codex/live-canary-fixes`
 
 Draft PR: <https://github.com/DavidDiaz0317/console/pull/48>
 
-Starting commit for this readiness pass: `a2261b17d2c9a27445b6301b3105190857ca307d`
+Runtime commit validated by image/canary: `8294233e796cc06f81193f92c662f31e46da0a18`
 
-Final commit: the pushed PR head for `codex/live-canary-fixes` after this report update.
+This report update also includes workflow/evidence classification hardening after that runtime commit. The final pushed branch head is the PR head for this readiness pass.
 
-This branch hardens the fork live-canary path by improving shared 429 backoff handling, reducing false zero live data states, adding stable semantic markers, comparing UI/API/Kubernetes facts, expanding browser-matrix evidence, and producing AI-agent-readable failure issues.
+This branch hardens the fork live-canary path by improving shared `429` backoff handling, avoiding false zero live-data states, adding stable semantic markers, comparing UI/API/Kubernetes facts, expanding browser-matrix evidence, and producing AI-agent-readable failure issues.
 
-The branch is intended for `DavidDiaz0317/console`. It should not be promoted to production from this validation pass.
+This pass did not merge to `main`, did not promote production, did not update screenshot baselines, and did not weaken live/visual assertions.
 
 ## Changed Areas
 
-Product/runtime changes directly tied to canary correctness:
+Product/runtime changes tied to canary correctness:
 
-- Shared 429 backoff handling in API, agent, retry, SSE, and polling paths.
-- Dashboard partial/unavailable behavior so failed namespace calls do not become authoritative zeroes.
+- Shared `429` backoff handling in API, agent, retry, SSE, and polling paths.
+- Dashboard partial/unavailable behavior so failed namespace calls are not treated as authoritative zeroes.
 - Stable `data-groundtruth-field`, `data-live-route-state`, and `data-live-source` markers.
-- Deployment page data path now avoids local-agent fetches in cluster-backed mode and uses the backend API instead.
-- Cmd/Ctrl+K onboarding hint no longer renders while the autonomous banner is active, preventing the confirmed visible text overlap.
+- Cluster-backed deployment data now uses the backend API path instead of local-agent-only data.
+- Optional dashboard data fetches are reduced so the live dashboard does not mount every optional data hook by default.
+- Search/onboarding banner layout was tightened to reduce confirmed text-overlap noise.
 
 Test/canary infrastructure changes:
 
 - Deeper live semantic route checks under `web/e2e/visual-login/semantic/**`.
-- Browser matrix checks under `web/e2e/visual-login/browser-matrix/**`.
-- Browser matrix now waits for semantic field hydration before classifying field mismatches.
-- Positive-count contradiction checks are scoped to the active route surface and do not treat unrelated dashboard picker/sidebar text as resource empty-state evidence.
-- Browser matrix connection-refused/port-forward failures classify as `canary-setup`.
-- Failure issue generation consumes structured browser-matrix `canary-setup` evidence.
+- Cross-browser live browser matrix checks under `web/e2e/visual-login/browser-matrix/**`.
+- API-vs-UI and Kubernetes-groundtruth evidence now records route state, API counts, UI counts, request counts, rate-limit evidence, and classifications.
+- Browser matrix comparison distinguishes canary setup, rate-limit data loss, browser semantic field mismatches, and generic network errors.
+- Failure issue generation prioritizes setup/rate-limit/UI-data/dashboard/core-route failures before secondary text-overlap findings.
 
-Docs:
+Fork/private workflow and docs:
 
-- `docs/testing/upstream-merge-plan.md`
-- `docs/testing/live-canary-merge-readiness.md`
+- `Console Live Promote` remains guarded to `github.repository == 'DavidDiaz0317/console'`.
+- `docs/testing/upstream-merge-plan.md` documents upstream-safe slices and fork-private infrastructure.
+- `docs/testing/live-canary-merge-readiness.md` records this validation pass.
 
-## Validation
+Scope audit notes:
 
-Passing checks run locally in this validation pass:
+- `.github/workflows/claude-code-review.yml` is included because the fork PR flow needs a safe Claude-auth skip instead of a missing-secret failure.
+- `web/e2e/visual/app-visual-regression.spec.ts` is included because it stabilizes local/session state for visual regression and avoids dynamic hint noise.
+- `web/src/components/layout/navbar/SearchDropdown.tsx` is included because the live interaction suite caught search/overlay behavior.
 
-- `git diff --check` - passed.
+## Local Validation
+
+Passing checks run in this pass:
+
+- `git diff --check` - passed before the report update.
 - `node --check .github/scripts/console-live-promote-failure-issue.cjs` - passed.
 - `node --check .github/scripts/console-live-promote-failure-issue.test.cjs` - passed.
 - `node --check web/harness/scripts/compareBrowserMatrix.cjs` - passed.
-- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs` - 11 tests passed.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs` - 12 tests passed.
 - `cd web && npx eslint "e2e/visual-login/**/*.ts" "harness/**/*.ts"` - passed.
 - `cd web && npm run test:visual:adequacy` - analyzed 1385 tests, 172 weak tests.
 - `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list` - 11 tests listed.
 - `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list` - 3 tests listed.
-- `cd web && npx vitest run src/lib/__tests__/rateLimitBackoff.test.ts src/lib/__tests__/api.test.ts` - 24 tests passed.
-- `cd web && npx vitest run src/hooks/mcp/__tests__/agentFetch.test.ts src/hooks/mcp/__tests__/fetchWithRetry.test.ts src/hooks/mcp/__tests__/pollingManager-coverage.test.ts src/hooks/mcp/__tests__/workloadQueries.test.ts` - 112 tests passed.
-- `cd web && npx vitest run src/components/dashboard/__tests__/Dashboard.test.tsx src/components/nodes/__tests__/Nodes.test.tsx src/components/pods/__tests__/Pods.test.tsx src/components/clusters/__tests__/Clusters.test.tsx src/components/clusters/__tests__/Clusters.progress.test.tsx src/hooks/__tests__/useUniversalStats.test.ts` - 340 tests passed.
-- `cd web && npx vitest run src/hooks/__tests__/useCachedCoreWorkloads.test.ts src/components/layout/navbar/__tests__/SearchDropdown.test.tsx src/components/deployments/__tests__/Deployments.test.tsx src/hooks/__tests__/useCachedData.sse-agent.test.ts` - 61 tests passed.
-- `cd web && npm run build` - passed with existing bundle/dynamic-import warnings.
+- `cd web && npx vitest run src/lib/__tests__/rateLimitBackoff.test.ts src/lib/__tests__/api.test.ts src/lib/__tests__/sseClient.test.ts` - 51 tests passed.
+- `cd web && npx vitest run src/hooks/mcp/__tests__/agentFetch.test.ts src/hooks/mcp/__tests__/fetchWithRetry.test.ts src/hooks/mcp/__tests__/pollingManager-coverage.test.ts src/hooks/mcp/__tests__/workloadQueries.test.ts src/hooks/mcp/__tests__/compute.gpu.test.ts src/hooks/mcp/__tests__/compute.nvidia.test.ts` - 183 tests passed.
+- `cd web && npx vitest run src/components/dashboard/__tests__/Dashboard.test.tsx src/components/nodes/__tests__/Nodes.test.tsx src/components/pods/__tests__/Pods.test.tsx src/components/clusters/__tests__/Clusters.test.tsx src/components/clusters/__tests__/Clusters.progress.test.tsx src/hooks/__tests__/useUniversalStats.test.ts src/components/InitialInfrastructureGate.test.tsx` - 349 tests passed.
+- `cd web && npx vitest run src/hooks/__tests__/useCachedCoreWorkloads.test.ts src/hooks/__tests__/useCachedData.sse-agent.test.ts src/components/deployments/__tests__/Deployments.test.tsx src/components/deployments/__tests__/Deployments.badge.test.tsx src/components/layout/navbar/__tests__/SearchDropdown.test.tsx` - 65 tests passed.
+- `cd web && npm run build` - passed with existing dynamic-import and bundle-size warnings; post-build safety checks passed.
 
 Additional evidence check:
 
-- Replayed the prior `28161503418` browser-matrix artifact through the updated comparer. It exited nonzero as expected because the artifact contains critical failures, but the top-level classification changed to `canary-setup` for the connection-refused/port-forward portion instead of mislabeling those routes as semantic UI mismatches.
+- Replayed the latest downloaded browser-matrix evidence from run `28168717007` through the updated comparer. It still exits nonzero because the canary evidence contains critical failures, but the top-level classification is now `canary-setup` for the port-forward/connection-refused portion, while semantic field failures remain in the details.
 
-Known validation caveats:
+Known validation caveat:
 
-- `cd web && npx tsc -p tsconfig.node.json --noEmit --pretty false` still fails on existing repo-wide e2e/import-meta type debt, including benchmark dashboard generics, Playwright fixture typing, `ImportMeta.env`, and existing e2e type mismatches. These errors are not introduced by this branch.
-- Targeted ESLint over changed source files produced one pre-existing warning for the raw search `<input>` in `SearchDropdown.tsx`; the broader required e2e/harness lint passed.
+- `cd web && npx tsc -p tsconfig.node.json --noEmit --pretty false` still fails on existing repo-wide e2e and `ImportMeta.env` type debt, including benchmark dashboard generics, Playwright fixture typing, `Window`/`ImportMeta` declarations, and existing e2e type mismatches. These are not introduced by this branch.
 
-## CI Status
+## PR CI
 
 PR #48 is open as a draft against `DavidDiaz0317/console:main`.
 
-Normal PR CI should be rechecked after the final push for this validation pass.
+Before the final local changes in this report, PR #48 was `CLEAN` and normal PR checks were success or skipped, including Auth Drift, build, CodeQL, fullstack smoke, visual login guard, and visual regression. PR CI should be rechecked after the final push.
 
 ## GHCR Image
 
-Previous candidate image before this validation pass:
+Candidate image validated for the latest runtime commit:
 
-- `ghcr.io/daviddiaz0317/console:a2261b17d2c9a27445b6301b3105190857ca307d`
-- Digest: `sha256:0a7c53eb08d2b88bf6097e455f76f253faacacabc0796225990646cf4ae70691`
-- Build run: <https://github.com/DavidDiaz0317/console/actions/runs/28160923496>
+- Image: `ghcr.io/daviddiaz0317/console:8294233e796cc06f81193f92c662f31e46da0a18`
+- Digest: `sha256:f442b14b5ee1793fb8240ee712214ebabb6a9963422d9b04af16e1fbec2ced83`
+- Build run: <https://github.com/DavidDiaz0317/console/actions/runs/28168161662>
 
-The final pushed SHA needs a fresh GHCR image before a new canary-only run because this validation pass changes frontend runtime code.
+The final report/classifier commit does not change frontend runtime source. If a future promotion requires the exact PR head SHA as the image tag, dispatch a fresh `Build and Deploy KC` run for the final head before rerunning canary promotion.
 
 ## Canary Status
 
-Latest completed canary-only run before this validation pass:
+Latest canary-only run:
 
 - Workflow: `Console Live Promote`
-- Run: <https://github.com/DavidDiaz0317/console/actions/runs/28161503418>
-- Production promotion: disabled / not run.
-- Evidence artifact: <https://github.com/DavidDiaz0317/console/actions/runs/28161503418/artifacts/7874820478>
-- Corrected branch-local failure issue: <https://github.com/DavidDiaz0317/console/issues/50>
+- Run: <https://github.com/DavidDiaz0317/console/actions/runs/28168717007>
+- Candidate SHA: `8294233e796cc06f81193f92c662f31e46da0a18`
+- Production promotion: skipped / blocked.
+- Evidence artifact: <https://github.com/DavidDiaz0317/console/actions/runs/28168717007/artifacts/7877913788>
+- Existing generated issue before the final classifier fix: <https://github.com/DavidDiaz0317/console/issues/54>
 
-Observed blockers from that run:
+Groundtruth from that run:
 
-- `live-rate-limit-data-loss` from startup/resource API rate limiting.
-- Deployment UI showed `0` deployments while API/Kubernetes evidence reported `12`.
-- Search hint text overlapped the autonomous banner.
-- Browser matrix later saw connection-refused routes from the private port-forward and those are now classified as `canary-setup`.
+- Reachable contexts: `3`
+- Ready nodes: `6`
+- Total nodes: `6`
+- Pods: `51` total, `51` running at collector time
+- Namespaces: `16`
+- Deployments: `12` total, `12` available
 
-This validation pass fixed the deployment backend route, tooltip/banner overlap, false dashboard deployment contradiction, browser-matrix hydration timing, and setup classification. A fresh canary-only run is required after the final SHA image is available.
+Observed canary blockers:
+
+- Semantic data drift/data-loss cases: pod totals changed during the run, and later route checks saw zero nodes/pods from unavailable live data.
+- Dashboard namespace evidence became unparseable/null instead of a stable authoritative count.
+- Deployments rendered `0` in browser-matrix evidence while groundtruth expected `12`.
+- A visible text overlap was still present between the update banner and the autonomous-project banner.
+- Browser matrix later hit private canary port-forward/connection-refused failures, now classified as `canary-setup` when replayed locally.
+
+These are valid blockers. The branch should keep failing canary promotion until the product/setup issue behind each failure is resolved or proven external and documented.
 
 ## Merge Readiness
 
-Fork main merge-ready: pending fresh PR CI, GHCR image, and canary-only documentation for the final pushed SHA.
-
 Draft PR review-ready: yes.
 
+Merge-ready into fork `main`: no, not yet. It needs post-push PR CI and a final canary-only outcome that is either green or accepted as correctly classified existing live-site defects.
+
 Production promotion-ready: no.
-
-Reasons not to promote yet:
-
-- A fresh image must be produced for the final pushed SHA.
-- `Console Live Promote` must be rerun with `promoteProduction=false`.
-- If the canary still fails, the failure must remain blocking unless it is proven to be external setup and documented.
 
 Upstream-ready as one PR: no.
 
