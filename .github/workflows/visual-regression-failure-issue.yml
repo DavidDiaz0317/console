@@ -29,6 +29,15 @@ jobs:
       SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
 
     steps:
+      - name: Checkout triage config
+        # Sparse-checkout of the default branch only — never PR head code. We need the single
+        # source of truth for auto_accept_min_confidence so the autonomy gate is not a magic number.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: |
+            .github/visual-triage-config.json
+          sparse-checkout-cone-mode: false
+
       - name: Download visual regression artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,15 +76,34 @@ jobs:
                 color: 'd73a4a',
                 description: 'Categorizes issue or PR as related to a bug.',
               },
-              'kind/regression': {
-                color: 'e11d21',
-                description: 'Categorizes issue or PR as related to a regression from a prior release.',
+              'needs-triage': {
+                color: 'fbca04',
+                description: 'Indicates an issue needs human triage before automated work begins.',
               },
-              'test-failure': {
-                color: 'f9d0c4',
-                description: 'Automated test failure',
+              'triage/accepted': {
+                color: '0e8a16',
+                description: 'Issue is accepted for an automated fix.',
+              },
+              'ai-fix-requested': {
+                color: 'd4c5f9',
+                description: 'Requests the Claude Code scanner to open an automated fix PR.',
               },
             };
+
+            // Autonomy gate: a confident regression must clear a HIGHER bar than the CI-fail cutoff
+            // before we hand it to the autofix scanner. Default mirrors the config so the workflow is
+            // self-contained if the sparse checkout of the config file is unavailable.
+            const DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE = 0.8;
+            let autoAcceptMinConfidence = DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE;
+            try {
+              const cfg = JSON.parse(fs.readFileSync('.github/visual-triage-config.json', 'utf8'));
+              const configured = cfg?.thresholds?.auto_accept_min_confidence;
+              if (typeof configured === 'number' && configured >= 0 && configured <= 1) {
+                autoAcceptMinConfidence = configured;
+              }
+            } catch (error) {
+              core.warning(`Could not read auto_accept_min_confidence from config; using default ${DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE}: ${error.message}`);
+            }
 
             const GENERIC_SUGGESTED_FILES = [
               'web/e2e/visual/**',
@@ -584,6 +612,46 @@ jobs:
               ...GENERIC_SUGGESTED_FILES,
             ]).slice(0, 14);
 
+            // ── Confidence-gated autonomy (Phase 2) ──
+            // A "confident regression" — the script routed it to `fail`, its confidence clears the
+            // auto-accept bar, and it is NOT a high-risk surface — is handed to the autofix scanner via
+            // `triage/accepted` + `ai-fix-requested`. Everything else gets `kind/bug` + `needs-triage`
+            // so a write-access human runs `/triage accepted` to start the fix.
+            const TRIAGE_PRIORITY = { regression: 4, needs_human_review: 3, intended_change: 2, noise: 1 };
+            const sortedTriageDecisions = [...triageDecisions].sort((left, right) => {
+              const leftScore = TRIAGE_PRIORITY[left.classification] || 0;
+              const rightScore = TRIAGE_PRIORITY[right.classification] || 0;
+              if (leftScore !== rightScore) return rightScore - leftScore;
+              return Number(right.confidence || 0) - Number(left.confidence || 0);
+            });
+            const primaryDecision = sortedTriageDecisions[0] || null;
+            const confidentRegression = sortedTriageDecisions.find((decision) =>
+              decision.routing === 'fail'
+              && Number(decision.confidence) >= autoAcceptMinConfidence
+              && !decision.high_risk
+            ) || null;
+            const autoAccept = Boolean(confidentRegression);
+            const decisionLabels = autoAccept
+              ? ['triage/accepted', 'ai-fix-requested']
+              : ['kind/bug', 'needs-triage'];
+            const issueLabels = dedupe(['visual-regression-failure', ...decisionLabels]);
+
+            const autofixBlock = [
+              '<!-- triage-autofix',
+              JSON.stringify({
+                signature,
+                branch: run.head_branch || '',
+                autoAccept,
+                primaryClassification: primaryTriage || 'unknown',
+                confidence: primaryDecision ? Number(primaryDecision.confidence || 0) : null,
+                auto_accept_min_confidence: autoAcceptMinConfidence,
+                specPaths: dedupe(triageDecisions.map((decision) => decision.spec_path).filter(Boolean)),
+                suggestedFiles,
+                decision_ids: dedupe(triageDecisions.map((decision) => decision.decision_id).filter(Boolean)),
+              }),
+              '-->',
+            ].join('\n');
+
             const errorBlocks = failures.slice(0, 10).map((failure, index) => [
               `#### ${index + 1}. ${getSuiteDetails(failure.specPath).name} - ${failure.title}`,
               '',
@@ -638,6 +706,7 @@ jobs:
 
             let body = [
               marker,
+              autofixBlock,
               '# Visual Regression Failure',
               '',
               'Visual Regression failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
@@ -740,6 +809,7 @@ jobs:
             if (existing) {
               const comment = [
                 marker,
+                autofixBlock,
                 'Visual Regression is still failing with the same signature.',
                 '',
                 `- Run: [#${runId}](${run.html_url})`,
@@ -751,6 +821,7 @@ jobs:
                 `- Primary failure type: \`${effectivePrimaryType}\``,
                 `- Primary change assessment: \`${effectivePrimaryAssessment}\``,
                 primaryTriage ? `- Semantic triage classification: \`${primaryTriage}\`` : '- Semantic triage classification: `not available`',
+                `- Autonomy routing: \`${autoAccept ? 'auto-fix (triage/accepted + ai-fix-requested)' : 'human triage (kind/bug + needs-triage)'}\``,
               ].join('\n');
 
               await github.rest.issues.createComment({
@@ -759,7 +830,19 @@ jobs:
                 issue_number: existing.number,
                 body: comment,
               });
-              core.info(`Updated existing Visual Regression failure issue #${existing.number}.`);
+              // Re-apply the chosen labels in case a human stripped them between runs. addLabels is
+              // additive and idempotent, so it never removes labels a maintainer added on purpose.
+              try {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  labels: issueLabels,
+                });
+              } catch (error) {
+                core.warning(`Could not re-apply labels on #${existing.number}: ${error.message}`);
+              }
+              core.info(`Updated existing Visual Regression failure issue #${existing.number} (autoAccept=${autoAccept}).`);
               return;
             }
 
@@ -768,6 +851,6 @@ jobs:
               repo,
               title,
               body,
-              labels: Object.keys(labelDefs),
+              labels: issueLabels,
             });
-            core.info(`Created Visual Regression failure issue #${created.data.number}.`);
+            core.info(`Created Visual Regression failure issue #${created.data.number} (autoAccept=${autoAccept}).`);

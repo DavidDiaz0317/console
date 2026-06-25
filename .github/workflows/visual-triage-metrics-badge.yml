@@ -1,0 +1,123 @@
+name: Visual Triage Metrics Badge
+
+# Publishes a shields.io endpoint badge for triage regression-precision, computed from the in-repo
+# ledger by the `metrics` subcommand. Mirrors mttr-badge.yml's Gist-write pattern. Only rows that carry
+# a resolution/human verdict are scored; until enough verdicts accrue the badge reads "n/a".
+#
+# Secrets / config required:
+#   GIST_TOKEN     — PAT with gist scope (skips gracefully if absent)
+#   BADGE_GIST_ID  — repo variable: the Gist holding visual-triage-precision.json
+
+on:
+  schedule:
+    - cron: '37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metrics-badge:
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Compute triage metrics
+        run: |
+          set -euo pipefail
+          mkdir -p triage-metrics-out
+          python3 scripts/visual-diff-triage.py metrics \
+            --config .github/visual-triage-config.json \
+            --ledger .github/triage-ledger.jsonl \
+            --output triage-metrics-out/triage-metrics.json \
+            --markdown triage-metrics-out/triage-metrics.md \
+            --tuning-file .github/triage-tuning.json
+
+      - name: Update precision badge gist
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BADGE_GIST_ID: ${{ vars.VISUAL_TRIAGE_BADGE_GIST_ID }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Shields.io endpoint color thresholds for regression precision.
+            const TARGET_PRECISION = 0.95;
+            const WARN_PRECISION = 0.8;
+
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('triage-metrics-out/triage-metrics.json', 'utf8'));
+            } catch (error) {
+              core.warning(`Could not read triage-metrics.json: ${error.message}`);
+              return;
+            }
+
+            const regression = (report.per_class && report.per_class.regression) || {};
+            const precision = typeof regression.precision === 'number' ? regression.precision : null;
+            const enough = Boolean(report.enough_samples);
+
+            let message;
+            let color;
+            if (precision === null || !enough) {
+              // Not enough labeled samples yet — do not imply a measured precision.
+              message = enough ? 'n/a' : `gathering (${report.sample_size || 0} verdicts)`;
+              color = 'lightgrey';
+            } else {
+              message = `${(precision * 100).toFixed(0)}%`;
+              if (precision >= TARGET_PRECISION) color = 'brightgreen';
+              else if (precision >= WARN_PRECISION) color = 'yellow';
+              else color = 'red';
+            }
+
+            const badge = {
+              schemaVersion: 1,
+              label: 'triage precision',
+              message,
+              color,
+            };
+            console.log(`Badge: ${JSON.stringify(badge)}`);
+
+            const gistId = process.env.BADGE_GIST_ID;
+            const gistToken = process.env.GIST_TOKEN;
+            if (!gistToken || !gistId) {
+              console.log('No GIST_TOKEN or BADGE_GIST_ID — computed the badge but skipping the Gist write.');
+              return;
+            }
+
+            const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+              method: 'PATCH',
+              headers: {
+                Authorization: `token ${gistToken}`,
+                Accept: 'application/vnd.github+json',
+              },
+              body: JSON.stringify({
+                files: {
+                  'visual-triage-precision.json': {
+                    content: JSON.stringify(badge),
+                  },
+                },
+              }),
+            });
+            if (!response.ok) {
+              console.log(`Gist update failed: ${response.status} ${response.statusText}`);
+              return;
+            }
+            console.log('Precision badge updated.');
+
+      - name: Upload metrics report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-triage-metrics
+          path: triage-metrics-out/
+          retention-days: 30
+          if-no-files-found: ignore
