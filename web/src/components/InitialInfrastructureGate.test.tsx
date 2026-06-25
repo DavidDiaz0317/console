@@ -81,6 +81,20 @@ describe('InitialInfrastructureGate', () => {
     expect(screen.getByText(/HTTP 503: backend startup blocked/)).toBeInTheDocument()
   })
 
+  it('renders children when optional startup probes are rate limited', async () => {
+    mockGetState.mockRejectedValue(new Error('Rate limited. Try again in 60 seconds.'))
+    mockFetchKagentStatus.mockRejectedValue(new Error('HTTP 429: too many requests'))
+
+    render(
+      <InitialInfrastructureGate>
+        <div>Ready</div>
+      </InitialInfrastructureGate>
+    )
+
+    await waitFor(() => expect(screen.getByText('Ready')).toBeInTheDocument())
+    expect(screen.queryByText('Infrastructure Connection Error')).not.toBeInTheDocument()
+  })
+
   it('shows auth-required screen when authentication fails', async () => {
     mockGetState.mockRejectedValue(new Error('No authentication token available'))
     mockFetchKagentStatus.mockResolvedValue({ available: true, url: 'http://kagent:8080' })

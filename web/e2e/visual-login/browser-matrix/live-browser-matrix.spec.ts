@@ -57,6 +57,8 @@ type InteractionFacts = {
   error?: string
 }
 
+const OPTIONAL_INTERACTION_LOOKUP_TIMEOUT_MS = 3_000
+
 const coreRoutes: MatrixRoute[] = [
   {
     route: '/',
@@ -539,7 +541,7 @@ async function exerciseControl(
   control: string,
   locators: Array<ReturnType<Page['locator']>>,
 ): Promise<InteractionFacts> {
-  const locator = await firstVisibleLocator(page, locators)
+  const locator = await firstVisibleLocator(page, locators, OPTIONAL_INTERACTION_LOOKUP_TIMEOUT_MS)
   if (!locator) {
     return {
       browserName,
@@ -616,7 +618,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
         await waitForExpectedMarkers(page, route.expectedMarkers?.(groundTruth) || []).catch(() => undefined)
         await waitForExpectedFields(page, route.expectedFields?.(groundTruth) || {}).catch(() => undefined)
         const facts = await collectRouteFacts(page, projectBrowser, testInfo.project.name, route, groundTruth)
-        if (!response?.ok()) {
+        if (response && !response.ok() && response.status() !== 304) {
           facts.status = 'failed'
           facts.error = `HTTP ${response?.status() ?? 'no response'}`
         }

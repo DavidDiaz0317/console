@@ -73,8 +73,8 @@ export async function assertNotBlank(page: Page) {
   expect(result.textLength, 'page must contain meaningful visible text').toBeGreaterThan(40)
 }
 
-export async function firstVisibleLocator(page: Page, candidates: Locator[]): Promise<Locator | null> {
-  const deadline = Date.now() + CONTENT_TIMEOUT_MS
+export async function firstVisibleLocator(page: Page, candidates: Locator[], timeoutMs = CONTENT_TIMEOUT_MS): Promise<Locator | null> {
+  const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     for (const candidate of candidates) {
       const count = await candidate.count().catch(() => 0)

@@ -52,6 +52,14 @@ const isAuthenticationError = (error: unknown): boolean => {
   )
 }
 
+const isRateLimitError = (error: unknown): boolean => {
+  if (!error) return false
+  const errorMessage = error instanceof Error
+    ? `${error.name} ${error.message}`
+    : String(error)
+  return /rate limited|too many requests|http 429|ratelimiterror/i.test(errorMessage)
+}
+
 type GateAction = 
   | { type: 'RESET' }
   | { type: 'SET_READY' }
@@ -142,6 +150,14 @@ export function InitialInfrastructureGate({ children }: InitialInfrastructureGat
       }
 
       if (failures.length > 0) {
+        // Stellar and kagent are optional assistant/automation surfaces for
+        // the core Kubernetes console. A live canary should still be able to
+        // render clusters, nodes, pods, namespaces, and deployments while
+        // those auxiliary probes are backing off under 429 pressure.
+        if (!hasAuthError && failures.every(detail => isRateLimitError(detail.message))) {
+          dispatch({ type: 'SET_READY' })
+          return
+        }
         dispatch({ type: 'SET_ERROR', payload: failures, isAuthError: hasAuthError })
         return
       }

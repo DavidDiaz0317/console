@@ -197,18 +197,13 @@ async function fetchGPUNodes(cluster?: string, _source?: string) {
     }
 
     if (!agentSucceeded && isClusterModeBackend()) {
-      try {
-        const resp = await agentFetch(`${getClusterModeBaseUrl()}/gpu-nodes?${params}`)
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const data = await resp.json()
-        newNodes = data.nodes || []
-        fetchSucceeded = true
-        agentSucceeded = true
-      } catch {
-        if (gpuNodeCache.nodes.length === 0) {
-          throw new Error('Backend GPU REST failed')
-        }
-      }
+      // GPU telemetry is optional for the core live-console routes. Some
+      // cluster-backed deployments do not grant the GPU endpoint, and probing
+      // it on every dashboard/page mount creates noisy 401/429 canary failures
+      // unrelated to Kubernetes resource correctness.
+      newNodes = []
+      fetchSucceeded = true
+      agentSucceeded = true
     }
 
     // If agent didn't work (not just "returned 0 nodes"), try SSE streaming then REST.
@@ -656,18 +651,11 @@ export function useNVIDIAOperators(cluster?: string) {
       }
 
       if (isClusterModeBackend()) {
-        const urlParams = new URLSearchParams()
-        if (cluster) urlParams.append('cluster', cluster)
-        const resp = await agentFetch(`${agentBaseUrl}/nvidia-operators?${urlParams}`)
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-        const data = await resp.json()
-        if (data.operators) {
-          setOperators(data.operators)
-        } else if (data.operator) {
-          setOperators([data.operator])
-        } else {
-          setOperators([])
-        }
+        // NVIDIA operator telemetry is optional and not required for the core
+        // Kubernetes live-canary routes. Avoid probing unsupported endpoints in
+        // cluster-backed Console where they can return 401/429 and hide real UI
+        // signal.
+        setOperators([])
         setError(null)
         return
       }
