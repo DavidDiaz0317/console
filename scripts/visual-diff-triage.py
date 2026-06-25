@@ -1068,6 +1068,107 @@ def metrics(args: argparse.Namespace) -> int:
     return 0
 
 
+def classify_images(
+    before_raw: Image.Image,
+    after_raw: Image.Image,
+    config: dict[str, Any],
+    prompt: str,
+    crop_path: Path,
+    use_mock: bool,
+) -> dict[str, Any]:
+    """Classify one before/after pair with the SAME fast-paths + VLM call triage() uses.
+
+    Reuses ensure_same_size / build_mask / stitch / call_vlm / mock_model and the same threshold
+    keys so the eval gate measures the real pipeline rather than a reimplementation.
+    """
+    thresholds = config.get("thresholds", {})
+    before, after = ensure_same_size(before_raw, after_raw)
+    mask = build_mask(before, after, int(thresholds.get("pixel_channel_threshold", 16)))
+    changed_pixels = mask.histogram()[255]
+    total_pixels = before.width * before.height
+    changed_ratio = changed_pixels / total_pixels if total_pixels else 0
+    if changed_pixels == 0 or changed_ratio < float(thresholds.get("noise_changed_area_ratio", 0.001)):
+        return {"classification": "noise", "confidence": 1.0, "model_called": False}
+    if changed_ratio >= float(thresholds.get("full_page_changed_area_ratio", 0.6)):
+        return {"classification": "needs_human_review", "confidence": 0.0, "model_called": False}
+    bbox = bbox_with_padding(
+        mask.getbbox() or (0, 0, before.width, before.height),
+        before.width, before.height, int(thresholds.get("crop_padding_px", 16)),
+    )
+    stitch(before, after, bbox, crop_path)
+    if use_mock:
+        return {**mock_model(prompt), "model_called": True}
+    return {**call_vlm(config, prompt, crop_path), "model_called": True}
+
+
+def eval_cases(args: argparse.Namespace) -> int:
+    """Run the real pipeline against a curated labeled set and gate on accuracy.
+
+    Runs the actual VLM when VISUAL_TRIAGE_API_KEY is set (or --mock-model is passed); otherwise
+    falls back to a mock smoke check so the gate never fails merely because no key is configured.
+    """
+    config = load_json(Path(args.config), {})
+    thresholds = config.get("thresholds", {})
+    min_accuracy = float(args.min_accuracy) if args.min_accuracy else float(thresholds.get("eval_min_accuracy", 0.8))
+    cases_dir = Path(args.cases_dir)
+    case_dirs = sorted(d for d in cases_dir.glob("*") if d.is_dir() and (d / "meta.json").exists())
+    if not case_dirs:
+        print(f"::warning::no eval cases under {cases_dir}")
+        return 0
+    use_mock = bool(args.mock_model)
+    if not use_mock:
+        key = os.getenv(config.get("model", {}).get("api_key_env", "VISUAL_TRIAGE_API_KEY"), "")
+        if not key:
+            print("::notice::No VISUAL_TRIAGE_API_KEY set; running eval as a --mock-model smoke check.")
+            use_mock = True
+    rows: list[dict[str, Any]] = []
+    correct = 0
+    confusion: dict[str, dict[str, int]] = {}
+    with tempfile.TemporaryDirectory() as tmp:
+        crop_dir = Path(tmp)
+        for case in case_dirs:
+            meta = load_json(case / "meta.json", {})
+            expected = meta.get("expected")
+            prompt = "\n".join([
+                f"PR title: {meta.get('pr_title', '')}",
+                "Changed files:",
+                "\n".join(f"- {f}" for f in meta.get("changed_files", [])) or "- Not available",
+                f"Visual test: {case.name}",
+                meta.get("note", ""),
+                "",
+                "[stitched BEFORE | AFTER image attached]",
+                "",
+                "Classify this visual change.",
+            ])
+            try:
+                result = classify_images(
+                    Image.open(case / "before.png"), Image.open(case / "after.png"),
+                    config, prompt, crop_dir / f"{case.name}.png", use_mock,
+                )
+            except Exception as exc:  # never let one bad case crash the gate
+                result = {"classification": f"error:{exc}", "confidence": 0.0}
+            predicted = result.get("classification")
+            ok = predicted == expected
+            correct += int(ok)
+            confusion.setdefault(expected, {}).setdefault(predicted, 0)
+            confusion[expected][predicted] += 1
+            rows.append({"case": case.name, "expected": expected, "predicted": predicted,
+                         "confidence": result.get("confidence"), "ok": ok})
+    total = len(rows)
+    accuracy = correct / total if total else 0.0
+    summary = {
+        "accuracy": round(accuracy, 4), "correct": correct, "total": total,
+        "min_accuracy": min_accuracy, "mock": use_mock, "confusion": confusion, "rows": rows,
+    }
+    if args.output:
+        write_json(Path(args.output), summary)
+    print(json.dumps(summary, indent=2))
+    if accuracy < min_accuracy:
+        print(f"::error::Visual triage eval accuracy {accuracy:.3f} < required {min_accuracy}.")
+        return 1
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Triage Playwright visual diffs semantically.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1103,6 +1204,14 @@ def main() -> int:
     metrics_parser.add_argument("--markdown", default="", help="path to write the markdown summary")
     metrics_parser.add_argument("--tuning-file", default=".github/triage-tuning.json")
     metrics_parser.set_defaults(func=metrics)
+
+    eval_parser = subparsers.add_parser("eval")
+    eval_parser.add_argument("--config", default=".github/visual-triage-config.json")
+    eval_parser.add_argument("--cases-dir", default="web/e2e/visual/triage-eval/cases")
+    eval_parser.add_argument("--output", default="")
+    eval_parser.add_argument("--min-accuracy", default="")
+    eval_parser.add_argument("--mock-model", action="store_true")
+    eval_parser.set_defaults(func=eval_cases)
 
     args = parser.parse_args()
     return args.func(args)
