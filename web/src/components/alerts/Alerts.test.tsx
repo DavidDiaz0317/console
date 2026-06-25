@@ -37,6 +37,7 @@ vi.mock('../../hooks/useDrillDown', () => ({
 }))
 
 vi.mock('../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({ getStatValue: () => ({ value: 0 }) }),
   createMergedStatValueGetter: () => () => ({ value: 0 }),
 }))

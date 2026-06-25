@@ -26,6 +26,7 @@ vi.mock('../../../hooks/mcp/kagenti', () => ({
 }))
 
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({
     getStatValue: () => ({ value: '-' }),
   }),

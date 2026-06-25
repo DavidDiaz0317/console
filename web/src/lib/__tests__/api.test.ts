@@ -215,6 +215,30 @@ describe('authFetch', () => {
     expect(headers.get('Authorization')).toBe('Bearer abc123')
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest')
   })
+
+  it('persists global backoff on 429 responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', {
+      status: 429,
+      headers: { 'Retry-After': '12' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { authFetch } = await loadApi()
+
+    const response = await authFetch('/api/mcp/pods')
+
+    expect(response.status).toBe(429)
+    expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
+  })
+
+  it('short-circuits raw fetches while global backoff is active', async () => {
+    localStorage.setItem('kc-api-rate-limit-until', String(Date.now() + 30_000))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { authFetch, RateLimitError } = await loadApi()
+
+    await expect(authFetch('/api/mcp/pods')).rejects.toBeInstanceOf(RateLimitError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('api client', () => {

@@ -14,6 +14,8 @@ export function DashboardView() {
 
   const liveRouteState = state.clustersError
     ? 'unavailable'
+    : state.namespaceCountsPartial
+      ? 'partial'
     : state.clusters.length > 0
       ? 'loaded'
       : 'empty'

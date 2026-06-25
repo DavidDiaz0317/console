@@ -36,6 +36,7 @@ vi.mock('../../../lib/constants/network', async (importOriginal) => {
   }
 })
 
+import { RateLimitError } from '../../../lib/rateLimitBackoff'
 import { agentFetch, AGENT_TOKEN_STORAGE_KEY, _resetAgentTokenState } from '../agentFetch'
 
 const TOKEN_VALUE = 'test-agent-token-abc123'
@@ -84,6 +85,31 @@ describe('getAgentToken — demo mode bypass', () => {
     expect(calls).toHaveLength(1)
     const headers = calls[0][1].headers as Headers
     expect(headers.has('Authorization')).toBe(false)
+  })
+})
+
+describe('agentFetch rate limit backoff', () => {
+  it('records backoff when the agent token endpoint returns 429', async () => {
+    const tokenResp = new Response('', {
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    })
+    const dataResp = new Response('{}', { status: 200 })
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(tokenResp)
+      .mockResolvedValueOnce(dataResp)
+
+    await agentFetch('http://127.0.0.1:8585/pods')
+
+    expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
+  })
+
+  it('does not fetch a token or data while global backoff is active', async () => {
+    localStorage.setItem('kc-api-rate-limit-until', String(Date.now() + 30_000))
+    globalThis.fetch = vi.fn()
+
+    await expect(agentFetch('http://127.0.0.1:8585/pods')).rejects.toBeInstanceOf(RateLimitError)
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 })
 

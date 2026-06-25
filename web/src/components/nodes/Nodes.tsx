@@ -115,7 +115,7 @@ export function Nodes() {
       case 'clusters':
         return { value: reachableClusters.length, sublabel: t('common:common.clusters'), onClick: () => drillToAllClusters(), isClickable: reachableClusters.length > 0 }
       case 'healthy':
-        return { value: totalNodes, sublabel: t('common:nodes.totalNodes'), onClick: () => drillToAllNodes(), isClickable: totalNodes > 0 }
+        return { value: healthyNodes, sublabel: t('common:nodes.readyNodes', 'ready nodes'), onClick: () => drillToAllNodes(), isClickable: healthyNodes > 0 }
       default:
         return { value: 0 }
     }

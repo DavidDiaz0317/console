@@ -92,11 +92,12 @@ const GROUNDTRUTH_FIELDS: Partial<Record<DashboardStatsType, Record<string, stri
   },
   compute: {
     nodes: 'nodes-total',
+    healthy: 'nodes-ready',
     pods: 'pods-total',
   },
   pods: {
     total_pods: 'pods-total',
-    healthy: 'pods-healthy',
+    healthy: 'pods-running',
     issues: 'pods-issues',
     pending: 'pods-pending',
   },

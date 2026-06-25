@@ -488,6 +488,83 @@ export function useUniversalStats() {
 }
 
 /**
+ * Lightweight fallback stats for DashboardPage. This intentionally avoids the
+ * optional workload/security/operator hooks used by useUniversalStats, so pages
+ * with their own stat getters do not fan out dozens of background API requests.
+ */
+export function useCoreUniversalStats() {
+  const { deduplicatedClusters, isLoading } = useClusters()
+  const {
+    drillToAllClusters, drillToAllNodes, drillToAllPods, drillToAllGPU,
+  } = useDrillDownActions()
+
+  const safeClusters = deduplicatedClusters || []
+  const {
+    totalClusters, healthyClusters, unhealthyClusters, unreachableClusters,
+    healthyNodes, totalNodes, totalPods, totalCPUs, totalMemoryGB, totalStorageGB, uniqueNamespaces,
+  } = useMemo(() => {
+    const summary = summarizeClusterHealth(safeClusters)
+
+    return {
+      totalClusters: safeClusters.length,
+      healthyClusters: summary.healthy,
+      unhealthyClusters: summary.unhealthy,
+      unreachableClusters: summary.unreachable,
+      healthyNodes: safeClusters.reduce((sum, c) => sum + (!isClusterUnreachable(c) && isClusterHealthy(c) ? (c.nodeCount || 0) : 0), 0),
+      totalNodes: safeClusters.reduce((sum, c) => sum + (c.nodeCount || 0), 0),
+      totalPods: safeClusters.reduce((sum, c) => sum + (c.podCount || 0), 0),
+      totalCPUs: safeClusters.reduce((sum, c) => sum + (c.cpuCores || 0), 0),
+      totalMemoryGB: safeClusters.reduce((sum, c) => sum + (c.memoryGB || 0), 0),
+      totalStorageGB: safeClusters.reduce((sum, c) => sum + (c.storageGB || 0), 0),
+      uniqueNamespaces: new Set(safeClusters.flatMap(c => c.namespaces || [])),
+    }
+  }, [safeClusters])
+
+  const getStatValue = useCallback((blockId: string): StatBlockValue | undefined => {
+    switch (blockId) {
+      case 'clusters':
+        return { value: totalClusters, sublabel: 'total clusters', onClick: () => drillToAllClusters(), isClickable: totalClusters > 0 }
+      case 'healthy':
+        return { value: healthyClusters, sublabel: 'healthy', onClick: () => drillToAllClusters('healthy'), isClickable: healthyClusters > 0 }
+      case 'unhealthy':
+        return { value: unhealthyClusters, sublabel: 'unhealthy', onClick: () => drillToAllClusters('unhealthy'), isClickable: unhealthyClusters > 0 }
+      case 'unreachable':
+        return { value: unreachableClusters, sublabel: 'offline', isClickable: false }
+      case 'nodes':
+        return { value: totalNodes, progressValue: healthyNodes, max: totalNodes, sublabel: 'total nodes', onClick: () => drillToAllNodes(), isClickable: totalNodes > 0 }
+      case 'cpus':
+        return { value: totalCPUs, sublabel: 'total CPUs', isClickable: false }
+      case 'memory':
+        return { value: totalMemoryGB, format: formatGigabytes, sublabel: 'total memory', isClickable: false }
+      case 'storage':
+        return { value: totalStorageGB, format: formatGigabytes, sublabel: 'total storage', isClickable: false }
+      case 'pods':
+      case 'total_pods':
+        return { value: totalPods, sublabel: blockId === 'total_pods' ? 'across all clusters' : 'total pods', onClick: () => drillToAllPods(), isClickable: totalPods > 0 }
+      case 'namespaces':
+        return { value: uniqueNamespaces.size, sublabel: 'namespaces', isClickable: false }
+      case 'errors':
+        return { value: unhealthyClusters, sublabel: 'errors', onClick: () => drillToAllClusters('unhealthy'), isClickable: unhealthyClusters > 0 }
+      case 'gpus':
+        return { value: 0, sublabel: 'total GPUs', onClick: () => drillToAllGPU(), isClickable: false }
+      default:
+        return undefined
+    }
+  }, [
+    drillToAllClusters, drillToAllGPU, drillToAllNodes, drillToAllPods,
+    healthyClusters, healthyNodes, totalClusters, totalCPUs, totalMemoryGB,
+    totalNodes, totalPods, totalStorageGB, unhealthyClusters,
+    uniqueNamespaces, unreachableClusters,
+  ])
+
+  return {
+    getStatValue,
+    isLoading,
+    clusters: safeClusters,
+  }
+}
+
+/**
  * Creates a merged stat value getter that combines dashboard-specific values
  * with universal fallback values.
  *

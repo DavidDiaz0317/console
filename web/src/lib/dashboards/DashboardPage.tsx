@@ -28,7 +28,7 @@ import { StatsOverview, StatBlockValue } from '../../components/ui/StatsOverview
 import { DashboardStatsType } from '../../components/ui/StatsBlockDefinitions'
 import { DashboardHeader } from '../../components/shared/DashboardHeader'
 import { DashboardHealthIndicator } from '../../components/dashboard/DashboardHealthIndicator'
-import { useUniversalStats, createMergedStatValueGetter } from '../../hooks/useUniversalStats'
+import { useCoreUniversalStats, createMergedStatValueGetter } from '../../hooks/useUniversalStats'
 import { useRefreshIndicator } from '../../hooks/useRefreshIndicator'
 import { prefetchCardChunks } from '../../components/cards/cardRegistry'
 import { useDashboardContextOptional } from '../../hooks/useDashboardContext'
@@ -149,7 +149,7 @@ export function DashboardPage({
   // Capture the route path at mount time — KeepAlive keeps this component alive
   // across navigations, so we need to know which route we belong to.
   const mountedRouteRef = useRef(location.pathname)
-  const { getStatValue: getUniversalStatValue } = useUniversalStats()
+  const { getStatValue: getUniversalStatValue } = useCoreUniversalStats()
   const Icon = getIcon(icon)
 
   // Combine refresh with indicator

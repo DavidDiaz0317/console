@@ -209,6 +209,8 @@ export function Pods() {
   const getStatValue = getDashboardStatValue
   const liveRouteState = backendActionUnavailable
     ? 'unavailable'
+    : stats.totalPods === 0 && filteredPodIssues.length > 0
+      ? 'partial'
     : stats.totalPods > 0
       ? 'loaded'
       : 'empty'
@@ -243,6 +245,7 @@ export function Pods() {
     >
       <div className="sr-only" aria-hidden="true" data-testid="pods-groundtruth-markers">
         <span data-groundtruth-field="pods-total">{stats.totalPods}</span>
+        <span data-groundtruth-field="pods-running">{stats.healthy}</span>
         <span data-groundtruth-field="pods-pending">{stats.pending}</span>
         <span data-groundtruth-field="pods-issues">{stats.issues}</span>
       </div>

@@ -354,6 +354,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
   const networkClassifications = liveUiFailures.networkClassifications || []
   const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
+  const rateLimitEvents = evidenceItems.flatMap((item) => item.network?.rateLimitEvents || [])
   const hasCanarySetupFailure = (
     /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io|canary .*port-forward did not become healthy|services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
   )
@@ -369,7 +370,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
-  if (networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
   if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
   if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
@@ -598,6 +599,29 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
+function summarizeNetworkEvidence(evidenceItems) {
+  const requestCountsByEndpoint = {}
+  const rateLimitEvents = []
+  for (const item of evidenceItems) {
+    const network = item.network || {}
+    for (const [endpoint, count] of Object.entries(network.requestCountsByEndpoint || {})) {
+      requestCountsByEndpoint[endpoint] = (requestCountsByEndpoint[endpoint] || 0) + Number(count || 0)
+    }
+    for (const event of network.rateLimitEvents || []) {
+      rateLimitEvents.push(event)
+    }
+  }
+  return {
+    topRequestCounts: Object.entries(requestCountsByEndpoint)
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 25)
+      .map(([endpoint, count]) => ({ endpoint, count })),
+    rateLimitEvents: dedupe(rateLimitEvents.map((event) => JSON.stringify(event)))
+      .map((event) => JSON.parse(event))
+      .slice(0, 25),
+  }
+}
+
 function buildReproductionCommand(failureType) {
   if (/^(safari-z-index|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
     return [
@@ -651,6 +675,7 @@ function buildBody({
   )
   const attachmentPaths = dedupe(failures.flatMap((failure) => failure.attachments || []))
   const likelyFiles = likelyAreasFor(failureType)
+  const networkSummary = summarizeNetworkEvidence(evidenceItems)
 
   return [
     marker,
@@ -681,6 +706,12 @@ function buildBody({
     '',
     '```json',
     truncate(JSON.stringify(liveUiFailures, null, 2), 5000),
+    '```',
+    '',
+    '## Network Evidence',
+    '',
+    '```json',
+    truncate(JSON.stringify(networkSummary, null, 2), 5000),
     '```',
     '',
     '## Evidence',

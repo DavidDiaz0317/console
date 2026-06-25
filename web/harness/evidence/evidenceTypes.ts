@@ -11,6 +11,10 @@ export interface NetworkEvidenceEntry {
   failureText?: string
 }
 
+export interface RateLimitEvidenceEntry extends NetworkEvidenceEntry {
+  retryAfter?: string
+}
+
 export interface BoundingBoxEvidence {
   label: string
   x: number
@@ -59,6 +63,8 @@ export interface VisualLoginEvidence {
   network: {
     failed: NetworkEvidenceEntry[]
     errorResponses: NetworkEvidenceEntry[]
+    requestCountsByEndpoint?: Record<string, number>
+    rateLimitEvents?: RateLimitEvidenceEntry[]
   }
   domSnippet?: string
   ariaSnapshot?: string
@@ -72,5 +78,7 @@ export interface EvidenceCollectors {
   pageErrors: string[]
   failedRequests: NetworkEvidenceEntry[]
   errorResponses: NetworkEvidenceEntry[]
+  requestCountsByEndpoint: Record<string, number>
+  rateLimitEvents: RateLimitEvidenceEntry[]
   liveUiFailures?: LiveUiFailureEvidence
 }

@@ -54,6 +54,24 @@ test('classifies raw GET 429 API responses as live data loss', () => {
   }), 'live-rate-limit-data-loss')
 })
 
+test('classifies structured rate limit evidence as live data loss', () => {
+  assert.equal(_test.classifyFailure({
+    failures: [],
+    evidenceItems: [{
+      network: {
+        rateLimitEvents: [{
+          method: 'GET',
+          status: 429,
+          url: 'http://127.0.0.1:18080/api/mcp/pods',
+          retryAfter: '60',
+        }],
+      },
+    }],
+    liveUiFailures: {},
+    logText: '',
+  }), 'live-rate-limit-data-loss')
+})
+
 test('classifies browser semantic field mismatches distinctly', () => {
   assert.equal(classify({
     browserMatrixFailures: [{

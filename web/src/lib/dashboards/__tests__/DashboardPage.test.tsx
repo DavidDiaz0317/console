@@ -127,6 +127,7 @@ vi.mock('../../../components/dashboard/DashboardHealthIndicator', () => ({
 }))
 
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({
     getStatValue: (id: string) => ({ value: id, sublabel: '' }),
   }),

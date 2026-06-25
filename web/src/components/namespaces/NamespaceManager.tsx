@@ -26,7 +26,7 @@ import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { ClusterBadge } from '../ui/ClusterBadge'
 import { DashboardHeader } from '../shared/DashboardHeader'
 import { RotatingTip } from '../ui/RotatingTip'
-import { api, authFetch } from '../../lib/api'
+import { api, authFetch, isRateLimitBackoffActive } from '../../lib/api'
 import { useToast } from '../ui/Toast'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../lib/auth'
@@ -118,6 +118,11 @@ export function NamespaceManager() {
   // Fetch namespaces from all available clusters and cache them
   // Uses progressive loading - updates UI as each cluster completes
   const fetchNamespaces = useCallback(async (force = false) => {
+    if (isRateLimitBackoffActive()) {
+      setError(t('namespaces.errors.rateLimited', 'Namespace data is temporarily rate limited. Showing the last available data.'))
+      return
+    }
+
     const offlineClusters = new Set(
       (clusters || [])
         .filter(cluster => cluster.reachable === false)
@@ -412,7 +417,9 @@ export function NamespaceManager() {
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchNamespaces(true)
+      if (!isRateLimitBackoffActive()) {
+        fetchNamespaces(true)
+      }
     }, 30000)
     return () => clearInterval(interval)
   }, [fetchNamespaces])
