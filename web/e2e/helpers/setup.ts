@@ -605,25 +605,23 @@ export async function mockApiFallbackStrict(page: Page) {
 
 export async function setupDemoMode(page: Page) {
   await mockApiFallback(page)
-  // #17406 — Mock local agent as unavailable so usePersistedSettings cannot
-  // restore settings from the agent and overwrite test-set localStorage values.
-  await mockLocalAgentUnavailable(page)
   // Seed localStorage before page scripts execute — prevents the app from
   // briefly rendering the /login screen before the demo flag is picked up.
-  // NOTE: The init script must be synchronous to guarantee all setItem calls
-  // complete before page scripts execute. IndexedDB delete is fire-and-forget.
-  await page.addInitScript(() => {
+  await page.addInitScript(async () => {
     // Only clear storage if demo mode is not already set up — prevents wiping
     // user settings (like toggle states) on internal navigation (#16177).
     if (!localStorage.getItem('kc-demo-mode')) {
-      sessionStorage.clear()
-      localStorage.clear()
-      // Fire-and-forget IndexedDB delete — must not block localStorage seeding
-      try {
-        indexedDB.deleteDatabase('kc_cache')
-      } catch {
-        // IndexedDB may not be available in all test contexts
-      }
+      await (async () => {
+        sessionStorage.clear()
+        localStorage.clear()
+        const deletePromise = new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase('kc_cache')
+          req.onsuccess = () => resolve()
+          req.onerror = () => resolve()
+          req.onblocked = () => resolve()
+        })
+        await deletePromise
+      })()
     }
     localStorage.setItem('token', 'demo-token')
     localStorage.setItem('kc-demo-mode', 'true')
@@ -663,7 +661,7 @@ export async function waitForNetworkIdleBestEffort(
   try {
     await page.waitForLoadState('networkidle', { timeout: timeoutMs })
   } catch {
-    if (typeof process !== 'undefined' && process.env.E2E_VERBOSE_WAITS) {
+    if (process.env.E2E_VERBOSE_WAITS) {
       // eslint-disable-next-line no-console -- Opt-in debug logging for tests
       console.warn(
         `[e2e] networkidle timed out after ${timeoutMs}ms${label ? ` (${label})` : ''} — page may have long-lived WebSocket/SSE connections`

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "thresholds": {
+    "pixel_channel_threshold": 16,
+    "noise_changed_area_ratio": 0.001,
+    "full_page_changed_area_ratio": 0.6,
+    "confidence_cutoff": 0.6,
+    "auto_accept_min_confidence": 0.8,
+    "crop_padding_px": 16,
+    "max_regions": 3,
+    "max_full_image_width": 1200,
+    "target_regression_precision": 0.95,
+    "min_samples": 50,
+    "eval_min_accuracy": 0.8
+  },
+  "routing": {
+    "high_risk_globs": [
+      "web/src/components/auth/**",
+      "web/src/lib/auth.tsx",
+      "web/src/lib/api.ts",
+      "web/e2e/auth-drift/**",
+      "web/src/**/*security*",
+      "web/src/**/*billing*",
+      "pkg/api/**/auth*",
+      "cmd/console/**/auth*"
+    ],
+    "auto_update_baselines": true
+  },
+  "model": {
+    "provider": "openai-compatible",
+    "api_url_env": "VISUAL_TRIAGE_API_URL",
+    "api_key_env": "VISUAL_TRIAGE_API_KEY",
+    "model_env": "VISUAL_TRIAGE_MODEL",
+    "default_api_url": "https://api.openai.com/v1/chat/completions",
+    "default_model": "gpt-4.1-mini",
+    "timeout_seconds": 60,
+    "temperature": 0,
+    "max_tokens": 500,
+    "max_model_calls_per_run": 50,
+    "max_total_tokens_per_run": 200000
+  },
+  "optional_baseline_free_check": {
+    "enabled_env": "VISUAL_TRIAGE_BASELINE_FREE_CHECK",
+    "default_enabled": false
+  },
+  "tuning_file": ".github/triage-tuning.json",
+  "ledger_file": ".github/triage-ledger.jsonl"
+}

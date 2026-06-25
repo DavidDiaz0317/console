@@ -1,0 +1,82 @@
+name: Visual Triage Eval
+
+# Accuracy gate for the semantic visual-triage classifier. Runs the SAME pipeline functions the live
+# triage uses against the curated eval set under web/e2e/visual/triage-eval/cases and fails below
+# eval_min_accuracy. Uses the REAL VLM only when secrets.VISUAL_TRIAGE_API_KEY is configured; otherwise
+# it runs an always-on synthetic smoke (--mock-model) so PRs and forks still get a deterministic gate.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/visual-diff-triage.py'
+      - 'web/e2e/visual/triage-eval/**'
+      - '.github/visual-triage-config.json'
+      - '.github/workflows/visual-triage-eval.yml'
+  workflow_dispatch:
+    inputs:
+      min_accuracy:
+        description: Override the eval_min_accuracy gate (blank = use config).
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-triage-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Visual Triage Accuracy Gate
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        run: python3 -m pip install --user Pillow
+
+      - name: Run visual triage eval gate
+        env:
+          # Real VLM credentials are honored only when the secret is present; on PRs/forks the secret is
+          # empty and the step falls back to the deterministic --mock-model smoke.
+          VISUAL_TRIAGE_API_URL: ${{ vars.VISUAL_TRIAGE_API_URL }}
+          VISUAL_TRIAGE_API_KEY: ${{ secrets.VISUAL_TRIAGE_API_KEY }}
+          VISUAL_TRIAGE_MODEL: ${{ vars.VISUAL_TRIAGE_MODEL }}
+          MIN_ACCURACY: ${{ inputs.min_accuracy }}
+        run: |
+          set -euo pipefail
+          mkdir -p web/e2e/test-results/visual-triage-eval
+          MIN_ARGS=()
+          if [ -n "${MIN_ACCURACY:-}" ]; then
+            MIN_ARGS=(--min-accuracy "$MIN_ACCURACY")
+          fi
+          if [ -n "${VISUAL_TRIAGE_API_KEY:-}" ]; then
+            echo "::notice::VISUAL_TRIAGE_API_KEY present — running the REAL VLM eval (Phase-3 budget enforced by the engine)."
+            MODEL_ARGS=()
+          else
+            echo "::notice::No VISUAL_TRIAGE_API_KEY — running the deterministic --mock-model smoke."
+            MODEL_ARGS=(--mock-model)
+          fi
+          python3 scripts/visual-diff-triage.py eval \
+            --config .github/visual-triage-config.json \
+            --cases-dir web/e2e/visual/triage-eval/cases \
+            --output web/e2e/test-results/visual-triage-eval/eval-results.json \
+            "${MIN_ARGS[@]}" "${MODEL_ARGS[@]}"
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-triage-eval-results
+          path: web/e2e/test-results/visual-triage-eval/
+          retention-days: 14
+          if-no-files-found: ignore

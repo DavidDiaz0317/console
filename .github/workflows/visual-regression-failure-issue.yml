@@ -1,0 +1,856 @@
+name: Visual Regression Failure Issue
+
+on:
+  workflow_run:
+    workflows:
+      - Visual Regression
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Visual Regression workflow run ID to summarize.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  create-or-update-issue:
+    name: Create or Update Visual Regression Failure Issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    env:
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+
+    steps:
+      - name: Checkout triage config
+        # Sparse-checkout of the default branch only — never PR head code. We need the single
+        # source of truth for auto_accept_min_confidence so the autonomy gate is not a magic number.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: |
+            .github/visual-triage-config.json
+          sparse-checkout-cone-mode: false
+
+      - name: Download visual regression artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
+        run: |
+          mkdir -p visual-regression-artifacts
+          gh run download "$RUN_ID" \
+            --repo "$REPOSITORY" \
+            --dir visual-regression-artifacts || true
+          find visual-regression-artifacts -maxdepth 6 -type f | sort || true
+
+      - name: Create or update failure issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          ARTIFACT_ROOT: visual-regression-artifacts
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const crypto = require('crypto');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = Number(process.env.SOURCE_RUN_ID);
+            const artifactRoot = process.env.ARTIFACT_ROOT;
+            const runUrlBase = `${context.serverUrl}/${owner}/${repo}/actions/runs`;
+
+            const labelDefs = {
+              'visual-regression-failure': {
+                color: 'd93f0b',
+                description: 'Automated issue for Visual Regression workflow failures',
+              },
+              'kind/bug': {
+                color: 'd73a4a',
+                description: 'Categorizes issue or PR as related to a bug.',
+              },
+              'needs-triage': {
+                color: 'fbca04',
+                description: 'Indicates an issue needs human triage before automated work begins.',
+              },
+              'triage/accepted': {
+                color: '0e8a16',
+                description: 'Issue is accepted for an automated fix.',
+              },
+              'ai-fix-requested': {
+                color: 'd4c5f9',
+                description: 'Requests the Claude Code scanner to open an automated fix PR.',
+              },
+            };
+
+            // Autonomy gate: a confident regression must clear a HIGHER bar than the CI-fail cutoff
+            // before we hand it to the autofix scanner. Default mirrors the config so the workflow is
+            // self-contained if the sparse checkout of the config file is unavailable.
+            const DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE = 0.8;
+            let autoAcceptMinConfidence = DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE;
+            try {
+              const cfg = JSON.parse(fs.readFileSync('.github/visual-triage-config.json', 'utf8'));
+              const configured = cfg?.thresholds?.auto_accept_min_confidence;
+              if (typeof configured === 'number' && configured >= 0 && configured <= 1) {
+                autoAcceptMinConfidence = configured;
+              }
+            } catch (error) {
+              core.warning(`Could not read auto_accept_min_confidence from config; using default ${DEFAULT_AUTO_ACCEPT_MIN_CONFIDENCE}: ${error.message}`);
+            }
+
+            const GENERIC_SUGGESTED_FILES = [
+              'web/e2e/visual/**',
+              'web/e2e/helpers/setup.ts',
+              'web/src/App.tsx',
+              'web/src/config/routes.ts',
+              'web/src/components/**',
+              'web/src/hooks/**',
+              'web/src/lib/**',
+              '.github/workflows/visual-regression.yml',
+              '.github/workflows/visual-regression-failure-issue.yml',
+            ];
+
+            const SUITE_DETAILS = [
+              {
+                match: 'app-visual-regression.spec.ts',
+                name: 'Core app visual regression',
+                routes: ['/', '/clusters', '/settings'],
+                contract: 'Core dashboard, clusters, and settings layouts must stay stable against committed baselines.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-visual-regression.spec.ts',
+                  'web/src/App.tsx',
+                  'web/src/config/routes.ts',
+                  'web/src/components/**',
+                ],
+              },
+              {
+                match: 'app-dashboard-routes-visual.spec.ts',
+                name: 'Dashboard routes visual regression',
+                routes: ['/ci-cd', '/ai-ml', '/workloads', '/alerts', '/gitops', '/pods', '/nodes', '/deploy', '/security', '/cost', '/network', '/storage', '/events', '/compliance', '/helm', '/compute', '/deployments', '/services'],
+                contract: 'Dashboard route layouts must remain visually stable across key product routes.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-dashboard-routes-visual.spec.ts',
+                  'web/src/config/routes.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-dashboard-filter-panel-layout.spec.ts',
+                name: 'Dashboard filter panel layout',
+                routes: ['/'],
+                contract: 'The global filter panel must open without shifting dashboard stats or layout.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-dashboard-filter-panel-layout.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-compliance-filter-panel-visual.spec.ts',
+                name: 'Compliance filter panel visual regression',
+                routes: ['/compliance'],
+                contract: 'The global filter panel must overlay the compliance page without layout shift.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-compliance-filter-panel-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-cluster-admin-visual.spec.ts',
+                name: 'Cluster admin visual regression',
+                routes: ['/cluster-admin'],
+                contract: 'Cluster admin page layouts must remain visually stable across desktop and tablet viewports.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-cluster-admin-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-cicd-visual.spec.ts',
+                name: 'CI/CD visual regression',
+                routes: ['/ci-cd'],
+                contract: 'CI/CD dashboard screenshots must stay stable across initial, populated, full-page, and tablet views.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-cicd-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-workloads-visual.spec.ts',
+                name: 'Workloads visual regression',
+                routes: ['/workloads'],
+                contract: 'Workloads page layouts and grouped sections must stay visually stable.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-workloads-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+              {
+                match: 'app-quantum-visual.spec.ts',
+                name: 'Quantum visual regression',
+                routes: ['/quantum'],
+                contract: 'Quantum cards, control panel, and circuit viewer visuals must remain stable.',
+                suggestedFiles: [
+                  'web/e2e/visual/app-quantum-visual.spec.ts',
+                  'web/src/components/**',
+                  'web/src/hooks/**',
+                ],
+              },
+            ];
+
+            function escapeCell(value) {
+              return String(value ?? '')
+                .replace(/\r?\n/g, ' ')
+                .replace(/\|/g, '\\|')
+                .slice(0, 300);
+            }
+
+            function truncate(value, limit = 2000) {
+              const text = String(value ?? '');
+              if (text.length <= limit) return text;
+              return `${text.slice(0, limit)}\n...truncated...`;
+            }
+
+            function walk(dir) {
+              if (!fs.existsSync(dir)) return [];
+              return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) return walk(fullPath);
+                return [fullPath];
+              });
+            }
+
+            function readJsonFile(file) {
+              try {
+                return JSON.parse(fs.readFileSync(file, 'utf8'));
+              } catch (error) {
+                core.warning(`Could not parse ${file}: ${error.message}`);
+                return null;
+              }
+            }
+
+            function sanitizeUrl(value) {
+              if (!value) return '';
+              try {
+                const url = new URL(value);
+                url.username = '';
+                url.password = '';
+                url.search = '';
+                url.hash = '';
+                return url.toString();
+              } catch {
+                return String(value);
+              }
+            }
+
+            function sanitizeObject(value) {
+              if (Array.isArray(value)) return value.map(sanitizeObject);
+              if (!value || typeof value !== 'object') {
+                if (typeof value === 'string' && /^https?:\/\//i.test(value)) return sanitizeUrl(value);
+                return value;
+              }
+              return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, sanitizeObject(child)]));
+            }
+
+            function testStatusFailed(status) {
+              return status && !['passed', 'skipped', 'expected'].includes(status);
+            }
+
+            function dedupe(items) {
+              return [...new Set((items || []).filter(Boolean))];
+            }
+
+            function getSuiteDetails(specPath = '') {
+              const value = String(specPath || '');
+              return SUITE_DETAILS.find((detail) => value.includes(detail.match)) || {
+                name: 'Visual regression',
+                routes: [],
+                contract: 'Visual baselines must remain stable against committed snapshots.',
+                suggestedFiles: GENERIC_SUGGESTED_FILES,
+              };
+            }
+
+            function collectPlaywrightFailures(report, sourceFile) {
+              const failures = [];
+
+              function collectFromSuite(suite, inheritedFile = '') {
+                const suiteFile = suite.file || inheritedFile;
+                for (const spec of suite.specs || []) {
+                  const title = [spec.title, ...(spec.tags || [])].filter(Boolean).join(' ');
+                  for (const testCase of spec.tests || []) {
+                    const projectName = testCase.projectName || '';
+                    const outcome = testCase.outcome || '';
+                    for (const result of testCase.results || []) {
+                      const status = result.status || outcome;
+                      const errors = result.errors || (result.error ? [result.error] : []);
+                      const failed = testStatusFailed(status) || outcome === 'unexpected' || errors.length > 0;
+                      if (!failed) continue;
+
+                      const message = errors
+                        .map((error) => [error.message, error.stack].filter(Boolean).join('\n'))
+                        .filter(Boolean)
+                        .join('\n\n');
+                      const attachments = (result.attachments || [])
+                        .map((attachment) => attachment.path || attachment.name)
+                        .filter(Boolean);
+
+                      failures.push({
+                        sourceFile,
+                        specPath: spec.file || suiteFile || sourceFile,
+                        title,
+                        project: projectName,
+                        status,
+                        retry: result.retry ?? 0,
+                        error: truncate(message || `${title} failed without a parsed error message.`, 2500),
+                        attachments,
+                      });
+                    }
+                  }
+                }
+
+                for (const child of suite.suites || []) {
+                  collectFromSuite(child, suiteFile);
+                }
+              }
+
+              for (const suite of report.suites || []) {
+                collectFromSuite(suite);
+              }
+
+              return failures;
+            }
+
+            function inferFailureType(failure) {
+              const text = `${failure?.title || ''}\n${failure?.error || ''}`.toLowerCase();
+              if (/tohavescreenshot|screenshot|pixel|snapshot/.test(text)) {
+                return 'visual mismatch';
+              }
+              if (/locator|not.toBeVisible|toBeVisible|toHaveCount|toHaveText|toContainText|waiting for/.test(text)) {
+                return 'missing or wrong ui state';
+              }
+              if (/econnrefused|timed out|timeout|preview|webserver|page\.goto|failed to fetch|net::err|browser has been closed/.test(text)) {
+                return 'environment/setup failure';
+              }
+              return 'visual mismatch';
+            }
+
+            function primaryFailureType(failures) {
+              const counts = failures.reduce((acc, failure) => {
+                const key = inferFailureType(failure);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function primaryChangeAssessment(failures, prSummaries) {
+              const counts = failures.reduce((acc, failure) => {
+                const details = getSuiteDetails(failure.specPath);
+                const key = inferChangeAssessment(failure, details, prSummaries);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function assessmentFromTriage(classification) {
+              if (classification === 'regression') return 'likely regression';
+              if (classification === 'intended_change') return 'likely intentional ui change';
+              return 'needs human review';
+            }
+
+            function primaryTriageClassification(decisions) {
+              const priority = { regression: 4, needs_human_review: 3, intended_change: 2, noise: 1 };
+              return [...decisions]
+                .sort((left, right) => {
+                  const leftScore = priority[left.classification] || 0;
+                  const rightScore = priority[right.classification] || 0;
+                  if (leftScore !== rightScore) return rightScore - leftScore;
+                  return Number(right.confidence || 0) - Number(left.confidence || 0);
+                })[0]?.classification || '';
+            }
+
+            function buildLikelyFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              const prioritizedChanged = changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+              return dedupe([
+                ...prioritizedChanged,
+                ...details.suggestedFiles,
+                ...GENERIC_SUGGESTED_FILES,
+              ]).slice(0, 8);
+            }
+
+            function getRelevantChangedFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              return changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+            }
+
+            function inferChangeAssessment(failure, details, prSummaries) {
+              const failureType = inferFailureType(failure);
+              const relevantChangedFiles = getRelevantChangedFiles(details, prSummaries);
+              if (failureType === 'environment/setup failure') {
+                return 'needs human review';
+              }
+              if (failureType === 'missing or wrong ui state') {
+                return 'likely regression';
+              }
+              if (failureType === 'visual mismatch' && relevantChangedFiles.length > 0) {
+                return 'likely intentional ui change';
+              }
+              if (failureType === 'visual mismatch') {
+                return 'likely regression';
+              }
+              return 'needs human review';
+            }
+
+            function suggestedActionForAssessment(assessment) {
+              if (assessment === 'likely intentional ui change') {
+                return 'Review the screenshot diff and update baselines only if the UI change is expected.';
+              }
+              if (assessment === 'likely regression') {
+                return 'Treat this as a regression first and inspect the suggested files before updating baselines.';
+              }
+              return 'Review logs, visual diffs, and PR intent before deciding whether to update baselines or fix code.';
+            }
+
+            function buildReproCommands(failures) {
+              const specPaths = dedupe(failures.map((failure) => failure.specPath).filter(Boolean));
+              const commands = specPaths.slice(0, 6).map((specPath) => [
+                `${path.basename(specPath)}:`,
+                '```bash',
+                'cd web',
+                `npm run test:visual -- ${specPath}`,
+                '```',
+              ].join('\n'));
+              if (!commands.length) {
+                commands.push([
+                  'Full visual regression suite:',
+                  '```bash',
+                  'cd web',
+                  'npm run test:visual',
+                  '```',
+                ].join('\n'));
+              }
+              return commands.join('\n\n');
+            }
+
+            const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+            if (!repoInfo.has_issues) {
+              core.warning(`GitHub Issues are disabled for ${owner}/${repo}; cannot create a Visual Regression failure issue.`);
+              return;
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+            });
+
+            if (run.name !== 'Visual Regression') {
+              core.warning(`Run ${runId} is "${run.name}", not "Visual Regression"; skipping.`);
+              return;
+            }
+
+            if (run.conclusion !== 'failure') {
+              core.info(`Visual Regression run ${runId} concluded with ${run.conclusion}; no issue needed.`);
+              return;
+            }
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const failedJobs = jobs
+              .filter((job) => job.conclusion === 'failure' || job.conclusion === 'timed_out')
+              .map((job) => ({
+                name: job.name,
+                conclusion: job.conclusion,
+                startedAt: job.started_at,
+                completedAt: job.completed_at,
+                url: job.html_url,
+              }));
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const files = walk(artifactRoot);
+            const jsonResultFiles = files.filter((file) => /app-visual-results[\\/]+results\.json$|[\\/]results\.json$/i.test(file));
+            const contextFiles = files.filter((file) => /app-visual-context[\\/]+context\.json$|[\\/]context\.json$/i.test(file));
+            const triageResultFiles = files.filter((file) => /visual-triage[\\/]triage-results\.json$/i.test(file));
+            const failures = jsonResultFiles.flatMap((file) => {
+              const report = readJsonFile(file);
+              return report ? collectPlaywrightFailures(report, path.relative(process.cwd(), file)) : [];
+            });
+            const contexts = contextFiles
+              .map(readJsonFile)
+              .filter(Boolean)
+              .map(sanitizeObject);
+            const triageReports = triageResultFiles
+              .map(readJsonFile)
+              .filter(Boolean)
+              .map(sanitizeObject);
+            const triageDecisions = triageReports.flatMap((report) => report.decisions || []);
+
+            const prSummaries = [];
+            for (const prRef of run.pull_requests || []) {
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: prRef.number,
+                });
+                const filesForPr = await github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  per_page: 100,
+                });
+                prSummaries.push({
+                  number: pr.number,
+                  title: pr.title,
+                  url: pr.html_url,
+                  author: pr.user?.login || '',
+                  head: pr.head?.label || pr.head?.ref || '',
+                  base: pr.base?.label || pr.base?.ref || '',
+                  files: filesForPr.map((file) => file.filename).slice(0, 50),
+                  fileCount: filesForPr.length,
+                });
+              } catch (error) {
+                core.warning(`Could not read PR #${prRef.number}: ${error.message}`);
+              }
+            }
+
+            const signatureSource = [
+              ...failures.map((failure) => `${failure.specPath}:${failure.title}`).sort(),
+              ...failedJobs.map((job) => job.name).sort(),
+            ].filter(Boolean).join('|') || `visual-regression:${runId}`;
+            const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16);
+            const marker = `<!-- visual-regression-signature:${signature} -->`;
+
+            for (const [name, def] of Object.entries(labelDefs)) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name,
+                    color: def.color,
+                    description: def.description,
+                  });
+                } catch (error) {
+                  core.warning(`Could not create label ${name}: ${error.message}`);
+                }
+              }
+            }
+
+            const artifactRows = artifacts.map((artifact) => {
+              const artifactUrl = `${runUrlBase}/${runId}/artifacts/${artifact.id}`;
+              return `| [${escapeCell(artifact.name)}](${artifactUrl}) | ${escapeCell(artifact.size_in_bytes)} | ${escapeCell(artifact.expired ? 'yes' : 'no')} |`;
+            });
+
+            const jobRows = failedJobs.map((job) => {
+              const linkedName = job.url ? `[${escapeCell(job.name)}](${job.url})` : escapeCell(job.name);
+              return `| ${linkedName} | ${escapeCell(job.conclusion)} | ${escapeCell(job.startedAt)} | ${escapeCell(job.completedAt)} |`;
+            });
+
+            const testRows = failures.map((failure) => {
+              return `| ${escapeCell(getSuiteDetails(failure.specPath).name)} | ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`;
+            });
+
+            const summaryRows = failures.slice(0, 12).map((failure) => {
+              const details = getSuiteDetails(failure.specPath);
+              const likelyFiles = buildLikelyFiles(details, prSummaries)
+                .slice(0, 3)
+                .map((file) => `\`${file}\``)
+                .join('<br>');
+              const assessment = inferChangeAssessment(failure, details, prSummaries);
+              return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(details.routes.join(', ') || 'Not captured')} | ${escapeCell(details.contract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
+            });
+
+            const triageRows = triageDecisions.slice(0, 12).map((decision) => {
+              const crop = decision.regions?.[0]?.stitched_crop || '';
+              const bbox = decision.bbox || decision.regions?.[0]?.bbox || '';
+              return `| ${escapeCell(decision.component_name || decision.test_title || 'visual diff')} | ${escapeCell(decision.classification)} | ${escapeCell(decision.confidence)} | ${escapeCell(decision.routing)} | ${escapeCell(decision.severity || 'n/a')} | ${escapeCell(Array.isArray(bbox) ? bbox.join(', ') : bbox)} | ${escapeCell(decision.suspected_component || 'n/a')} | ${escapeCell(decision.reasoning || '')} | ${escapeCell(crop || 'See artifacts')} |`;
+            });
+
+            const primaryTriage = primaryTriageClassification(triageDecisions);
+            const effectivePrimaryType = primaryTriage === 'regression'
+              ? 'visual mismatch'
+              : primaryFailureType(failures);
+            const effectivePrimaryAssessment = primaryTriage
+              ? assessmentFromTriage(primaryTriage)
+              : primaryChangeAssessment(failures, prSummaries);
+
+            const suggestedFiles = dedupe([
+              ...failures.flatMap((failure) => buildLikelyFiles(getSuiteDetails(failure.specPath), prSummaries)),
+              ...GENERIC_SUGGESTED_FILES,
+            ]).slice(0, 14);
+
+            // ── Confidence-gated autonomy (Phase 2) ──
+            // A "confident regression" — the script routed it to `fail`, its confidence clears the
+            // auto-accept bar, and it is NOT a high-risk surface — is handed to the autofix scanner via
+            // `triage/accepted` + `ai-fix-requested`. Everything else gets `kind/bug` + `needs-triage`
+            // so a write-access human runs `/triage accepted` to start the fix.
+            const TRIAGE_PRIORITY = { regression: 4, needs_human_review: 3, intended_change: 2, noise: 1 };
+            const sortedTriageDecisions = [...triageDecisions].sort((left, right) => {
+              const leftScore = TRIAGE_PRIORITY[left.classification] || 0;
+              const rightScore = TRIAGE_PRIORITY[right.classification] || 0;
+              if (leftScore !== rightScore) return rightScore - leftScore;
+              return Number(right.confidence || 0) - Number(left.confidence || 0);
+            });
+            const primaryDecision = sortedTriageDecisions[0] || null;
+            const confidentRegression = sortedTriageDecisions.find((decision) =>
+              decision.routing === 'fail'
+              && Number(decision.confidence) >= autoAcceptMinConfidence
+              && !decision.high_risk
+            ) || null;
+            const autoAccept = Boolean(confidentRegression);
+            const decisionLabels = autoAccept
+              ? ['triage/accepted', 'ai-fix-requested']
+              : ['kind/bug', 'needs-triage'];
+            const issueLabels = dedupe(['visual-regression-failure', ...decisionLabels]);
+
+            const autofixBlock = [
+              '<!-- triage-autofix',
+              JSON.stringify({
+                signature,
+                branch: run.head_branch || '',
+                autoAccept,
+                primaryClassification: primaryTriage || 'unknown',
+                confidence: primaryDecision ? Number(primaryDecision.confidence || 0) : null,
+                auto_accept_min_confidence: autoAcceptMinConfidence,
+                specPaths: dedupe(triageDecisions.map((decision) => decision.spec_path).filter(Boolean)),
+                suggestedFiles,
+                decision_ids: dedupe(triageDecisions.map((decision) => decision.decision_id).filter(Boolean)),
+              }),
+              '-->',
+            ].join('\n');
+
+            const errorBlocks = failures.slice(0, 10).map((failure, index) => [
+              `#### ${index + 1}. ${getSuiteDetails(failure.specPath).name} - ${failure.title}`,
+              '',
+              `Failure type: \`${inferFailureType(failure)}\``,
+              `Change assessment: \`${inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries)}\``,
+              `Suggested action: ${suggestedActionForAssessment(inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries))}`,
+              '',
+              '```text',
+              truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
+              '```',
+              failure.attachments.length
+                ? `Attachments referenced by Playwright: ${failure.attachments.map((item) => `\`${path.basename(item)}\``).join(', ')}`
+                : 'No parsed Playwright attachments for this result.',
+            ].join('\n'));
+
+            const prSection = prSummaries.length
+              ? prSummaries.map((pr) => [
+                  `### PR #${pr.number}: ${pr.title}`,
+                  '',
+                  `- URL: ${pr.url}`,
+                  `- Author: ${pr.author}`,
+                  `- Branches: ${pr.head} -> ${pr.base}`,
+                  `- Changed files (${pr.fileCount}, capped at 50):`,
+                  (pr.files || []).length ? (pr.files || []).map((file) => `- \`${file}\``).join('\n') : '- None captured',
+                ].join('\n')).join('\n\n')
+              : 'No pull request context was attached to this workflow run.';
+
+            const contextSection = contexts.length
+              ? contexts.map((ctx, index) => [
+                  `### Context ${index + 1}: ${ctx.suite || 'Visual Regression context'}`,
+                  '',
+                  '```json',
+                  truncate(JSON.stringify(ctx, null, 2), 2000),
+                  '```',
+                ].join('\n')).join('\n\n')
+              : 'No visual regression context JSON artifact was found.';
+
+            const triageSection = triageReports.length
+              ? triageReports.map((report, index) => [
+                  `### Triage Report ${index + 1}`,
+                  '',
+                  '```json',
+                  truncate(JSON.stringify(report.summary || {}, null, 2), 2000),
+                  '```',
+                ].join('\n')).join('\n\n')
+              : 'No semantic visual triage report was found. The issue falls back to Playwright failure metadata.';
+
+            const titleSuffix = failedJobs.length
+              ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
+              : 'workflow';
+            const title = `[Visual Regression][${effectivePrimaryType}][${effectivePrimaryAssessment}] ${titleSuffix} failed`;
+
+            let body = [
+              marker,
+              autofixBlock,
+              '# Visual Regression Failure',
+              '',
+              'Visual Regression failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
+              '',
+              '## Failure Summary',
+              '',
+              `- Primary failure type: \`${effectivePrimaryType}\``,
+              `- Primary change assessment: \`${effectivePrimaryAssessment}\``,
+              primaryTriage ? `- Semantic triage classification: \`${primaryTriage}\`` : '- Semantic triage classification: `not available`',
+              `- Failed jobs: ${failedJobs.length || 0}`,
+              `- Failed Playwright results parsed: ${failures.length || 0}`,
+              `- Semantic triage decisions parsed: ${triageDecisions.length || 0}`,
+              '',
+              '| Suite | Failure Type | Change Assessment | Route / Target | Protected Contract | First Files To Inspect |',
+              '|---|---|---|---|---|---|',
+              summaryRows.length ? summaryRows.join('\n') : '| Visual regression | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              '',
+              '## Semantic Triage Enrichment',
+              '',
+              'The VLM triage layer runs only after a pixel diff is detected. Cropped BEFORE/AFTER stitched images are uploaded in the workflow artifacts and referenced below.',
+              '',
+              '| Component / route | Classification | Confidence | Routing | Severity | BBox | Suspected Component | Reasoning | Stitched Crop |',
+              '|---|---|---:|---|---|---|---|---|---|',
+              triageRows.length ? triageRows.join('\n') : '| No semantic triage rows parsed | n/a | n/a | n/a | n/a | n/a | n/a | Inspect Playwright diff artifacts | See artifacts |',
+              '',
+              triageSection,
+              '',
+              '### Suggested Decision Rule',
+              '',
+              '- `likely intentional ui change`: review the screenshot diff and update baselines only if the product change is expected.',
+              '- `likely regression`: treat the diff as a regression until disproven.',
+              '- `needs human review`: compare the diff, PR intent, and logs before deciding whether to update baselines or fix code.',
+              '',
+              '## Run Context',
+              '',
+              '| Detail | Value |',
+              '|---|---|',
+              `| Workflow run | [#${runId}](${run.html_url}) |`,
+              `| Event | \`${escapeCell(run.event)}\` |`,
+              `| Branch | \`${escapeCell(run.head_branch)}\` |`,
+              `| Commit | \`${escapeCell(run.head_sha)}\` |`,
+              `| Actor | \`${escapeCell(run.actor?.login || '')}\` |`,
+              `| Created | \`${escapeCell(run.created_at)}\` |`,
+              `| Updated | \`${escapeCell(run.updated_at)}\` |`,
+              '',
+              '## Pull Request Context',
+              '',
+              prSection,
+              '',
+              '## Failed Jobs',
+              '',
+              '| Job | Conclusion | Started | Completed |',
+              '|---|---|---|---|',
+              jobRows.length ? jobRows.join('\n') : '| None parsed | n/a | n/a | n/a |',
+              '',
+              '## Failed Tests',
+              '',
+              '| Suite | Test | Project | Status | Retry | Spec |',
+              '|---|---|---|---|---|---|',
+              testRows.length ? testRows.slice(0, 20).join('\n') : '| No failed Playwright test rows parsed | n/a | n/a | n/a | n/a | n/a |',
+              '',
+              '## Error Excerpts',
+              '',
+              errorBlocks.length ? errorBlocks.join('\n\n') : 'No Playwright error excerpts were parsed. Inspect the workflow logs and artifacts.',
+              '',
+              '## Artifacts',
+              '',
+              `Run artifacts page: ${run.html_url}`,
+              '',
+              '| Artifact | Size bytes | Expired |',
+              '|---|---:|---|',
+              artifactRows.length ? artifactRows.join('\n') : '| None found | 0 | n/a |',
+              '',
+              '## Target Context',
+              '',
+              contextSection,
+              '',
+              '## Reproduction Commands',
+              '',
+              buildReproCommands(failures),
+              '',
+              '## Suggested Files to Inspect',
+              '',
+              ...suggestedFiles.map((file) => `- \`${file}\``),
+            ].join('\n');
+
+            if (body.length > 60000) {
+              body = `${body.slice(0, 59000)}\n\n...body truncated to stay under GitHub issue limits...\n${marker}`;
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'visual-regression-failure',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
+
+            if (existing) {
+              const comment = [
+                marker,
+                autofixBlock,
+                'Visual Regression is still failing with the same signature.',
+                '',
+                `- Run: [#${runId}](${run.html_url})`,
+                `- Event: \`${run.event}\``,
+                `- Branch: \`${run.head_branch}\``,
+                `- Commit: \`${run.head_sha}\``,
+                failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
+                failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
+                `- Primary failure type: \`${effectivePrimaryType}\``,
+                `- Primary change assessment: \`${effectivePrimaryAssessment}\``,
+                primaryTriage ? `- Semantic triage classification: \`${primaryTriage}\`` : '- Semantic triage classification: `not available`',
+                `- Autonomy routing: \`${autoAccept ? 'auto-fix (triage/accepted + ai-fix-requested)' : 'human triage (kind/bug + needs-triage)'}\``,
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: comment,
+              });
+              // Re-apply the chosen labels in case a human stripped them between runs. addLabels is
+              // additive and idempotent, so it never removes labels a maintainer added on purpose.
+              try {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  labels: issueLabels,
+                });
+              } catch (error) {
+                core.warning(`Could not re-apply labels on #${existing.number}: ${error.message}`);
+              }
+              core.info(`Updated existing Visual Regression failure issue #${existing.number} (autoAccept=${autoAccept}).`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: issueLabels,
+            });
+            core.info(`Created Visual Regression failure issue #${created.data.number} (autoAccept=${autoAccept}).`);
