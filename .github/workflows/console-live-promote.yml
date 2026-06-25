@@ -9,16 +9,18 @@ on:
         description: 'Optional fork main image SHA to promote'
         required: false
         type: string
+      candidate_tag:
+        description: 'Optional image tag to promote, for example main or codex-live-canary-fixes'
+        required: false
+        type: string
       promoteProduction:
         description: 'Upgrade production after canary passes'
         required: false
         default: 'true'
         type: choice
         options: ['true', 'false']
-  workflow_run:
-    workflows: ['Build and Deploy KC']
-    types: [completed]
-    branches: [main]
+  schedule:
+    - cron: '17 */12 * * *'
 permissions:
   contents: read
   packages: read
@@ -51,6 +53,7 @@ env:
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
   PROMOTE_PRODUCTION: ${{ github.event_name == 'workflow_dispatch' && inputs.promoteProduction || 'true' }}
   CANDIDATE_SHA_INPUT: ${{ inputs.candidate_sha || '' }}
+  CANDIDATE_TAG_INPUT: ${{ inputs.candidate_tag || '' }}
 
 jobs:
   promote:
@@ -145,19 +148,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
-            candidate_sha="$CANDIDATE_SHA_INPUT"
-          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
-            candidate_sha="${{ github.event.workflow_run.head_sha }}"
+          if [ -n "${CANDIDATE_TAG_INPUT:-}" ]; then
+            candidate_tag="$CANDIDATE_TAG_INPUT"
+          elif [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
+            if ! [[ "$CANDIDATE_SHA_INPUT" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
+              exit 1
+            fi
+            candidate_tag="$CANDIDATE_SHA_INPUT"
           else
-            candidate_sha="$(git ls-remote "https://github.com/${FORK_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
+            candidate_tag="main"
           fi
-          if ! [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
-            exit 1
-          fi
-          candidate_image="${IMAGE_REPOSITORY}:${candidate_sha}"
-          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          candidate_image="${IMAGE_REPOSITORY}:${candidate_tag}"
+          echo "tag=$candidate_tag" >> "$GITHUB_OUTPUT"
           echo "image=$candidate_image" >> "$GITHUB_OUTPUT"
           for i in 1 2 3; do
             if docker buildx imagetools inspect "$candidate_image" >/dev/null; then
@@ -187,7 +190,6 @@ jobs:
           fi
 
       - name: Prepare live and canary secrets
-        if: steps.live-state.outputs.skip != 'true'
         env:
           CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
           CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
@@ -209,7 +211,6 @@ jobs:
             | kubectl apply -f -
 
       - name: Deploy private canary
-        if: steps.live-state.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -217,7 +218,7 @@ jobs:
           helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$CANARY_NAMESPACE" \
             --set image.repository="$IMAGE_REPOSITORY" \
-            --set image.tag="${{ steps.candidate.outputs.sha }}" \
+            --set image.tag="${{ steps.candidate.outputs.tag }}" \
             --set image.pullPolicy=Always \
             --set service.type=ClusterIP \
             --set persistence.enabled=true \
@@ -239,7 +240,6 @@ jobs:
 
       - name: Mark canary deployed
         id: canary-state
-        if: steps.live-state.outputs.skip != 'true'
         shell: bash
         run: echo "deployed=true" >> "$GITHUB_OUTPUT"
 
@@ -371,7 +371,7 @@ jobs:
         run: npm run test:visual:browser-matrix:compare
 
       - name: Upload console live promote evidence
-        if: always() && steps.live-state.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: console-live-promote-evidence
@@ -399,7 +399,7 @@ jobs:
         run: npm run test:visual:adequacy
 
       - name: Promote candidate to production
-        if: steps.canary-state.outputs.deployed == 'true' && env.PROMOTE_PRODUCTION == 'true'
+        if: steps.canary-state.outputs.deployed == 'true' && env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -408,7 +408,7 @@ jobs:
           cat > "$prod_values" <<EOF
           image:
             repository: "$IMAGE_REPOSITORY"
-            tag: "${{ steps.candidate.outputs.sha }}"
+            tag: "${{ steps.candidate.outputs.tag }}"
             pullPolicy: Always
           clusterName: ks-console-ci-1
           service:
