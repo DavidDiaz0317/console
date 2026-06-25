@@ -65,6 +65,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
     }
   }, [isMobile])
 
+  // Navbar renders on every route; this top navigation bar is captured by the visual-regression suite.
   return (
     <nav data-tour="navbar" style={{ top: topOffset }} className="fixed left-0 right-0 h-16 glass z-sticky px-3 md:px-6 flex items-center justify-between overflow-x-clip">
       {isMobile && showMobileSearch && (
