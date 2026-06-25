@@ -397,7 +397,7 @@ export function Clusters() {
       <div className="mb-6">
         <button
           onClick={() => setShowClusterGrid(!showClusterGrid)}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3 px-4"
         >
           <Server className="w-4 h-4" />
           <span>Cluster Info Cards {showSkeletonContent ? '' : `(${filteredClusters.length})`}</span>
