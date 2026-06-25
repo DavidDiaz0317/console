@@ -15,6 +15,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  readGroundtruthFieldNumbers,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -28,11 +29,16 @@ function readPositiveIntEnv(name: string, fallback: number) {
 }
 
 async function expectGroundTruthField(page: Page, field: string, expected: number) {
-  const marker = page.locator(`[data-groundtruth-field="${field}"]`)
-  await expect(marker.first(), `missing data-groundtruth-field="${field}" marker`).toBeAttached()
-  await expect(marker.first(), `data-groundtruth-field="${field}" should match live Kubernetes ground truth`).toHaveText(String(expected), {
+  await expect.poll(async () => {
+    const values = await readGroundtruthFieldNumbers(page, field)
+    const uniqueValues = [...new Set(values)]
+    if (values.length === 0) return `missing-or-unparseable:${field}`
+    if (uniqueValues.length > 1) return `duplicate-disagreement:${uniqueValues.join(',')}`
+    return uniqueValues[0] === expected ? 'ok' : `expected:${expected}:actual:${uniqueValues[0]}`
+  }, {
+    message: `data-groundtruth-field="${field}" should match live Kubernetes ground truth`,
     timeout: 20_000,
-  })
+  }).toBe('ok')
 }
 
 const invariantIds = [

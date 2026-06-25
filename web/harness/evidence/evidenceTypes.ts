@@ -26,9 +26,9 @@ export interface LiveUiFailureEvidence {
   unexpectedNetworkResponses?: string[]
   unexpectedRequestFailures?: string[]
   networkClassifications?: Array<{ classification: string; method?: string; status?: number; url: string }>
-  dashboardMismatches?: Array<{ field: string; expected: number | string; actual: number | string | null; route: string }>
+  dashboardMismatches?: Array<{ field: string; expected: number | string; actual: number | string | null; actualValues?: Array<number | null>; route: string; reason?: string }>
   routeFailures?: Array<{ route: string; reason: string; expected?: string; actual?: string | null }>
-  apiUiMismatches?: Array<{ route: string; field: string; expected: number | string; actual: number | string | null; apiStatus?: number | null }>
+  apiUiMismatches?: Array<{ route: string; field: string; expected: number | string; actual: number | string | null; actualValues?: Array<number | null>; apiStatus?: number | null; reason?: string }>
   interactiveFailures?: Array<{ control: string; reason: string; route: string }>
   fixtureMismatches?: Array<{ resource: string; expected: string; actual?: string | null; route?: string }>
   browserMatrixFailures?: Array<{

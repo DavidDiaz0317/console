@@ -33,7 +33,7 @@ type RouteFacts = {
   viewport: { width: number; height: number } | null
   status: 'passed' | 'failed'
   missingMarkers: string[]
-  fieldMismatches: Array<{ field: string; expected: number; actual: number | null }>
+  fieldMismatches: Array<{ field: string; expected: number; actual: number | null; actualValues?: Array<number | null>; reason?: string }>
   bodyPreview: string
   scrollOverflowX: number
   textCollisionCount: number
@@ -174,14 +174,36 @@ async function waitForExpectedMarkers(
   }).toEqual(mode === 'all' ? [] : true)
 }
 
-async function readGroundtruthFields(page: Page, expected: Record<string, number>): Promise<Record<string, number | null>> {
+type BrowserGroundtruthFieldState = {
+  value: number | null
+  values: number[]
+  markerCount: number
+  reason: 'missing' | 'unparseable' | 'duplicate-disagreement' | 'ok'
+}
+
+async function readGroundtruthFields(page: Page, expected: Record<string, number>): Promise<Record<string, BrowserGroundtruthFieldState>> {
   return page.evaluate((fields) => {
-    const values: Record<string, number | null> = {}
+    const values: Record<string, BrowserGroundtruthFieldState> = {}
     for (const field of fields) {
-      const marker = document.querySelector(`[data-groundtruth-field="${field}"]`)
-      const text = marker?.textContent || ''
-      const match = text.replace(/,/g, '').match(/-?\d+/)
-      values[field] = match ? Number(match[0]) : null
+      const markers = Array.from(document.querySelectorAll(`[data-groundtruth-field="${field}"]`))
+      const parsed = markers
+        .map(marker => (marker.textContent || '').replace(/,/g, '').match(/-?\d+/))
+        .filter((match): match is RegExpMatchArray => Boolean(match))
+        .map(match => Number(match[0]))
+      const uniqueValues = [...new Set(parsed)]
+      const reason = markers.length === 0
+        ? 'missing'
+        : parsed.length !== markers.length || parsed.length === 0
+          ? 'unparseable'
+          : uniqueValues.length > 1
+            ? 'duplicate-disagreement'
+            : 'ok'
+      values[field] = {
+        markerCount: markers.length,
+        values: parsed,
+        reason,
+        value: reason === 'ok' ? uniqueValues[0] : null,
+      }
     }
     return values
   }, Object.keys(expected))
@@ -231,8 +253,29 @@ async function collectRouteFacts(
   const expectedFields = route.expectedFields?.(groundTruth) || {}
   const actualFields = await readGroundtruthFields(page, expectedFields)
   const fieldMismatches = Object.entries(expectedFields)
-    .filter(([field, expected]) => actualFields[field] !== expected)
-    .map(([field, expected]) => ({ field, expected, actual: actualFields[field] }))
+    .map(([field, expected]) => {
+      const actual = actualFields[field]
+      if (!actual || actual.reason !== 'ok') {
+        return {
+          field,
+          expected,
+          actual: actual?.value ?? null,
+          actualValues: actual?.values?.length ? actual.values : [null],
+          reason: actual?.reason || 'missing',
+        }
+      }
+      if (actual.value !== expected) {
+        return {
+          field,
+          expected,
+          actual: actual.value,
+          actualValues: actual.values,
+          reason: 'mismatch',
+        }
+      }
+      return null
+    })
+    .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
   const baseline: RouteFacts['baseline'] = { mode: 'disabled', status: 'skipped' }
 
   if (process.env.BROWSER_MATRIX_BASELINES === 'true') {

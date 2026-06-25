@@ -353,21 +353,25 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
   const networkClassifications = liveUiFailures.networkClassifications || []
-  if (
+  const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
+  const hasCanarySetupFailure = (
     /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io|canary .*port-forward did not become healthy|services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
-  ) return 'canary-setup'
-  const hasLiveNetworkFailure = (liveUiFailures.unexpectedNetworkResponses || []).length
+  )
+  const hasLiveNetworkFailure = unexpectedNetworkResponses.length
     || (liveUiFailures.unexpectedRequestFailures || []).length
     || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
     || /live-network-error|startup-error|infrastructure connection error|unexpected app-origin|4xx|5xx|bad request/.test(text)
+  const hasRateLimitResponse = unexpectedNetworkResponses.some(response =>
+    /\b429\b/.test(String(response))
+    && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
+  )
   if (/weak-test-assertion|literal word [`'"]?ready|\/ready\/i/.test(text)) return 'weak-test-assertion'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
-  if (networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || /live-rate-limit-data-loss|http 429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if (networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
   if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
   if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
-  if (hasLiveNetworkFailure) return 'live-network-error'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
   if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
   if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
@@ -379,6 +383,8 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-layout-drift') || text.includes('browser-layout-drift')) return 'browser-layout-drift'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-visual-baseline') || text.includes('browser-visual-baseline')) return 'browser-visual-baseline'
   if (browserMatrixFailures.some(failure => failure.classification === 'auth-boundary') || text.includes('auth-boundary')) return 'auth-boundary'
+  if (hasCanarySetupFailure) return 'canary-setup'
+  if (hasLiveNetworkFailure) return 'live-network-error'
   if (/cluster-dashboard-groundtruth-match|groundtruth/.test(text)) return 'groundtruth-mismatch'
   if (/oauth|\/api\/me|auth boundary|unauthenticated/.test(text)) return 'auth-boundary'
   return 'canary-setup'
@@ -902,4 +908,8 @@ module.exports = async ({ github, context, core }) => {
     labels: Object.keys(LABELS),
   })
   core.info(`Created Console Live Promote failure issue #${created.data.number}.`)
+}
+
+module.exports._test = {
+  classifyFailure,
 }

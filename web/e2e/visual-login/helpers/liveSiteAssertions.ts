@@ -59,7 +59,18 @@ export type LiveApiFacts = {
   }
   namespaces: {
     total: number | null
+    partial: boolean
+    failedClusters: string[]
   }
+}
+
+type GroundtruthFieldState = {
+  field: string
+  markerCount: number
+  rawValues: string[]
+  values: number[]
+  reason: 'missing' | 'unparseable' | 'duplicate-disagreement' | 'ok'
+  value: number | null
 }
 
 const forbiddenLiveUiPatterns = [
@@ -615,10 +626,15 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
     ).length
 
     let namespacesTotal = 0
+    let namespacesSucceeded = 0
+    const namespaceFailedClusters: string[] = []
     for (const clusterName of clusterNames) {
       const namespaceResponse = await getJson(`/api/namespaces?cluster=${encodeURIComponent(clusterName)}`)
       if (namespaceResponse.status && namespaceResponse.status >= 200 && namespaceResponse.status < 300) {
         namespacesTotal += namespaceResponse.count || 0
+        namespacesSucceeded += 1
+      } else {
+        namespaceFailedClusters.push(clusterName)
       }
     }
 
@@ -647,7 +663,11 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
         available: deploymentsResponse.status && deploymentsResponse.status < 400 ? availableDeployments : null,
       },
       namespaces: {
-        total: namespacesTotal,
+        total: namespaceFailedClusters.length > 0 || (clusterNames.length > 0 && namespacesSucceeded === 0)
+          ? null
+          : namespacesTotal,
+        partial: namespaceFailedClusters.length > 0 && namespacesSucceeded > 0,
+        failedClusters: namespaceFailedClusters,
       },
     }
   })
@@ -657,10 +677,66 @@ function liveRouteMarkerMissing(bodyText: string, marker: string | RegExp): bool
   return typeof marker === 'string' ? !bodyText.includes(marker) : !marker.test(bodyText)
 }
 
+async function readGroundtruthFieldState(page: Page, field: string): Promise<GroundtruthFieldState> {
+  const selector = `[data-groundtruth-field="${field}"]`
+  const rawValues = await page.locator(selector).evaluateAll(elements =>
+    elements.map(element => element.textContent || '')
+  ).catch(() => [])
+  const values = rawValues
+    .map(value => parseVisibleNumber(value))
+    .filter((value): value is number => value !== null)
+  const uniqueValues = [...new Set(values)]
+  const reason: GroundtruthFieldState['reason'] = rawValues.length === 0
+    ? 'missing'
+    : values.length !== rawValues.length || values.length === 0
+      ? 'unparseable'
+      : uniqueValues.length > 1
+        ? 'duplicate-disagreement'
+        : 'ok'
+  return {
+    field,
+    markerCount: rawValues.length,
+    rawValues,
+    values,
+    reason,
+    value: reason === 'ok' ? uniqueValues[0] : null,
+  }
+}
+
+export async function readGroundtruthFieldNumbers(page: Page, field: string): Promise<number[]> {
+  return (await readGroundtruthFieldState(page, field)).values
+}
+
 export async function readGroundtruthFieldNumber(page: Page, field: string): Promise<number | null> {
-  const marker = page.locator(`[data-groundtruth-field="${field}"]`).first()
-  if (await marker.count().catch(() => 0) === 0) return null
-  return parseVisibleNumber(await marker.textContent().catch(() => null))
+  return (await readGroundtruthFieldState(page, field)).value
+}
+
+function groundtruthFieldMismatch(
+  state: GroundtruthFieldState,
+  expected: number,
+  route: string,
+): { field: string; expected: number; actual: number | null; actualValues: Array<number | null>; route: string; reason: string } | null {
+  if (state.reason !== 'ok') {
+    return {
+      field: state.field,
+      expected,
+      actual: state.value,
+      actualValues: state.values.length > 0 ? state.values : [null],
+      route,
+      reason: state.reason,
+    }
+  }
+  if (state.value !== expected) {
+    return {
+      field: state.field,
+      expected,
+      actual: state.value,
+      actualValues: state.values,
+      route,
+      reason: 'mismatch',
+    }
+  }
+  return null
 }
 
 export async function readLiveRouteState(page: Page): Promise<string | null> {
@@ -686,34 +762,31 @@ export async function assertLiveRouteStateLoaded(page: Page, route: string) {
 }
 
 export async function assertGroundtruthFields(page: Page, expected: Record<string, number>, route: string) {
-  const readActual = async (): Promise<Record<string, number | null>> => {
-    const actual: Record<string, number | null> = {}
+  const readStates = async (): Promise<Record<string, GroundtruthFieldState>> => {
+    const states: Record<string, GroundtruthFieldState> = {}
     for (const field of Object.keys(expected)) {
-      actual[field] = await readGroundtruthFieldNumber(page, field)
+      states[field] = await readGroundtruthFieldState(page, field)
     }
-    return actual
+    return states
   }
 
   await expect.poll(async () => {
-    const current = await readActual()
+    const current = await readStates()
     return Object.entries(expected)
-      .filter(([field, expectedValue]) => current[field] !== expectedValue)
-      .map(([field, expectedValue]) => `${field}: expected ${expectedValue}, got ${current[field]}`)
+      .map(([field, expectedValue]) => groundtruthFieldMismatch(current[field], expectedValue, route))
+      .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
+      .map(mismatch => `${mismatch.field}: ${mismatch.reason}; expected ${mismatch.expected}, got ${mismatch.actualValues.join(', ')}`)
   }, {
     message: `live ${route} stats should hydrate to Kubernetes ground truth`,
     timeout: 30_000,
   }).toEqual([]).catch(() => undefined)
 
-  const actual = await readActual()
+  const states = await readStates()
+  const actual = Object.fromEntries(Object.entries(states).map(([field, state]) => [field, state.value]))
 
   const dashboardMismatches = Object.entries(expected)
-    .filter(([field, expectedValue]) => actual[field] !== expectedValue)
-    .map(([field, expectedValue]) => ({
-      field,
-      expected: expectedValue,
-      actual: actual[field],
-      route,
-    }))
+    .map(([field, expectedValue]) => groundtruthFieldMismatch(states[field], expectedValue, route))
+    .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
 
   if (dashboardMismatches.length > 0) {
     await recordLiveUiFailures(page, { dashboardMismatches })
@@ -729,19 +802,15 @@ export async function assertGroundtruthFields(page: Page, expected: Record<strin
 }
 
 export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, route: string, expected: Record<string, number | null>) {
-  const actualEntries = await Promise.all(
-    Object.keys(expected).map(async field => [field, await readGroundtruthFieldNumber(page, field)] as const)
+  const stateEntries = await Promise.all(
+    Object.keys(expected).map(async field => [field, await readGroundtruthFieldState(page, field)] as const)
   )
-  const actual = Object.fromEntries(actualEntries)
+  const states = Object.fromEntries(stateEntries)
+  const actual = Object.fromEntries(Object.entries(states).map(([field, state]) => [field, state.value]))
   const mismatches = Object.entries(expected)
     .filter(([, expectedValue]) => expectedValue !== null)
-    .filter(([field, expectedValue]) => actual[field] !== expectedValue)
-    .map(([field, expectedValue]) => ({
-      route,
-      field,
-      expected: expectedValue as number,
-      actual: actual[field],
-    }))
+    .map(([field, expectedValue]) => groundtruthFieldMismatch(states[field], expectedValue as number, route))
+    .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
 
   const networkClassifications = Object.entries(apiFacts.endpoints)
     .flatMap(([url, fact]) => {

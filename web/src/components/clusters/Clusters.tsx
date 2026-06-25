@@ -349,9 +349,11 @@ export function Clusters() {
   const clusterStatusProgressMax = Math.max(stats.total, MIN_CLUSTER_PROGRESS_TOTAL)
   const liveRouteState = stats.total > 0
     ? 'loaded'
+    : forceSkeletonForOffline
+      ? 'unavailable'
     : showSkeletonContent
-      ? 'empty'
-      : 'unavailable'
+      ? 'partial'
+      : 'empty'
   const groundTruthMarkers = (
     <div className="sr-only" aria-hidden="true" data-testid="cluster-groundtruth-markers">
       <span data-groundtruth-field="clusters-total">{stats.total}</span>

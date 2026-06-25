@@ -1,3 +1,5 @@
+# Fork/private live canary promotion infrastructure.
+# This workflow is intentionally guarded to DavidDiaz0317/console and is not an upstream default.
 name: Console Live Promote
 
 on:
@@ -26,13 +28,13 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_REPOSITORY: ghcr.io/daviddiaz0317/console
-  FORK_REPOSITORY: DavidDiaz0317/console
+  IMAGE_REPOSITORY: ${{ vars.CONSOLE_LIVE_IMAGE_REPOSITORY || 'ghcr.io/daviddiaz0317/console' }}
+  FORK_REPOSITORY: ${{ vars.CONSOLE_LIVE_FORK_REPOSITORY || 'DavidDiaz0317/console' }}
   LIVE_NAMESPACE: kubestellar-console-live
   LIVE_RELEASE: kc-live
   LIVE_DEPLOYMENT: kc-live-kubestellar-console
-  LIVE_HOST: console-live.kubestellar.io
-  LIVE_URL: https://console-live.kubestellar.io
+  LIVE_HOST: ${{ vars.CONSOLE_LIVE_HOST || 'console-live.kubestellar.io' }}
+  LIVE_URL: ${{ vars.CONSOLE_LIVE_URL || 'https://console-live.kubestellar.io' }}
   LIVE_TLS_SECRET: console-live-kubestellar-io-tls
   CANARY_NAMESPACE: kubestellar-console-live-canary
   CANARY_RELEASE: kc-live-canary
@@ -55,6 +57,7 @@ jobs:
     name: Canary Test And Promote
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Fork/private guard: upstream repositories should not try to deploy David's console-live site.
     if: github.repository == 'DavidDiaz0317/console'
 
     steps:
