@@ -802,6 +802,19 @@ function buildBody({
   ].join('\n')
 }
 
+function selectExistingIssue(matchingIssues, marker, title) {
+  const bySignature = (issue) => issue.body && issue.body.includes(marker)
+  const openMatchingIssues = matchingIssues.filter((issue) => issue.state === 'open')
+  const closedMatchingIssues = matchingIssues.filter((issue) => issue.state !== 'open')
+  const existingOpen = openMatchingIssues.find(bySignature) || openMatchingIssues.find((issue) => issue.title === title) || openMatchingIssues[0]
+  const existingClosed = closedMatchingIssues.find(bySignature) || closedMatchingIssues.find((issue) => issue.title === title) || closedMatchingIssues[0]
+
+  return {
+    existing: existingOpen || existingClosed,
+    openMatchingIssues,
+  }
+}
+
 module.exports = async ({ github, context, core }) => {
   const owner = context.repo.owner
   const repo = context.repo.repo
@@ -944,12 +957,7 @@ module.exports = async ({ github, context, core }) => {
       || issueBody.includes(runMarker)
       || issue.title === title
   })
-  const bySignature = (issue) => issue.body && issue.body.includes(marker)
-  const openMatchingIssues = matchingIssues.filter((issue) => issue.state === 'open')
-  const closedMatchingIssues = matchingIssues.filter((issue) => issue.state !== 'open')
-  const existingOpen = openMatchingIssues.find(bySignature) || openMatchingIssues.find((issue) => issue.title === title) || openMatchingIssues[0]
-  const existingClosed = closedMatchingIssues.find(bySignature) || closedMatchingIssues.find((issue) => issue.title === title) || closedMatchingIssues[0]
-  const existing = existingOpen || existingClosed
+  const { existing, openMatchingIssues } = selectExistingIssue(matchingIssues, marker, title)
 
   if (existing) {
     const recurrenceBody = [
@@ -1025,4 +1033,5 @@ module.exports = async ({ github, context, core }) => {
 
 module.exports._test = {
   classifyFailure,
+  selectExistingIssue,
 }

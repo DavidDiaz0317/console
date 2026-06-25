@@ -164,3 +164,27 @@ test('does not let unexecuted canary setup command text override parsed network 
     'echo "::error::Candidate image is not available in GHCR: $candidate_image"',
   ].join('\n')), 'live-network-error')
 })
+
+test('selects an open matching issue before closed historical matches', () => {
+  const marker = '<!-- console-live-promote-signature:abc123 -->'
+  const title = '[console-live][canary-blocked][live-rate-limit-data-loss] route rate limited'
+  const selected = _test.selectExistingIssue([
+    { number: 10, state: 'closed', title, body: marker },
+    { number: 11, state: 'open', title, body: 'same title, current issue' },
+  ], marker, title)
+
+  assert.equal(selected.existing.number, 11)
+  assert.deepEqual(selected.openMatchingIssues.map((issue) => issue.number), [11])
+})
+
+test('selects a closed matching issue when no open issue exists', () => {
+  const marker = '<!-- console-live-promote-signature:def456 -->'
+  const title = '[console-live][browser-matrix][macos-popup-clipped] popup clipped'
+  const selected = _test.selectExistingIssue([
+    { number: 62, state: 'closed', title, body: marker },
+  ], marker, title)
+
+  assert.equal(selected.existing.number, 62)
+  assert.equal(selected.existing.state, 'closed')
+  assert.deepEqual(selected.openMatchingIssues, [])
+})
