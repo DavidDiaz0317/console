@@ -74,7 +74,10 @@ jobs:
           fi
 
       - name: Alarm on missing or partial baselines
+        # Opening/closing the alarm issue needs write access; a fork-triggered run only has a read-only
+        # token, so never let this bookkeeping step fail the visual gate.
         if: always() && steps.mode.outputs.core_count != ''
+        continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           CORE_COUNT: ${{ steps.mode.outputs.core_count }}
@@ -297,7 +300,11 @@ jobs:
           git push origin HEAD:"$HEAD_REF"
 
       - name: Comment visual triage decision
-        if: steps.visual_triage.outputs.outcome != '' && github.event_name == 'pull_request'
+        # Only attempt the PR comment from a same-repo PR. A pull_request run triggered from a fork
+        # gets a read-only GITHUB_TOKEN, so createComment 403s; skip cleanly there (and never let a
+        # comment failure fail the gate — the Enforce step below is the real verdict).
+        if: steps.visual_triage.outputs.outcome != '' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
