@@ -374,10 +374,10 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
     && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
   )
   if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
+  if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
-  if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
   if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
   if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'

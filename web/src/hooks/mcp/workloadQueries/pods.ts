@@ -3,6 +3,7 @@ import { isBackendUnavailable } from '../../../lib/api'
 import { isDemoMode } from '../../../lib/demoMode'
 import { classifyError } from '../../../lib/errorClassifier'
 import { kubectlProxy } from '../../../lib/kubectlProxy'
+import { getRateLimitBackoff, RateLimitError } from '../../../lib/rateLimitBackoff'
 import { fetchSSE } from '../../../lib/sseClient'
 import { registerRefetch } from '../../../lib/modeTransition'
 import { getClusterModeBaseUrl, isClusterModeBackend } from '../../../lib/cache/fetcherUtils'
@@ -570,11 +571,22 @@ export function usePodIssues(cluster?: string, namespace?: string): UsePodIssues
       return
     }
 
+    const hasCachedData = podIssuesCache && podIssuesCache.key === cacheKey
+    const activeBackoff = getRateLimitBackoff()
+    if (activeBackoff) {
+      setLastRefresh(new Date())
+      setIsLoading(false)
+      setIsRefreshing(false)
+      if (!silent && !hasCachedData) {
+        setError(`Rate limited. Try again in ${activeBackoff.retryAfter} seconds.`)
+      }
+      return
+    }
+
     // For silent (background) refreshes, don't update loading states - prevents UI flashing
     if (!silent) {
       // Always set isRefreshing first so indicator shows
       setIsRefreshing(true)
-      const hasCachedData = podIssuesCache && podIssuesCache.key === cacheKey
       if (!hasCachedData) {
         setIsLoading(true)
       }
@@ -641,12 +653,17 @@ export function usePodIssues(cluster?: string, namespace?: string): UsePodIssues
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const message = err instanceof Error ? err.message : 'Failed to fetch pod issues'
-      console.warn('[usePodIssues] Fetch failed:', message)
-      setConsecutiveFailures(prev => prev + 1)
+      if (!(err instanceof RateLimitError)) {
+        console.warn('[usePodIssues] Fetch failed:', message)
+        setConsecutiveFailures(prev => prev + 1)
+      }
       setLastRefresh(new Date())
-      if (!silent && !podIssuesCache) {
+      const hasCachedData = podIssuesCache && podIssuesCache.key === cacheKey
+      if (!silent && !hasCachedData) {
         setError(message)
-        setIssues([])
+        if (!(err instanceof RateLimitError)) {
+          setIssues([])
+        }
       }
     } finally {
       setIsLoading(false)

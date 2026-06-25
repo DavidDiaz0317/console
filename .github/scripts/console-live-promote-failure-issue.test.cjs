@@ -72,6 +72,19 @@ test('classifies structured rate limit evidence as live data loss', () => {
   }), 'live-rate-limit-data-loss')
 })
 
+test('prioritizes rate-limit data loss over secondary text-collision evidence', () => {
+  assert.equal(classify({
+    textCollisions: [{
+      first: 'Press Ctrl+K to search dashboards, cards, clusters, and more',
+      second: 'This project is fully autonomous — maintained by AI agents.',
+      ratio: 0.9,
+    }],
+    unexpectedNetworkResponses: [
+      'GET 429 http://127.0.0.1:18080/api/mcp/clusters',
+    ],
+  }, 'Error: live UI visible text must not severely overlap'), 'live-rate-limit-data-loss')
+})
+
 test('classifies browser semantic field mismatches distinctly', () => {
   assert.equal(classify({
     browserMatrixFailures: [{

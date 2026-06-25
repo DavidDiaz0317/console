@@ -7,13 +7,16 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { subscribePolling } from '../pollingManager'
+import { STORAGE_KEY_RATE_LIMIT_UNTIL } from '../../../lib/rateLimitBackoff'
 
 describe('pollingManager', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    localStorage.removeItem(STORAGE_KEY_RATE_LIMIT_UNTIL)
   })
 
   afterEach(() => {
+    localStorage.removeItem(STORAGE_KEY_RATE_LIMIT_UNTIL)
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
@@ -32,6 +35,21 @@ describe('pollingManager', () => {
     // After another tick
     vi.advanceTimersByTime(1000)
     expect(callback).toHaveBeenCalledTimes(2)
+
+    unsub()
+  })
+
+  it('skips polling callbacks while global rate-limit backoff is active', () => {
+    const callback = vi.fn()
+    const unsub = subscribePolling('rate-limited-key', 1000, callback)
+
+    localStorage.setItem(STORAGE_KEY_RATE_LIMIT_UNTIL, String(Date.now() + 60_000))
+    vi.advanceTimersByTime(1000)
+    expect(callback).not.toHaveBeenCalled()
+
+    localStorage.removeItem(STORAGE_KEY_RATE_LIMIT_UNTIL)
+    vi.advanceTimersByTime(1000)
+    expect(callback).toHaveBeenCalledTimes(1)
 
     unsub()
   })

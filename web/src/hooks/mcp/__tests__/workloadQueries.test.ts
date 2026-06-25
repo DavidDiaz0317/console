@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
+import { STORAGE_KEY_RATE_LIMIT_UNTIL } from '../../../lib/rateLimitBackoff'
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -867,5 +868,21 @@ describe('usePodLogs', () => {
     const callUrl = mockAgentFetch.mock.calls[0][0] as string
     expect(callUrl).toContain('container=sidecar')
     expect(callUrl).toContain(`tail=${TAIL_LINES}`)
+  })
+})
+
+describe('usePodIssues - rate-limit backoff', () => {
+  it('short-circuits active backoff without opening another SSE stream', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    localStorage.setItem(STORAGE_KEY_RATE_LIMIT_UNTIL, String(Date.now() + 60_000))
+
+    const { result } = renderHook(() => usePodIssues())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+    expect(mockFetchSSE).not.toHaveBeenCalled()
+    expect(result.current.error).toMatch(/Rate limited/)
+    expect(warnSpy).not.toHaveBeenCalled()
   })
 })
