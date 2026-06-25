@@ -933,7 +933,7 @@ module.exports = async ({ github, context, core }) => {
   const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
-    state: 'open',
+    state: 'all',
     labels: 'console-live,live-canary,test-failure',
     per_page: 100,
   })
@@ -944,45 +944,72 @@ module.exports = async ({ github, context, core }) => {
       || issueBody.includes(runMarker)
       || issue.title === title
   })
-  const existing = matchingIssues.find((issue) => issue.body && issue.body.includes(marker)) || matchingIssues[0]
+  const bySignature = (issue) => issue.body && issue.body.includes(marker)
+  const openMatchingIssues = matchingIssues.filter((issue) => issue.state === 'open')
+  const closedMatchingIssues = matchingIssues.filter((issue) => issue.state !== 'open')
+  const existingOpen = openMatchingIssues.find(bySignature) || openMatchingIssues.find((issue) => issue.title === title) || openMatchingIssues[0]
+  const existingClosed = closedMatchingIssues.find(bySignature) || closedMatchingIssues.find((issue) => issue.title === title) || closedMatchingIssues[0]
+  const existing = existingOpen || existingClosed
 
   if (existing) {
-    await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body })
-    const duplicates = matchingIssues.filter((issue) => issue.number !== existing.number)
-    for (const duplicate of duplicates) {
+    const recurrenceBody = [
+      marker,
+      `${run.name} is still failing with \`${failureType}\`.`,
+      '',
+      `- Run: [#${runId}](${run.html_url})`,
+      `- Candidate image: \`${imageState.candidate}\``,
+      `- Production blocked before promotion: \`${blocked}\``,
+    ].join('\n')
+
+    if (existing.state === 'open') {
+      await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body })
+      const duplicates = openMatchingIssues.filter((issue) => issue.number !== existing.number)
+      for (const duplicate of duplicates) {
+        await github.rest.issues.createComment({
+          owner,
+          repo,
+          issue_number: duplicate.number,
+          body: [
+            `Superseded by #${existing.number} for the same console live canary failure.`,
+            '',
+            `- Run: [#${runId}](${run.html_url})`,
+            `- Failure type: \`${failureType}\``,
+          ].join('\n'),
+        })
+        await github.rest.issues.update({
+          owner,
+          repo,
+          issue_number: duplicate.number,
+          state: 'closed',
+          state_reason: 'not_planned',
+        })
+      }
       await github.rest.issues.createComment({
         owner,
         repo,
-          issue_number: duplicate.number,
-          body: [
-          `Superseded by #${existing.number} for the same console live canary run and failure.`,
-          '',
-          `- Run: [#${runId}](${run.html_url})`,
-          `- Failure type: \`${failureType}\``,
-        ].join('\n'),
+        issue_number: existing.number,
+        body: recurrenceBody,
       })
-      await github.rest.issues.update({
-        owner,
-        repo,
-        issue_number: duplicate.number,
-        state: 'closed',
-        state_reason: 'not_planned',
-      })
+      core.info(`Updated existing console live canary failure issue #${existing.number}.`)
+      return
     }
+
     await github.rest.issues.createComment({
       owner,
       repo,
       issue_number: existing.number,
       body: [
         marker,
-        `${run.name} is still failing with \`${failureType}\`.`,
+        `${run.name} failed again with \`${failureType}\`.`,
+        '',
+        'This matching issue is closed, so the workflow is leaving it closed and adding the recurrence here instead of reopening it.',
         '',
         `- Run: [#${runId}](${run.html_url})`,
         `- Candidate image: \`${imageState.candidate}\``,
         `- Production blocked before promotion: \`${blocked}\``,
       ].join('\n'),
     })
-    core.info(`Updated existing console live canary failure issue #${existing.number}.`)
+    core.info(`Commented on closed console live canary failure issue #${existing.number} without reopening it.`)
     return
   }
 
