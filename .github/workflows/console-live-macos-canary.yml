@@ -9,6 +9,10 @@ on:
         description: Optional fork main image SHA to test.
         required: false
         type: string
+      candidate_tag:
+        description: Optional image tag to test, for example codex-live-canary-fixes.
+        required: false
+        type: string
       macos_runner:
         description: GitHub-hosted macOS runner label.
         required: false
@@ -41,6 +45,7 @@ env:
   KUBECONFIG_SECRET_NAME: kc-live-kubeconfig
   LIVE_URL: ${{ vars.CONSOLE_LIVE_URL || 'https://console-live.kubestellar.io' }}
   CANDIDATE_SHA_INPUT: ${{ inputs.candidate_sha || '' }}
+  CANDIDATE_TAG_INPUT: ${{ inputs.candidate_tag || '' }}
   MACOS_POPUP_LITMUS_FORCE_FAILURE: ${{ github.event_name == 'workflow_dispatch' && inputs.litmusFailure || 'false' }}
 
 jobs:
@@ -116,17 +121,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
-            candidate_sha="$CANDIDATE_SHA_INPUT"
+          if [ -n "${CANDIDATE_TAG_INPUT:-}" ]; then
+            candidate_tag="$CANDIDATE_TAG_INPUT"
+          elif [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
+            if ! [[ "$CANDIDATE_SHA_INPUT" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
+              exit 1
+            fi
+            candidate_tag="$CANDIDATE_SHA_INPUT"
+          elif [ "${GITHUB_REF_NAME:-main}" != "main" ]; then
+            candidate_tag="${GITHUB_REF_NAME//\//-}"
           else
-            candidate_sha="$(git ls-remote "https://github.com/${FORK_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
+            candidate_tag="main"
           fi
-          if ! [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
-            exit 1
-          fi
-          candidate_image="${IMAGE_REPOSITORY}:${candidate_sha}"
-          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          candidate_image="${IMAGE_REPOSITORY}:${candidate_tag}"
+          echo "tag=$candidate_tag" >> "$GITHUB_OUTPUT"
           echo "image=$candidate_image" >> "$GITHUB_OUTPUT"
           echo "Resolved macOS canary candidate image $candidate_image"
 
@@ -160,7 +169,7 @@ jobs:
           helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$CANARY_NAMESPACE" \
             --set image.repository="$IMAGE_REPOSITORY" \
-            --set image.tag="${{ steps.candidate.outputs.sha }}" \
+            --set image.tag="${{ steps.candidate.outputs.tag }}" \
             --set image.pullPolicy=Always \
             --set service.type=ClusterIP \
             --set persistence.enabled=true \
