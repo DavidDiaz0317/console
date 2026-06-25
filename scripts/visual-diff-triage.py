@@ -612,6 +612,12 @@ def triage(args: argparse.Namespace) -> int:
     model_config = config.get("model", {})
     max_model_calls = int(model_config.get("max_model_calls_per_run", DEFAULT_MAX_MODEL_CALLS_PER_RUN))
     max_total_tokens = int(model_config.get("max_total_tokens_per_run", DEFAULT_MAX_TOTAL_TOKENS_PER_RUN))
+    # No API key configured -> run in detect-only mode: a real visual change is still surfaced (routed
+    # to human review, which fails CI and files a tracking issue), but we do not fabricate a semantic
+    # verdict. Setting VISUAL_TRIAGE_API_KEY later turns the VLM on with no other change. The demo and
+    # --mock-model paths are unaffected (they are checked before this in the loop below).
+    api_key_present = bool(os.getenv(model_config.get("api_key_env", "VISUAL_TRIAGE_API_KEY"), ""))
+    vlm_disabled = not api_key_present
 
     pairs = discover_pairs(
         results_json=Path(args.playwright_results).resolve(),
@@ -719,6 +725,15 @@ def triage(args: argparse.Namespace) -> int:
                         "suspected_component": None,
                         "severity": None,
                     }
+                elif vlm_disabled:
+                    # Detect-only mode: surface the change for human/baseline review without a model.
+                    result = {
+                        "classification": "needs_human_review",
+                        "confidence": 0.0,
+                        "reasoning": "Visual change detected. Semantic VLM triage is not configured for this run, so this is routed to human review: update the committed baseline if the change is intended, otherwise treat it as a regression.",
+                        "suspected_component": None,
+                        "severity": None,
+                    }
                 else:
                     result = call_vlm(config, prompt, crop_path)
                     total_tokens += int(result.pop("_usage_tokens", 0))
@@ -755,7 +770,7 @@ def triage(args: argparse.Namespace) -> int:
                 routing = "human_review"
                 primary["reasoning"] = f"{primary.get('reasoning', '')} Could not locate the committed baseline path for auto-update."
 
-        decisions.append({**base_decision, **primary, "routing": routing, "model_called": bool(region_results) and not bool(demo_result), "regions": region_results})
+        decisions.append({**base_decision, **primary, "routing": routing, "model_called": bool(region_results) and not bool(demo_result) and not vlm_disabled, "regions": region_results})
 
     counts: dict[str, int] = {}
     for decision in decisions:
