@@ -206,7 +206,10 @@ jobs:
 
   deploy-vllm-d:
     needs: merge
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # These deploy targets require IBM-hosted self-hosted runners that are not
+    # registered in forks. Forks still build and publish the image, but skip the
+    # cluster deploy jobs so main stays green.
+    if: github.repository == 'kubestellar/console' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: [self-hosted, kc, openshift]
     timeout-minutes: 20
     environment: vllm-d
@@ -336,7 +339,10 @@ jobs:
 
   deploy-pok-prod:
     needs: merge
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # These deploy targets require IBM-hosted self-hosted runners that are not
+    # registered in forks. Forks still build and publish the image, but skip the
+    # cluster deploy jobs so main stays green.
+    if: github.repository == 'kubestellar/console' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: [self-hosted, kc-pok]
     timeout-minutes: 45
     environment: pok-prod
