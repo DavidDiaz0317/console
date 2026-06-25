@@ -10,7 +10,14 @@ const LABELS = {
   'needs-fix': { color: 'd93f0b', description: 'Needs an implementation fix' },
 }
 
-const LIVE_ARTIFACT_NAME = 'console-live-promote-evidence'
+const LIVE_ARTIFACT_NAMES = new Set([
+  'console-live-promote-evidence',
+  'console-live-macos-popup-evidence',
+])
+const LIVE_CANARY_WORKFLOWS = new Set([
+  'Console Live Promote',
+  'Console Live macOS Canary',
+])
 const IMAGE_REPOSITORY = 'ghcr.io/daviddiaz0317/console'
 
 function walk(dir) {
@@ -129,9 +136,11 @@ function mergeLiveUiFailureObjects(...failureSets) {
     unexpectedRequestFailures: [],
     dashboardMismatches: [],
     routeFailures: [],
+    apiUiMismatches: [],
     interactiveFailures: [],
     fixtureMismatches: [],
     browserMatrixFailures: [],
+    networkClassifications: [],
   }
 
   for (const failures of failureSets) {
@@ -242,8 +251,10 @@ function liveFailuresFromRouteReports(routeReports) {
   const failures = {
     dashboardMismatches: [],
     routeFailures: [],
+    apiUiMismatches: [],
     interactiveFailures: [],
     fixtureMismatches: [],
+    networkClassifications: [],
   }
 
   for (const report of routeReports || []) {
@@ -262,6 +273,33 @@ function liveFailuresFromRouteReports(routeReports) {
         expected: Array.isArray(report.expected) ? report.expected.join(', ') : undefined,
         actual: report.bodyPreview || null,
       })
+    }
+    if (report.kind === 'api-ui-fields') {
+      if (Array.isArray(report.mismatches)) {
+        failures.apiUiMismatches.push(...report.mismatches.map((mismatch) => ({
+          route: mismatch.route || report.route || 'unknown',
+          field: mismatch.field || 'unknown',
+          expected: mismatch.expected ?? 'unknown',
+          actual: mismatch.actual ?? null,
+        })))
+      }
+      if (Array.isArray(report.networkClassifications)) {
+        failures.networkClassifications.push(...report.networkClassifications)
+      }
+    }
+    if (report.kind === 'positive-count-contradiction' && Array.isArray(report.contradictions)) {
+      failures.apiUiMismatches.push(...report.contradictions.map((mismatch) => ({
+        route: mismatch.route || report.route || 'unknown',
+        field: mismatch.field || 'unknown',
+        expected: mismatch.expected ?? 'positive live count',
+        actual: mismatch.actual || 'empty-state contradiction',
+      })))
+      failures.routeFailures.push(...report.contradictions.map((mismatch) => ({
+        route: mismatch.route || report.route || 'unknown',
+        reason: mismatch.actual || 'UI shows empty-state text while live resources exist',
+        expected: `${mismatch.field || 'resource'} > 0`,
+        actual: report.bodyPreview || null,
+      })))
     }
     if (report.kind === 'interactive-control-missing') {
       failures.interactiveFailures.push({
@@ -321,26 +359,52 @@ function artifactPathsFromText(logText) {
 function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const text = sanitizeText(JSON.stringify({ failures, evidenceItems, liveUiFailures }) + '\n' + logText).toLowerCase()
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
-  const hasLiveNetworkFailure = (liveUiFailures.unexpectedNetworkResponses || []).length
+  const networkClassifications = liveUiFailures.networkClassifications || []
+  const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
+  const rateLimitEvents = evidenceItems.flatMap((item) => item.network?.rateLimitEvents || [])
+  const hasProductEvidence = (
+    failures.length
+    || evidenceItems.length
+    || Object.values(liveUiFailures).some(value => Array.isArray(value) && value.length)
+  )
+  const hasCandidateImageFailure = /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io/.test(text)
+  const hasCanaryInfraFailure = (
+    /(?:##\[error\]|::error::|error:)\s*canary .*port-forward did not become healthy/.test(text)
+    || /services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
+  )
+  const hasLiveNetworkFailure = unexpectedNetworkResponses.length
     || (liveUiFailures.unexpectedRequestFailures || []).length
     || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
-    || /live-network-error|startup-error|infrastructure connection error|too many requests|http 429|rate limited|unexpected app-origin|4xx|5xx|bad request/.test(text)
-  if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
-  if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
-  if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
-  if (hasLiveNetworkFailure) return 'live-network-error'
+    || /live-network-error|startup-error|infrastructure connection error|unexpected app-origin|4xx|5xx|bad request/.test(text)
+  const hasRateLimitResponse = unexpectedNetworkResponses.some(response =>
+    /\b429\b/.test(String(response))
+    && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
+  )
+  if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
+  if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if (browserMatrixFailures.some(failure => failure.classification === 'canary-setup') || text.includes('canary-setup')) return 'canary-setup'
+  if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
+  if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
   if ((liveUiFailures.dashboardMismatches || []).length || text.includes('live-dashboard-groundtruth-match')) return 'dashboard-groundtruth-mismatch'
   if ((liveUiFailures.routeFailures || []).length || text.includes('live-core-pages-render-real-data')) return 'core-page-live-data-missing'
   if ((liveUiFailures.interactiveFailures || []).length || text.includes('live-interactive-surfaces-work')) return 'interactive-surface-broken'
   if ((liveUiFailures.fixtureMismatches || []).length || text.includes('live-fixture-ui-match')) return 'fixture-state-mismatch'
+  if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
+  if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
+  if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
   if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
+  if (browserMatrixFailures.some(failure => failure.classification === 'macos-popup-clipped') || text.includes('macos-popup-clipped')) return 'macos-popup-clipped'
+  if (browserMatrixFailures.some(failure => failure.classification === 'macos-top-layer-hidden') || text.includes('macos-top-layer-hidden')) return 'macos-top-layer-hidden'
+  if (browserMatrixFailures.some(failure => failure.classification === 'browser-semantic-field-mismatch') || text.includes('browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-layout-drift') || text.includes('browser-layout-drift')) return 'browser-layout-drift'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-visual-baseline') || text.includes('browser-visual-baseline')) return 'browser-visual-baseline'
   if (browserMatrixFailures.some(failure => failure.classification === 'auth-boundary') || text.includes('auth-boundary')) return 'auth-boundary'
+  if (hasLiveNetworkFailure) return 'live-network-error'
   if (/cluster-dashboard-groundtruth-match|groundtruth/.test(text)) return 'groundtruth-mismatch'
   if (/oauth|\/api\/me|auth boundary|unauthenticated/.test(text)) return 'auth-boundary'
+  if (/weak-test-assertion|literal word [`'"]?ready|\/ready\/i/.test(text)) return 'weak-test-assertion'
   return 'canary-setup'
 }
 
@@ -356,11 +420,24 @@ function likelyAreasFor(type) {
   if (type === 'live-network-error') {
     return ['web/src/hooks/**', 'web/src/lib/**', 'web/src/components/cards/**', 'cmd/console/**']
   }
-  if (type === 'safari-z-index' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
+  if (type === 'live-rate-limit-data-loss') {
+    return ['cmd/console/**', 'web/src/hooks/**', 'web/src/components/namespaces/**', 'web/e2e/visual-login/helpers/liveSiteAssertions.ts']
+  }
+  if (type === 'ui-api-mismatch') {
+    return ['web/src/components/**', 'web/src/hooks/**', 'web/src/lib/dashboards/**']
+  }
+  if (type === 'local-agent-status-unreachable') {
+    return ['web/src/hooks/**', 'web/src/components/cards/**', 'cmd/console/**']
+  }
+  if (type === 'weak-test-assertion') {
+    return ['web/e2e/visual-login/**', 'web/harness/**']
+  }
+  if (type === 'safari-z-index' || type === 'macos-popup-clipped' || type === 'macos-top-layer-hidden' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
     return [
       'web/src/components/layout/**',
       'web/src/components/ui/**',
       'web/src/components/dashboard/**',
+      'web/e2e/visual-login/macos-popup/**',
       'web/e2e/visual-login/browser-matrix/**',
     ]
   }
@@ -370,6 +447,14 @@ function likelyAreasFor(type) {
       'web/src/components/**',
       'web/src/hooks/**',
       'cmd/console/**',
+    ]
+  }
+  if (type === 'browser-semantic-field-mismatch') {
+    return [
+      'web/src/components/**',
+      'web/src/hooks/**',
+      'web/src/lib/dashboards/**',
+      'web/e2e/visual-login/browser-matrix/**',
     ]
   }
   if (type === 'browser-visual-baseline') {
@@ -425,8 +510,15 @@ function shortFailure(type, failures) {
   if (type === 'live-ui-forbidden-artifact') return 'live UI shows demo or local-only artifact'
   if (type === 'live-ui-warning-flood') return 'live UI shows warning flood'
   if (type === 'live-network-error') return 'live UI has unexpected network errors'
+  if (type === 'live-rate-limit-data-loss') return 'resource API rate limiting causes live data loss'
+  if (type === 'ui-api-mismatch') return 'UI does not match authenticated API data'
+  if (type === 'local-agent-status-unreachable') return 'local agent status endpoint is unreachable'
+  if (type === 'weak-test-assertion') return 'live canary failed because the assertion was too weak'
   if (type === 'safari-z-index') return 'WebKit overlay or text stacking differs from Chromium'
+  if (type === 'macos-popup-clipped') return 'macOS WebKit popup is clipped'
+  if (type === 'macos-top-layer-hidden') return 'macOS WebKit popup is hidden behind page content'
   if (type === 'browser-layout-drift') return 'browser layout differs significantly from Chromium'
+  if (type === 'browser-semantic-field-mismatch') return 'browser semantic fields differ from expected live data'
   if (type === 'browser-content-missing') return 'browser is missing expected live content'
   if (type === 'browser-interaction-broken') return 'browser interaction is broken'
   if (type === 'browser-visual-baseline') return 'browser screenshot differs from its baseline'
@@ -527,8 +619,65 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
+function summarizeNetworkEvidence(evidenceItems) {
+  const requestCountsByEndpoint = {}
+  const rateLimitEvents = []
+  for (const item of evidenceItems) {
+    const network = item.network || {}
+    for (const [endpoint, count] of Object.entries(network.requestCountsByEndpoint || {})) {
+      requestCountsByEndpoint[endpoint] = (requestCountsByEndpoint[endpoint] || 0) + Number(count || 0)
+    }
+    for (const event of network.rateLimitEvents || []) {
+      rateLimitEvents.push(event)
+    }
+  }
+  return {
+    topRequestCounts: Object.entries(requestCountsByEndpoint)
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 25)
+      .map(([endpoint, count]) => ({ endpoint, count })),
+    rateLimitEvents: dedupe(rateLimitEvents.map((event) => JSON.stringify(event)))
+      .map((event) => JSON.parse(event))
+      .slice(0, 25),
+  }
+}
+
 function buildReproductionCommand(failureType) {
-  if (/^(safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
+  if (/^(macos-popup-clipped|macos-top-layer-hidden)$/.test(failureType)) {
+    return [
+      '```bash',
+      'cd web',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'npm run test:visual:macos-popup',
+      '```',
+    ].join('\n')
+  }
+  if (failureType === 'safari-z-index') {
+    return [
+      '```bash',
+      'cd web',
+      '# macOS/WebKit popup lane',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'npm run test:visual:macos-popup',
+      '',
+      '# Linux cross-browser matrix, when the failure came from Console Live Promote',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_CLUSTER_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'npm run test:visual:browser-matrix',
+      'npm run test:visual:browser-matrix:compare',
+      '```',
+    ].join('\n')
+  }
+  if (/^(browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
     return [
       '```bash',
       'cd web',
@@ -580,12 +729,13 @@ function buildBody({
   )
   const attachmentPaths = dedupe(failures.flatMap((failure) => failure.attachments || []))
   const likelyFiles = likelyAreasFor(failureType)
+  const networkSummary = summarizeNetworkEvidence(evidenceItems)
 
   return [
     marker,
-    '# Console Live Promote Failure',
+    '# Console Live Canary Failure',
     '',
-    'Production promotion was blocked by the console-live canary gate. This issue is structured for an AI agent to fix the underlying UI/test failure without first digging through raw Actions logs.',
+    'A console-live canary workflow failed. This issue is structured for an AI agent to fix the underlying UI/test failure without first digging through raw Actions logs.',
     '',
     '## Summary',
     '',
@@ -610,6 +760,12 @@ function buildBody({
     '',
     '```json',
     truncate(JSON.stringify(liveUiFailures, null, 2), 5000),
+    '```',
+    '',
+    '## Network Evidence',
+    '',
+    '```json',
+    truncate(JSON.stringify(networkSummary, null, 2), 5000),
     '```',
     '',
     '## Evidence',
@@ -642,7 +798,7 @@ function buildBody({
     '2. Do not update screenshot baselines unless the failure type is only `browser-visual-baseline` and the visual change was intentional.',
     '3. Fix the UI overlap, browser-specific layout issue, forbidden live artifact, network error, or groundtruth mismatch in code.',
     '4. Rerun the live canary test.',
-    '5. Confirm production promotion remains blocked until the canary passes.',
+    '5. Rerun the relevant canary and keep promotion/gating blocked until the canary passes.',
   ].join('\n')
 }
 
@@ -660,11 +816,12 @@ module.exports = async ({ github, context, core }) => {
   }
 
   const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId })
-  if (run.name !== 'Console Live Promote') {
-    core.warning(`Run ${runId} is "${run.name}", not "Console Live Promote"; skipping.`)
+  if (!LIVE_CANARY_WORKFLOWS.has(run.name)) {
+    core.warning(`Run ${runId} is "${run.name}", not a supported console live canary workflow; skipping.`)
     return
   }
-  if (run.conclusion !== 'failure') {
+  const issueWorthyConclusions = new Set(['failure', 'cancelled', 'timed_out'])
+  if (!issueWorthyConclusions.has(run.conclusion)) {
     core.info(`Run ${runId} concluded with ${run.conclusion}; no issue needed.`)
     return
   }
@@ -680,7 +837,7 @@ module.exports = async ({ github, context, core }) => {
   }
 
   const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { owner, repo, run_id: runId, per_page: 100 })
-  const failedJobs = jobs.filter((job) => job.conclusion === 'failure' || job.conclusion === 'timed_out')
+  const failedJobs = jobs.filter((job) => issueWorthyConclusions.has(job.conclusion))
   const logs = await fetchFailedJobLogs({ github, owner, repo, failedJobs })
   const combinedLogText = logs.map((log) => log.text).join('\n')
 
@@ -705,7 +862,7 @@ module.exports = async ({ github, context, core }) => {
       return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : [])
     })
   const browserMatrixReports = files
-    .filter((file) => /(^|[\\/])browser-matrix\.json$/i.test(file))
+    .filter((file) => /(^|[\\/])(?:browser-matrix|macos-popup-matrix)\.json$/i.test(file))
     .flatMap((file) => {
       const parsed = readJsonFile(file)
       return parsed ? [parsed] : []
@@ -719,7 +876,7 @@ module.exports = async ({ github, context, core }) => {
     failures.push({
       sourceFile: 'workflow logs',
       specPath: 'not parsed',
-      title: 'Console Live Promote failed',
+      title: `${run.name} failed`,
       project: 'not parsed',
       status: 'failed',
       retry: 0,
@@ -747,7 +904,7 @@ module.exports = async ({ github, context, core }) => {
   ].join('|') || `console-live-promote:${runId}`
   const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16)
   const marker = `<!-- console-live-promote-signature:${signature} -->`
-  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|browser-layout-drift|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
+  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|macos-popup-clipped|macos-top-layer-hidden|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
   const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
   const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
 
@@ -761,7 +918,7 @@ module.exports = async ({ github, context, core }) => {
     logArtifactPaths,
     liveReports,
     reportFiles,
-    artifacts: artifacts.filter((artifact) => artifact.name === LIVE_ARTIFACT_NAME || artifact.name.includes('console-live')),
+    artifacts: artifacts.filter((artifact) => LIVE_ARTIFACT_NAMES.has(artifact.name) || artifact.name.includes('console-live')),
     logExcerptText: logExcerpt(logs),
     liveUiFailures,
     failureType,
@@ -796,9 +953,9 @@ module.exports = async ({ github, context, core }) => {
       await github.rest.issues.createComment({
         owner,
         repo,
-        issue_number: duplicate.number,
-        body: [
-          `Superseded by #${existing.number} for the same Console Live Promote run and failure.`,
+          issue_number: duplicate.number,
+          body: [
+          `Superseded by #${existing.number} for the same console live canary run and failure.`,
           '',
           `- Run: [#${runId}](${run.html_url})`,
           `- Failure type: \`${failureType}\``,
@@ -818,14 +975,14 @@ module.exports = async ({ github, context, core }) => {
       issue_number: existing.number,
       body: [
         marker,
-        `Console Live Promote is still failing with \`${failureType}\`.`,
+        `${run.name} is still failing with \`${failureType}\`.`,
         '',
         `- Run: [#${runId}](${run.html_url})`,
         `- Candidate image: \`${imageState.candidate}\``,
         `- Production blocked before promotion: \`${blocked}\``,
       ].join('\n'),
     })
-    core.info(`Updated existing Console Live Promote failure issue #${existing.number}.`)
+    core.info(`Updated existing console live canary failure issue #${existing.number}.`)
     return
   }
 
@@ -836,5 +993,9 @@ module.exports = async ({ github, context, core }) => {
     body,
     labels: Object.keys(LABELS),
   })
-  core.info(`Created Console Live Promote failure issue #${created.data.number}.`)
+  core.info(`Created console live canary failure issue #${created.data.number}.`)
+}
+
+module.exports._test = {
+  classifyFailure,
 }
