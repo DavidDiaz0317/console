@@ -291,7 +291,7 @@ jobs:
         run: npm run test:visual:live
 
       - name: Ensure canary port-forward for browser matrix
-        if: always() && steps.canary-state.outputs.deployed == 'true'
+        if: ${{ !cancelled() && steps.canary-state.outputs.deployed == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -318,7 +318,7 @@ jobs:
           exit 1
 
       - name: Run canary browser matrix tests
-        if: always() && steps.canary-state.outputs.deployed == 'true'
+        if: ${{ !cancelled() && steps.canary-state.outputs.deployed == 'true' }}
         timeout-minutes: 30
         working-directory: web
         env:
@@ -365,7 +365,7 @@ jobs:
           exit "$status"
 
       - name: Compare canary browser matrix
-        if: always() && steps.canary-state.outputs.deployed == 'true'
+        if: ${{ !cancelled() && steps.canary-state.outputs.deployed == 'true' }}
         timeout-minutes: 5
         working-directory: web
         run: npm run test:visual:browser-matrix:compare
