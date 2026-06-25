@@ -88,7 +88,7 @@ vi.mock('../useDrillDown', () => ({
   }),
 }))
 
-import { useUniversalStats, createMergedStatValueGetter } from '../useUniversalStats'
+import { useUniversalStats, useCoreUniversalStats, createMergedStatValueGetter } from '../useUniversalStats'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -159,6 +159,20 @@ describe('useUniversalStats', () => {
     mockUseClusters.mockReturnValue({ deduplicatedClusters: clusters, clusters, isLoading: false })
     const { result } = renderHook(() => useUniversalStats())
     expect(result.current.clusters).toHaveLength(2)
+  })
+
+  it('core stats do not mount optional resource hooks', () => {
+    const clusters = [makeCluster({ name: 'core', nodeCount: 2, podCount: 6 })]
+    mockUseClusters.mockReturnValue({ deduplicatedClusters: clusters, clusters, isLoading: false })
+
+    const { result } = renderHook(() => useCoreUniversalStats())
+
+    expect(result.current.getStatValue('nodes')?.value).toBe(2)
+    expect(result.current.getStatValue('pods')?.value).toBe(6)
+    expect(mockUsePodIssues).not.toHaveBeenCalled()
+    expect(mockUseDeployments).not.toHaveBeenCalled()
+    expect(mockUseEvents).not.toHaveBeenCalled()
+    expect(mockUseSecurityIssues).not.toHaveBeenCalled()
   })
 
   // ════════════════════════════════════════════════════════════════

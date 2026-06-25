@@ -24,6 +24,7 @@ vi.mock('../../../lib/utils/localStorage', () => ({
 }))
 
 const mockApiGet = vi.fn().mockResolvedValue({ data: [] })
+let mockRateLimitActive = false
 vi.mock('../../../lib/api', () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
@@ -33,6 +34,7 @@ vi.mock('../../../lib/api', () => ({
   },
   BackendUnavailableError: class extends Error {},
   UnauthenticatedError: class extends Error {},
+  isRateLimitBackoffActive: () => mockRateLimitActive,
 }))
 
 vi.mock('../../../lib/analytics', () => ({
@@ -161,6 +163,7 @@ vi.mock('../../../hooks/useContextualNudges', () => ({
 
 vi.mock('../../../hooks/useDashboardScrollTracking', () => ({ useDashboardScrollTracking: vi.fn() }))
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({ getStatValue: () => ({ value: 0 }) }),
   createMergedStatValueGetter: (primary: (id: string) => unknown) => primary,
 }))
@@ -287,6 +290,7 @@ describe('Dashboard', () => {
     capturedGetStatValue = null
     mockDashboardHealthStatus = 'healthy'
     mockClusters = defaultMockClusters.map(cluster => ({ ...cluster }))
+    mockRateLimitActive = false
     // Reset global filter to default (all clusters)
     mockGlobalFilters.selectedClusters = []
     mockGlobalFilters.isAllClustersSelected = true
@@ -526,6 +530,44 @@ describe('Dashboard', () => {
         expect(capturedGetStatValue!('namespaces').value).toBe(5)
       })
     })
+
+    it('does not treat demo clusters with empty namespace arrays as live namespace failures', async () => {
+      mockClusters = [
+        { name: 'demo-a', healthy: true, isDemo: true, reachable: true, podCount: 10, nodeCount: 2, namespaces: [] },
+      ]
+      mockApiGet.mockRejectedValue(new Error('should not request namespaces for demo data'))
+
+      render(<Dashboard />)
+
+      await waitFor(() => {
+        expect(capturedGetStatValue).toBeTruthy()
+        expect(capturedGetStatValue!('namespaces').value).toBe(0)
+        expect(capturedGetStatValue!('namespaces').sublabel).toBe('namespaces')
+      })
+      expect(screen.getByTestId('dashboard-page')).toHaveAttribute('data-live-route-state', 'loaded')
+      expect(mockApiGet).not.toHaveBeenCalledWith(expect.stringContaining('/api/namespaces?cluster=demo-a'))
+    })
+
+    it('does not show false zero namespace totals when live namespace enrichment fails', async () => {
+      mockClusters = [
+        { name: 'ks-console-ci-1', context: 'ctx-1', reachable: true, podCount: 17, nodeCount: 2, readyNodes: 2, namespaces: [] },
+      ]
+      mockApiGet.mockImplementation((url: string) => {
+        if (url.includes('/api/namespaces?cluster=ctx-1')) {
+          return Promise.reject(new Error('rate limited'))
+        }
+        return Promise.resolve({ data: [] })
+      })
+
+      render(<Dashboard />)
+
+      await waitFor(() => {
+        expect(capturedGetStatValue).toBeTruthy()
+        expect(capturedGetStatValue!('namespaces').value).toBe('-')
+        expect(capturedGetStatValue!('namespaces').sublabel).toBe('namespaces unavailable')
+      })
+      expect(screen.getByTestId('dashboard-page')).toHaveAttribute('data-live-route-state', 'partial')
+    })
   })
 
   describe('auto-refresh interval timer behavior', () => {
@@ -550,6 +592,17 @@ describe('Dashboard', () => {
       mockRefetch.mockClear()
 
       await vi.advanceTimersByTimeAsync(60_000)
+      expect(mockRefetch).not.toHaveBeenCalled()
+    })
+
+    it('pauses auto-refresh while global rate-limit backoff is active', async () => {
+      render(<Dashboard />)
+      await vi.advanceTimersByTimeAsync(100)
+      mockRefetch.mockClear()
+      mockRateLimitActive = true
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
       expect(mockRefetch).not.toHaveBeenCalled()
     })
 

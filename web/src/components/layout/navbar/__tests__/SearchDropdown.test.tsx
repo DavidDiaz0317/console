@@ -5,6 +5,7 @@ import type { SearchItem } from '../../../../hooks/useSearchIndex'
 const navigateMock = vi.fn()
 const locationState = { pathname: '/' }
 const mockUseSearchIndex = vi.fn()
+const mockUseFeatureHints = vi.fn()
 const startMissionMock = vi.fn()
 
 vi.mock('react-router-dom', async () => {
@@ -49,15 +50,11 @@ vi.mock('../../../../lib/scrollToCard', () => ({
 }))
 
 vi.mock('../../../../hooks/useFeatureHints', () => ({
-  useFeatureHints: () => ({
-    action: vi.fn(),
-    dismiss: vi.fn(),
-    isVisible: false,
-  }),
+  useFeatureHints: () => mockUseFeatureHints(),
 }))
 
 vi.mock('../../../ui/FeatureHintTooltip', () => ({
-  FeatureHintTooltip: () => null,
+  FeatureHintTooltip: ({ message }: { message: string }) => <div data-testid="feature-hint">{message}</div>,
 }))
 
 vi.mock('../../../../lib/analytics', () => ({
@@ -73,6 +70,12 @@ describe('SearchDropdown', () => {
     startMissionMock.mockReset()
     locationState.pathname = '/'
     mockUseSearchIndex.mockReturnValue({ results: new Map(), totalCount: 0 })
+    mockUseFeatureHints.mockReturnValue({
+      action: vi.fn(),
+      dismiss: vi.fn(),
+      isVisible: false,
+    })
+    localStorage.clear()
   })
 
   it('clears the search query when the pathname changes', async () => {
@@ -126,5 +129,32 @@ describe('SearchDropdown', () => {
       initialPrompt: 'scriptalert(1)/script &amp; pods',
       type: 'custom',
     }))
+  })
+
+  it('does not show the Cmd+K hint while the autonomous banner is active', async () => {
+    mockUseFeatureHints.mockReturnValue({
+      action: vi.fn(),
+      dismiss: vi.fn(),
+      isVisible: true,
+    })
+
+    const { SearchDropdown } = await import('../SearchDropdown')
+    render(<SearchDropdown />)
+
+    expect(screen.queryByTestId('feature-hint')).toBeNull()
+  })
+
+  it('shows the Cmd+K hint after the autonomous banner has been dismissed', async () => {
+    localStorage.setItem('kc-autonomous-banner-dismissed', 'true')
+    mockUseFeatureHints.mockReturnValue({
+      action: vi.fn(),
+      dismiss: vi.fn(),
+      isVisible: true,
+    })
+
+    const { SearchDropdown } = await import('../SearchDropdown')
+    render(<SearchDropdown />)
+
+    expect(screen.getByTestId('feature-hint').textContent).toContain('search dashboards')
   })
 })

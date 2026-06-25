@@ -337,7 +337,7 @@ export function Clusters() {
       case 'pods':
         return {
           value: hasData ? stats.totalPods : '-',
-          sublabel: 'running pods',
+          sublabel: 'total pods',
           onClick: () => { emitClusterStatsDrillDown('pods'); navigate(ROUTES.WORKLOADS) },
           isClickable: hasData }
       default:
@@ -347,11 +347,19 @@ export function Clusters() {
 
   const getStatValue = getDashboardStatValue
   const clusterStatusProgressMax = Math.max(stats.total, MIN_CLUSTER_PROGRESS_TOTAL)
+  const liveRouteState = stats.total > 0
+    ? 'loaded'
+    : forceSkeletonForOffline
+      ? 'unavailable'
+    : showSkeletonContent
+      ? 'partial'
+      : 'empty'
   const groundTruthMarkers = (
     <div className="sr-only" aria-hidden="true" data-testid="cluster-groundtruth-markers">
       <span data-groundtruth-field="clusters-total">{stats.total}</span>
       <span data-groundtruth-field="nodes-ready">{stats.healthyNodes}</span>
       <span data-groundtruth-field="nodes-total">{stats.totalNodes}</span>
+      <span data-groundtruth-field="pods-total">{stats.totalPods}</span>
       <span data-groundtruth-field="pods-running">{stats.runningPods}</span>
       <span data-groundtruth-field="pods-pending">{stats.pendingPods}</span>
       <span data-groundtruth-field="pods-crashloop">{stats.crashLoopBackOffPods}</span>
@@ -506,6 +514,8 @@ export function Clusters() {
       isRefreshing={dataRefreshing}
       lastUpdated={lastUpdated}
       hasData={stats.hasResourceData || stats.total > 0}
+      liveRouteState={liveRouteState}
+      liveSource={stats.total > 0 ? 'k8s' : 'unknown'}
       beforeCards={beforeCardsContent}
       rightExtra={<RotatingTip page="clusters" />}
       emptyState={{

@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
-import { api, BackendUnavailableError, UnauthenticatedError } from '../../lib/api'
+import { api, BackendUnavailableError, UnauthenticatedError, isRateLimitBackoffActive } from '../../lib/api'
 import { safeRevokeObjectURL } from '../../lib/download'
 import { emitCardAdded, emitCardRemoved, emitCardDragged, emitCardConfigured } from '../../lib/analytics'
 import { useDashboards } from '../../hooks/useDashboards'
@@ -67,6 +67,11 @@ interface PendingDeploy {
   groupName: string
 }
 
+type LiveNamespaceCount = {
+  value: number | null
+  status: 'loaded' | 'unavailable'
+}
+
 let dashboardCache: CachedDashboard | null = null
 
 const DASHBOARD_STORAGE_KEY = STORAGE_KEY_MAIN_DASHBOARD_CARDS
@@ -82,7 +87,8 @@ function normalizeNamespaceCount(data: unknown): number {
   return rawNamespaces.filter(Boolean).length
 }
 
-function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean }): boolean {
+function hasLiveResourceData(cluster: { nodeCount?: number; readyNodes?: number; reachable?: boolean; isDemo?: boolean }): boolean {
+  if (cluster.isDemo) return false
   return (cluster.readyNodes ?? 0) > 0 || (cluster.nodeCount ?? 0) > 0 || cluster.reachable === true
 }
 
@@ -184,7 +190,7 @@ export function useDashboardState() {
     if (isAllClustersSelected) return all
     return all.filter(cluster => selectedClusterSet.has(cluster.name))
   }, [clusters, isAllClustersSelected, selectedClusterSet])
-  const [liveNamespaceCounts, setLiveNamespaceCounts] = useState<Record<string, number>>({})
+  const [liveNamespaceCounts, setLiveNamespaceCounts] = useState<Record<string, LiveNamespaceCount>>({})
 
   useEffect(() => {
     const clustersNeedingNamespaces = filteredClusters.filter(cluster =>
@@ -197,9 +203,9 @@ export function useDashboardState() {
       try {
         const requestCluster = cluster.context || cluster.name
         const { data } = await api.get<unknown>(`/api/namespaces?cluster=${encodeURIComponent(requestCluster)}`)
-        return [cluster.name, normalizeNamespaceCount(data)] as const
+        return [cluster.name, { value: normalizeNamespaceCount(data), status: 'loaded' }] as const
       } catch {
-        return [cluster.name, 0] as const
+        return [cluster.name, { value: null, status: 'unavailable' }] as const
       }
     })).then((entries) => {
       if (cancelled) return
@@ -221,6 +227,7 @@ export function useDashboardState() {
     healthyNodes,
     totalPods,
     totalNamespaces,
+    namespaceCountsPartial,
     totalNodes,
   } = useMemo(() => {
     return filteredClusters.reduce((stats, cluster) => {
@@ -234,7 +241,16 @@ export function useDashboardState() {
         stats.unhealthyClusters += 1
       }
       stats.totalPods += cluster.podCount || 0
-      stats.totalNamespaces += cluster.namespaces?.length || liveNamespaceCounts[cluster.name] || 0
+      if ((cluster.namespaces?.length || 0) > 0) {
+        stats.totalNamespaces += cluster.namespaces?.length || 0
+      } else if (hasLiveResourceData(cluster)) {
+        const liveNamespaceCount = liveNamespaceCounts[cluster.name]
+        if (liveNamespaceCount?.status === 'loaded' && liveNamespaceCount.value !== null) {
+          stats.totalNamespaces += liveNamespaceCount.value
+        } else {
+          stats.namespaceCountsPartial = true
+        }
+      }
       stats.totalNodes += cluster.nodeCount || 0
       return stats
     }, {
@@ -244,6 +260,7 @@ export function useDashboardState() {
       healthyNodes: 0,
       totalPods: 0,
       totalNamespaces: 0,
+      namespaceCountsPartial: false,
       totalNodes: 0,
     })
   }, [filteredClusters, liveNamespaceCounts])
@@ -259,7 +276,12 @@ export function useDashboardState() {
       case 'errors':
         return { value: unhealthyClusters, sublabel: 'unhealthy', onClick: () => drillToAllClusters('unhealthy'), isClickable: unhealthyClusters > 0 }
       case 'namespaces':
-        return { value: totalNamespaces, sublabel: 'namespaces', onClick: () => navigate(ROUTES.NAMESPACES), isClickable: totalNamespaces > 0 }
+        return {
+          value: namespaceCountsPartial ? '-' : totalNamespaces,
+          sublabel: namespaceCountsPartial ? 'namespaces unavailable' : 'namespaces',
+          onClick: () => navigate(ROUTES.NAMESPACES),
+          isClickable: !namespaceCountsPartial && totalNamespaces > 0,
+        }
       case 'nodes':
         return { value: totalNodes, progressValue: healthyNodes, max: totalNodes, sublabel: 'total nodes', onClick: () => drillToAllNodes(), isClickable: totalNodes > 0 }
       case 'pods':
@@ -267,7 +289,7 @@ export function useDashboardState() {
       default:
         return { value: '-' }
     }
-  }, [clusterCount, drillToAllClusters, drillToAllNodes, drillToAllPods, healthyClusters, healthyNodes, navigate, totalNamespaces, totalNodes, totalPods, unhealthyClusters])
+  }, [clusterCount, drillToAllClusters, drillToAllNodes, drillToAllPods, healthyClusters, healthyNodes, navigate, namespaceCountsPartial, totalNamespaces, totalNodes, totalPods, unhealthyClusters])
 
   const getStatValue = getDashboardStatValue
 
@@ -291,7 +313,7 @@ export function useDashboardState() {
   useEffect(() => {
     if (!autoRefresh) return
     autoRefreshIntervalRef.current = setInterval(() => {
-      if (!isLoadingRef.current) {
+      if (!isLoadingRef.current && !isRateLimitBackoffActive()) {
         refetch()
       }
     }, AUTO_REFRESH_INTERVAL_MS)
@@ -1020,6 +1042,7 @@ export function useDashboardState() {
     isLoading,
     isRefreshing,
     isWidgetExportOpen,
+    namespaceCountsPartial,
     lastUpdated,
     localCards,
     navigate,

@@ -55,6 +55,7 @@ vi.mock('../../hooks/useTrivy', () => ({
 }))
 
 vi.mock('../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => mockUseUniversalStats(),
   createMergedStatValueGetter: (primary: (id: string) => unknown, fallback: (id: string) => unknown) =>
     (id: string) => {

@@ -607,9 +607,18 @@ function parseImageState(logText, run) {
 
 function productionBlocked(jobs) {
   const steps = jobs.flatMap((job) => job.steps || [])
-  const promoteStep = steps.find((step) => step.name === 'Promote candidate to production')
-  if (!promoteStep) return 'unknown'
-  return promoteStep.conclusion === 'skipped' || promoteStep.status !== 'completed' ? 'yes' : 'no'
+  const safetyStepNames = new Set([
+    'Deploy candidate to console-live',
+    'Verify live deployment and auth boundary',
+    'Run production auth/session smoke',
+    'Promote candidate to production',
+    'Verify production security and image',
+  ])
+  const rollbackRan = steps.some((step) => /^Roll back live /.test(step.name || '') && step.conclusion === 'success')
+  if (rollbackRan) return 'yes'
+  const safetySteps = steps.filter((step) => safetyStepNames.has(step.name))
+  if (!safetySteps.length) return 'unknown'
+  return safetySteps.some((step) => ['failure', 'cancelled', 'timed_out'].includes(step.conclusion)) ? 'yes' : 'no'
 }
 
 function artifactRows(artifacts, runUrlBase, runId) {
@@ -647,10 +656,12 @@ function buildReproductionCommand(failureType) {
     return [
       '```bash',
       'cd web',
+      '# Requires CONSOLE_LIVE_JWT_SECRET, CONSOLE_LIVE_TEST_USER_ID, and CONSOLE_LIVE_TEST_GITHUB_LOGIN in env.',
+      'export CONSOLE_LIVE_TEST_SESSION_JWT="$(cd .. && node .github/scripts/console-live-mint-session.cjs)"',
       'LIVE_SITE_TESTS=true \\',
-      'LIVE_SITE_AUTH_MODE=dev \\',
-      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
-      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'LIVE_SITE_AUTH_MODE=signed-cookie \\',
+      'LIVE_CANARY_CONSOLE_URL=https://console-live.kubestellar.io \\',
+      'SELF_HOSTED_CONSOLE_URL=https://console-live.kubestellar.io \\',
       'npm run test:visual:macos-popup',
       '```',
     ].join('\n')
@@ -659,19 +670,21 @@ function buildReproductionCommand(failureType) {
     return [
       '```bash',
       'cd web',
+      '# Requires CONSOLE_LIVE_JWT_SECRET, CONSOLE_LIVE_TEST_USER_ID, and CONSOLE_LIVE_TEST_GITHUB_LOGIN in env.',
       '# macOS/WebKit popup lane',
+      'export CONSOLE_LIVE_TEST_SESSION_JWT="$(cd .. && node .github/scripts/console-live-mint-session.cjs)"',
       'LIVE_SITE_TESTS=true \\',
-      'LIVE_SITE_AUTH_MODE=dev \\',
-      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
-      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'LIVE_SITE_AUTH_MODE=signed-cookie \\',
+      'LIVE_CANARY_CONSOLE_URL=https://console-live.kubestellar.io \\',
+      'SELF_HOSTED_CONSOLE_URL=https://console-live.kubestellar.io \\',
       'npm run test:visual:macos-popup',
       '',
       '# Linux cross-browser matrix, when the failure came from Console Live Promote',
       'LIVE_SITE_TESTS=true \\',
       'LIVE_CLUSTER_TESTS=true \\',
-      'LIVE_SITE_AUTH_MODE=dev \\',
-      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
-      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'LIVE_SITE_AUTH_MODE=signed-cookie \\',
+      'LIVE_CANARY_CONSOLE_URL=https://console-live.kubestellar.io \\',
+      'SELF_HOSTED_CONSOLE_URL=https://console-live.kubestellar.io \\',
       'npm run test:visual:browser-matrix',
       'npm run test:visual:browser-matrix:compare',
       '```',
@@ -681,11 +694,13 @@ function buildReproductionCommand(failureType) {
     return [
       '```bash',
       'cd web',
+      '# Requires CONSOLE_LIVE_JWT_SECRET, CONSOLE_LIVE_TEST_USER_ID, and CONSOLE_LIVE_TEST_GITHUB_LOGIN in env.',
+      'export CONSOLE_LIVE_TEST_SESSION_JWT="$(cd .. && node .github/scripts/console-live-mint-session.cjs)"',
       'LIVE_SITE_TESTS=true \\',
       'LIVE_CLUSTER_TESTS=true \\',
-      'LIVE_SITE_AUTH_MODE=dev \\',
-      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
-      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'LIVE_SITE_AUTH_MODE=signed-cookie \\',
+      'LIVE_CANARY_CONSOLE_URL=https://console-live.kubestellar.io \\',
+      'SELF_HOSTED_CONSOLE_URL=https://console-live.kubestellar.io \\',
       'npm run test:visual:browser-matrix',
       'npm run test:visual:browser-matrix:compare',
       '```',
@@ -694,11 +709,13 @@ function buildReproductionCommand(failureType) {
   return [
     '```bash',
     'cd web',
+    '# Requires CONSOLE_LIVE_JWT_SECRET, CONSOLE_LIVE_TEST_USER_ID, and CONSOLE_LIVE_TEST_GITHUB_LOGIN in env.',
+    'export CONSOLE_LIVE_TEST_SESSION_JWT="$(cd .. && node .github/scripts/console-live-mint-session.cjs)"',
     'LIVE_SITE_TESTS=true \\',
     'LIVE_CLUSTER_TESTS=true \\',
-    'LIVE_SITE_AUTH_MODE=dev \\',
-    'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
-    'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+    'LIVE_SITE_AUTH_MODE=signed-cookie \\',
+    'LIVE_CANARY_CONSOLE_URL=https://console-live.kubestellar.io \\',
+    'SELF_HOSTED_CONSOLE_URL=https://console-live.kubestellar.io \\',
     'LIVE_PRODUCTION_CONSOLE_URL=https://console-live.kubestellar.io \\',
     'npm run test:visual:live',
     '```',
@@ -740,7 +757,7 @@ function buildBody({
     '## Summary',
     '',
     `- Failure type: \`${failureType}\``,
-    `- Production blocked before promotion: \`${blocked}\``,
+    `- Safety rollback/auth gate triggered: \`${blocked}\``,
     `- Candidate image: \`${imageState.candidate}\``,
     `- Current production image: \`${imageState.current}\``,
     `- Run: [#${runId}](${run.html_url})`,
@@ -788,7 +805,7 @@ function buildBody({
     '',
     '## Reproduction',
     '',
-    'This command assumes the workflow has deployed and port-forwarded the private canary to `127.0.0.1:18080`:',
+    'This command assumes access to the live-test JWT secret and test user env vars so a short-lived `kc_auth` cookie can be generated before running against the public live URL:',
     '',
     buildReproductionCommand(failureType),
     '',
@@ -798,7 +815,7 @@ function buildBody({
     '2. Do not update screenshot baselines unless the failure type is only `browser-visual-baseline` and the visual change was intentional.',
     '3. Fix the UI overlap, browser-specific layout issue, forbidden live artifact, network error, or groundtruth mismatch in code.',
     '4. Rerun the live canary test.',
-    '5. Rerun the relevant canary and keep promotion/gating blocked until the canary passes.',
+    '5. Rerun the relevant canary. Deployment/auth failures should remain blocking; UI/data/browser regressions should create or update issues for the fix loop.',
   ].join('\n')
 }
 
@@ -966,7 +983,7 @@ module.exports = async ({ github, context, core }) => {
       '',
       `- Run: [#${runId}](${run.html_url})`,
       `- Candidate image: \`${imageState.candidate}\``,
-      `- Production blocked before promotion: \`${blocked}\``,
+      `- Safety rollback/auth gate triggered: \`${blocked}\``,
     ].join('\n')
 
     if (existing.state === 'open') {
@@ -1014,7 +1031,7 @@ module.exports = async ({ github, context, core }) => {
         '',
         `- Run: [#${runId}](${run.html_url})`,
         `- Candidate image: \`${imageState.candidate}\``,
-        `- Production blocked before promotion: \`${blocked}\``,
+        `- Safety rollback/auth gate triggered: \`${blocked}\``,
       ].join('\n'),
     })
     core.info(`Commented on closed console live canary failure issue #${existing.number} without reopening it.`)

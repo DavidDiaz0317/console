@@ -95,6 +95,7 @@ vi.mock('../../../lib/modals', () => ({
 }))
 
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({ getStatValue: vi.fn() }),
   createMergedStatValueGetter: vi.fn(),
 }))

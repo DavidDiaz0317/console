@@ -215,6 +215,30 @@ describe('authFetch', () => {
     expect(headers.get('Authorization')).toBe('Bearer abc123')
     expect(headers.get('X-Requested-With')).toBe('XMLHttpRequest')
   })
+
+  it('persists global backoff on 429 responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', {
+      status: 429,
+      headers: { 'Retry-After': '12' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { authFetch } = await loadApi()
+
+    const response = await authFetch('/api/mcp/pods')
+
+    expect(response.status).toBe(429)
+    expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
+  })
+
+  it('short-circuits raw fetches while global backoff is active', async () => {
+    localStorage.setItem('kc-api-rate-limit-until', String(Date.now() + 30_000))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { authFetch, RateLimitError } = await loadApi()
+
+    await expect(authFetch('/api/mcp/pods')).rejects.toBeInstanceOf(RateLimitError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('api client', () => {
@@ -248,5 +272,28 @@ describe('api client', () => {
 
     await expect(api.get('/api/private')).rejects.toBeInstanceOf(UnauthenticatedError)
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('keeps the session when 401 verification is rate-limited', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('', { status: 200 }))
+      .mockResolvedValueOnce(new Response('', { status: 401 }))
+      .mockResolvedValueOnce(new Response('', { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+    localStorage.setItem('kc-token', 'abc123')
+    const { api, UnauthorizedError } = await loadApi()
+    const { emitSessionExpired } = await import('../analytics')
+
+    await expect(api.get('/api/private')).rejects.toBeInstanceOf(UnauthorizedError)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      '/health',
+      '/api/private',
+      '/api/me',
+    ])
+    expect(emitSessionExpired).not.toHaveBeenCalled()
   })
 })

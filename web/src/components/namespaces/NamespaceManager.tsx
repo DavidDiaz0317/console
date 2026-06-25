@@ -26,7 +26,7 @@ import { useGlobalFilters } from '../../hooks/useGlobalFilters'
 import { ClusterBadge } from '../ui/ClusterBadge'
 import { DashboardHeader } from '../shared/DashboardHeader'
 import { RotatingTip } from '../ui/RotatingTip'
-import { api, authFetch } from '../../lib/api'
+import { api, authFetch, isRateLimitBackoffActive } from '../../lib/api'
 import { useToast } from '../ui/Toast'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../lib/auth'
@@ -118,6 +118,11 @@ export function NamespaceManager() {
   // Fetch namespaces from all available clusters and cache them
   // Uses progressive loading - updates UI as each cluster completes
   const fetchNamespaces = useCallback(async (force = false) => {
+    if (isRateLimitBackoffActive()) {
+      setError(t('namespaces.errors.rateLimited', 'Namespace data is temporarily rate limited. Showing the last available data.'))
+      return
+    }
+
     const offlineClusters = new Set(
       (clusters || [])
         .filter(cluster => cluster.reachable === false)
@@ -412,7 +417,9 @@ export function NamespaceManager() {
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchNamespaces(true)
+      if (!isRateLimitBackoffActive()) {
+        fetchNamespaces(true)
+      }
     }, 30000)
     return () => clearInterval(interval)
   }, [fetchNamespaces])
@@ -440,6 +447,14 @@ export function NamespaceManager() {
     ns.name.startsWith('openshift-') ||
     ns.name === 'default'
   )
+  const unavailableClusterCount = Object.values(clusterStatuses).filter(status => status === 'unavailable' || status === 'accessDenied').length
+  const liveRouteState = error && filteredNamespaces.length === 0
+    ? 'unavailable'
+    : error || unavailableClusterCount > 0
+      ? 'partial'
+      : filteredNamespaces.length > 0
+        ? 'loaded'
+        : 'empty'
 
   const handleDeleteNamespace = async (ns: NamespaceDetails) => {
     setNamespaceToDelete(ns)
@@ -546,7 +561,17 @@ export function NamespaceManager() {
   }
 
   return (
-    <div className="min-h-full flex flex-col p-6">
+    <div
+      className="min-h-full flex flex-col p-6"
+      data-testid="namespaces-page"
+      data-live-route-state={liveRouteState}
+      data-live-source={filteredNamespaces.length > 0 ? 'k8s' : 'unknown'}
+    >
+      <div className="sr-only" aria-hidden="true" data-testid="namespaces-groundtruth-markers">
+        <span data-groundtruth-field="namespaces-total">{filteredNamespaces.length}</span>
+        <span data-groundtruth-field="namespaces-unavailable-clusters">{unavailableClusterCount}</span>
+      </div>
+
       {/* Header */}
       <DashboardHeader
         title="Namespace Manager"

@@ -1,4 +1,8 @@
 import { MCP_HOOK_TIMEOUT_MS } from '../../lib/constants'
+import {
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../../lib/rateLimitBackoff'
 import { agentFetch } from './agentFetch'
 
 /** Options for fetchWithRetry */
@@ -48,6 +52,8 @@ export async function fetchWithRetry(
   const totalAttempts = maxRetries + 1
 
   for (let attempt = 0; attempt < totalAttempts; attempt++) {
+    throwIfRateLimited()
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
@@ -68,6 +74,9 @@ export async function fetchWithRetry(
 
       // Don't retry on 4xx — those are permanent client errors
       if (response.status >= 400 && response.status < 500) {
+        if (response.status === 429 && typeof response.headers?.get === 'function') {
+          setRateLimitBackoffFromResponse(response)
+        }
         return response
       }
 

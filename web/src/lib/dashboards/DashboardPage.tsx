@@ -28,7 +28,7 @@ import { StatsOverview, StatBlockValue } from '../../components/ui/StatsOverview
 import { DashboardStatsType } from '../../components/ui/StatsBlockDefinitions'
 import { DashboardHeader } from '../../components/shared/DashboardHeader'
 import { DashboardHealthIndicator } from '../../components/dashboard/DashboardHealthIndicator'
-import { useUniversalStats, createMergedStatValueGetter } from '../../hooks/useUniversalStats'
+import { useCoreUniversalStats, createMergedStatValueGetter } from '../../hooks/useUniversalStats'
 import { useRefreshIndicator } from '../../hooks/useRefreshIndicator'
 import { prefetchCardChunks } from '../../components/cards/cardRegistry'
 import { useDashboardContextOptional } from '../../hooks/useDashboardContext'
@@ -102,6 +102,10 @@ export interface DashboardPageProps {
    * DashboardPage.
    */
   testId?: string
+  /** Machine-readable live data state for canary checks. */
+  liveRouteState?: 'loaded' | 'partial' | 'unavailable' | 'empty'
+  /** Machine-readable data source for canary checks. */
+  liveSource?: 'k8s' | 'demo' | 'local-agent' | 'unknown'
 }
 
 const DASHBOARD_VIRTUALIZATION_THRESHOLD = 60
@@ -137,13 +141,15 @@ export function DashboardPage({
   emptyState,
   isDemoData = false,
   onDragEnd: externalDragEnd,
-  testId = 'dashboard-page' }: DashboardPageProps) {
+  testId = 'dashboard-page',
+  liveRouteState,
+  liveSource }: DashboardPageProps) {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
   // Capture the route path at mount time — KeepAlive keeps this component alive
   // across navigations, so we need to know which route we belong to.
   const mountedRouteRef = useRef(location.pathname)
-  const { getStatValue: getUniversalStatValue } = useUniversalStats()
+  const { getStatValue: getUniversalStatValue } = useCoreUniversalStats()
   const Icon = getIcon(icon)
 
   // Combine refresh with indicator
@@ -448,7 +454,13 @@ export function DashboardPage({
     // fixed-position children (FAB, customizer, modals) must live OUTSIDE it
     // to avoid clipping when ancestors create a new containing block (issue 8464).
     <>
-      <div ref={dashboardRef} className="pt-4 min-w-0 max-w-full overflow-x-hidden" data-testid={testId}>
+      <div
+        ref={dashboardRef}
+        className="pt-4 min-w-0 max-w-full overflow-x-hidden"
+        data-testid={testId}
+        data-live-route-state={liveRouteState}
+        data-live-source={liveSource}
+      >
         {/* Header */}
         <DashboardHeader
           title={title}

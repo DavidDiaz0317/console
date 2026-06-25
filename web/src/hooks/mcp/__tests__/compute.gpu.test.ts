@@ -167,6 +167,18 @@ describe('useGPUNodes', () => {
     expect(result.current.nodes[0].name).toBe('gpu-1')
   })
 
+  it('skips optional GPU endpoint in cluster-backed mode', async () => {
+    localStorage.setItem('kc_agent_backend_preference', 'kagenti')
+    globalThis.fetch = vi.fn()
+
+    const { result } = renderHook(() => useGPUNodes())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 3000 })
+    expect(result.current.nodes).toEqual([])
+    expect(mockFetchSSE).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/mcp/gpu-nodes?')
+  })
+
   it('polls every GPU_POLL_INTERVAL_MS and clears interval on unmount', async () => {
     vi.useFakeTimers()
     mockFetchSSE.mockResolvedValue([])

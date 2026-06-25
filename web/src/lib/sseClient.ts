@@ -16,6 +16,10 @@
 import { STORAGE_KEY_TOKEN } from './constants'
 import { emitSseAuthFailure } from './analytics'
 import { isDemoMode } from './demoMode'
+import {
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from './rateLimitBackoff'
 
 /** Session-level dedup: only emit SSE auth failure once per URL path per page load */
 const sseAuthFailureEmitted = new Set<string>()
@@ -53,7 +57,7 @@ const SSE_RECONNECT_BACKOFF_FACTOR = 2
 /** Maximum number of reconnect attempts before giving up */
 const SSE_MAX_RECONNECT_ATTEMPTS = 5
 /** HTTP statuses that indicate the SSE endpoint is unavailable for this route. */
-const SSE_NON_RETRYABLE_STATUS_CODES = [400, 401, 404, 503]
+const SSE_NON_RETRYABLE_STATUS_CODES = [400, 401, 404, 429, 503]
 
 // Dedup: prevent duplicate concurrent SSE requests to the same URL
 const inflightRequests = new Map<string, Promise<unknown[]>>()
@@ -125,6 +129,12 @@ function parseSSEChunk(
  */
 export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
   const { url, params, onClusterData, onClusterError, onDone, itemsKey, signal } = options
+
+  try {
+    throwIfRateLimited()
+  } catch (error) {
+    return Promise.reject(error)
+  }
 
   // In demo mode, skip SSE connection attempts entirely to prevent retry errors (#12596)
   if (isDemoMode()) {
@@ -244,6 +254,15 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
      * reconnects after a silent token refresh use the fresh token (#3897).
      */
     const attempt = (attemptNumber: number): void => {
+      try {
+        throwIfRateLimited()
+      } catch (error) {
+        clearTimeout(timeoutId)
+        cleanup(/* wasAborted */ true)
+        reject(error)
+        return
+      }
+
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
       }
@@ -258,6 +277,9 @@ export function fetchSSE<T>(options: SSEFetchOptions<T>): Promise<T[]> {
       })
         .then((response) => {
           if (!response.ok) {
+            if (response.status === 429) {
+              setRateLimitBackoffFromResponse(response)
+            }
             throw new Error(`SSE fetch failed: ${response.status}`)
           }
           if (!response.body) {

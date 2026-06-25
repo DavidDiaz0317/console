@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
-import { establishLiveCanarySession, liveCanaryUrl } from '../helpers/liveSiteAssertions'
+import { establishLiveCanarySession, liveCanaryUrl, readGroundtruthFieldNumbers } from '../helpers/liveSiteAssertions'
 
 function readPositiveIntEnv(name: string, fallback: number) {
   const rawValue = process.env[name]
@@ -15,11 +15,16 @@ const EXPECTED_LIVE_CONTEXTS = readPositiveIntEnv('LIVE_CLUSTER_EXPECTED_CONTEXT
 const EXPECTED_OCI_OKE_READY_NODES = readPositiveIntEnv('LIVE_CLUSTER_EXPECTED_READY_NODES', 6)
 
 async function expectGroundTruthField(page: Page, field: string, expected: number) {
-  const marker = page.locator(`[data-groundtruth-field="${field}"]`)
-  await expect(marker, `missing data-groundtruth-field="${field}" marker`).toHaveCount(1)
-  await expect(marker.first(), `data-groundtruth-field="${field}" should match live Kubernetes ground truth`).toHaveText(String(expected), {
+  await expect.poll(async () => {
+    const values = await readGroundtruthFieldNumbers(page, field)
+    const uniqueValues = [...new Set(values)]
+    if (values.length === 0) return `missing-or-unparseable:${field}`
+    if (uniqueValues.length > 1) return `duplicate-disagreement:${uniqueValues.join(',')}`
+    return uniqueValues[0] === expected ? 'ok' : `expected:${expected}:actual:${uniqueValues[0]}`
+  }, {
+    message: `data-groundtruth-field="${field}" should match live Kubernetes ground truth`,
     timeout: 20_000,
-  })
+  }).toBe('ok')
 }
 
 test('cluster dashboard can be checked against live Kubernetes ground truth @intensive @groundtruth @invariant:cluster-dashboard-groundtruth-match', async ({ page }, testInfo) => {
@@ -57,6 +62,7 @@ test('cluster dashboard can be checked against live Kubernetes ground truth @int
   await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
   await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
   await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
+  await expectGroundTruthField(page, 'pods-total', groundTruth.pods.total)
   await expectGroundTruthField(page, 'pods-running', groundTruth.pods.running)
   await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
   await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)

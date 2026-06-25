@@ -316,6 +316,7 @@ import {
   getToken,
   getClusterFetcher,
   MAX_PREFETCH_PODS,
+  isClusterModeBackend,
 } from '../lib/cache/fetcherUtils'
 import {
   fetchPodIssuesViaAgent,
@@ -383,6 +384,10 @@ export const coreFetchers = {
     return []
   },
   deployments: async (): Promise<Deployment[]> => {
+    if (isClusterModeBackend()) {
+      const data = await fetchBackendAPI<{ deployments: Deployment[] }>('deployments', {})
+      return data.deployments || []
+    }
     if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
       return fetchDeploymentsViaAgent()
     }

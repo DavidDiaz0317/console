@@ -7,6 +7,7 @@ import type {
   EvidenceCollectors,
   LiveUiFailureEvidence,
   NetworkEvidenceEntry,
+  RateLimitEvidenceEntry,
   VisualLoginEvidence,
 } from './evidenceTypes'
 
@@ -27,6 +28,8 @@ export function installEvidenceCollectors(page: Page): EvidenceCollectors {
     pageErrors: [],
     failedRequests: [],
     errorResponses: [],
+    requestCountsByEndpoint: {},
+    rateLimitEvents: [],
   }
 
   page.on('console', (message) => {
@@ -43,6 +46,20 @@ export function installEvidenceCollectors(page: Page): EvidenceCollectors {
     collectors.pageErrors.push(sanitizeText(error.stack || error.message))
   })
 
+  const endpointKey = (method: string, rawUrl: string): string => {
+    try {
+      const url = new URL(rawUrl)
+      return `${method} ${url.pathname}`
+    } catch {
+      return `${method} ${rawUrl.replace(/\?.*$/, '')}`
+    }
+  }
+
+  page.on('request', request => {
+    const key = endpointKey(request.method(), request.url())
+    collectors.requestCountsByEndpoint[key] = (collectors.requestCountsByEndpoint[key] || 0) + 1
+  })
+
   page.on('requestfailed', request => {
     collectors.failedRequests.push({
       url: sanitizeText(request.url()),
@@ -53,11 +70,20 @@ export function installEvidenceCollectors(page: Page): EvidenceCollectors {
 
   page.on('response', response => {
     if (response.status() >= 400) {
-      collectors.errorResponses.push({
+      const entry = {
         url: sanitizeText(response.url()),
         method: response.request().method(),
         status: response.status(),
-      })
+      }
+      collectors.errorResponses.push(entry)
+      if (response.status() === 429) {
+        const headers = response.headers()
+        const rateLimitEntry: RateLimitEvidenceEntry = {
+          ...entry,
+          retryAfter: sanitizeText(headers['retry-after'] || ''),
+        }
+        collectors.rateLimitEvents.push(rateLimitEntry)
+      }
     }
   })
 
@@ -144,6 +170,8 @@ export async function collectEvidence(options: {
     network: {
       failed: collectors.failedRequests,
       errorResponses: collectors.errorResponses,
+      requestCountsByEndpoint: collectors.requestCountsByEndpoint,
+      rateLimitEvents: collectors.rateLimitEvents,
     },
     domSnippet: await selectedDomSnippet(page),
     boundingBoxes: options.boundingBoxes ? await collectBoundingBoxes(options.boundingBoxes) : undefined,

@@ -18,6 +18,8 @@
 // was captured in the same closure as the subscribe call.
 // ---------------------------------------------------------------------------
 
+import { isRateLimitBackoffActive } from '../../lib/rateLimitBackoff'
+
 /** Auto-incrementing subscriber ID to avoid reference-identity issues */
 let nextSubscriberId = 0
 
@@ -70,6 +72,8 @@ export function subscribePolling(
   // Start the interval if this is the first subscriber
   if (entry.subscribers.size === 1 && entry.intervalId === null) {
     entry.intervalId = setInterval(() => {
+      if (isRateLimitBackoffActive()) return
+
       // Notify all current subscribers on each tick
       const current = pollingRegistry.get(key)
       if (current) {

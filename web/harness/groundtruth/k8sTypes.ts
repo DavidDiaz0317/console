@@ -12,6 +12,7 @@ export interface K8sGroundTruth {
     notReady: number
   }
   pods: {
+    total: number
     running: number
     pending: number
     failed: number

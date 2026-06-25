@@ -6,10 +6,13 @@ import { assertNoCriticalRuntimeErrors } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
   assertGroundtruthFields,
+  assertLiveApiUiFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
+  assertNoPositiveLiveCountContradictions,
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
+  collectLiveApiFacts,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -66,12 +69,25 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
       'dashboard-healthy-clusters': groundTruth.contexts.reachable,
       'dashboard-error-clusters': 0,
       'dashboard-nodes-total': groundTruth.nodes.total,
-      'dashboard-pods-total': groundTruth.pods.running,
+      'dashboard-pods-total': groundTruth.pods.total,
       'dashboard-namespaces-total': groundTruth.namespaces.total,
     }, '/')
+    const apiFacts = await collectLiveApiFacts(page, 'dashboard')
+    await assertLiveApiUiFields(page, apiFacts, '/', {
+      'dashboard-clusters-total': apiFacts.clusters.total,
+      'dashboard-healthy-clusters': apiFacts.clusters.healthy,
+      'dashboard-nodes-total': apiFacts.clusters.nodesTotal,
+      'dashboard-pods-total': apiFacts.clusters.podsTotal,
+      'dashboard-namespaces-total': apiFacts.namespaces.total,
+    })
+    await assertNoPositiveLiveCountContradictions(page, '/', {
+      clusters: groundTruth.contexts.reachable,
+      namespaces: groundTruth.namespaces.total,
+      deployments: groundTruth.deployments.total,
+    })
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
     await assertNoCriticalRuntimeErrors(collectors, liveDashboardExpectedConsoleNoise)
 
     writeLiveSiteReport({
@@ -87,7 +103,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
         healthyClusters: groundTruth.contexts.reachable,
         errorClusters: 0,
         nodes: groundTruth.nodes.total,
-        pods: groundTruth.pods.running,
+        pods: groundTruth.pods.total,
         namespaces: groundTruth.namespaces.total,
       },
     })

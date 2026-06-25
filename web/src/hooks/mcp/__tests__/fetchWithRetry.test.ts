@@ -21,6 +21,7 @@ const mockAgentFetch = agentFetch as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   vi.useFakeTimers({ shouldAdvanceTime: true })
 })
 
@@ -82,6 +83,19 @@ describe('fetchWithRetry — 4xx (no retry)', () => {
     const result = await fetchWithRetry('https://api.test/data')
     expect(result).toBe(mockResponse)
     expect(mockAgentFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('records backoff for real 429 responses', async () => {
+    const mockResponse = new Response('', {
+      status: 429,
+      headers: { 'Retry-After': '18' },
+    })
+    mockAgentFetch.mockResolvedValue(mockResponse)
+
+    const result = await fetchWithRetry('https://api.test/data')
+
+    expect(result).toBe(mockResponse)
+    expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
   })
 })
 
@@ -257,10 +271,11 @@ describe('fetchWithRetry — timers and abort wiring', () => {
       initialBackoffMs: 5,
       maxRetries: 1,
     })
+    const assertion = expect(promise).rejects.toThrow('The operation was aborted')
 
     await vi.runAllTimersAsync()
 
-    await expect(promise).rejects.toThrow('The operation was aborted')
+    await assertion
     expect(mockAgentFetch).toHaveBeenCalledTimes(2)
   })
 

@@ -115,13 +115,18 @@ export function Nodes() {
       case 'clusters':
         return { value: reachableClusters.length, sublabel: t('common:common.clusters'), onClick: () => drillToAllClusters(), isClickable: reachableClusters.length > 0 }
       case 'healthy':
-        return { value: totalNodes, sublabel: t('common:nodes.totalNodes'), onClick: () => drillToAllNodes(), isClickable: totalNodes > 0 }
+        return { value: healthyNodes, sublabel: t('common:nodes.readyNodes', 'ready nodes'), onClick: () => drillToAllNodes(), isClickable: healthyNodes > 0 }
       default:
         return { value: 0 }
     }
   }
 
   const getStatValue = getDashboardStatValue
+  const liveRouteState = error
+    ? 'unavailable'
+    : reachableClusters.length > 0
+      ? 'loaded'
+      : 'empty'
 
   return (
     <DashboardPage
@@ -151,6 +156,8 @@ export function Nodes() {
       isRefreshing={dataRefreshing}
       lastUpdated={lastUpdated}
       hasData={reachableClusters.length > 0}
+      liveRouteState={liveRouteState}
+      liveSource={reachableClusters.length > 0 ? 'k8s' : 'unknown'}
       emptyState={{
         title: t('common:nodes.dashboardTitle'),
         description: (
@@ -167,6 +174,12 @@ export function Nodes() {
         )
       }}
     >
+      <div className="sr-only" aria-hidden="true" data-testid="nodes-groundtruth-markers">
+        <span data-groundtruth-field="nodes-total">{totalNodes}</span>
+        <span data-groundtruth-field="nodes-ready">{healthyNodes}</span>
+        <span data-groundtruth-field="pods-total">{totalPods}</span>
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">

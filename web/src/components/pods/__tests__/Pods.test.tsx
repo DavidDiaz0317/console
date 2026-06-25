@@ -43,6 +43,8 @@ vi.mock('../../../hooks/useTokenUsage', () => ({
   },
 }))
 
+let mockClusters: Array<{ name: string; podCount?: number; runningPods?: number }> = []
+
 // Mock DashboardPage to isolate the component under test from the deeply nested dependency tree
 vi.mock('../../../lib/dashboards/DashboardPage', () => ({
   DashboardPage: ({ title, subtitle, beforeCards, children }: { title: string; subtitle?: string; beforeCards?: React.ReactNode; children?: React.ReactNode }) => (
@@ -57,8 +59,8 @@ vi.mock('../../../lib/dashboards/DashboardPage', () => ({
 
 vi.mock('../../../hooks/useMCP', () => ({
   useClusters: () => ({
-    clusters: [],
-    deduplicatedClusters: [],
+    clusters: mockClusters,
+    deduplicatedClusters: mockClusters,
     isLoading: false,
     isRefreshing: false,
     lastUpdated: null,
@@ -108,6 +110,7 @@ vi.mock('../../../hooks/useDrillDown', () => ({
 }))
 
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({ getStatValue: () => ({ value: 0 }) }),
   createMergedStatValueGetter: () => () => ({ value: 0 }),
 }))
@@ -196,6 +199,7 @@ describe('Pods Component', () => {
 
   beforeEach(() => {
     showToastSpy.mockClear()
+    mockClusters = []
     mockPodIssues = [{ name: 'my-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Error', reason: 'CrashLoopBackOff', restarts: 3, issues: [] }]
     mockBackendHealth.status = 'connected'
     mockBackendHealth.inCluster = false
@@ -242,6 +246,21 @@ describe('Pods Component', () => {
     // After i18n PR #10487 window.confirm was replaced with ConfirmDialog
     expect(screen.getByTestId('confirm-dialog')).toBeTruthy()
     expect(screen.getByText('pods.confirmDeleteTitle')).toBeTruthy()
+  })
+
+  it('exposes semantic pod count markers for live canary assertions', () => {
+    mockClusters = [{ name: 'ctx/prod', podCount: 3, runningPods: 1 }]
+    mockPodIssues = [
+      { name: 'pending-pod', namespace: 'default', cluster: 'ctx/prod', status: 'Pending', reason: 'Pending', restarts: 0, issues: [] },
+    ]
+
+    renderPods()
+
+    const markerText = (field: string) => document.querySelector(`[data-groundtruth-field="${field}"]`)?.textContent
+    expect(markerText('pods-total')).toBe('3')
+    expect(markerText('pods-running')).toBe('1')
+    expect(markerText('pods-pending')).toBe('1')
+    expect(markerText('pods-issues')).toBe('1')
   })
 
 

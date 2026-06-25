@@ -140,6 +140,23 @@ describe('sseClient', () => {
       expect(headers.Authorization).toBe('Bearer jwt-123')
     })
 
+    it('records backoff and does not retry when the stream is rate limited', async () => {
+      vi.mocked(fetch).mockResolvedValue(new Response('', {
+        status: 429,
+        headers: { 'Retry-After': '25' },
+      }))
+
+      const result = await fetchSSE({
+        url: `/api/rate-limited-${testId++}`,
+        itemsKey: 'items',
+        onClusterData: vi.fn(),
+      })
+
+      expect(result).toEqual([])
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(Number(localStorage.getItem('kc-api-rate-limit-until'))).toBeGreaterThan(Date.now())
+    })
+
     it('appends query params to URL', async () => {
       vi.mocked(fetch).mockResolvedValue(makeSSEResponse([
         { event: 'done', data: {} },

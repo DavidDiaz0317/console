@@ -22,8 +22,10 @@ import { sanitizeForPrompt } from '../../../hooks/useMissionPromptBuilder'
 import { useSidebarConfig, DISCOVERABLE_DASHBOARDS } from '../../../hooks/useSidebarConfig'
 import { scrollToCard } from '../../../lib/scrollToCard'
 import { useFeatureHints } from '../../../hooks/useFeatureHints'
+import { FeatureHintTooltip } from '../../ui/FeatureHintTooltip'
 import { emitGlobalSearchOpened, emitGlobalSearchQueried, emitGlobalSearchSelected, emitGlobalSearchAskAI } from '../../../lib/analytics'
-import { useModalState } from '../../../lib/modals'
+import { useEscapeLayer, useModalState } from '../../../lib/modals'
+import { STORAGE_KEY_AUTONOMOUS_BANNER_DISMISSED } from '../../../lib/constants/storage'
 
 /** Routes for dashboards that are discoverable but not shown by default in the sidebar */
 const DISCOVERABLE_ROUTES = new Set(DISCOVERABLE_DASHBOARDS.map(d => d.href))
@@ -32,6 +34,14 @@ const DISCOVERABLE_ROUTES = new Set(DISCOVERABLE_DASHBOARDS.map(d => d.href))
 const RESULT_TYPE_CHIP_CLASS = 'inline-flex shrink-0 items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-foreground'
 const AI_MISSION_TITLE_MAX_LENGTH = 50
 const AI_MISSION_TITLE_TRUNCATED_LENGTH = 47
+
+function isAutonomousBannerVisible(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY_AUTONOMOUS_BANNER_DISMISSED) !== 'true'
+  } catch {
+    return false
+  }
+}
 
 const CATEGORY_CONFIG: Record<SearchCategory, { label: string; icon: typeof Server }> = {
   page: { label: 'Dashboards', icon: LayoutDashboard },
@@ -215,6 +225,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
   const { config: sidebarConfig } = useSidebarConfig()
   const [searchQuery, setSearchQuery] = useState('')
   const { isOpen: isSearchOpen, open: openSearch, close: closeSearch } = useModalState()
+  const isTopEscapeLayer = useEscapeLayer(isSearchOpen)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -225,6 +236,10 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
   const flatResultsRef = useRef<SearchItem[]>([])
   const totalCountRef = useRef(0)
   const cmdKHint = useFeatureHints('cmd-k')
+  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || '')
+  const searchShortcut = isMac ? '⌘K' : 'Ctrl+K'
+
+  const autonomousBannerVisible = isAutonomousBannerVisible()
 
   // Whether the results panel is active (mounted).
   // The panel -- and its expensive useSearchIndex hook -- only mount when
@@ -263,6 +278,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
       initialPrompt: sanitizedQuery })
 
     setSearchQuery('')
+    setSelectedIndex(0)
     closeSearch()
   }, [searchQuery, startMission, closeSearch])
 
@@ -315,6 +331,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
       }
     }
     setSearchQuery('')
+    setSelectedIndex(0)
     closeSearch()
   }, [sidebarHrefs, location.pathname, navigate, setActiveMission, openSidebar, closeSearch])
 
@@ -374,6 +391,9 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
           handleSelect(flatResults[selectedIndex], selectedIndex)
         }
       } else if (event.key === 'Escape') {
+        if (!isTopEscapeLayer()) return
+        event.preventDefault()
+        event.stopPropagation()
         closeSearch()
         inputRef.current?.blur()
       }
@@ -388,7 +408,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
       document.removeEventListener('keydown', handleKeyDown, true)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isSearchOpen, isResultsPanelActive, selectedIndex, handleSelect, handleAskAI, openSearch, closeSearch])
+  }, [isSearchOpen, isResultsPanelActive, selectedIndex, handleSelect, handleAskAI, openSearch, closeSearch, isTopEscapeLayer])
 
   useEffect(() => {
     if (previousPathnameRef.current !== location.pathname) {
@@ -401,11 +421,6 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
 
     previousPathnameRef.current = location.pathname
   }, [location.pathname, closeSearch])
-
-  // Reset selected index when results change
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [searchQuery])
 
   // Scroll selected item into view
   useEffect(() => {
@@ -431,6 +446,7 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
           value={searchQuery}
           onChange={e => {
             setSearchQuery(e.target.value)
+            setSelectedIndex(0)
             openSearch()
           }}
           onFocus={() => { openSearch(); cmdKHint.action(); emitGlobalSearchOpened('click') }}
@@ -441,6 +457,15 @@ export function SearchDropdown({ autoFocusOnMount = false }: SearchDropdownProps
         <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground bg-secondary rounded" aria-hidden="true">
           <Command className="w-3 h-3" /><span>K</span>
         </kbd>
+
+        {/* Cmd+K feature hint tooltip */}
+        {cmdKHint.isVisible && !isSearchOpen && !autonomousBannerVisible && (
+          <FeatureHintTooltip
+            message={`Press ${searchShortcut} to search dashboards, cards, clusters, and more`}
+            onDismiss={cmdKHint.dismiss}
+            placement="bottom"
+          />
+        )}
 
         {/* Search results panel -- only mounts when query is non-empty.
             This ensures useSearchIndex (and its 7 API hooks) never run

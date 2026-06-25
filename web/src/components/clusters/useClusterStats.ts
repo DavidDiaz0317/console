@@ -96,7 +96,7 @@ export function useClusterStats({
       totalMemoryGB: globalFilteredClusters.reduce((sum, c) => sum + (c.memoryGB || 0), 0),
       totalStorageGB: globalFilteredClusters.reduce((sum, c) => sum + (c.storageGB || 0), 0),
       totalPods: globalFilteredClusters.reduce((sum, c) => sum + (c.podCount || 0), 0),
-      runningPods: globalFilteredClusters.reduce((sum, c) => sum + (c.runningPods ?? c.podCount ?? 0), 0),
+      runningPods: globalFilteredClusters.reduce((sum, c) => sum + (c.runningPods ?? 0), 0),
       pendingPods: globalFilteredClusters.reduce((sum, c) => sum + (c.pendingPods ?? 0), 0),
       crashLoopBackOffPods: globalFilteredClusters.reduce((sum, c) => sum + (c.crashLoopBackOffPods ?? 0), 0),
       totalGPUs,

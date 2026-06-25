@@ -5,6 +5,11 @@ import {
   MCP_HOOK_TIMEOUT_MS,
 } from '../../lib/constants'
 import { isLocalAgentSuppressed } from '../../lib/constants/network'
+import {
+  RateLimitError,
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../../lib/rateLimitBackoff'
 import { resetAuthFailed } from './sharedImpl.connection'
 
 // Re-export as a live getter. LOCAL_AGENT_HTTP_URL is a mutable `let` that
@@ -122,6 +127,12 @@ export function _resetAgentTokenState(): void {
  * WebSocket connections open before token fetch completes (#13034).
  */
 export function getAgentToken(): Promise<string> {
+  try {
+    throwIfRateLimited()
+  } catch (error) {
+    return Promise.reject(error)
+  }
+
   if (isDemoMode() || isNetlifyDeployment || isLocalAgentSuppressed()) {
     // Remove stale cached token so it doesn't leak into SSE/WS auth headers
     clearAgentToken()
@@ -139,7 +150,13 @@ export function getAgentToken(): Promise<string> {
       credentials: 'include',
       signal: AbortSignal.timeout(AGENT_TOKEN_FETCH_TIMEOUT_MS),
     })
-      .then(r => r.ok ? r.json() : { token: '' })
+      .then(r => {
+        if (r.status === 429) {
+          const backoff = setRateLimitBackoffFromResponse(r)
+          throw new RateLimitError(backoff.retryAfter)
+        }
+        return r.ok ? r.json() : { token: '' }
+      })
       .then((data: { token?: string }) => {
         const token = data.token || ''
         if (token) {
@@ -155,6 +172,10 @@ export function getAgentToken(): Promise<string> {
         return token
       })
       .catch((err) => {
+        if (err instanceof RateLimitError) {
+          agentTokenPromise = null
+          throw err
+        }
         agentTokenNegativeCacheUntil = Date.now() + AGENT_TOKEN_NEGATIVE_CACHE_MS
         if (!agentTokenFailureEmitted) {
           agentTokenFailureEmitted = true
@@ -173,6 +194,8 @@ export function getAgentToken(): Promise<string> {
  * requests to kc-agent are rejected when KC_AGENT_TOKEN is configured.
  */
 export async function agentFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  throwIfRateLimited()
+
   const token = await getAgentToken()
   const headers = new Headers(init?.headers)
   if (token && !headers.has('Authorization')) {
@@ -188,6 +211,9 @@ export async function agentFetch(input: RequestInfo | URL, init?: RequestInit): 
   // Use caller-provided signal, or fall back to a default timeout
   const signal = init?.signal ?? AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS)
   const response = await fetch(input, { ...init, headers, signal })
+  if (response.status === 429) {
+    setRateLimitBackoffFromResponse(response)
+  }
 
   // kc-agent generates a new token on each restart. If we get 401 and we
   // actually injected our token (caller had no pre-existing Authorization

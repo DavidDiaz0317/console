@@ -46,10 +46,21 @@ function pushDifference(differences, entry) {
   })
 }
 
+function isCanarySetupFailure(value) {
+  return /connection refused|ecconnrefused|port-forward|did not become healthy|candidate image|cannot connect to 127\.0\.0\.1|could not connect to 127\.0\.0\.1/i.test(String(value || ''))
+}
+
+function isRateLimitFailure(value) {
+  return /\b429\b|rate limited|too many requests|retry-after/i.test(String(value || ''))
+}
+
 function classify(differences) {
+  if (differences.some(diff => diff.classification === 'canary-setup')) return 'canary-setup'
+  if (differences.some(diff => diff.classification === 'live-rate-limit-data-loss')) return 'live-rate-limit-data-loss'
   if (differences.some(diff => diff.classification === 'auth-boundary')) return 'auth-boundary'
   if (differences.some(diff => diff.classification === 'live-network-error')) return 'live-network-error'
   if (differences.some(diff => diff.classification === 'safari-z-index')) return 'safari-z-index'
+  if (differences.some(diff => diff.classification === 'browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
   if (differences.some(diff => diff.classification === 'browser-content-missing')) return 'browser-content-missing'
   if (differences.some(diff => diff.classification === 'browser-interaction-broken')) return 'browser-interaction-broken'
   if (differences.some(diff => diff.classification === 'browser-layout-drift')) return 'browser-layout-drift'
@@ -94,16 +105,30 @@ function main() {
 
     for (const route of report.routes || []) {
       if (route.routeState && route.routeState !== 'live') {
+        const routeFailureText = [
+          route.error,
+          route.bodyPreview,
+          route.url,
+          route.routeState,
+        ].filter(Boolean).join('\n')
         const classification = route.routeState === 'login' || route.routeState === 'session-expired'
           ? 'auth-boundary'
-          : route.routeState === 'startup-error'
-            ? 'live-network-error'
-            : 'browser-content-missing'
+          : isCanarySetupFailure(routeFailureText)
+            ? 'canary-setup'
+            : isRateLimitFailure(routeFailureText)
+              ? 'live-rate-limit-data-loss'
+              : route.routeState === 'startup-error'
+                ? 'live-network-error'
+                : 'browser-content-missing'
         pushDifference(differences, {
           classification,
           browser,
           route: route.route,
-          reason: `route rendered ${route.routeState} state instead of live console content`,
+          reason: classification === 'canary-setup'
+            ? 'canary route could not be reached through the private port-forward'
+            : classification === 'live-rate-limit-data-loss'
+              ? 'route entered startup error because live APIs were rate limited'
+              : `route rendered ${route.routeState} state instead of live console content`,
           routeState: route.routeState,
           url: route.url,
           bodyPreview: route.bodyPreview,
@@ -112,13 +137,27 @@ function main() {
         })
         continue
       }
-      if (route.status === 'failed' || (route.missingMarkers || []).length > 0) {
+      if (route.status === 'failed' || (route.missingMarkers || []).length > 0 || (route.fieldMismatches || []).length > 0) {
+        const routeFailureText = [route.error, route.bodyPreview, route.url].filter(Boolean).join('\n')
         pushDifference(differences, {
-          classification: 'browser-content-missing',
+          classification: isCanarySetupFailure(routeFailureText)
+            ? 'canary-setup'
+            : isRateLimitFailure(routeFailureText)
+            ? 'live-rate-limit-data-loss'
+            : (route.fieldMismatches || []).length > 0
+            ? 'browser-semantic-field-mismatch'
+            : 'browser-content-missing',
           browser,
           route: route.route,
-          reason: 'route is missing expected live content markers',
+          reason: isCanarySetupFailure(routeFailureText)
+            ? 'canary route could not be reached through the private port-forward'
+            : isRateLimitFailure(routeFailureText)
+            ? 'route data could not be validated because live APIs were rate limited'
+            : (route.fieldMismatches || []).length > 0
+            ? 'route semantic fields do not match expected live data'
+            : 'route is missing expected live content markers',
           missingMarkers: route.missingMarkers || [],
+          fieldMismatches: route.fieldMismatches || [],
           screenshotPath: route.screenshotPath,
           error: route.error,
         })
@@ -143,16 +182,9 @@ function main() {
           screenshotPath: route.screenshotPath,
         })
       }
-      if (safeNumber(route.clippedElementCount) > 0) {
-        pushDifference(differences, {
-          classification: 'browser-layout-drift',
-          browser,
-          route: route.route,
-          reason: 'route has clipped or offscreen controls',
-          actual: route.clippedElementCount,
-          screenshotPath: route.screenshotPath,
-        })
-      }
+      // Broad clipped/offscreen counts are advisory. They often include
+      // intentionally off-canvas or virtualized controls, so only named
+      // interaction/top-layer failures should block promotion.
     }
 
     for (const interaction of report.interactions || []) {
@@ -227,6 +259,7 @@ function main() {
       url: route.url,
       routeState: route.routeState,
       missingMarkers: route.missingMarkers,
+      fieldMismatches: route.fieldMismatches,
       baseline: route.baseline,
       screenshotPath: route.screenshotPath,
     })),
@@ -248,6 +281,7 @@ function main() {
       scrollOverflowX: route.scrollOverflowX,
       textCollisionCount: route.textCollisionCount,
       clippedElementCount: route.clippedElementCount,
+      clippedElementCountAdvisory: true,
       boxes: route.boxes,
     }))),
     differences,

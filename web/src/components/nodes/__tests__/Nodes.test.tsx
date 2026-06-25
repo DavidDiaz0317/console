@@ -22,13 +22,14 @@ vi.mock('../../../hooks/useTokenUsage', () => ({
 }))
 
 vi.mock('../../../lib/dashboards/DashboardPage', () => ({
-  DashboardPage: ({ title, subtitle, children, getStatValue }: { title: string; subtitle?: string; children?: React.ReactNode; getStatValue?: (id: string) => { value: any; progressValue?: number; max?: number } }) => (
+  DashboardPage: ({ title, subtitle, children, getStatValue }: { title: string; subtitle?: string; children?: React.ReactNode; getStatValue?: (id: string) => { value: unknown; progressValue?: number; max?: number } }) => (
     <div data-testid="dashboard-page" data-title={title} data-subtitle={subtitle}>
       <h1>{title}</h1>
       {subtitle && <p>{subtitle}</p>}
       <div data-testid="stat-gpus">{getStatValue?.('gpus')?.value}</div>
       <div data-testid="stat-nodes-progress">{getStatValue?.('nodes')?.progressValue ?? ''}</div>
       <div data-testid="stat-nodes-max">{getStatValue?.('nodes')?.max ?? ''}</div>
+      <div data-testid="stat-ready-nodes">{getStatValue?.('healthy')?.value ?? ''}</div>
       {children}
     </div>
   ),
@@ -61,8 +62,12 @@ vi.mock('../../../hooks/useDrillDown', () => ({
 }))
 
 vi.mock('../../../hooks/useUniversalStats', () => ({
+  useCoreUniversalStats: () => ({ getStatValue: () => ({ value: 0 }), isLoading: false, clusters: [] }),
   useUniversalStats: () => ({ getStatValue: () => ({ value: 0 }) }),
-  createMergedStatValueGetter: (primary: Function, fallback: Function) => (id: string) => primary(id) ?? fallback(id),
+  createMergedStatValueGetter: (
+    primary: (id: string) => unknown,
+    fallback: (id: string) => unknown,
+  ) => (id: string) => primary(id) ?? fallback(id),
 }))
 
 vi.mock('react-i18next', () => ({
@@ -102,7 +107,7 @@ describe('Nodes Component', () => {
         { name: 'gpu-safe', cluster: 'c1', gpuCount: 4, gpuAllocated: 0, taints: [], acceleratorType: 'GPU' },
         { name: 'gpu-tainted', cluster: 'c1', gpuCount: 4, gpuAllocated: 0, taints: [{ key: 'special', value: 'yes', effect: 'NoSchedule' }], acceleratorType: 'GPU' },
       ],
-    } as any)
+    } as unknown as ReturnType<typeof useClusters>)
 
     renderNodes()
     // By default, only untainted GPUs should be counted (4)
@@ -120,10 +125,33 @@ describe('Nodes Component', () => {
       lastUpdated: null,
       refetch: vi.fn(),
       error: null,
-    } as any)
+    } as unknown as ReturnType<typeof useClusters>)
 
     renderNodes()
     expect(screen.getByTestId('stat-nodes-progress').textContent).toBe('1')
     expect(screen.getByTestId('stat-nodes-max').textContent).toBe('1')
+  })
+
+  it('exposes ready node counts through stats and semantic markers', () => {
+    vi.mocked(useClusters).mockReturnValue({
+      deduplicatedClusters: [
+        { name: 'ready', reachable: true, healthy: true, nodeCount: 2, podCount: 8 },
+        { name: 'not-ready', reachable: true, healthy: false, nodeCount: 1, podCount: 4 },
+      ],
+      clusters: [],
+      isLoading: false,
+      isRefreshing: false,
+      lastUpdated: null,
+      refetch: vi.fn(),
+      error: null,
+    } as unknown as ReturnType<typeof useGPUNodes>)
+
+    renderNodes()
+
+    const markerText = (field: string) => document.querySelector(`[data-groundtruth-field="${field}"]`)?.textContent
+    expect(screen.getByTestId('stat-ready-nodes').textContent).toBe('2')
+    expect(markerText('nodes-total')).toBe('3')
+    expect(markerText('nodes-ready')).toBe('2')
+    expect(markerText('pods-total')).toBe('12')
   })
 })

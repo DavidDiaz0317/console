@@ -52,6 +52,7 @@ export function Pods() {
   // State for the custom delete-confirmation dialog
   const deleteConfirm = useModal()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [pendingDeleteName, setPendingDeleteName] = useState('')
   const pendingDeleteRef = useRef<PendingDeleteTarget | null>(null)
 
   const {
@@ -113,6 +114,7 @@ export function Pods() {
       return
     }
     pendingDeleteRef.current = { cluster, namespace, name }
+    setPendingDeleteName(name)
     deleteConfirm.open()
   }
 
@@ -124,6 +126,7 @@ export function Pods() {
       showToast(backendUnavailableMessage, 'error')
       deleteConfirm.close()
       pendingDeleteRef.current = null
+      setPendingDeleteName('')
       return
     }
     setIsDeleting(true)
@@ -139,6 +142,7 @@ export function Pods() {
       setIsDeleting(false)
       deleteConfirm.close()
       pendingDeleteRef.current = null
+      setPendingDeleteName('')
     }
   }, [backendActionUnavailable, backendUnavailableMessage, showToast, t, refetchPodIssues, deleteConfirm])
 
@@ -170,6 +174,10 @@ export function Pods() {
     const totalPods = visibleClusters.reduce((sum, c) => sum + (c.podCount || 0), 0)
     // Dedup issue rows by pod name to avoid under-counting healthy pods (#7348)
     const uniqueIssuePods = new Set(filteredPodIssues.map(p => `${p.cluster}/${p.namespace}/${p.name}`))
+    const hasRunningPodCounts = visibleClusters.length > 0 && visibleClusters.every(c => typeof c.runningPods === 'number')
+    const runningPods = hasRunningPodCounts
+      ? visibleClusters.reduce((sum, c) => sum + (c.runningPods || 0), 0)
+      : Math.max(0, totalPods - uniqueIssuePods.size)
     const issueCount = filteredPodIssues.length
     const pendingCount = filteredPodIssues.filter(p => p.reason === 'Pending' || p.status === 'Pending').length
     const restartCount = filteredPodIssues.filter(p => (p.restarts || 0) > 5).length
@@ -177,7 +185,7 @@ export function Pods() {
 
     return {
       totalPods,
-      healthy: Math.max(0, totalPods - uniqueIssuePods.size),
+      healthy: runningPods,
       issues: issueCount,
       pending: pendingCount,
       restarts: restartCount,
@@ -207,6 +215,13 @@ export function Pods() {
 
   // Merged getter: dashboard-specific values first, then universal fallback
   const getStatValue = getDashboardStatValue
+  const liveRouteState = backendActionUnavailable
+    ? 'unavailable'
+    : stats.totalPods === 0 && filteredPodIssues.length > 0
+      ? 'partial'
+    : stats.totalPods > 0
+      ? 'loaded'
+      : 'empty'
 
   return (
     <DashboardPage
@@ -229,11 +244,20 @@ export function Pods() {
       isRefreshing={isRefreshing}
       lastUpdated={lastUpdated}
       hasData={stats.totalPods > 0}
+      liveRouteState={liveRouteState}
+      liveSource={stats.totalPods > 0 ? 'k8s' : 'unknown'}
       emptyState={{
         title: 'Pods Dashboard',
         description: 'Add cards to monitor pod health, issues, and resource usage across your clusters.'
       }}
     >
+      <div className="sr-only" aria-hidden="true" data-testid="pods-groundtruth-markers">
+        <span data-groundtruth-field="pods-total">{stats.totalPods}</span>
+        <span data-groundtruth-field="pods-running">{stats.healthy}</span>
+        <span data-groundtruth-field="pods-pending">{stats.pending}</span>
+        <span data-groundtruth-field="pods-issues">{stats.issues}</span>
+      </div>
+
       {/* Pod Issues List */}
       {backendActionUnavailable && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -405,10 +429,10 @@ export function Pods() {
       {/* Delete-confirmation dialog (replaces window.confirm) */}
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
-        onClose={() => { deleteConfirm.close(); pendingDeleteRef.current = null }}
+        onClose={() => { deleteConfirm.close(); pendingDeleteRef.current = null; setPendingDeleteName('') }}
         onConfirm={executeDeletePod}
         title={t('pods.confirmDeleteTitle', 'Delete Pod')}
-        message={t('pods.confirmDeleteMessage', 'Are you sure you want to delete pod {{name}}? This action cannot be undone.', { name: pendingDeleteRef.current?.name ?? '' })}
+        message={t('pods.confirmDeleteMessage', 'Are you sure you want to delete pod {{name}}? This action cannot be undone.', { name: pendingDeleteName })}
         confirmLabel={t('common.delete', 'Delete')}
         cancelLabel={t('common.cancel', 'Cancel')}
         variant="danger"

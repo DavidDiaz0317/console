@@ -15,6 +15,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  readGroundtruthFieldNumbers,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -28,11 +29,16 @@ function readPositiveIntEnv(name: string, fallback: number) {
 }
 
 async function expectGroundTruthField(page: Page, field: string, expected: number) {
-  const marker = page.locator(`[data-groundtruth-field="${field}"]`)
-  await expect(marker, `missing data-groundtruth-field="${field}" marker`).toHaveCount(1)
-  await expect(marker.first(), `data-groundtruth-field="${field}" should match live Kubernetes ground truth`).toHaveText(String(expected), {
+  await expect.poll(async () => {
+    const values = await readGroundtruthFieldNumbers(page, field)
+    const uniqueValues = [...new Set(values)]
+    if (values.length === 0) return `missing-or-unparseable:${field}`
+    if (uniqueValues.length > 1) return `duplicate-disagreement:${uniqueValues.join(',')}`
+    return uniqueValues[0] === expected ? 'ok' : `expected:${expected}:actual:${uniqueValues[0]}`
+  }, {
+    message: `data-groundtruth-field="${field}" should match live Kubernetes ground truth`,
     timeout: 20_000,
-  })
+  }).toBe('ok')
 }
 
 const invariantIds = [
@@ -95,6 +101,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
     await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
     await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
+    await expectGroundTruthField(page, 'pods-total', groundTruth.pods.total)
     await expectGroundTruthField(page, 'pods-running', groundTruth.pods.running)
     await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
     await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)

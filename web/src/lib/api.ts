@@ -15,6 +15,21 @@ import {
   shouldMarkBackendUnavailable,
 } from './backendHealthEvents'
 import { reportAppError } from './errors/handleError'
+import {
+  RateLimitError,
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+  getRateLimitBackoff,
+  isRateLimitBackoffActive,
+  waitForRateLimitBackoff,
+} from './rateLimitBackoff'
+
+export {
+  RateLimitError,
+  getRateLimitBackoff,
+  isRateLimitBackoffActive,
+  waitForRateLimitBackoff,
+}
 
 const API_BASE = ''
 const DEFAULT_TIMEOUT = MCP_HOOK_TIMEOUT_MS
@@ -51,36 +66,19 @@ export class UnauthorizedError extends Error {
   }
 }
 
-/** localStorage key for global API rate-limit backoff deadline (epoch ms). */
-const STORAGE_KEY_RATE_LIMIT_UNTIL = 'kc-api-rate-limit-until'
-/** Default Retry-After when the header is missing or unparseable. */
-const DEFAULT_RATE_LIMIT_RETRY_AFTER_S = 60
-
-export class RateLimitError extends Error {
-  retryAfter: number
-  constructor(retryAfter: number) {
-    super(`Rate limited. Try again in ${retryAfter} seconds.`)
-    this.name = 'RateLimitError'
-    this.retryAfter = retryAfter
-  }
-}
-
 function handle429(response: Response): never {
-  const retryAfterRaw = response.headers.get('Retry-After')
-  const retryAfter = retryAfterRaw ? parseInt(retryAfterRaw, 10) : DEFAULT_RATE_LIMIT_RETRY_AFTER_S
-  const effectiveRetry = Number.isFinite(retryAfter) && retryAfter > 0
-    ? retryAfter : DEFAULT_RATE_LIMIT_RETRY_AFTER_S
   try {
-    localStorage.setItem(STORAGE_KEY_RATE_LIMIT_UNTIL,
-      String(Date.now() + effectiveRetry * 1000))
+    const backoff = setRateLimitBackoffFromResponse(response)
+    throw new RateLimitError(backoff.retryAfter)
   } catch (error: unknown) {
+    if (error instanceof RateLimitError) throw error
     reportAppError(error, {
       context: '[API] Failed to persist rate-limit retry window',
       level: 'warn',
       fallbackMessage: 'rate limit storage write failed',
     })
+    throw new RateLimitError(60)
   }
-  throw new RateLimitError(effectiveRetry)
 }
 
 // Debounce 401 handling to avoid multiple simultaneous logouts
@@ -635,6 +633,7 @@ class ApiClient {
       // false-positive monitoring alerts (#9968, #9979, #9980, #9984).
       throw new UnauthenticatedError()
     }
+    throwIfRateLimited()
 
     // Check backend availability - waits for single health check on first load
     const available = await checkBackendAvailability()
@@ -696,6 +695,8 @@ class ApiClient {
   }
 
   async post<T = unknown>(path: string, body?: unknown, options?: { timeout?: number; headers?: Record<string, string> }): Promise<{ data: T }> {
+    throwIfRateLimited()
+
     // Check backend availability
     const available = await checkBackendAvailability()
     if (!available) {
@@ -751,6 +752,8 @@ class ApiClient {
   }
 
   async patch<T = unknown>(path: string, body?: unknown, options?: { timeout?: number; headers?: Record<string, string> }): Promise<{ data: T }> {
+    throwIfRateLimited()
+
     // Check backend availability
     const available = await checkBackendAvailability()
     if (!available) {
@@ -802,6 +805,8 @@ class ApiClient {
   }
 
   async put<T = unknown>(path: string, body?: unknown, options?: { timeout?: number }): Promise<{ data: T }> {
+    throwIfRateLimited()
+
     // Check backend availability
     const available = await checkBackendAvailability()
     if (!available) {
@@ -857,6 +862,8 @@ class ApiClient {
   }
 
   async delete(path: string, options?: { timeout?: number }): Promise<void> {
+    throwIfRateLimited()
+
     // Check backend availability
     const available = await checkBackendAvailability()
     if (!available) {
@@ -967,6 +974,8 @@ export async function safeJson<T = unknown>(response: Response): Promise<T> {
 }
 
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  throwIfRateLimited()
+
   const token = localStorage.getItem(STORAGE_KEY_TOKEN)
   const headers = new Headers(init?.headers)
 
@@ -993,6 +1002,9 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
     const path = extractRequestPath(input)
     if (response.status === 401 && !path.startsWith('/api/github/')) {
       handle401()
+    }
+    if (response.status === 429) {
+      setRateLimitBackoffFromResponse(response)
     }
     return response
   } catch (error) {
