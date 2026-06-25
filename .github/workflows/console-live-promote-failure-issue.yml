@@ -4,12 +4,13 @@ on:
   workflow_run:
     workflows:
       - Console Live Promote
+      - Console Live macOS Canary
     types:
       - completed
   workflow_dispatch:
     inputs:
       run_id:
-        description: Console Live Promote workflow run ID to summarize.
+        description: Console Live canary workflow run ID to summarize.
         required: true
         type: string
 
@@ -20,7 +21,7 @@ permissions:
 
 jobs:
   create-or-update-issue:
-    name: Create or Update Console Live Promote Failure Issue
+    name: Create or Update Console Live Canary Failure Issue
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.repository == 'DavidDiaz0317/console' && (github.event_name == 'workflow_dispatch' || contains(fromJSON('["failure","cancelled","timed_out"]'), github.event.workflow_run.conclusion))
@@ -31,7 +32,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Download console live promote evidence
+      - name: Download console live canary evidence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
@@ -41,6 +42,10 @@ jobs:
           gh run download "$RUN_ID" \
             --repo "$REPOSITORY" \
             --name console-live-promote-evidence \
+            --dir console-live-promote-artifacts || true
+          gh run download "$RUN_ID" \
+            --repo "$REPOSITORY" \
+            --name console-live-macos-popup-evidence \
             --dir console-live-promote-artifacts || true
           find console-live-promote-artifacts -maxdepth 8 -type f | sort || true
 

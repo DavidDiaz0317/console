@@ -111,6 +111,30 @@ test('classifies browser semantic field mismatches distinctly', () => {
   }), 'browser-semantic-field-mismatch')
 })
 
+test('classifies macOS popup clipping distinctly', () => {
+  assert.equal(classify({
+    browserMatrixFailures: [{
+      classification: 'macos-popup-clipped',
+      browser: 'webkit',
+      route: '/',
+      control: 'user-menu',
+      reason: 'popup extends outside viewport edges: right',
+    }],
+  }), 'macos-popup-clipped')
+})
+
+test('classifies macOS top-layer hiding distinctly', () => {
+  assert.equal(classify({
+    browserMatrixFailures: [{
+      classification: 'macos-top-layer-hidden',
+      browser: 'webkit',
+      route: '/',
+      control: 'alerts-popover',
+      reason: 'popup did not become visible after the trigger was clicked',
+    }],
+  }), 'macos-top-layer-hidden')
+})
+
 test('classifies structured browser matrix canary setup failures', () => {
   assert.equal(classify({
     browserMatrixFailures: [{

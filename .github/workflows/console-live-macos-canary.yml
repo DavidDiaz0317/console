@@ -1,0 +1,252 @@
+# Fork/private live macOS WebKit canary infrastructure.
+# This workflow is intentionally guarded to DavidDiaz0317/console and is not an upstream default.
+name: Console Live macOS Canary
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Optional fork main image SHA to test.
+        required: false
+        type: string
+      macos_runner:
+        description: GitHub-hosted macOS runner label.
+        required: false
+        default: macos-14
+        type: string
+      litmusFailure:
+        description: Force the synthetic popup z-index failure detector.
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+  schedule:
+    - cron: '17 8 * * *'
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: console-live-macos-canary
+  cancel-in-progress: true
+
+env:
+  IMAGE_REPOSITORY: ${{ vars.CONSOLE_LIVE_IMAGE_REPOSITORY || 'ghcr.io/daviddiaz0317/console' }}
+  FORK_REPOSITORY: ${{ vars.CONSOLE_LIVE_FORK_REPOSITORY || 'DavidDiaz0317/console' }}
+  LIVE_NAMESPACE: kubestellar-console-live
+  CANARY_NAMESPACE: kubestellar-console-live-macos-canary
+  CANARY_RELEASE: kc-live-macos-canary
+  OAUTH_SECRET_NAME: kc-live-github-oauth
+  KUBECONFIG_SECRET_NAME: kc-live-kubeconfig
+  LIVE_URL: ${{ vars.CONSOLE_LIVE_URL || 'https://console-live.kubestellar.io' }}
+  CANDIDATE_SHA_INPUT: ${{ inputs.candidate_sha || '' }}
+  MACOS_POPUP_LITMUS_FORCE_FAILURE: ${{ github.event_name == 'workflow_dispatch' && inputs.litmusFailure || 'false' }}
+
+jobs:
+  macos-popup-canary:
+    name: macOS WebKit Popup Canary
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.macos_runner || 'macos-14' }}
+    timeout-minutes: 45
+    if: github.repository == 'DavidDiaz0317/console'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Validate required deployment secrets
+        env:
+          CONSOLE_LIVE_KUBECONFIG_B64: ${{ secrets.CONSOLE_LIVE_KUBECONFIG_B64 }}
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            CONSOLE_LIVE_KUBECONFIG_B64 \
+            CONSOLE_LIVE_OAUTH_CLIENT_ID \
+            CONSOLE_LIVE_OAUTH_CLIENT_SECRET \
+            CONSOLE_LIVE_JWT_SECRET; do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure deploy kubeconfig
+        env:
+          CONSOLE_LIVE_KUBECONFIG_B64: ${{ secrets.CONSOLE_LIVE_KUBECONFIG_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          decode_base64() {
+            if base64 --help 2>&1 | grep -q -- '--decode'; then
+              base64 --decode
+            else
+              base64 -D
+            fi
+          }
+          mkdir -p "$RUNNER_TEMP/console-live"
+          deploy_kubeconfig="$RUNNER_TEMP/console-live/deploy-kubeconfig"
+          printf '%s' "$CONSOLE_LIVE_KUBECONFIG_B64" | decode_base64 > "$deploy_kubeconfig"
+          chmod 600 "$deploy_kubeconfig"
+          echo "DEPLOY_KUBECONFIG=$deploy_kubeconfig" >> "$GITHUB_ENV"
+          KUBECONFIG="$deploy_kubeconfig" kubectl config get-contexts
+
+      - name: Resolve candidate image
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${CANDIDATE_SHA_INPUT:-}" ]; then
+            candidate_sha="$CANDIDATE_SHA_INPUT"
+          else
+            candidate_sha="$(git ls-remote "https://github.com/${FORK_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
+          fi
+          if ! [[ "$candidate_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Candidate SHA must be a 40-character lowercase git SHA"
+            exit 1
+          fi
+          candidate_image="${IMAGE_REPOSITORY}:${candidate_sha}"
+          echo "sha=$candidate_sha" >> "$GITHUB_OUTPUT"
+          echo "image=$candidate_image" >> "$GITHUB_OUTPUT"
+          echo "Resolved macOS canary candidate image $candidate_image"
+
+      - name: Prepare macOS canary secrets
+        env:
+          CONSOLE_LIVE_OAUTH_CLIENT_ID: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_ID }}
+          CONSOLE_LIVE_OAUTH_CLIENT_SECRET: ${{ secrets.CONSOLE_LIVE_OAUTH_CLIENT_SECRET }}
+          CONSOLE_LIVE_JWT_SECRET: ${{ secrets.CONSOLE_LIVE_JWT_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$DEPLOY_KUBECONFIG"
+          kubectl create namespace "$CANARY_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$CANARY_NAMESPACE" create secret generic "$OAUTH_SECRET_NAME" \
+            --from-literal=github-client-id="$CONSOLE_LIVE_OAUTH_CLIENT_ID" \
+            --from-literal=github-client-secret="$CONSOLE_LIVE_OAUTH_CLIENT_SECRET" \
+            --from-literal=jwt-secret="$CONSOLE_LIVE_JWT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubeconfig_copy="$RUNNER_TEMP/console-live/macos-canary-kubeconfig"
+          kubectl -n "$LIVE_NAMESPACE" get secret "$KUBECONFIG_SECRET_NAME" -o jsonpath='{.data.config}' | base64 -D > "$kubeconfig_copy"
+          kubectl -n "$CANARY_NAMESPACE" create secret generic "$KUBECONFIG_SECRET_NAME" \
+            --from-file=config="$kubeconfig_copy" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm -f "$kubeconfig_copy"
+
+      - name: Deploy private macOS canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$DEPLOY_KUBECONFIG"
+          helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
+            --namespace "$CANARY_NAMESPACE" \
+            --set image.repository="$IMAGE_REPOSITORY" \
+            --set image.tag="${{ steps.candidate.outputs.sha }}" \
+            --set image.pullPolicy=Always \
+            --set service.type=ClusterIP \
+            --set persistence.enabled=true \
+            --set persistence.ephemeral=true \
+            --set backup.enabled=false \
+            --set jwt.existingSecret="$OAUTH_SECRET_NAME" \
+            --set kubeconfig.existingSecret="$KUBECONFIG_SECRET_NAME" \
+            --set rbac.create=false \
+            --set rbac.resourceQuotasReadOnly=true \
+            --set rbac.namespaceCreationEnabled=false \
+            --set extraEnv[0].name=DEV_MODE \
+            --set-string extraEnv[0].value=true \
+            --set extraEnv[1].name=CLUSTER_BACKED_MODE \
+            --set-string extraEnv[1].value=true \
+            --atomic \
+            --cleanup-on-fail \
+            --wait \
+            --timeout 10m
+
+      - name: Install web test dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright WebKit
+        working-directory: web
+        run: npx playwright install webkit
+
+      - name: Port-forward private macOS canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          export KUBECONFIG="$DEPLOY_KUBECONFIG"
+          kubectl --request-timeout=0 -n "$CANARY_NAMESPACE" port-forward "svc/${CANARY_RELEASE}-kubestellar-console" 18081:8080 \
+            > "$RUNNER_TEMP/console-live/macos-canary-port-forward.log" 2>&1 &
+          echo "MACOS_CANARY_PORT_FORWARD_PID=$!" >> "$GITHUB_ENV"
+          for _ in {1..60}; do
+            if curl -fsS http://127.0.0.1:18081/health >/dev/null || curl -fsS http://127.0.0.1:18081/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/console-live/macos-canary-port-forward.log" || true
+          echo "::error::macOS canary port-forward did not become healthy"
+          exit 1
+
+      - name: Run macOS WebKit popup canary
+        timeout-minutes: 12
+        working-directory: web
+        env:
+          LIVE_SITE_TESTS: 'true'
+          LIVE_SITE_AUTH_MODE: dev
+          LIVE_CANARY_CONSOLE_URL: http://127.0.0.1:18081
+          SELF_HOSTED_CONSOLE_URL: http://127.0.0.1:18081
+          LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
+          MACOS_POPUP_LITMUS_FORCE_FAILURE: ${{ env.MACOS_POPUP_LITMUS_FORCE_FAILURE }}
+        run: npm run test:visual:macos-popup
+
+      - name: Upload console live macOS popup evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: console-live-macos-popup-evidence
+          path: |
+            web/test-results/macos-popup-results/results.json
+            web/test-results/reports/macos-popup/
+            web/test-results/macos-popup/
+            ${{ runner.temp }}/console-live/macos-canary-port-forward.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop macOS canary port-forward
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${MACOS_CANARY_PORT_FORWARD_PID:-}" ]; then
+            kill "$MACOS_CANARY_PORT_FORWARD_PID" 2>/dev/null || true
+          fi
+
+      - name: Clean up macOS canary
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${DEPLOY_KUBECONFIG:-}" ]; then
+            export KUBECONFIG="$DEPLOY_KUBECONFIG"
+            helm uninstall "$CANARY_RELEASE" -n "$CANARY_NAMESPACE" --wait --timeout 2m || true
+            kubectl delete namespace "$CANARY_NAMESPACE" --ignore-not-found=true --wait=false || true
+          fi

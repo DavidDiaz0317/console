@@ -10,7 +10,14 @@ const LABELS = {
   'needs-fix': { color: 'd93f0b', description: 'Needs an implementation fix' },
 }
 
-const LIVE_ARTIFACT_NAME = 'console-live-promote-evidence'
+const LIVE_ARTIFACT_NAMES = new Set([
+  'console-live-promote-evidence',
+  'console-live-macos-popup-evidence',
+])
+const LIVE_CANARY_WORKFLOWS = new Set([
+  'Console Live Promote',
+  'Console Live macOS Canary',
+])
 const IMAGE_REPOSITORY = 'ghcr.io/daviddiaz0317/console'
 
 function walk(dir) {
@@ -386,6 +393,8 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
   if (browserMatrixFailures.some(failure => failure.classification === 'safari-z-index') || text.includes('safari-z-index')) return 'safari-z-index'
+  if (browserMatrixFailures.some(failure => failure.classification === 'macos-popup-clipped') || text.includes('macos-popup-clipped')) return 'macos-popup-clipped'
+  if (browserMatrixFailures.some(failure => failure.classification === 'macos-top-layer-hidden') || text.includes('macos-top-layer-hidden')) return 'macos-top-layer-hidden'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-semantic-field-mismatch') || text.includes('browser-semantic-field-mismatch')) return 'browser-semantic-field-mismatch'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-content-missing') || text.includes('browser-content-missing')) return 'browser-content-missing'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-interaction-broken') || text.includes('browser-interaction-broken')) return 'browser-interaction-broken'
@@ -423,11 +432,12 @@ function likelyAreasFor(type) {
   if (type === 'weak-test-assertion') {
     return ['web/e2e/visual-login/**', 'web/harness/**']
   }
-  if (type === 'safari-z-index' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
+  if (type === 'safari-z-index' || type === 'macos-popup-clipped' || type === 'macos-top-layer-hidden' || type === 'browser-layout-drift' || type === 'browser-interaction-broken') {
     return [
       'web/src/components/layout/**',
       'web/src/components/ui/**',
       'web/src/components/dashboard/**',
+      'web/e2e/visual-login/macos-popup/**',
       'web/e2e/visual-login/browser-matrix/**',
     ]
   }
@@ -505,6 +515,8 @@ function shortFailure(type, failures) {
   if (type === 'local-agent-status-unreachable') return 'local agent status endpoint is unreachable'
   if (type === 'weak-test-assertion') return 'live canary failed because the assertion was too weak'
   if (type === 'safari-z-index') return 'WebKit overlay or text stacking differs from Chromium'
+  if (type === 'macos-popup-clipped') return 'macOS WebKit popup is clipped'
+  if (type === 'macos-top-layer-hidden') return 'macOS WebKit popup is hidden behind page content'
   if (type === 'browser-layout-drift') return 'browser layout differs significantly from Chromium'
   if (type === 'browser-semantic-field-mismatch') return 'browser semantic fields differ from expected live data'
   if (type === 'browser-content-missing') return 'browser is missing expected live content'
@@ -631,7 +643,41 @@ function summarizeNetworkEvidence(evidenceItems) {
 }
 
 function buildReproductionCommand(failureType) {
-  if (/^(safari-z-index|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
+  if (/^(macos-popup-clipped|macos-top-layer-hidden)$/.test(failureType)) {
+    return [
+      '```bash',
+      'cd web',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'npm run test:visual:macos-popup',
+      '```',
+    ].join('\n')
+  }
+  if (failureType === 'safari-z-index') {
+    return [
+      '```bash',
+      'cd web',
+      '# macOS/WebKit popup lane',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18081 \\',
+      'npm run test:visual:macos-popup',
+      '',
+      '# Linux cross-browser matrix, when the failure came from Console Live Promote',
+      'LIVE_SITE_TESTS=true \\',
+      'LIVE_CLUSTER_TESTS=true \\',
+      'LIVE_SITE_AUTH_MODE=dev \\',
+      'LIVE_CANARY_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'SELF_HOSTED_CONSOLE_URL=http://127.0.0.1:18080 \\',
+      'npm run test:visual:browser-matrix',
+      'npm run test:visual:browser-matrix:compare',
+      '```',
+    ].join('\n')
+  }
+  if (/^(browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
     return [
       '```bash',
       'cd web',
@@ -687,9 +733,9 @@ function buildBody({
 
   return [
     marker,
-    '# Console Live Promote Failure',
+    '# Console Live Canary Failure',
     '',
-    'Production promotion was blocked by the console-live canary gate. This issue is structured for an AI agent to fix the underlying UI/test failure without first digging through raw Actions logs.',
+    'A console-live canary workflow failed. This issue is structured for an AI agent to fix the underlying UI/test failure without first digging through raw Actions logs.',
     '',
     '## Summary',
     '',
@@ -752,7 +798,7 @@ function buildBody({
     '2. Do not update screenshot baselines unless the failure type is only `browser-visual-baseline` and the visual change was intentional.',
     '3. Fix the UI overlap, browser-specific layout issue, forbidden live artifact, network error, or groundtruth mismatch in code.',
     '4. Rerun the live canary test.',
-    '5. Confirm production promotion remains blocked until the canary passes.',
+    '5. Rerun the relevant canary and keep promotion/gating blocked until the canary passes.',
   ].join('\n')
 }
 
@@ -770,8 +816,8 @@ module.exports = async ({ github, context, core }) => {
   }
 
   const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId })
-  if (run.name !== 'Console Live Promote') {
-    core.warning(`Run ${runId} is "${run.name}", not "Console Live Promote"; skipping.`)
+  if (!LIVE_CANARY_WORKFLOWS.has(run.name)) {
+    core.warning(`Run ${runId} is "${run.name}", not a supported console live canary workflow; skipping.`)
     return
   }
   const issueWorthyConclusions = new Set(['failure', 'cancelled', 'timed_out'])
@@ -816,7 +862,7 @@ module.exports = async ({ github, context, core }) => {
       return Array.isArray(parsed) ? parsed : (parsed ? [parsed] : [])
     })
   const browserMatrixReports = files
-    .filter((file) => /(^|[\\/])browser-matrix\.json$/i.test(file))
+    .filter((file) => /(^|[\\/])(?:browser-matrix|macos-popup-matrix)\.json$/i.test(file))
     .flatMap((file) => {
       const parsed = readJsonFile(file)
       return parsed ? [parsed] : []
@@ -830,7 +876,7 @@ module.exports = async ({ github, context, core }) => {
     failures.push({
       sourceFile: 'workflow logs',
       specPath: 'not parsed',
-      title: 'Console Live Promote failed',
+      title: `${run.name} failed`,
       project: 'not parsed',
       status: 'failed',
       retry: 0,
@@ -858,7 +904,7 @@ module.exports = async ({ github, context, core }) => {
   ].join('|') || `console-live-promote:${runId}`
   const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16)
   const marker = `<!-- console-live-promote-signature:${signature} -->`
-  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
+  const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|macos-popup-clipped|macos-top-layer-hidden|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
   const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
   const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
 
@@ -872,7 +918,7 @@ module.exports = async ({ github, context, core }) => {
     logArtifactPaths,
     liveReports,
     reportFiles,
-    artifacts: artifacts.filter((artifact) => artifact.name === LIVE_ARTIFACT_NAME || artifact.name.includes('console-live')),
+    artifacts: artifacts.filter((artifact) => LIVE_ARTIFACT_NAMES.has(artifact.name) || artifact.name.includes('console-live')),
     logExcerptText: logExcerpt(logs),
     liveUiFailures,
     failureType,
@@ -907,9 +953,9 @@ module.exports = async ({ github, context, core }) => {
       await github.rest.issues.createComment({
         owner,
         repo,
-        issue_number: duplicate.number,
-        body: [
-          `Superseded by #${existing.number} for the same Console Live Promote run and failure.`,
+          issue_number: duplicate.number,
+          body: [
+          `Superseded by #${existing.number} for the same console live canary run and failure.`,
           '',
           `- Run: [#${runId}](${run.html_url})`,
           `- Failure type: \`${failureType}\``,
@@ -929,14 +975,14 @@ module.exports = async ({ github, context, core }) => {
       issue_number: existing.number,
       body: [
         marker,
-        `Console Live Promote is still failing with \`${failureType}\`.`,
+        `${run.name} is still failing with \`${failureType}\`.`,
         '',
         `- Run: [#${runId}](${run.html_url})`,
         `- Candidate image: \`${imageState.candidate}\``,
         `- Production blocked before promotion: \`${blocked}\``,
       ].join('\n'),
     })
-    core.info(`Updated existing Console Live Promote failure issue #${existing.number}.`)
+    core.info(`Updated existing console live canary failure issue #${existing.number}.`)
     return
   }
 
@@ -947,7 +993,7 @@ module.exports = async ({ github, context, core }) => {
     body,
     labels: Object.keys(LABELS),
   })
-  core.info(`Created Console Live Promote failure issue #${created.data.number}.`)
+  core.info(`Created console live canary failure issue #${created.data.number}.`)
 }
 
 module.exports._test = {
