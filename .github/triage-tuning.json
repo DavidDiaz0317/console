@@ -1,5 +1,8 @@
 {
   "schema_version": 1,
   "last_updated": null,
-  "history": []
+  "last_run": null,
+  "recommended_confidence_cutoff": null,
+  "calibrated_at": null,
+  "sample_size": 0
 }

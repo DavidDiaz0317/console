@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import base64
 import fnmatch
+import hashlib
 import json
 import os
 import shutil
@@ -99,6 +100,46 @@ def write_json(path: Path, value: Any) -> None:
     with path.open("w", encoding="utf-8") as handle:
         json.dump(value, handle, indent=2, sort_keys=False)
         handle.write("\n")
+
+
+DECISION_ID_LEN = 16
+
+
+def compute_decision_id(pr_number: str, spec_path: str, test_title: str, baseline_path: str) -> str:
+    """Deterministic, idempotent join key for a triage decision.
+
+    Hashes only stable inputs (no time/random) so a re-triggered run produces the same id, letting
+    a later human/resolution verdict be joined back to the original prediction.
+    """
+    raw = f"{pr_number}|{spec_path}|{test_title}|{baseline_path}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:DECISION_ID_LEN]
+
+
+def append_ledger_rows(ledger_path: Path, decisions: list[dict[str, Any]], pr: dict[str, Any]) -> None:
+    """Append one compact, joinable row per decision to the JSONL ledger.
+
+    Full decisions stay in the run artifact (triage-results.json); the ledger keeps only the small
+    fields needed to later compute accuracy metrics, with append-only writes to minimize merge
+    conflicts. human_outcome/verdict_source start null and are filled in by `ingest-verdict`.
+    """
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+    with ledger_path.open("a", encoding="utf-8") as handle:
+        for decision in decisions:
+            row = {
+                "decision_id": decision.get("decision_id"),
+                "ts": decision.get("timestamp"),
+                "pr": pr.get("number", ""),
+                "spec_path": decision.get("spec_path", ""),
+                "test_title": decision.get("test_title", ""),
+                "component_name": decision.get("component_name", ""),
+                "predicted": decision.get("classification"),
+                "confidence": decision.get("confidence"),
+                "routing": decision.get("routing"),
+                "high_risk": decision.get("high_risk", False),
+                "human_outcome": None,
+                "verdict_source": None,
+            }
+            handle.write(json.dumps(row, sort_keys=False) + "\n")
 
 
 def rel(path: Path, root: Path) -> str:
@@ -594,7 +635,9 @@ def triage(args: argparse.Namespace) -> int:
         total_pixels = before.width * before.height
         changed_ratio = changed_pixels / total_pixels if total_pixels else 0
         component_name, route = component_from_pair(pair)
+        baseline_rel = rel(pair.baseline_path, repo_root) if pair.baseline_path else None
         base_decision = {
+            "decision_id": compute_decision_id(pr.get("number", ""), pair.spec_path, pair.test_title, baseline_rel or ""),
             "timestamp": utc_now(),
             "pr": pr,
             "test_title": pair.test_title,
@@ -604,7 +647,7 @@ def triage(args: argparse.Namespace) -> int:
             "expected_path": rel(pair.expected, repo_root),
             "actual_path": rel(pair.actual, repo_root),
             "diff_path": rel(pair.diff, repo_root) if pair.diff else None,
-            "baseline_path": rel(pair.baseline_path, repo_root) if pair.baseline_path else None,
+            "baseline_path": baseline_rel,
             "changed_pixels": changed_pixels,
             "total_pixels": total_pixels,
             "changed_area_ratio": changed_ratio,
@@ -746,10 +789,25 @@ def triage(args: argparse.Namespace) -> int:
         },
     )
 
+    # Persistence model: full decisions live only in the run artifact (triage-results.json above);
+    # one compact joinable row per decision is appended to the in-repo JSONL ledger; the tuning
+    # file holds only small derived state (no unbounded raw-decision history).
+    ledger_path = repo_root / config.get("ledger_file", ".github/triage-ledger.jsonl")
+    append_ledger_rows(ledger_path, decisions, pr)
+    if ledger_path.exists():
+        shutil.copy2(ledger_path, output_dir / "triage-ledger.jsonl")
+
     tuning_path = repo_root / config.get("tuning_file", ".github/triage-tuning.json")
-    tuning = load_json(tuning_path, {"schema_version": 1, "history": []})
+    tuning = load_json(tuning_path, {"schema_version": 1})
+    tuning.pop("history", None)  # migrate away from the old unbounded raw-decision history
+    tuning["schema_version"] = 1
     tuning["last_updated"] = summary["timestamp"]
-    tuning.setdefault("history", []).extend(decisions)
+    tuning["last_run"] = {
+        "outcome": outcome,
+        "decision_counts": counts,
+        "pair_count": len(pairs),
+        "model_calls": model_calls,
+    }
     write_json(tuning_path, tuning)
     shutil.copy2(tuning_path, output_dir / "triage-tuning.json")
 

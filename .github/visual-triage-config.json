@@ -39,5 +39,6 @@
     "enabled_env": "VISUAL_TRIAGE_BASELINE_FREE_CHECK",
     "default_enabled": false
   },
-  "tuning_file": ".github/triage-tuning.json"
+  "tuning_file": ".github/triage-tuning.json",
+  "ledger_file": ".github/triage-ledger.jsonl"
 }
