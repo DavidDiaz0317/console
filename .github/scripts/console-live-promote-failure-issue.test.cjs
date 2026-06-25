@@ -87,13 +87,7 @@ test('keeps canary setup as fallback when no parsed product evidence exists', ()
 })
 
 test('prioritizes canary setup over product-looking log noise', () => {
-  assert.equal(classify({
-    networkClassifications: [{
-      classification: 'live-rate-limit-data-loss',
-      status: 429,
-      url: '/api/mcp/pods',
-    }],
-  }, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing'), 'canary-setup')
+  assert.equal(classify({}, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing\nGET 429 /api/mcp/pods'), 'canary-setup')
 })
 
 test('does not let unexecuted canary setup command text override parsed network evidence', () => {
@@ -101,5 +95,8 @@ test('does not let unexecuted canary setup command text override parsed network 
     unexpectedNetworkResponses: [
       'GET 401 http://127.0.0.1:18080/api/mcp/gpu-nodes/stream',
     ],
-  }, 'echo "::error::Canary browser matrix port-forward did not become healthy"'), 'live-network-error')
+  }, [
+    'echo "::error::Canary browser matrix port-forward did not become healthy"',
+    'echo "::error::Candidate image is not available in GHCR: $candidate_image"',
+  ].join('\n')), 'live-network-error')
 })

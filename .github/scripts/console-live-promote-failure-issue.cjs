@@ -373,7 +373,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
     /\b429\b/.test(String(response))
     && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
   )
-  if (hasCandidateImageFailure || (hasCanaryInfraFailure && !hasProductEvidence)) return 'canary-setup'
+  if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
