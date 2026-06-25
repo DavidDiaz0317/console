@@ -25,7 +25,7 @@ permissions:
 
 concurrency:
   group: console-live-promote
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && inputs.promoteProduction == 'false' }}
 
 env:
   IMAGE_REPOSITORY: ${{ vars.CONSOLE_LIVE_IMAGE_REPOSITORY || 'ghcr.io/daviddiaz0317/console' }}
@@ -274,6 +274,7 @@ jobs:
 
       - name: Run canary live groundtruth tests
         if: steps.canary-state.outputs.deployed == 'true'
+        timeout-minutes: 20
         working-directory: web
         env:
           PROMOTE_PRODUCTION: ''
@@ -318,6 +319,7 @@ jobs:
 
       - name: Run canary browser matrix tests
         if: always() && steps.canary-state.outputs.deployed == 'true'
+        timeout-minutes: 30
         working-directory: web
         env:
           PROMOTE_PRODUCTION: ''
@@ -364,6 +366,7 @@ jobs:
 
       - name: Compare canary browser matrix
         if: always() && steps.canary-state.outputs.deployed == 'true'
+        timeout-minutes: 5
         working-directory: web
         run: npm run test:visual:browser-matrix:compare
 
@@ -391,6 +394,7 @@ jobs:
 
       - name: Run test adequacy analyzer
         if: steps.canary-state.outputs.deployed == 'true'
+        timeout-minutes: 10
         working-directory: web
         run: npm run test:visual:adequacy
 
