@@ -95,3 +95,11 @@ test('prioritizes canary setup over product-looking log noise', () => {
     }],
   }, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing'), 'canary-setup')
 })
+
+test('does not let unexecuted canary setup command text override parsed network evidence', () => {
+  assert.equal(classify({
+    unexpectedNetworkResponses: [
+      'GET 401 http://127.0.0.1:18080/api/mcp/gpu-nodes/stream',
+    ],
+  }, 'echo "::error::Canary browser matrix port-forward did not become healthy"'), 'live-network-error')
+})

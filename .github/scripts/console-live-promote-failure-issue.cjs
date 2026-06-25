@@ -355,8 +355,15 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const networkClassifications = liveUiFailures.networkClassifications || []
   const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
   const rateLimitEvents = evidenceItems.flatMap((item) => item.network?.rateLimitEvents || [])
-  const hasCanarySetupFailure = (
-    /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io|canary .*port-forward did not become healthy|services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
+  const hasProductEvidence = (
+    failures.length
+    || evidenceItems.length
+    || Object.values(liveUiFailures).some(value => Array.isArray(value) && value.length)
+  )
+  const hasCandidateImageFailure = /candidate image (?:is )?not (?:available|visible)|not found.*ghcr\.io/.test(text)
+  const hasCanaryInfraFailure = (
+    /(?:##\[error\]|::error::|error:)\s*canary .*port-forward did not become healthy/.test(text)
+    || /services? ".*canary.*" not found|cannot find package '@playwright\/test'/.test(text)
   )
   const hasLiveNetworkFailure = unexpectedNetworkResponses.length
     || (liveUiFailures.unexpectedRequestFailures || []).length
@@ -366,7 +373,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
     /\b429\b/.test(String(response))
     && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
   )
-  if (hasCanarySetupFailure) return 'canary-setup'
+  if (hasCandidateImageFailure || (hasCanaryInfraFailure && !hasProductEvidence)) return 'canary-setup'
   if ((liveUiFailures.textCollisions || []).length || text.includes('visible text must not severely overlap')) return 'live-ui-overlap'
   if ((liveUiFailures.forbiddenMatches || []).length || /demo mode|connection log|refreshing local agent/.test(text)) return 'live-ui-forbidden-artifact'
   if ((liveUiFailures.warningBadges || []).length || /\b\d+\s+warnings?\b/.test(text)) return 'live-ui-warning-flood'
