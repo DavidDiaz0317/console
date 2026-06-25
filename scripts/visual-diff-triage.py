@@ -899,6 +899,175 @@ def self_test(args: argparse.Namespace) -> int:
         return 0 if accuracy >= 1.0 else 1
 
 
+def ingest_verdict(args: argparse.Namespace) -> int:
+    """Record a human/resolution verdict against a prior decision, joined by decision_id.
+
+    This is how ground truth enters the loop: the close workflow (or a maintainer label) calls
+    this with how a failure was actually resolved, so accuracy can later be measured.
+    """
+    if args.outcome not in VALID_CLASSIFICATIONS:
+        raise SystemExit(f"invalid --outcome: {args.outcome!r} (expected one of {sorted(VALID_CLASSIFICATIONS)})")
+    ledger_path = Path(args.ledger)
+    if not ledger_path.exists():
+        print(f"::warning::ledger not found: {ledger_path}")
+        return 0
+    rows = [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    verdict_ts = args.verdict_ts or utc_now()
+    updated = 0
+    for row in rows:
+        if row.get("decision_id") == args.decision_id:
+            row["human_outcome"] = args.outcome
+            row["verdict_source"] = args.source
+            row["verdict_ts"] = verdict_ts
+            updated += 1
+    with ledger_path.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, sort_keys=False) + "\n")
+    if updated == 0:
+        print(f"::warning::no ledger row matched decision_id {args.decision_id}")
+    print(json.dumps({"decision_id": args.decision_id, "outcome": args.outcome, "rows_updated": updated}))
+    return 0
+
+
+METRIC_LABELS = ("regression", "intended_change", "noise")
+CALIBRATION_BUCKETS = 10
+CUTOFF_SEARCH_START = 0.5
+CUTOFF_SEARCH_STEP = 0.05
+CUTOFF_SEARCH_COUNT = 10
+
+
+def compute_metrics(
+    rows: list[dict[str, Any]],
+    target_regression_precision: float,
+    min_samples: int,
+    candidate_cutoffs: list[float],
+) -> dict[str, Any]:
+    """Per-class precision/recall/F1, confusion matrix, calibration, and a cutoff recommendation.
+
+    Only rows that carry a human verdict are scored. The recommended cutoff is the LOWEST confidence
+    threshold at which regression precision still meets the target — i.e. let through as many real
+    regressions as possible without dropping precision below the bar.
+    """
+    labeled = [r for r in rows if r.get("human_outcome") in METRIC_LABELS and r.get("predicted") in METRIC_LABELS]
+    confusion = {p: {a: 0 for a in METRIC_LABELS} for p in METRIC_LABELS}
+    for r in labeled:
+        confusion[r["predicted"]][r["human_outcome"]] += 1
+    per_class: dict[str, Any] = {}
+    for label in METRIC_LABELS:
+        tp = confusion[label][label]
+        predicted_total = sum(confusion[label][a] for a in METRIC_LABELS)
+        actual_total = sum(confusion[p][label] for p in METRIC_LABELS)
+        precision = (tp / predicted_total) if predicted_total else None
+        recall = (tp / actual_total) if actual_total else None
+        f1 = (2 * precision * recall / (precision + recall)) if precision and recall else None
+        per_class[label] = {
+            "precision": precision, "recall": recall, "f1": f1,
+            "tp": tp, "predicted": predicted_total, "actual": actual_total,
+        }
+    calibration = []
+    for i in range(CALIBRATION_BUCKETS):
+        lo = i / CALIBRATION_BUCKETS
+        hi = lo + 1 / CALIBRATION_BUCKETS
+        upper = hi if i < CALIBRATION_BUCKETS - 1 else 1.0001
+        bucket = [r for r in labeled if lo <= float(r.get("confidence") or 0) < upper]
+        if bucket:
+            acc = sum(1 for r in bucket if r["predicted"] == r["human_outcome"]) / len(bucket)
+            mean_conf = sum(float(r.get("confidence") or 0) for r in bucket) / len(bucket)
+            calibration.append({
+                "bucket": f"{lo:.1f}-{hi:.1f}", "count": len(bucket),
+                "empirical_accuracy": round(acc, 4), "mean_confidence": round(mean_conf, 4),
+            })
+    recommended = None
+    reg_rows = [r for r in labeled if r["predicted"] == "regression"]
+    for cutoff in candidate_cutoffs:
+        kept = [r for r in reg_rows if float(r.get("confidence") or 0) >= cutoff]
+        if not kept:
+            continue
+        precision = sum(1 for r in kept if r["human_outcome"] == "regression") / len(kept)
+        if precision >= target_regression_precision:
+            recommended = cutoff
+            break
+    return {
+        "sample_size": len(labeled),
+        "confusion_matrix": confusion,
+        "per_class": per_class,
+        "calibration": calibration,
+        "recommended_confidence_cutoff": recommended,
+        "target_regression_precision": target_regression_precision,
+        "min_samples": min_samples,
+        "enough_samples": len(labeled) >= min_samples,
+    }
+
+
+def _fmt(value: Any) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:.3f}" if isinstance(value, float) else str(value)
+
+
+def render_metrics_markdown(report: dict[str, Any]) -> str:
+    enough = report["enough_samples"]
+    calib_note = "enough for calibration" if enough else f"need >= {report['min_samples']}"
+    rec_note = "" if enough else " (not applied below min samples)"
+    lines = [
+        "## Visual triage accuracy",
+        "",
+        f"- Samples with verdicts: `{report['sample_size']}` ({calib_note})",
+        f"- Recommended confidence cutoff (regression precision >= {report['target_regression_precision']}): "
+        f"`{_fmt(report['recommended_confidence_cutoff'])}`{rec_note}",
+        "",
+        "| Class | Precision | Recall | F1 | TP | Predicted | Actual |",
+        "|---|--:|--:|--:|--:|--:|--:|",
+    ]
+    for label in METRIC_LABELS:
+        c = report["per_class"][label]
+        lines.append(
+            f"| {label} | {_fmt(c['precision'])} | {_fmt(c['recall'])} | {_fmt(c['f1'])} "
+            f"| {c['tp']} | {c['predicted']} | {c['actual']} |"
+        )
+    lines += [
+        "",
+        "Confusion matrix (rows = predicted, cols = actual):",
+        "",
+        "| pred \\ actual | " + " | ".join(METRIC_LABELS) + " |",
+        "|---|" + "---|" * len(METRIC_LABELS),
+    ]
+    for p in METRIC_LABELS:
+        lines.append(f"| {p} | " + " | ".join(str(report["confusion_matrix"][p][a]) for a in METRIC_LABELS) + " |")
+    return "\n".join(lines) + "\n"
+
+
+def metrics(args: argparse.Namespace) -> int:
+    config = load_json(Path(args.config), {})
+    thresholds = config.get("thresholds", {})
+    target = float(thresholds.get("target_regression_precision", 0.95))
+    min_samples = int(thresholds.get("min_samples", 50))
+    ledger_path = Path(args.ledger)
+    rows = (
+        [json.loads(line) for line in ledger_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if ledger_path.exists() else []
+    )
+    candidate_cutoffs = [round(CUTOFF_SEARCH_START + CUTOFF_SEARCH_STEP * i, 2) for i in range(CUTOFF_SEARCH_COUNT)]
+    report = compute_metrics(rows, target, min_samples, candidate_cutoffs)
+    report["timestamp"] = utc_now()
+    if args.output:
+        write_json(Path(args.output), report)
+    markdown = render_metrics_markdown(report)
+    if args.markdown:
+        Path(args.markdown).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.markdown).write_text(markdown, encoding="utf-8")
+    # Only adopt the calibrated cutoff once there is enough signal; otherwise keep the default.
+    if args.tuning_file and report["enough_samples"] and report["recommended_confidence_cutoff"] is not None:
+        tuning_path = Path(args.tuning_file)
+        tuning = load_json(tuning_path, {"schema_version": 1})
+        tuning["recommended_confidence_cutoff"] = report["recommended_confidence_cutoff"]
+        tuning["calibrated_at"] = report["timestamp"]
+        tuning["sample_size"] = report["sample_size"]
+        write_json(tuning_path, tuning)
+    print(markdown)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Triage Playwright visual diffs semantically.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -918,6 +1087,23 @@ def main() -> int:
     self_test_parser = subparsers.add_parser("self-test")
     self_test_parser.add_argument("--config", default=".github/visual-triage-config.json")
     self_test_parser.set_defaults(func=self_test)
+
+    ingest_parser = subparsers.add_parser("ingest-verdict")
+    ingest_parser.add_argument("--ledger", default=".github/triage-ledger.jsonl")
+    ingest_parser.add_argument("--decision-id", required=True)
+    ingest_parser.add_argument("--outcome", required=True, help="regression | intended_change | noise")
+    ingest_parser.add_argument("--source", default="resolution-derived")
+    ingest_parser.add_argument("--verdict-ts", default="")
+    ingest_parser.set_defaults(func=ingest_verdict)
+
+    metrics_parser = subparsers.add_parser("metrics")
+    metrics_parser.add_argument("--config", default=".github/visual-triage-config.json")
+    metrics_parser.add_argument("--ledger", default=".github/triage-ledger.jsonl")
+    metrics_parser.add_argument("--output", default="", help="path to write triage-metrics.json")
+    metrics_parser.add_argument("--markdown", default="", help="path to write the markdown summary")
+    metrics_parser.add_argument("--tuning-file", default=".github/triage-tuning.json")
+    metrics_parser.set_defaults(func=metrics)
+
     args = parser.parse_args()
     return args.func(args)
 

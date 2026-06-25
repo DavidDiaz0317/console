@@ -5,9 +5,13 @@
     "noise_changed_area_ratio": 0.001,
     "full_page_changed_area_ratio": 0.6,
     "confidence_cutoff": 0.6,
+    "auto_accept_min_confidence": 0.8,
     "crop_padding_px": 16,
     "max_regions": 3,
-    "max_full_image_width": 1200
+    "max_full_image_width": 1200,
+    "target_regression_precision": 0.95,
+    "min_samples": 50,
+    "eval_min_accuracy": 0.8
   },
   "routing": {
     "high_risk_globs": [
