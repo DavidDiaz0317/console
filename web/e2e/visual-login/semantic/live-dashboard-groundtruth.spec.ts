@@ -72,7 +72,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
       'dashboard-pods-total': groundTruth.pods.total,
       'dashboard-namespaces-total': groundTruth.namespaces.total,
     }, '/')
-    const apiFacts = await collectLiveApiFacts(page)
+    const apiFacts = await collectLiveApiFacts(page, 'dashboard')
     await assertLiveApiUiFields(page, apiFacts, '/', {
       'dashboard-clusters-total': apiFacts.clusters.total,
       'dashboard-healthy-clusters': apiFacts.clusters.healthy,

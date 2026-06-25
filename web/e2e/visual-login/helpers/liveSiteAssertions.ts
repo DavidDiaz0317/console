@@ -12,7 +12,7 @@ import {
   firstVisibleLocator,
 } from './visualLoginAssertions'
 
-export type LiveSiteAuthMode = 'dev' | 'preauthenticated' | 'none'
+export type LiveSiteAuthMode = 'dev' | 'preauthenticated' | 'signed-cookie' | 'none'
 
 const LIVE_CANARY_TEST_USER = {
   id: 'live-canary-ui',
@@ -26,6 +26,7 @@ const LIVE_CANARY_TEST_USER = {
 
 const LIVE_NAVIGATION_ATTEMPTS = 3
 const TEXT_COLLISION_RATIO_LIMIT = 0.30
+let lastLiveRouteNavigationAt = 0
 
 type LiveApiEndpointFact = {
   status: number | null
@@ -63,6 +64,8 @@ export type LiveApiFacts = {
     failedClusters: string[]
   }
 }
+
+export type LiveApiFactScope = 'all' | 'dashboard' | 'clusters' | 'nodes' | 'pods' | 'namespaces' | 'deployments' | 'alerts'
 
 type GroundtruthFieldState = {
   field: string
@@ -147,9 +150,10 @@ export function liveCanaryUrl(): string | undefined {
 export function liveCanaryAuthMode(baseUrl?: string): LiveSiteAuthMode {
   const rawValue = (process.env.LIVE_SITE_AUTH_MODE || process.env.LIVE_CANARY_AUTH_MODE || 'dev').toLowerCase()
   if (rawValue === 'preauth' || rawValue === 'preauthenticated' || rawValue === 'storage-state') return 'preauthenticated'
+  if (rawValue === 'signed-cookie' || rawValue === 'cookie' || rawValue === 'production-cookie') return 'signed-cookie'
   if (rawValue === 'none' || rawValue === 'unauthenticated') return 'none'
   if (!process.env.LIVE_SITE_AUTH_MODE && !process.env.LIVE_CANARY_AUTH_MODE && baseUrl && /console-live\.kubestellar\.io/i.test(baseUrl)) {
-    throw new Error('Authenticated live UI tests need LIVE_CANARY_CONSOLE_URL or LIVE_SITE_AUTH_MODE=preauthenticated. Do not run the dev-login path against production OAuth.')
+    throw new Error('Authenticated live UI tests need LIVE_SITE_AUTH_MODE=signed-cookie, preauthenticated, or none when targeting production OAuth.')
   }
   return 'dev'
 }
@@ -171,6 +175,59 @@ async function seedPreauthenticatedLiveCanarySession(page: Page) {
   }, LIVE_CANARY_TEST_USER)
 }
 
+function liveRouteDelayMs(): number {
+  const rawValue = process.env.LIVE_CANARY_ROUTE_DELAY_MS || '3000'
+  const parsed = Number(rawValue)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
+async function paceLiveRoute(page: Page) {
+  const delayMs = liveRouteDelayMs()
+  if (delayMs <= 0) return
+  const elapsedMs = Date.now() - lastLiveRouteNavigationAt
+  if (lastLiveRouteNavigationAt > 0 && elapsedMs < delayMs) {
+    await page.waitForTimeout(delayMs - elapsedMs)
+  }
+  lastLiveRouteNavigationAt = Date.now()
+}
+
+async function seedSignedLiveCookieSession(page: Page, baseUrl: string) {
+  const jwt = process.env.CONSOLE_LIVE_TEST_SESSION_JWT || process.env.LIVE_SITE_TEST_SESSION_JWT
+  if (!jwt) {
+    throw new Error('LIVE_SITE_AUTH_MODE=signed-cookie requires CONSOLE_LIVE_TEST_SESSION_JWT or LIVE_SITE_TEST_SESSION_JWT.')
+  }
+
+  const url = new URL(baseUrl)
+  const githubLogin = process.env.CONSOLE_LIVE_TEST_GITHUB_LOGIN || 'DavidDiaz0317'
+  const userId = process.env.CONSOLE_LIVE_TEST_USER_ID || 'console-live-test-user'
+  const role = process.env.CONSOLE_LIVE_TEST_USER_ROLE || 'admin'
+  await page.context().addCookies([{
+    name: 'kc_auth',
+    value: jwt,
+    domain: url.hostname,
+    path: '/',
+    httpOnly: true,
+    secure: url.protocol === 'https:',
+    sameSite: 'Strict',
+    expires: Math.floor(Date.now() / 1000) + 1_800,
+  }])
+  await page.addInitScript((user) => {
+    localStorage.setItem('kc-has-session', 'true')
+    localStorage.setItem('kc-demo-mode', 'false')
+    localStorage.setItem('kc-user-cache', JSON.stringify(user))
+    localStorage.setItem('kc-user-cache-validated', String(Date.now()))
+    localStorage.removeItem('token')
+  }, {
+    id: userId,
+    github_id: githubLogin,
+    github_login: githubLogin,
+    email: `${githubLogin}@users.noreply.github.com`,
+    avatar_url: '',
+    role,
+    onboarded: true,
+  })
+}
+
 export async function gotoLiveCanaryRoute(
   page: Page,
   baseUrl: string,
@@ -181,6 +238,7 @@ export async function gotoLiveCanaryRoute(
   let lastError: unknown
   for (let attempt = 1; attempt <= LIVE_NAVIGATION_ATTEMPTS; attempt += 1) {
     try {
+      await paceLiveRoute(page)
       return await page.goto(targetUrl, { waitUntil, timeout: 30_000 })
     } catch (error) {
       lastError = error
@@ -198,6 +256,23 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
     await seedPreauthenticatedLiveCanarySession(page)
     await gotoLiveCanaryRoute(page, baseUrl, '/clusters')
     await expect(page.locator('body'), 'preauthenticated live canary session must render a page body').not.toHaveText('', {
+      timeout: 15_000,
+    })
+    return
+  }
+  if (mode === 'signed-cookie') {
+    await seedSignedLiveCookieSession(page, baseUrl)
+    await gotoLiveCanaryRoute(page, baseUrl, '/')
+    await expect
+      .poll(() => page.evaluate(async () => {
+        const response = await fetch('/api/me', { credentials: 'same-origin' })
+        return response.status
+      }), {
+        message: 'signed live canary cookie must validate against /api/me before dashboard navigation',
+        timeout: 20_000,
+      })
+      .toBe(200)
+    await expect(page.locator('body'), 'signed live canary session must not show login or session-expired UI').not.toContainText(/sign in|session expired/i, {
       timeout: 15_000,
     })
     return
@@ -543,10 +618,14 @@ function networkClassification(status: number | undefined, url: string): string 
   return null
 }
 
-export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
-  return page.evaluate(async () => {
+export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 'all'): Promise<LiveApiFacts> {
+  return page.evaluate(async (factScope: LiveApiFactScope) => {
     type EndpointFact = { status: number | null; count: number | null; error?: string }
     const endpoints: Record<string, EndpointFact> = {}
+    const shouldFetch = (endpointScope: LiveApiFactScope) =>
+      factScope === 'all'
+      || factScope === endpointScope
+      || (factScope === 'dashboard' && (endpointScope === 'clusters' || endpointScope === 'namespaces'))
 
     async function getJson(endpoint: string): Promise<{ status: number | null; data: unknown; count: number | null; error?: string }> {
       try {
@@ -596,7 +675,9 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
       ? clustersWithRunningPods.reduce((sum, cluster) => sum + Number(cluster.runningPods || 0), 0)
       : null
 
-    const nodesResponse = await getJson('/api/mcp/nodes')
+    const nodesResponse = shouldFetch('nodes')
+      ? await getJson('/api/mcp/nodes')
+      : { status: null, data: null, count: null }
     const nodes = Array.isArray((nodesResponse.data as { nodes?: unknown[] } | null)?.nodes)
       ? (nodesResponse.data as { nodes: Array<Record<string, unknown>> }).nodes
       : []
@@ -607,7 +688,9 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
       ))
     ).length
 
-    const podsResponse = await getJson('/api/mcp/pods')
+    const podsResponse = shouldFetch('pods')
+      ? await getJson('/api/mcp/pods')
+      : { status: null, data: null, count: null }
     const pods = Array.isArray((podsResponse.data as { pods?: unknown[] } | null)?.pods)
       ? (podsResponse.data as { pods: Array<Record<string, unknown>> }).pods
       : []
@@ -615,7 +698,9 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
     const pendingPods = pods.filter(pod => String(pod.status || '').toLowerCase() === 'pending').length
     const crashLoopPods = pods.filter(pod => /crashloopbackoff/i.test(String(pod.reason || pod.status || ''))).length
 
-    const deploymentsResponse = await getJson('/api/mcp/deployments')
+    const deploymentsResponse = shouldFetch('deployments')
+      ? await getJson('/api/mcp/deployments')
+      : { status: null, data: null, count: null }
     const deployments = Array.isArray((deploymentsResponse.data as { deployments?: unknown[] } | null)?.deployments)
       ? (deploymentsResponse.data as { deployments: Array<Record<string, unknown>> }).deployments
       : []
@@ -628,13 +713,15 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
     let namespacesTotal = 0
     let namespacesSucceeded = 0
     const namespaceFailedClusters: string[] = []
-    for (const clusterName of clusterNames) {
-      const namespaceResponse = await getJson(`/api/namespaces?cluster=${encodeURIComponent(clusterName)}`)
-      if (namespaceResponse.status && namespaceResponse.status >= 200 && namespaceResponse.status < 300) {
-        namespacesTotal += namespaceResponse.count || 0
-        namespacesSucceeded += 1
-      } else {
-        namespaceFailedClusters.push(clusterName)
+    if (shouldFetch('namespaces')) {
+      for (const clusterName of clusterNames) {
+        const namespaceResponse = await getJson(`/api/namespaces?cluster=${encodeURIComponent(clusterName)}`)
+        if (namespaceResponse.status && namespaceResponse.status >= 200 && namespaceResponse.status < 300) {
+          namespacesTotal += namespaceResponse.count || 0
+          namespacesSucceeded += 1
+        } else {
+          namespaceFailedClusters.push(clusterName)
+        }
       }
     }
 
@@ -670,7 +757,7 @@ export async function collectLiveApiFacts(page: Page): Promise<LiveApiFacts> {
         failedClusters: namespaceFailedClusters,
       },
     }
-  })
+  }, scope)
 }
 
 function liveRouteMarkerMissing(bodyText: string, marker: string | RegExp): boolean {

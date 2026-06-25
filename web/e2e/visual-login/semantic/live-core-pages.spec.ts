@@ -17,6 +17,7 @@ import {
   collectLiveApiFacts,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
+  type LiveApiFactScope,
   liveCanaryUrl,
   recordLiveUiFailures,
   writeLiveRouteEvidence,
@@ -42,6 +43,7 @@ const liveCorePageExpectedConsoleNoise = [
 type CoreRoute = {
   route: string
   label: string
+  apiScope: LiveApiFactScope
   expectedFields: (groundTruth: ReturnType<typeof collectK8sGroundTruth>) => Record<string, number>
   apiFields: (apiFacts: Awaited<ReturnType<typeof collectLiveApiFacts>>) => Record<string, number | null>
 }
@@ -50,6 +52,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/clusters',
     label: 'clusters',
+    apiScope: 'clusters',
     expectedFields: groundTruth => ({
       'clusters-total': groundTruth.contexts.reachable,
       'nodes-total': groundTruth.nodes.total,
@@ -66,6 +69,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/nodes',
     label: 'nodes',
+    apiScope: 'nodes',
     expectedFields: groundTruth => ({
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
@@ -80,6 +84,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/pods',
     label: 'pods',
+    apiScope: 'pods',
     expectedFields: groundTruth => ({
       'pods-total': groundTruth.pods.total,
       'pods-running': groundTruth.pods.running,
@@ -95,6 +100,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/namespaces',
     label: 'namespaces',
+    apiScope: 'namespaces',
     expectedFields: groundTruth => ({
       'namespaces-total': groundTruth.namespaces.total,
     }),
@@ -105,6 +111,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/deployments',
     label: 'deployments',
+    apiScope: 'deployments',
     expectedFields: groundTruth => ({
       'deployments-total': groundTruth.deployments.total,
       'deployments-available': groundTruth.deployments.available,
@@ -117,6 +124,7 @@ const coreRoutes: CoreRoute[] = [
   {
     route: '/alerts',
     label: 'alerts',
+    apiScope: 'alerts',
     expectedFields: () => ({}),
     apiFields: () => ({}),
   },
@@ -167,7 +175,7 @@ for (const coreRoute of coreRoutes) {
       const expectedFields = coreRoute.expectedFields(groundTruth)
       if (Object.keys(expectedFields).length > 0) {
         await assertGroundtruthFields(page, expectedFields, coreRoute.route)
-        const apiFacts = await collectLiveApiFacts(page)
+        const apiFacts = await collectLiveApiFacts(page, coreRoute.apiScope)
         await assertLiveApiUiFields(page, apiFacts, coreRoute.route, coreRoute.apiFields(apiFacts))
         await assertNoPositiveLiveCountContradictions(page, coreRoute.route, expectedFields)
       }
