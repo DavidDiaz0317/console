@@ -31,7 +31,9 @@
     "default_model": "gpt-4.1-mini",
     "timeout_seconds": 60,
     "temperature": 0,
-    "max_tokens": 500
+    "max_tokens": 500,
+    "max_model_calls_per_run": 50,
+    "max_total_tokens_per_run": 200000
   },
   "optional_baseline_free_check": {
     "enabled_env": "VISUAL_TRIAGE_BASELINE_FREE_CHECK",
