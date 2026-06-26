@@ -13,7 +13,7 @@ import { kubectlProxy } from '../lib/kubectlProxy'
 import { clusterCacheRef, agentFetch, deduplicateClustersByServer } from './mcp/shared'
 import { isAgentUnavailable } from './useLocalAgent'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
-import { FETCH_DEFAULT_TIMEOUT_MS, KUBECTL_EXTENDED_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, isLocalAgentSuppressed, KUBECTL_EXTENDED_TIMEOUT_MS } from '../lib/constants/network'
 import { VULN_SEVERITY_ORDER } from '../types/alerts'
 import { settledWithConcurrency } from '../lib/utils/concurrency'
 import {
@@ -526,14 +526,22 @@ export function useCachedDeployments(
     initialData: [] as Deployment[],
     demoData: getDemoDeployments(),
     fetcher: async () => {
+      const shouldUseBackend = isClusterModeBackend() || isLocalAgentSuppressed()
       const shouldUseLocalAgent = clusterCacheRef.clusters.length > 0
         && !isAgentUnavailable()
         && Boolean(LOCAL_AGENT_HTTP_URL)
-        && !isClusterModeBackend()
+        && !shouldUseBackend
 
       // Try agent first (fast, no backend needed) — skip if agent is unavailable
-      if (!cluster && isClusterModeBackend()) {
+      if (!cluster && shouldUseBackend) {
         return fetchBackendAggregateDeployments()
+      }
+
+      if (cluster && shouldUseBackend) {
+        const raw = await fetchBackendAPI<unknown>('deployments', { cluster, namespace })
+        const data = validateArrayResponse<{ deployments: Deployment[] }>(DeploymentsResponseSchema, raw, '/api/mcp/deployments', 'deployments')
+        const deployments = data.deployments || []
+        return deployments.map(d => ({ ...d, cluster: d.cluster || cluster }))
       }
 
       if (shouldUseLocalAgent) {
@@ -578,7 +586,8 @@ export function useCachedDeployments(
       throw new Error("No data source available")
     },
     progressiveFetcher: cluster ? undefined : async (onProgress) => {
-      if (isClusterModeBackend()) {
+      const shouldUseBackend = isClusterModeBackend() || isLocalAgentSuppressed()
+      if (shouldUseBackend) {
         const deployments = await fetchBackendAggregateDeployments()
         onProgress(deployments)
         return deployments
@@ -587,7 +596,7 @@ export function useCachedDeployments(
       const shouldUseLocalAgent = clusterCacheRef.clusters.length > 0
         && !isAgentUnavailable()
         && Boolean(LOCAL_AGENT_HTTP_URL)
-        && !isClusterModeBackend()
+        && !shouldUseBackend
 
       if (shouldUseLocalAgent) {
         return fetchDeploymentsViaAgent(namespace, onProgress)

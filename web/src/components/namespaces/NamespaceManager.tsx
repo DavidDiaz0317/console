@@ -31,7 +31,7 @@ import { useToast } from '../ui/Toast'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../lib/auth'
 import { LOCAL_AGENT_HTTP_URL } from '../../lib/constants'
-import { NAMESPACE_ABORT_TIMEOUT_MS } from '../../lib/constants/network'
+import { isLocalAgentSuppressed, NAMESPACE_ABORT_TIMEOUT_MS } from '../../lib/constants/network'
 import { NamespaceCard, NamespaceCardSkeleton } from './NamespaceCard'
 import { DeleteConfirmModal } from './DeleteConfirmModal'
 import { CreateNamespaceModal } from './CreateNamespaceModal'
@@ -119,6 +119,11 @@ export function NamespaceManager() {
   // Uses progressive loading - updates UI as each cluster completes
   const fetchNamespaces = useCallback(async (force = false) => {
     if (isRateLimitBackoffActive()) {
+      const cachedNamespaces: NamespaceDetails[] = []
+      for (const cluster of allClusterNames) {
+        cachedNamespaces.push(...getCachedNamespacesForCluster(cluster))
+      }
+      setAllNamespaces(cachedNamespaces)
       setError(t('namespaces.errors.rateLimited', 'Namespace data is temporarily rate limited. Showing the last available data.'))
       return
     }
@@ -180,8 +185,11 @@ export function NamespaceManager() {
     }
 
     const buildNamespacesFromPods = async (cluster: string, requestCluster: string): Promise<NamespaceDetails[]> => {
+      const podUrl = isLocalAgentSuppressed() || !LOCAL_AGENT_HTTP_URL
+        ? `/api/mcp/pods?cluster=${encodeURIComponent(requestCluster)}&limit=1000`
+        : `${LOCAL_AGENT_HTTP_URL}/pods?cluster=${encodeURIComponent(requestCluster)}&limit=1000`
       const response = await authFetch(
-        `${LOCAL_AGENT_HTTP_URL}/pods?cluster=${encodeURIComponent(requestCluster)}&limit=1000`,
+        podUrl,
         { headers: { Accept: 'application/json' } }
       )
       if (!response.ok) {
@@ -211,46 +219,48 @@ export function NamespaceManager() {
         let backendAuthFailed = false
         let podFallbackFailed = false
 
-        try {
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), NAMESPACE_ABORT_TIMEOUT_MS)
-          const response = await authFetch(
-            `${LOCAL_AGENT_HTTP_URL}/namespaces?cluster=${encodeURIComponent(requestCluster)}`,
-            { signal: controller.signal, headers: { Accept: 'application/json' } }
-          )
-          clearTimeout(timeoutId)
+        if (!isLocalAgentSuppressed() && LOCAL_AGENT_HTTP_URL) {
+          try {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), NAMESPACE_ABORT_TIMEOUT_MS)
+            const response = await authFetch(
+              `${LOCAL_AGENT_HTTP_URL}/namespaces?cluster=${encodeURIComponent(requestCluster)}`,
+              { signal: controller.signal, headers: { Accept: 'application/json' } }
+            )
+            clearTimeout(timeoutId)
 
-          if (response.ok) {
-            const data = await response.json() as {
-              namespaces?: Array<{
-                name: string
-                status?: string
-                labels?: Record<string, string>
-                createdAt?: string
-              }>
+            if (response.ok) {
+              const data = await response.json() as {
+                namespaces?: Array<{
+                  name: string
+                  status?: string
+                  labels?: Record<string, string>
+                  createdAt?: string
+                }>
+              }
+              if (Array.isArray(data.namespaces)) {
+                clusterNamespaces = data.namespaces.map(ns => ({
+                  name: ns.name,
+                  cluster,
+                  status: ns.status || 'Active',
+                  labels: ns.labels,
+                  createdAt: ns.createdAt || new Date().toISOString()
+                }))
+              }
+            } else if (response.status === 401 || response.status === 403) {
+              agentAuthFailed = true
+            } else {
+              agentFailed = true
             }
-            if (Array.isArray(data.namespaces)) {
-              clusterNamespaces = data.namespaces.map(ns => ({
-                name: ns.name,
-                cluster,
-                status: ns.status || 'Active',
-                labels: ns.labels,
-                createdAt: ns.createdAt || new Date().toISOString()
-              }))
-            }
-          } else if (response.status === 401 || response.status === 403) {
-            agentAuthFailed = true
-          } else {
+          } catch (err: unknown) {
             agentFailed = true
-          }
-        } catch (err: unknown) {
-          agentFailed = true
-          if (err instanceof DOMException && err.name === 'AbortError') {
-            console.warn(`[NamespaceManager] ${t('namespaces.errors.requestTimedOut')}`, cluster)
-            showToast(t('namespaces.errors.requestTimedOut'), 'error')
-          } else if (err instanceof TypeError) {
-            console.warn(`[NamespaceManager] ${t('namespaces.errors.agentNotReachable')}`, cluster)
-            showToast(t('namespaces.errors.agentNotReachable'), 'error')
+            if (err instanceof DOMException && err.name === 'AbortError') {
+              console.warn(`[NamespaceManager] ${t('namespaces.errors.requestTimedOut')}`, cluster)
+              showToast(t('namespaces.errors.requestTimedOut'), 'error')
+            } else if (err instanceof TypeError) {
+              console.warn(`[NamespaceManager] ${t('namespaces.errors.agentNotReachable')}`, cluster)
+              showToast(t('namespaces.errors.agentNotReachable'), 'error')
+            }
           }
         }
 

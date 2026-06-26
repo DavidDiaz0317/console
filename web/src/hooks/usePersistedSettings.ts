@@ -9,7 +9,7 @@ import {
   SETTINGS_CHANGED_EVENT } from '../lib/settingsSync'
 import { LOCAL_AGENT_HTTP_URL } from '../lib/constants'
 import { agentFetch } from './mcp/shared'
-import { FETCH_DEFAULT_TIMEOUT_MS, FETCH_EXTERNAL_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, FETCH_EXTERNAL_TIMEOUT_MS, isLocalAgentSuppressed } from '../lib/constants/network'
 import { isNetlifyDeployment } from '../lib/demoMode'
 import { safeRevokeObjectURL } from '../lib/download'
 import { STORAGE_KEY_PENDING_SETTINGS_SYNC } from '../lib/constants/storage'
@@ -35,6 +35,10 @@ export type SyncStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
  * Uses a generous timeout because the agent's HTTP/1.1 connection pool (6 per origin)
  * can be saturated by concurrent cluster health/data requests during page transitions. */
 async function settingsFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  if (isLocalAgentSuppressed() || !LOCAL_AGENT_HTTP_URL) {
+    throw new Error('Local agent settings are unavailable')
+  }
+
   const response = await agentFetch(`${LOCAL_AGENT_HTTP_URL}${path}`, {
     ...options,
     headers: {
@@ -170,10 +174,13 @@ export function usePersistedSettings() {
   useEffect(() => {
     mountedRef.current = true
 
-    if (!isAuthenticated || isNetlifyDeployment) {
+    if (!isAuthenticated || isNetlifyDeployment || isLocalAgentSuppressed() || !LOCAL_AGENT_HTTP_URL) {
       // Not logged in yet or on Netlify (no local agent) — skip agent sync
-      setSyncStatus(isNetlifyDeployment ? 'offline' : 'idle')
-      setLoaded(true)
+      queueMicrotask(() => {
+        if (!mountedRef.current) return
+        setSyncStatus(isAuthenticated ? 'offline' : 'idle')
+        setLoaded(true)
+      })
       return () => { mountedRef.current = false }
     }
 
@@ -237,7 +244,7 @@ export function usePersistedSettings() {
 
   // Listen for settings changes from individual hooks
   useEffect(() => {
-    if (!isAuthenticated || isNetlifyDeployment) return
+    if (!isAuthenticated || isNetlifyDeployment || isLocalAgentSuppressed() || !LOCAL_AGENT_HTTP_URL) return
     const handleChange = () => {
       saveToBackend()
     }

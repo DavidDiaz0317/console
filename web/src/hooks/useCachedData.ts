@@ -308,7 +308,7 @@ export { useCachedKubevela } from './useCachedKubevela'
 import { isBackendUnavailable } from '../lib/api'
 import { clusterCacheRef } from './mcp/shared'
 import { isAgentUnavailable } from './useLocalAgent'
-import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, isLocalAgentSuppressed } from '../lib/constants/network'
 import {
   fetchBackendAPI,
   fetchFromAllClusters,
@@ -362,6 +362,20 @@ export const coreFetchers = {
     return data.events || []
   },
   deploymentIssues: async (): Promise<DeploymentIssue[]> => {
+    if (isClusterModeBackend() || isLocalAgentSuppressed()) {
+      const deployments = await coreFetchers.deployments()
+      return deployments
+        .filter(d => (d.readyReplicas ?? 0) < (d.replicas ?? 1))
+        .map(d => ({
+          name: d.name,
+          namespace: d.namespace || 'default',
+          cluster: d.cluster,
+          replicas: d.replicas ?? 1,
+          readyReplicas: d.readyReplicas ?? 0,
+          reason: d.status === 'failed' ? 'DeploymentFailed' : 'ReplicaFailure'
+        }))
+    }
+
     if (clusterCacheRef.clusters.length > 0 && !isAgentUnavailable()) {
       const deployments = await fetchDeploymentsViaAgent()
       return deployments
@@ -384,7 +398,7 @@ export const coreFetchers = {
     return []
   },
   deployments: async (): Promise<Deployment[]> => {
-    if (isClusterModeBackend()) {
+    if (isClusterModeBackend() || isLocalAgentSuppressed()) {
       const data = await fetchBackendAPI<{ deployments: Deployment[] }>('deployments', {})
       return data.deployments || []
     }
