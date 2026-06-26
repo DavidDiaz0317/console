@@ -15,6 +15,7 @@ import {
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
   collectLiveApiFacts,
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   type LiveApiFactScope,
@@ -170,6 +171,7 @@ for (const coreRoute of coreRoutes) {
         })
       }
       expect(response?.ok(), `live canary ${coreRoute.route} route must be reachable`).toBeTruthy()
+      await dismissOptionalLiveOverlays(page)
       await assertLiveDashboardShell(page)
       await assertLiveRouteStateLoaded(page, coreRoute.route)
       const expectedFields = coreRoute.expectedFields(groundTruth)

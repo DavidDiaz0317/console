@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   assertLiveDashboardShell,
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -162,6 +163,7 @@ test.describe('macOS WebKit live popup canary', () => {
     fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
     await establishLiveCanarySession(page, baseUrl)
     await gotoLiveCanaryRoute(page, baseUrl, ROUTE)
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await page.waitForTimeout(1_500)
 

@@ -12,6 +12,7 @@ import {
   assertFixtureNamesVisible,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -65,26 +66,31 @@ test('live canary UI surfaces injected Kubernetes fixture states @intensive @liv
     await establishLiveCanarySession(page, baseUrl)
 
     await gotoLiveCanaryRoute(page, baseUrl, '/pods')
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await assertFixtureNamesVisible(page, [fixture.resources.imagePullPod, fixture.resources.pendingPod, fixture.resources.crashLoopPod])
     await assertLiveLayoutStable(page)
 
     await gotoLiveCanaryRoute(page, baseUrl, '/deployments')
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await assertFixtureNamesVisible(page, [fixture.resources.healthyDeployment])
     await assertNoCriticalRuntimeErrors(collectors)
 
     await gotoLiveCanaryRoute(page, baseUrl, '/workloads')
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await assertFixtureNamesVisible(page, [fixture.resources.healthyDeployment])
     await assertLiveLayoutStable(page)
 
     await gotoLiveCanaryRoute(page, baseUrl, '/namespaces')
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await assertFixtureNamesVisible(page, [fixture.namespace])
     await assertLiveLayoutStable(page)
 
     await gotoLiveCanaryRoute(page, baseUrl, '/alerts')
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     const alertText = await page.locator('body').innerText().catch(() => '')
     const alertHasFixtureState = [

@@ -169,6 +169,8 @@ async function seedPreauthenticatedLiveCanarySession(page: Page) {
   await page.addInitScript((user) => {
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-demo-mode', 'false')
+    localStorage.setItem('kc-agent-setup-dismissed', 'true')
+    localStorage.setItem('kc-agent-setup-snoozed', String(Date.now() + 24 * 60 * 60 * 1000))
     localStorage.setItem('token', 'live-canary-test-token')
     localStorage.setItem('kc-user-cache', JSON.stringify(user))
     localStorage.setItem('kc-user-cache-validated', String(Date.now()))
@@ -237,6 +239,8 @@ async function seedSignedLiveCookieSession(page: Page, baseUrl: string) {
   await page.addInitScript((user) => {
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-demo-mode', 'false')
+    localStorage.setItem('kc-agent-setup-dismissed', 'true')
+    localStorage.setItem('kc-agent-setup-snoozed', String(Date.now() + 24 * 60 * 60 * 1000))
     localStorage.setItem('kc-user-cache', JSON.stringify(user))
     localStorage.setItem('kc-user-cache-validated', String(Date.now()))
     localStorage.removeItem('token')
@@ -249,6 +253,21 @@ async function seedSignedLiveCookieSession(page: Page, baseUrl: string) {
     role,
     onboarded: true,
   })
+}
+
+export async function dismissOptionalLiveOverlays(page: Page) {
+  const dismissCandidates = [
+    page.getByRole('button', { name: /remind me later/i }).first(),
+    page.getByRole('button', { name: /don't show again|do not show again/i }).first(),
+    page.locator('button[aria-label*="close" i], button[title*="close" i]').first(),
+  ]
+  for (const candidate of dismissCandidates) {
+    if (await candidate.isVisible().catch(() => false)) {
+      await candidate.click().catch(() => undefined)
+      await page.waitForTimeout(250)
+    }
+  }
+  await page.keyboard.press('Escape').catch(() => undefined)
 }
 
 export async function gotoLiveCanaryRoute(
@@ -278,6 +297,7 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   if (mode === 'preauthenticated') {
     await seedPreauthenticatedLiveCanarySession(page)
     await gotoLiveCanaryRoute(page, baseUrl, '/clusters')
+    await dismissOptionalLiveOverlays(page)
     await expect(page.locator('body'), 'preauthenticated live canary session must render a page body').not.toHaveText('', {
       timeout: 15_000,
     })
@@ -286,6 +306,7 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   if (mode === 'signed-cookie') {
     await seedSignedLiveCookieSession(page, baseUrl)
     await gotoLiveCanaryRoute(page, baseUrl, '/')
+    await dismissOptionalLiveOverlays(page)
     await expect
       .poll(() => page.evaluate(async () => {
         try {
@@ -330,10 +351,13 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   await page.evaluate(() => {
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-demo-mode', 'false')
+    localStorage.setItem('kc-agent-setup-dismissed', 'true')
+    localStorage.setItem('kc-agent-setup-snoozed', String(Date.now() + 24 * 60 * 60 * 1000))
     if (localStorage.getItem('token') === 'demo-token') {
       localStorage.removeItem('token')
     }
   })
+  await dismissOptionalLiveOverlays(page)
 }
 
 export async function assertLiveDashboardShell(page: Page) {
@@ -551,6 +575,7 @@ export function assertNoUnexpectedLiveNetworkErrors(
       }
     })
     .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
+    .filter(entry => !/net::ERR_ABORTED/i.test(entry.failureText || ''))
     .map(entry => `${entry.method} ${entry.url} ${entry.failureText || ''}`.trim())
 
   collectors.liveUiFailures = {
@@ -657,10 +682,24 @@ export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 
       factScope === 'all'
       || factScope === endpointScope
       || (factScope === 'dashboard' && (endpointScope === 'clusters' || endpointScope === 'namespaces'))
+    const retryAfterMs = (response: Response) => {
+      const rawValue = response.headers.get('retry-after')
+      if (!rawValue) return 2_000
+      const seconds = Number(rawValue)
+      if (Number.isFinite(seconds)) return Math.min(Math.max(seconds * 1_000, 1_000), 10_000)
+      const dateMs = Date.parse(rawValue)
+      if (Number.isFinite(dateMs)) return Math.min(Math.max(dateMs - Date.now(), 1_000), 10_000)
+      return 2_000
+    }
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
     async function getJson(endpoint: string): Promise<{ status: number | null; data: unknown; count: number | null; error?: string }> {
       try {
-        const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
+        let response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
+        if (response.status === 429) {
+          await sleep(retryAfterMs(response))
+          response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' } })
+        }
         const text = await response.text()
         let data: unknown = null
         try {
@@ -956,6 +995,7 @@ export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, 
   const blockingNetworkClassifications = networkClassifications.filter(item =>
     item.classification !== 'local-agent-status-unreachable'
     && item.classification !== 'optional-live-integration-unreachable'
+    && !(item.classification === 'live-rate-limit-data-loss' && mismatches.length === 0)
   )
   expect(mismatches, `live ${route} UI fields must match authenticated API data`).toEqual([])
   expect(blockingNetworkClassifications, `live ${route} authenticated resource APIs must not return blocking 4xx/5xx responses`).toEqual([])

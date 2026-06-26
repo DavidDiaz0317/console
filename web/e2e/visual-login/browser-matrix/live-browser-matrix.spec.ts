@@ -4,6 +4,7 @@ import path from 'node:path'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
 import { safeJsonStringify } from '../../../harness/evidence/sanitizeEvidence'
 import {
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -613,6 +614,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
     for (const route of coreRoutes) {
       try {
         const response = await gotoLiveCanaryRoute(page, baseUrl!, route.route)
+        await dismissOptionalLiveOverlays(page)
         await page.waitForLoadState('domcontentloaded').catch(() => undefined)
         await waitForRouteHandshakeSettled(page).catch(() => undefined)
         await waitForExpectedMarkers(page, route.expectedMarkers?.(groundTruth) || []).catch(() => undefined)
@@ -647,6 +649,7 @@ test('live browser matrix records route and interaction layout facts @intensive 
     }
 
     await gotoLiveCanaryRoute(page, baseUrl!, '/').catch(() => undefined)
+    await dismissOptionalLiveOverlays(page)
     report.interactions.push(await exerciseControl(page, projectBrowser, '/', 'filter', [
       page.getByRole('button', { name: /filter/i }).first(),
       page.locator('button[aria-label*="filter" i]').first(),

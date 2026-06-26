@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
-import { establishLiveCanarySession, liveCanaryUrl, readGroundtruthFieldNumbers } from '../helpers/liveSiteAssertions'
+import { dismissOptionalLiveOverlays, establishLiveCanarySession, liveCanaryUrl, readGroundtruthFieldNumbers } from '../helpers/liveSiteAssertions'
 
 function readPositiveIntEnv(name: string, fallback: number) {
   const rawValue = process.env[name]
@@ -57,6 +57,7 @@ test('cluster dashboard can be checked against live Kubernetes ground truth @int
 
   const response = await page.goto(new URL('/clusters?groundtruth=1', selfHostedUrl).toString(), { waitUntil: 'domcontentloaded' })
   expect(response?.ok(), 'self-hosted Console /clusters route must be reachable').toBeTruthy()
+  await dismissOptionalLiveOverlays(page)
 
   await expect(page.locator('body')).not.toHaveText('', { timeout: 10_000 })
   await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)

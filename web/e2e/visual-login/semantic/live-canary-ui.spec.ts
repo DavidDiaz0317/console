@@ -12,6 +12,7 @@ import {
   assertNoForbiddenLiveUi,
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -96,6 +97,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     collectors.errorResponses.length = 0
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/clusters?groundtruth=1')
     expect(response?.ok(), 'live canary /clusters route must be reachable').toBeTruthy()
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
     await assertNoForbiddenLiveUi(page)
     await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)

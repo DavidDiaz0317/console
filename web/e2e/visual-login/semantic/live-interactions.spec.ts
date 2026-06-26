@@ -8,6 +8,7 @@ import {
   assertLiveLayoutStable,
   assertNoUnexpectedLiveNetworkErrors,
   assertNoVisibleTextCollisions,
+  dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
@@ -72,6 +73,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
 
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/')
     expect(response?.ok(), 'live canary Dashboard route must be reachable for interaction checks').toBeTruthy()
+    await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page)
 
     await test.step('global search accepts live queries', async () => {
@@ -144,9 +146,11 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
         await missions.click()
         await page.waitForTimeout(500)
         writeLiveRouteEvidence({ route: '/', kind: 'interactive-control-clicked', control: 'AI Missions panel' })
+        await dismissOptionalLiveOverlays(page)
       }
     })
 
+    await dismissOptionalLiveOverlays(page)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
     await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
