@@ -70,6 +70,26 @@ func TestNewAuthHandler(t *testing.T) {
 				require.Contains(t, h.githubAPIBase, "github.enterprise.com")
 			},
 		},
+		{
+			name: "github login allowlist and admin list",
+			cfg: AuthConfig{
+				GitHubClientID:      "client-id",
+				GitHubSecret:        "secret",
+				GitHubURL:           "https://github.com",
+				JWTSecret:           "jwt-secret",
+				FrontendURL:         "http://localhost:5174",
+				BackendURL:          "http://localhost:8080",
+				AllowedGitHubLogins: " DavidDiaz0317, teammate ",
+				AdminGitHubLogins:   "daviddiaz0317",
+			},
+			expect: func(t *testing.T, h *AuthHandler) {
+				require.True(t, h.isGitHubLoginAllowed("daviddiaz0317"))
+				require.True(t, h.isGitHubLoginAllowed("TEAMMATE"))
+				require.False(t, h.isGitHubLoginAllowed("unknown-user"))
+				require.True(t, h.isConfiguredGitHubAdmin("DavidDiaz0317"))
+				require.False(t, h.isConfiguredGitHubAdmin("teammate"))
+			},
+		},
 	}
 
 	for _, tc := range tests {

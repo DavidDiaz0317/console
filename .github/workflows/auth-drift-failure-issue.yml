@@ -1,0 +1,789 @@
+name: Auth Drift Failure Issue
+
+on:
+  workflow_run:
+    workflows:
+      - Auth Drift
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Auth Drift workflow run ID to summarize.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  create-or-update-issue:
+    name: Create or Update Auth Drift Failure Issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
+    env:
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+
+    steps:
+      - name: Download Auth Drift artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
+        run: |
+          mkdir -p auth-drift-artifacts
+          gh run download "$RUN_ID" \
+            --repo "$REPOSITORY" \
+            --dir auth-drift-artifacts || true
+          find auth-drift-artifacts -maxdepth 6 -type f | sort || true
+
+      - name: Create or update failure issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          ARTIFACT_ROOT: auth-drift-artifacts
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const crypto = require('crypto');
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = Number(process.env.SOURCE_RUN_ID);
+            const artifactRoot = process.env.ARTIFACT_ROOT;
+            const runUrlBase = `${context.serverUrl}/${owner}/${repo}/actions/runs`;
+
+            const labelDefs = {
+              'auth-drift-failure': {
+                color: 'd93f0b',
+                description: 'Automated issue for Auth Drift workflow failures',
+              },
+              'kind/bug': {
+                color: 'd73a4a',
+                description: 'Something is not working',
+              },
+              'test-failure': {
+                color: 'f9d0c4',
+                description: 'Automated test failure',
+              },
+              'kind/regression': {
+                color: 'e11d21',
+                description: 'Categorizes issue or PR as related to a regression from a prior release.',
+              },
+              'priority/critical': {
+                color: 'b60205',
+                description: 'Critical priority',
+              },
+            };
+
+            const GENERIC_SUGGESTED_FILES = [
+              'web/src/components/auth/**',
+              'web/src/lib/auth.tsx',
+              'web/src/lib/api.ts',
+              'web/vite.config.ts',
+              'web/e2e/auth-drift/**',
+              '.github/workflows/auth-drift.yml',
+              '.github/workflows/auth-drift-failure-issue.yml',
+              '.github/actions/auth-drift-setup/action.yml',
+            ];
+
+            const SUITE_DETAILS = [
+              {
+                match: 'hosted-demo-auth-drift',
+                name: 'Hosted demo no-login drift',
+                routes: ['/', '/login'],
+                contract: 'The public demo must land on the dashboard and never expose login UI.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'web/e2e/auth-drift/hosted-demo-auth-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'oauth-staging-login-drift',
+                name: 'OAuth login UI drift',
+                routes: ['/login', '/auth/github'],
+                contract: 'The OAuth login card, GitHub button, branding, and mobile layout must stay stable.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'web/e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'localhost-login-dashboard-drift',
+                name: 'Localhost login dashboard drift',
+                routes: ['/login', '/'],
+                contract: 'Localhost must require login, route through the GitHub entry point, and land on the dashboard.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'cmd/console/**',
+                  'pkg/api/**',
+                  'web/e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
+                ],
+              },
+              {
+                match: 'fake-oauth-login-dashboard-drift',
+                name: 'Fake OAuth login dashboard drift',
+                routes: ['/login', '/auth/github', '/auth/github/callback', '/api/me', '/'],
+                contract: 'Fake OAuth must complete authorize, callback, token exchange, fake GitHub user fetch, cookie setup, and dashboard session.',
+                suggestedFiles: [
+                  'web/src/components/auth/**',
+                  'web/src/lib/auth.tsx',
+                  'web/src/lib/api.ts',
+                  'cmd/console/**',
+                  'pkg/api/**',
+                  'web/e2e/auth-drift/fake-github-oauth-provider.mjs',
+                  'web/e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
+                ],
+              },
+            ];
+
+            function escapeCell(value) {
+              return String(value ?? '')
+                .replace(/\r?\n/g, ' ')
+                .replace(/\|/g, '\\|')
+                .slice(0, 300);
+            }
+
+            function truncate(value, limit = 2000) {
+              const text = String(value ?? '');
+              if (text.length <= limit) return text;
+              return `${text.slice(0, limit)}\n...truncated...`;
+            }
+
+            function walk(dir) {
+              if (!fs.existsSync(dir)) return [];
+              return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) return walk(fullPath);
+                return [fullPath];
+              });
+            }
+
+            function readJsonFile(file) {
+              try {
+                return JSON.parse(fs.readFileSync(file, 'utf8'));
+              } catch (error) {
+                core.warning(`Could not parse ${file}: ${error.message}`);
+                return null;
+              }
+            }
+
+            function sanitizeUrl(value) {
+              if (!value) return '';
+              try {
+                const url = new URL(value);
+                url.username = '';
+                url.password = '';
+                url.search = '';
+                url.hash = '';
+                return url.toString();
+              } catch {
+                return String(value).replace(/([?&][^=]*(?:token|secret|key|password|code)[^=]*=)[^&#\s]+/gi, '$1[redacted]');
+              }
+            }
+
+            function sanitizeObject(value) {
+              if (Array.isArray(value)) return value.map(sanitizeObject);
+              if (!value || typeof value !== 'object') {
+                if (typeof value === 'string' && /^https?:\/\//i.test(value)) return sanitizeUrl(value);
+                return value;
+              }
+              return Object.fromEntries(Object.entries(value).map(([key, child]) => {
+                if (/token|secret|password|key|code/i.test(key)) return [key, '[redacted]'];
+                return [key, sanitizeObject(child)];
+              }));
+            }
+
+            function testStatusFailed(status) {
+              return status && !['passed', 'skipped', 'expected'].includes(status);
+            }
+
+            function collectPlaywrightFailures(report, sourceFile) {
+              const failures = [];
+
+              function collectFromSuite(suite, inheritedFile = '') {
+                const suiteFile = suite.file || inheritedFile;
+                for (const spec of suite.specs || []) {
+                  const title = [spec.title, ...(spec.tags || [])].filter(Boolean).join(' ');
+                  for (const testCase of spec.tests || []) {
+                    const projectName = testCase.projectName || '';
+                    const outcome = testCase.outcome || '';
+                    for (const result of testCase.results || []) {
+                      const status = result.status || outcome;
+                      const errors = result.errors || (result.error ? [result.error] : []);
+                      const failed = testStatusFailed(status) || outcome === 'unexpected' || errors.length > 0;
+                      if (!failed) continue;
+
+                      const message = errors
+                        .map((error) => [error.message, error.stack].filter(Boolean).join('\n'))
+                        .filter(Boolean)
+                        .join('\n\n');
+                      const attachments = (result.attachments || [])
+                        .map((attachment) => attachment.path || attachment.name)
+                        .filter(Boolean);
+
+                      failures.push({
+                        sourceFile,
+                        specPath: spec.file || suiteFile || sourceFile,
+                        title,
+                        project: projectName,
+                        status,
+                        retry: result.retry ?? 0,
+                        error: truncate(message || `${title} failed without a parsed error message.`, 2500),
+                        attachments,
+                      });
+                    }
+                  }
+                }
+
+                for (const child of suite.suites || []) {
+                  collectFromSuite(child, suiteFile);
+                }
+              }
+
+              for (const suite of report.suites || []) {
+                collectFromSuite(suite);
+              }
+
+              return failures;
+            }
+
+            function suiteNameFromSpec(specPath) {
+              return getSuiteDetails(specPath).name;
+            }
+
+            function dedupe(items) {
+              return [...new Set((items || []).filter(Boolean))];
+            }
+
+            function getSuiteDetails(specPath = '', contextSuite = '') {
+              const value = `${String(specPath || '')} ${String(contextSuite || '')}`;
+              return SUITE_DETAILS.find((detail) => value.includes(detail.match)) || {
+                name: 'Auth drift',
+                routes: [],
+                contract: 'Auth-related UI and OAuth contracts must remain stable.',
+                suggestedFiles: GENERIC_SUGGESTED_FILES,
+              };
+            }
+
+            function findContextForFailure(failure, contexts) {
+              const specPath = String(failure?.specPath || '');
+              return contexts.find((ctx) => {
+                const suite = String(ctx?.suite || '').replace(/\.spec\.ts$/, '');
+                return suite && specPath.includes(suite);
+              }) || null;
+            }
+
+            function inferFailureType(failure) {
+              const text = `${failure?.title || ''}\n${failure?.error || ''}`.toLowerCase();
+              if (/tohavescreenshot|screenshot|pixel|snapshot/.test(text)) {
+                return 'visual mismatch';
+              }
+              if (/err_connection|econnrefused|page\.goto|browser has been closed|target page, context or browser has been closed|timed out|timeout|webserver|failed to fetch|net::err/.test(text)) {
+                return 'environment/setup failure';
+              }
+              return 'missing or wrong ui state';
+            }
+
+            function buildTargetSummary(contextValue, details) {
+              const urls = dedupe([
+                sanitizeUrl(contextValue?.target?.loginUrl),
+                sanitizeUrl(contextValue?.target?.demoUrl),
+                sanitizeUrl(contextValue?.target?.consoleUrl),
+                sanitizeUrl(contextValue?.target?.backendUrl),
+                sanitizeUrl(contextValue?.target?.providerUrl),
+              ]);
+              if (urls.length) return urls.join('<br>');
+              return details.routes.length ? details.routes.join('<br>') : 'Not captured';
+            }
+
+            function buildLikelyFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              const prioritizedChanged = changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+              return dedupe([
+                ...prioritizedChanged,
+                ...details.suggestedFiles,
+                ...GENERIC_SUGGESTED_FILES,
+              ]).slice(0, 8);
+            }
+
+            function getRelevantChangedFiles(details, prSummaries) {
+              const changedFiles = prSummaries.flatMap((pr) => pr.files || []);
+              return changedFiles.filter((file) => details.suggestedFiles.some((pattern) => {
+                const prefix = String(pattern).replace('/**', '/').replace('**', '').replace('*', '');
+                return prefix && file.startsWith(prefix);
+              }));
+            }
+
+            function inferChangeAssessment(failure, details, prSummaries) {
+              const failureType = inferFailureType(failure);
+              const relevantChangedFiles = getRelevantChangedFiles(details, prSummaries);
+              if (failureType === 'environment/setup failure') {
+                return 'needs human review';
+              }
+              if (failureType === 'missing or wrong ui state') {
+                return 'likely regression';
+              }
+              if (failureType === 'visual mismatch' && relevantChangedFiles.length > 0) {
+                return 'likely intentional ui change';
+              }
+              if (failureType === 'visual mismatch') {
+                return 'likely regression';
+              }
+              return 'needs human review';
+            }
+
+            function suggestedActionForAssessment(assessment) {
+              if (assessment === 'likely intentional ui change') {
+                return 'Review screenshot diff and update baseline only if the UI change is expected.';
+              }
+              if (assessment === 'likely regression') {
+                return 'Inspect the suggested files first and treat this as a regression until disproven.';
+              }
+              return 'Review logs, artifacts, and PR context before deciding whether to update tests or fix code.';
+            }
+
+            function buildFailureSummaryRows(failures, contexts, prSummaries) {
+              return failures.slice(0, 12).map((failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                const likelyFiles = buildLikelyFiles(details, prSummaries)
+                  .slice(0, 3)
+                  .map((file) => `\`${file}\``)
+                  .join('<br>');
+                const protectedContract = ctx?.expectedContract || details.contract;
+                const assessment = inferChangeAssessment(failure, details, prSummaries);
+                return `| ${escapeCell(details.name)} | ${escapeCell(inferFailureType(failure))} | ${escapeCell(assessment)} | ${escapeCell(buildTargetSummary(ctx, details))} | ${escapeCell(protectedContract)} | ${escapeCell(likelyFiles || 'See Suggested Files section')} |`;
+              });
+            }
+
+            function primaryFailureType(failures) {
+              const counts = failures.reduce((acc, failure) => {
+                const key = inferFailureType(failure);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function primaryChangeAssessment(failures, contexts, prSummaries) {
+              const counts = failures.reduce((acc, failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                const key = inferChangeAssessment(failure, details, prSummaries);
+                acc[key] = (acc[key] || 0) + 1;
+                return acc;
+              }, {});
+              return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'not parsed';
+            }
+
+            function buildReproCommands(failures, contexts) {
+              const sourceText = [
+                ...failures.map((failure) => `${failure.specPath} ${failure.title}`),
+                ...contexts.map((ctx) => `${ctx.suite || ''} ${ctx.target?.type || ''}`),
+              ].join('\n');
+              const includeAll = !sourceText.trim();
+              const commands = [];
+
+              if (includeAll || sourceText.includes('oauth-staging-login-drift') || sourceText.includes('local-vite-mocked-oauth-ui')) {
+                commands.push([
+                  'Local mocked OAuth login UI drift:',
+                  '```bash',
+                  'cd web',
+                  'npm run test:auth-drift -- e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              if (includeAll || sourceText.includes('hosted-demo-auth-drift') || sourceText.includes('hosted-demo-no-login')) {
+                commands.push([
+                  'Hosted public demo no-login drift:',
+                  '```bash',
+                  'cd web',
+                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/hosted-demo-auth-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              if (includeAll || sourceText.includes('localhost-login-dashboard-drift') || sourceText.includes('localhost-dev-mode-login-dashboard')) {
+                commands.push([
+                  'Localhost login to dashboard drift:',
+                  '```bash',
+                  'mkdir -p /tmp/auth-drift',
+                  'go build -o /tmp/auth-drift/console-bin ./cmd/console',
+                  'JWT_SECRET="auth-drift-local" DEV_MODE=true PORT=8081 FRONTEND_URL="http://127.0.0.1:4176" DATABASE_PATH="/tmp/auth-drift/console.db" KC_AGENT_TOKEN="auth-drift-local-agent-token" NO_LOCAL_AGENT=true /tmp/auth-drift/console-bin',
+                  '# In another terminal:',
+                  'cd web',
+                  'BACKEND_LISTEN_PORT=8081 VITE_DEV_MODE=true npm run dev -- --host 127.0.0.1 --port 4176',
+                  '# In another terminal:',
+                  'cd web',
+                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/localhost-login-dashboard-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              if (includeAll || sourceText.includes('fake-oauth-login-dashboard-drift') || sourceText.includes('localhost-fake-oauth-login-dashboard')) {
+                commands.push([
+                  'Fake OAuth login to dashboard drift:',
+                  '```bash',
+                  'mkdir -p /tmp/auth-drift-fake-oauth',
+                  'go build -o /tmp/auth-drift-fake-oauth/console-bin ./cmd/console',
+                  '# Terminal 1:',
+                  'cd web',
+                  'GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" node e2e/auth-drift/fake-github-oauth-provider.mjs',
+                  '# Terminal 2:',
+                  'JWT_SECRET="auth-drift-local" DEV_MODE=false GITHUB_URL="http://127.0.0.1:4180" GITHUB_CLIENT_ID="auth-drift-client-id-12345" GITHUB_CLIENT_SECRET="auth-drift-client-secret-1234567890" PORT=8082 FRONTEND_URL="http://127.0.0.1:4177" DATABASE_PATH="/tmp/auth-drift-fake-oauth/console.db" KC_AGENT_TOKEN="auth-drift-local-agent-token" NO_LOCAL_AGENT=true SKIP_ONBOARDING=true IGNORE_PERSISTED_OAUTH_CREDENTIALS=true /tmp/auth-drift-fake-oauth/console-bin',
+                  '# Terminal 3:',
+                  'cd web',
+                  'BACKEND_LISTEN_PORT=8082 VITE_DEV_MODE=false npm run dev -- --host 127.0.0.1 --port 4177',
+                  '# Terminal 4:',
+                  'cd web',
+                  'AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/fake-oauth-login-dashboard-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              if (includeAll || sourceText.includes('external-oauth-staging')) {
+                commands.push([
+                  'External OAuth staging drift:',
+                  '```bash',
+                  'cd web',
+                  'AUTH_DRIFT_LOGIN_URL="https://<oauth-staging-host>/login" AUTH_DRIFT_DISABLE_WEBSERVER=1 npm run test:auth-drift -- e2e/auth-drift/oauth-staging-login-drift.spec.ts',
+                  '```',
+                ].join('\n'));
+              }
+
+              return commands.join('\n\n');
+            }
+
+            function markdownList(items) {
+              if (!items.length) return '- None captured';
+              return items.map((item) => `- ${item}`).join('\n');
+            }
+
+            const { data: repoInfo } = await github.rest.repos.get({ owner, repo });
+            if (!repoInfo.has_issues) {
+              core.warning(`GitHub Issues are disabled for ${owner}/${repo}; cannot create an Auth Drift failure issue.`);
+              return;
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+            });
+
+            if (run.name !== 'Auth Drift') {
+              core.warning(`Run ${runId} is "${run.name}", not "Auth Drift"; skipping.`);
+              return;
+            }
+
+            if (run.conclusion !== 'failure') {
+              core.info(`Auth Drift run ${runId} concluded with ${run.conclusion}; no issue needed.`);
+              return;
+            }
+
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const failedJobs = jobs
+              .filter((job) => job.conclusion === 'failure' || job.conclusion === 'timed_out')
+              .map((job) => ({
+                name: job.name,
+                conclusion: job.conclusion,
+                startedAt: job.started_at,
+                completedAt: job.completed_at,
+                url: job.html_url,
+              }));
+
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const files = walk(artifactRoot);
+            const jsonResultFiles = files.filter((file) => /auth-drift-results[\\/]+results\.json$|[\\/]results\.json$/i.test(file));
+            const contextFiles = files.filter((file) => /auth-drift-context[\\/]+context\.json$|[\\/]context\.json$/i.test(file));
+            const failures = jsonResultFiles.flatMap((file) => {
+              const report = readJsonFile(file);
+              return report ? collectPlaywrightFailures(report, path.relative(process.cwd(), file)) : [];
+            });
+            const contexts = contextFiles
+              .map(readJsonFile)
+              .filter(Boolean)
+              .map(sanitizeObject);
+
+            const prSummaries = [];
+            for (const prRef of run.pull_requests || []) {
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: prRef.number,
+                });
+                const filesForPr = await github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  per_page: 100,
+                });
+                prSummaries.push({
+                  number: pr.number,
+                  title: pr.title,
+                  url: pr.html_url,
+                  author: pr.user?.login || '',
+                  head: pr.head?.label || pr.head?.ref || '',
+                  base: pr.base?.label || pr.base?.ref || '',
+                  files: filesForPr.map((file) => file.filename).slice(0, 50),
+                  fileCount: filesForPr.length,
+                });
+              } catch (error) {
+                core.warning(`Could not read PR #${prRef.number}: ${error.message}`);
+              }
+            }
+
+            const signatureSource = [
+              ...failures.map((failure) => `${failure.specPath}:${failure.title}`).sort(),
+              ...failedJobs.map((job) => job.name).sort(),
+            ].filter(Boolean).join('|') || `auth-drift:${runId}`;
+            const signature = crypto.createHash('sha256').update(signatureSource).digest('hex').slice(0, 16);
+            const marker = `<!-- auth-drift-signature:${signature} -->`;
+
+            for (const [name, def] of Object.entries(labelDefs)) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name,
+                    color: def.color,
+                    description: def.description,
+                  });
+                } catch (error) {
+                  core.warning(`Could not create label ${name}: ${error.message}`);
+                }
+              }
+            }
+
+            const artifactRows = artifacts.map((artifact) => {
+              const artifactUrl = `${runUrlBase}/${runId}/artifacts/${artifact.id}`;
+              return `| [${escapeCell(artifact.name)}](${artifactUrl}) | ${escapeCell(artifact.size_in_bytes)} | ${escapeCell(artifact.expired ? 'yes' : 'no')} |`;
+            });
+
+            const jobRows = failedJobs.map((job) => {
+              const linkedName = job.url ? `[${escapeCell(job.name)}](${job.url})` : escapeCell(job.name);
+              return `| ${linkedName} | ${escapeCell(job.conclusion)} | ${escapeCell(job.startedAt)} | ${escapeCell(job.completedAt)} |`;
+            });
+
+            const testRows = failures.map((failure) => {
+              return `| ${escapeCell(suiteNameFromSpec(failure.specPath))} | ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`;
+            });
+
+            const summaryRows = buildFailureSummaryRows(failures, contexts, prSummaries);
+
+            const suggestedFiles = dedupe([
+              ...failures.flatMap((failure) => {
+                const ctx = findContextForFailure(failure, contexts);
+                const details = getSuiteDetails(failure.specPath, ctx?.suite);
+                return buildLikelyFiles(details, prSummaries);
+              }),
+              ...GENERIC_SUGGESTED_FILES,
+            ]).slice(0, 14);
+
+            const errorBlocks = failures.slice(0, 10).map((failure, index) => {
+              return [
+                `#### ${index + 1}. ${suiteNameFromSpec(failure.specPath)} - ${failure.title}`,
+                '',
+                `Failure type: \`${inferFailureType(failure)}\``,
+                `Change assessment: \`${inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries)}\``,
+                `Suggested action: ${suggestedActionForAssessment(inferChangeAssessment(failure, getSuiteDetails(failure.specPath), prSummaries))}`,
+                '',
+                '```text',
+                truncate(failure.error || 'No parsed error excerpt was found in the Playwright JSON report.', 2500),
+                '```',
+                failure.attachments.length
+                  ? `Attachments referenced by Playwright: ${failure.attachments.map((item) => `\`${path.basename(item)}\``).join(', ')}`
+                  : 'No parsed Playwright attachments for this result.',
+              ].join('\n');
+            });
+
+            const prSection = prSummaries.length
+              ? prSummaries.map((pr) => [
+                  `### PR #${pr.number}: ${pr.title}`,
+                  '',
+                  `- URL: ${pr.url}`,
+                  `- Author: ${pr.author}`,
+                  `- Branches: ${pr.head} -> ${pr.base}`,
+                  `- Changed files (${pr.fileCount}, capped at 50):`,
+                  markdownList(pr.files.map((file) => `\`${file}\``)),
+                ].join('\n')).join('\n\n')
+              : 'No pull request context was attached to this workflow run.';
+
+            const contextSection = contexts.length
+              ? contexts.map((ctx, index) => [
+                  `### Context ${index + 1}: ${ctx.job || 'Auth Drift job'}`,
+                  '',
+                  '```json',
+                  truncate(JSON.stringify(ctx, null, 2), 2000),
+                  '```',
+                ].join('\n')).join('\n\n')
+              : 'No auth drift context JSON artifact was found.';
+
+            const titleSuffix = failedJobs.length
+              ? failedJobs.map((job) => job.name).slice(0, 2).join(', ')
+              : 'workflow';
+            const title = `[Auth Drift][${primaryFailureType(failures)}][${primaryChangeAssessment(failures, contexts, prSummaries)}] ${titleSuffix} failed`;
+
+            let body = [
+              marker,
+              '# Auth Drift Failure',
+              '',
+              'Auth Drift failed. This issue is generated from workflow metadata and uploaded artifacts only; it does not checkout or execute pull request code.',
+              '',
+              '## Failure Summary',
+              '',
+              `- Primary failure type: \`${primaryFailureType(failures)}\``,
+              `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
+              `- Failed jobs: ${failedJobs.length || 0}`,
+              `- Failed Playwright results parsed: ${failures.length || 0}`,
+              '',
+              '| Suite | Failure Type | Change Assessment | Route / Target | Protected Contract | First Files To Inspect |',
+              '|---|---|---|---|---|---|',
+              summaryRows.length ? summaryRows.join('\n') : '| Auth drift | not parsed | needs human review | Not captured | Inspect workflow logs and artifacts first | See Suggested Files section |',
+              '',
+              '### Suggested Decision Rule',
+              '',
+              '- `likely intentional ui change`: review the diff and update baselines only if the product change is expected.',
+              '- `likely regression`: treat as a product regression until disproven.',
+              '- `needs human review`: use logs, artifacts, and PR context to decide whether this is expected or broken.',
+              '',
+              '## Run Context',
+              '',
+              '| Detail | Value |',
+              '|---|---|',
+              `| Workflow run | [#${runId}](${run.html_url}) |`,
+              `| Event | \`${escapeCell(run.event)}\` |`,
+              `| Branch | \`${escapeCell(run.head_branch)}\` |`,
+              `| Commit | \`${escapeCell(run.head_sha)}\` |`,
+              `| Actor | \`${escapeCell(run.actor?.login || '')}\` |`,
+              `| Created | \`${escapeCell(run.created_at)}\` |`,
+              `| Updated | \`${escapeCell(run.updated_at)}\` |`,
+              '',
+              '## Pull Request Context',
+              '',
+              prSection,
+              '',
+              '## Failed Jobs',
+              '',
+              '| Job | Conclusion | Started | Completed |',
+              '|---|---|---|---|',
+              jobRows.length ? jobRows.join('\n') : '| None parsed | n/a | n/a | n/a |',
+              '',
+              '## Failed Tests',
+              '',
+              '| Suite | Test | Project | Status | Retry | Spec |',
+              '|---|---|---|---|---|---|',
+              testRows.length ? testRows.slice(0, 20).join('\n') : '| No failed Playwright test rows parsed | n/a | n/a | n/a | n/a | n/a |',
+              '',
+              '## Error Excerpts',
+              '',
+              errorBlocks.length ? errorBlocks.join('\n\n') : 'No Playwright error excerpts were parsed. Inspect the workflow logs and artifacts.',
+              '',
+              '## Artifacts',
+              '',
+              `Run artifacts page: ${run.html_url}`,
+              '',
+              '| Artifact | Size bytes | Expired |',
+              '|---|---:|---|',
+              artifactRows.length ? artifactRows.join('\n') : '| None found | 0 | n/a |',
+              '',
+              'Expected useful artifacts include Playwright JSON results, HTML report, screenshots, traces, visual diffs, backend logs, Vite logs, and health JSON.',
+              '',
+              '## Target Context',
+              '',
+              contextSection,
+              '',
+              '## Expected Contracts',
+              '',
+              '- Public demo must land on the dashboard with no login page or login controls.',
+              '- Localhost must require the login page, click the GitHub entry point, and then land on the dashboard in dev mode.',
+              '- Fake OAuth localhost must complete authorize, callback, token exchange, fake GitHub user fetch, HttpOnly cookie setup, and dashboard session without real credentials.',
+              '- OAuth login card, GitHub button, branding, and mobile layout must remain visually stable.',
+              '- OAuth authorize redirects must not leak access tokens, ID tokens, refresh tokens, secrets, or credential-like query values.',
+              '',
+              '## Reproduction Commands',
+              '',
+              buildReproCommands(failures, contexts),
+              '',
+              '## Suggested Files to Inspect',
+              '',
+              ...suggestedFiles.map((file) => `- \`${file}\``),
+            ].join('\n');
+
+            if (body.length > 60000) {
+              body = `${body.slice(0, 59000)}\n\n...body truncated to stay under GitHub issue limits...\n${marker}`;
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'auth-drift-failure',
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
+
+            if (existing) {
+              const comment = [
+                marker,
+                'Auth Drift is still failing with the same signature.',
+                '',
+                `- Run: [#${runId}](${run.html_url})`,
+                `- Event: \`${run.event}\``,
+                `- Branch: \`${run.head_branch}\``,
+                `- Commit: \`${run.head_sha}\``,
+                failedJobs.length ? `- Failed jobs: ${failedJobs.map((job) => `\`${job.name}\``).join(', ')}` : '- Failed jobs: not parsed',
+                failures.length ? `- Failed tests: ${failures.map((failure) => `\`${failure.title}\``).slice(0, 8).join(', ')}` : '- Failed tests: not parsed',
+                `- Primary failure type: \`${primaryFailureType(failures)}\``,
+                `- Primary change assessment: \`${primaryChangeAssessment(failures, contexts, prSummaries)}\``,
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body: comment,
+              });
+              core.info(`Updated existing Auth Drift failure issue #${existing.number}.`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: Object.keys(labelDefs),
+            });
+            core.info(`Created Auth Drift failure issue #${created.data.number}.`);

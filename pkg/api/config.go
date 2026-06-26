@@ -57,15 +57,17 @@ type ServerConfig struct {
 
 // AuthConfig holds authentication and authorization configuration
 type AuthConfig struct {
-	GitHubClientID  string
-	GitHubSecret    string
-	GitHubURL       string // GitHub base URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
-	JWTSecret       string
-	AgentToken      string // Shared secret for authenticating with kc-agent
-	BootstrapToken  string // CONSOLE_BOOTSTRAP_TOKEN — required to access manifest bootstrap flow (CWE-306 mitigation)
-	DevUserLogin    string // Dev mode user settings (used when GitHub OAuth not configured)
-	DevUserEmail    string
-	DevUserAvatar   string
+	GitHubClientID      string
+	GitHubSecret        string
+	GitHubURL           string // GitHub base URL (e.g., "https://github.ibm.com"), defaults to "https://github.com"
+	JWTSecret           string
+	AgentToken          string // Shared secret for authenticating with kc-agent
+	BootstrapToken      string // CONSOLE_BOOTSTRAP_TOKEN — required to access manifest bootstrap flow (CWE-306 mitigation)
+	AllowedGitHubLogins string // Comma-separated OAuth allowlist; empty means any GitHub login may sign in
+	AdminGitHubLogins   string // Comma-separated logins promoted/kept as admin after OAuth sign-in
+	DevUserLogin        string // Dev mode user settings (used when GitHub OAuth not configured)
+	DevUserEmail        string
+	DevUserAvatar       string
 }
 
 // BrandConfig holds white-label branding configuration
@@ -239,6 +241,8 @@ func LoadConfigFromEnv() Config {
 			JWTSecret:      jwtSecret,
 			AgentToken:     os.Getenv("KC_AGENT_TOKEN"),
 			BootstrapToken: os.Getenv("CONSOLE_BOOTSTRAP_TOKEN"),
+			AllowedGitHubLogins: os.Getenv("AUTH_ALLOWED_GITHUB_LOGINS"),
+			AdminGitHubLogins:   os.Getenv("AUTH_ADMIN_GITHUB_LOGINS"),
 			DevUserLogin:   getEnvOrDefault("DEV_USER_LOGIN", "dev-user"),
 			DevUserEmail:   getEnvOrDefault("DEV_USER_EMAIL", "dev@localhost"),
 			DevUserAvatar:  getEnvOrDefault("DEV_USER_AVATAR", ""),

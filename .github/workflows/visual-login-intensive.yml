@@ -1,0 +1,189 @@
+name: Visual Login Intensive Validity
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      runGroundTruth:
+        description: 'Run live Kubernetes ground-truth checks when secrets exist'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      runMutationMatrix:
+        description: 'Run mutation/fault-injection matrix'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      runLiveSite:
+        description: 'Run production/canary live-site checks when URLs are configured'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      runFixtures:
+        description: 'Inject temporary Kubernetes UI fixtures when write credentials are configured'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+permissions: read-all
+
+concurrency:
+  group: visual-login-intensive-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CI: true
+  VISUAL_LOGIN_AUTH_MODE: demo
+  PR_VISUAL_USE_HOSTED_DEMO: 'false'
+  LIVE_CLUSTER_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.runGroundTruth || 'true' }}
+  RUN_MUTATION_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.runMutationMatrix || 'true' }}
+  LIVE_SITE_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.runLiveSite || 'true' }}
+  LIVE_CLUSTER_FIXTURES: ${{ github.event_name == 'workflow_dispatch' && inputs.runFixtures || vars.LIVE_CLUSTER_FIXTURES || 'false' }}
+  KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+  KUBECONFIG_CONTENT: ${{ secrets.KUBECONFIG_CONTENT }}
+  LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64: ${{ secrets.LIVE_CLUSTER_FIXTURE_KUBECONFIG_B64 }}
+  KC_AGENT_TOKEN: ${{ secrets.KC_AGENT_TOKEN }}
+  SELF_HOSTED_CONSOLE_URL: ${{ secrets.SELF_HOSTED_CONSOLE_URL }}
+  LIVE_PRODUCTION_CONSOLE_URL: ${{ vars.LIVE_PRODUCTION_CONSOLE_URL || 'https://console-live.kubestellar.io' }}
+  LIVE_CANARY_CONSOLE_URL: ${{ vars.LIVE_CANARY_CONSOLE_URL }}
+  LIVE_SITE_AUTH_MODE: ${{ vars.LIVE_SITE_AUTH_MODE || 'dev' }}
+  LIVE_CLUSTER_CONTEXTS: ${{ vars.LIVE_CLUSTER_CONTEXTS }}
+  LIVE_CLUSTER_EXPECTED_CONTEXTS: ${{ vars.LIVE_CLUSTER_EXPECTED_CONTEXTS || '3' }}
+  LIVE_CLUSTER_EXPECTED_READY_NODES: ${{ vars.LIVE_CLUSTER_EXPECTED_READY_NODES || '6' }}
+  LIVE_CLUSTER_FIXTURE_CONTEXT: ${{ vars.LIVE_CLUSTER_FIXTURE_CONTEXT || 'ks-console-ci-1' }}
+  LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
+  LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
+
+jobs:
+  intensive:
+    name: Scheduled Test-Validity Loop
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Set up kubectl for optional live ground truth
+        if: env.LIVE_CLUSTER_TESTS == 'true'
+        uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+
+      - name: Live ground truth preflight
+        if: env.LIVE_CLUSTER_TESTS == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/visual-login"
+          if [ -n "${KUBECONFIG_B64:-}" ]; then
+            printf '%s' "$KUBECONFIG_B64" | base64 -d > "$RUNNER_TEMP/visual-login/kubeconfig"
+            chmod 600 "$RUNNER_TEMP/visual-login/kubeconfig"
+            export KUBECONFIG="$RUNNER_TEMP/visual-login/kubeconfig"
+            echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+          elif [ -n "${KUBECONFIG_CONTENT:-}" ]; then
+            printf '%s' "$KUBECONFIG_CONTENT" > "$RUNNER_TEMP/visual-login/kubeconfig"
+            chmod 600 "$RUNNER_TEMP/visual-login/kubeconfig"
+            export KUBECONFIG="$RUNNER_TEMP/visual-login/kubeconfig"
+            echo "KUBECONFIG=$KUBECONFIG" >> "$GITHUB_ENV"
+          elif [ -z "${KUBECONFIG:-}" ]; then
+            echo "::error::KUBECONFIG_B64 or KUBECONFIG_CONTENT is required when LIVE_CLUSTER_TESTS=true"
+            exit 1
+          fi
+
+          kubectl config get-contexts
+          if [ -n "${LIVE_CLUSTER_CONTEXTS:-}" ]; then
+            for ctx in ${LIVE_CLUSTER_CONTEXTS//,/ }; do
+              [ -z "$ctx" ] && continue
+              kubectl --context "$ctx" auth can-i list nodes
+              kubectl --context "$ctx" get nodes --no-headers
+              if [ "${LIVE_CLUSTER_FIXTURES:-false}" = "true" ]; then
+                kubectl --context "$ctx" auth can-i create namespaces
+                kubectl --context "$ctx" auth can-i create pods -A
+                kubectl --context "$ctx" auth can-i create deployments -A
+              fi
+            done
+          else
+            kubectl auth can-i list nodes
+            kubectl get nodes --no-headers
+            if [ "${LIVE_CLUSTER_FIXTURES:-false}" = "true" ]; then
+              kubectl auth can-i create namespaces
+              kubectl auth can-i create pods -A
+              kubectl auth can-i create deployments -A
+            fi
+          fi
+
+      - name: Run intensive visual/login loop
+        id: intensive-tests
+        continue-on-error: true
+        run: |
+          if [ "$RUN_MUTATION_MATRIX" = "true" ]; then
+            npm run test:visual:intensive
+          else
+            npx playwright test --config e2e/visual-login/intensive.config.ts --grep-invert @mutation
+          fi
+
+      - name: Run mutation-aware adequacy analyzer
+        if: always()
+        run: npm run test:visual:adequacy
+
+      - name: Build intensive report
+        if: always()
+        run: npm run test:visual:report:intensive
+
+      - name: Upload sanitized intensive artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-login-intensive-sanitized-artifacts
+          path: |
+            web/test-results/evidence/
+            web/test-results/reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Fail on critical survived mutants or test failures
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'test-results/reports/mutation-results.json';
+          const results = fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : [];
+          const criticalSurvivors = results.filter((r) =>
+            r.status === 'survived' && (r.targetInvariants || []).some((id) =>
+              [
+                'hosted-demo-no-login',
+                'local-auth-mode-correct',
+                'auth-mode-separation',
+                'cluster-dashboard-groundtruth-match',
+                'live-production-auth-boundary',
+                'live-fixture-ui-match',
+              ].includes(id)
+            )
+          );
+          if (criticalSurvivors.length > 0) {
+            console.error(`Critical survived mutants: ${criticalSurvivors.map((r) => r.id).join(', ')}`);
+            process.exit(1);
+          }
+          NODE
+          if [ "${{ steps.intensive-tests.outcome }}" = "failure" ]; then
+            echo "::error::Intensive visual/login tests failed"
+            exit 1
+          fi
