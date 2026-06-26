@@ -221,6 +221,7 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy candidate to console-live
+        id: deploy_live
         if: env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true'
         shell: bash
         run: |
@@ -284,6 +285,7 @@ jobs:
             --timeout 10m
 
       - name: Verify live deployment and auth boundary
+        id: live_smoke
         shell: bash
         run: |
           set -euo pipefail
@@ -321,16 +323,20 @@ jobs:
             exit 1
           fi
 
-          cert_ready="$(kubectl -n "$LIVE_NAMESPACE" get certificate -o json \
-            | jq -r --arg secret "$LIVE_TLS_SECRET" '.items[] | select(.spec.secretName == $secret) | .status.conditions[]? | select(.type == "Ready") | .status' \
-            | tail -n1)"
-          if [ "$cert_ready" != "True" ]; then
-            echo "::error::TLS certificate for $LIVE_HOST is not Ready"
-            exit 1
+          if kubectl -n "$LIVE_NAMESPACE" auth can-i list certificates.cert-manager.io >/dev/null 2>&1; then
+            cert_ready="$(kubectl -n "$LIVE_NAMESPACE" get certificate -o json \
+              | jq -r --arg secret "$LIVE_TLS_SECRET" '.items[] | select(.spec.secretName == $secret) | .status.conditions[]? | select(.type == "Ready") | .status' \
+              | tail -n1)"
+            if [ "$cert_ready" != "True" ]; then
+              echo "::error::TLS certificate for $LIVE_HOST is not Ready"
+              exit 1
+            fi
+          else
+            echo "::notice::Skipping cert-manager Certificate readiness check; deploy service account cannot list certificates.cert-manager.io. HTTPS endpoint checks already succeeded."
           fi
 
       - name: Roll back live on deployment or auth-boundary failure
-        if: ${{ failure() && env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true' && steps.live-revision.outputs.revision != '' }}
+        if: ${{ failure() && env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true' && steps.live-revision.outputs.revision != '' && (steps.deploy_live.outcome == 'failure' || steps.live_smoke.outcome == 'failure') }}
         shell: bash
         run: |
           set +e
@@ -361,6 +367,7 @@ jobs:
           echo "CONSOLE_LIVE_TEST_SESSION_JWT=$token" >> "$GITHUB_ENV"
 
       - name: Run production auth/session smoke
+        id: session_smoke
         timeout-minutes: 8
         working-directory: web
         env:
@@ -375,7 +382,7 @@ jobs:
         run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "production live" --workers=1
 
       - name: Roll back live on session-smoke failure
-        if: ${{ failure() && env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true' && steps.live-revision.outputs.revision != '' }}
+        if: ${{ failure() && env.PROMOTE_PRODUCTION == 'true' && steps.live-state.outputs.skip != 'true' && steps.live-revision.outputs.revision != '' && steps.session_smoke.outcome == 'failure' }}
         shell: bash
         run: |
           set +e
@@ -406,7 +413,7 @@ jobs:
         run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site --grep-invert "production live" --workers=1
 
       - name: Run live browser matrix against public URL
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
         timeout-minutes: 30
         working-directory: web
         env:
@@ -434,7 +441,7 @@ jobs:
           exit "$status"
 
       - name: Compare live browser matrix
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
         timeout-minutes: 5
         working-directory: web
         run: npm run test:visual:browser-matrix:compare
@@ -461,7 +468,7 @@ jobs:
           retention-days: 14
 
       - name: Run test adequacy analyzer
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
         timeout-minutes: 10
         working-directory: web
         run: npm run test:visual:adequacy
