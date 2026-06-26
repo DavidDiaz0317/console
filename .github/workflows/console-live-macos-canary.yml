@@ -29,6 +29,7 @@ concurrency:
 env:
   LIVE_URL: ${{ vars.CONSOLE_LIVE_URL || 'https://console-live.kubestellar.io' }}
   LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '3000' }}
+  CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ vars.CONSOLE_LIVE_MACOS_TEST_SESSION_COUNT || '16' }}
   CONSOLE_LIVE_TEST_USER_ID: ${{ secrets.CONSOLE_LIVE_TEST_USER_ID || vars.CONSOLE_LIVE_TEST_USER_ID }}
   CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ secrets.CONSOLE_LIVE_TEST_GITHUB_LOGIN || vars.CONSOLE_LIVE_TEST_GITHUB_LOGIN || 'DavidDiaz0317' }}
   CONSOLE_LIVE_TEST_USER_ROLE: ${{ vars.CONSOLE_LIVE_TEST_USER_ROLE || 'admin' }}
@@ -88,12 +89,27 @@ jobs:
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
+          CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ env.CONSOLE_LIVE_TEST_SESSION_COUNT }}
         shell: bash
         run: |
           set -euo pipefail
-          token="$(node .github/scripts/console-live-mint-session.cjs)"
-          echo "::add-mask::$token"
-          echo "CONSOLE_LIVE_TEST_SESSION_JWT=$token" >> "$GITHUB_ENV"
+          session_file="$RUNNER_TEMP/console-live/live-session-jwts.txt"
+          mkdir -p "$(dirname "$session_file")"
+          : > "$session_file"
+          count="${CONSOLE_LIVE_TEST_SESSION_COUNT:-16}"
+          if ! [[ "$count" =~ ^[0-9]+$ ]] || [ "$count" -lt 4 ] || [ "$count" -gt 80 ]; then
+            echo "::error::CONSOLE_LIVE_TEST_SESSION_COUNT must be an integer between 4 and 80"
+            exit 1
+          fi
+          for i in $(seq 1 "$count"); do
+            token="$(node .github/scripts/console-live-mint-session.cjs)"
+            echo "::add-mask::$token"
+            printf '%s\n' "$token" >> "$session_file"
+            if [ "$i" = "1" ]; then
+              echo "CONSOLE_LIVE_TEST_SESSION_JWT=$token" >> "$GITHUB_ENV"
+            fi
+          done
+          echo "CONSOLE_LIVE_TEST_SESSION_JWT_FILE=$session_file" >> "$GITHUB_ENV"
 
       - name: Run macOS WebKit popup canary against public live URL
         timeout-minutes: 12
@@ -104,6 +120,7 @@ jobs:
           LIVE_CANARY_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: ${{ env.LIVE_URL }}
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
+          CONSOLE_LIVE_TEST_SESSION_JWT_FILE: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT_FILE }}
           CONSOLE_LIVE_TEST_SESSION_JWT: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT }}
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}

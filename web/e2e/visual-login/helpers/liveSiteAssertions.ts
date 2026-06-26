@@ -191,10 +191,33 @@ async function paceLiveRoute(page: Page) {
   lastLiveRouteNavigationAt = Date.now()
 }
 
+function consumeSignedLiveSessionJwtFromFile(): string | undefined {
+  const filePath = process.env.CONSOLE_LIVE_TEST_SESSION_JWT_FILE || process.env.LIVE_SITE_TEST_SESSION_JWT_FILE
+  if (!filePath) return undefined
+
+  const resolvedPath = path.resolve(filePath)
+  const tokens = fs.readFileSync(resolvedPath, 'utf8')
+    .split(/\r?\n/)
+    .map(token => token.trim())
+    .filter(Boolean)
+  const token = tokens.shift()
+  if (!token) {
+    throw new Error(`${path.basename(resolvedPath)} has no remaining live session JWTs. Increase CONSOLE_LIVE_TEST_SESSION_COUNT in the workflow.`)
+  }
+  fs.writeFileSync(resolvedPath, tokens.length > 0 ? `${tokens.join('\n')}\n` : '')
+  return token
+}
+
+function signedLiveSessionJwt(): string | undefined {
+  return consumeSignedLiveSessionJwtFromFile()
+    || process.env.CONSOLE_LIVE_TEST_SESSION_JWT
+    || process.env.LIVE_SITE_TEST_SESSION_JWT
+}
+
 async function seedSignedLiveCookieSession(page: Page, baseUrl: string) {
-  const jwt = process.env.CONSOLE_LIVE_TEST_SESSION_JWT || process.env.LIVE_SITE_TEST_SESSION_JWT
+  const jwt = signedLiveSessionJwt()
   if (!jwt) {
-    throw new Error('LIVE_SITE_AUTH_MODE=signed-cookie requires CONSOLE_LIVE_TEST_SESSION_JWT or LIVE_SITE_TEST_SESSION_JWT.')
+    throw new Error('LIVE_SITE_AUTH_MODE=signed-cookie requires CONSOLE_LIVE_TEST_SESSION_JWT_FILE, CONSOLE_LIVE_TEST_SESSION_JWT, or LIVE_SITE_TEST_SESSION_JWT.')
   }
 
   const url = new URL(baseUrl)

@@ -49,6 +49,7 @@ env:
   LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
   LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
   LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '3000' }}
+  CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ vars.CONSOLE_LIVE_TEST_SESSION_COUNT || '80' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_TEST_USER_ID: ${{ secrets.CONSOLE_LIVE_TEST_USER_ID || vars.CONSOLE_LIVE_TEST_USER_ID }}
@@ -359,12 +360,27 @@ jobs:
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
+          CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ env.CONSOLE_LIVE_TEST_SESSION_COUNT }}
         shell: bash
         run: |
           set -euo pipefail
-          token="$(node .github/scripts/console-live-mint-session.cjs)"
-          echo "::add-mask::$token"
-          echo "CONSOLE_LIVE_TEST_SESSION_JWT=$token" >> "$GITHUB_ENV"
+          session_file="$RUNNER_TEMP/console-live/live-session-jwts.txt"
+          mkdir -p "$(dirname "$session_file")"
+          : > "$session_file"
+          count="${CONSOLE_LIVE_TEST_SESSION_COUNT:-80}"
+          if ! [[ "$count" =~ ^[0-9]+$ ]] || [ "$count" -lt 8 ] || [ "$count" -gt 200 ]; then
+            echo "::error::CONSOLE_LIVE_TEST_SESSION_COUNT must be an integer between 8 and 200"
+            exit 1
+          fi
+          for i in $(seq 1 "$count"); do
+            token="$(node .github/scripts/console-live-mint-session.cjs)"
+            echo "::add-mask::$token"
+            printf '%s\n' "$token" >> "$session_file"
+            if [ "$i" = "1" ]; then
+              echo "CONSOLE_LIVE_TEST_SESSION_JWT=$token" >> "$GITHUB_ENV"
+            fi
+          done
+          echo "CONSOLE_LIVE_TEST_SESSION_JWT_FILE=$session_file" >> "$GITHUB_ENV"
 
       - name: Run production auth/session smoke
         id: session_smoke
@@ -374,6 +390,7 @@ jobs:
           LIVE_SITE_TESTS: 'true'
           LIVE_SITE_AUTH_MODE: signed-cookie
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
+          CONSOLE_LIVE_TEST_SESSION_JWT_FILE: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT_FILE }}
           CONSOLE_LIVE_TEST_SESSION_JWT: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT }}
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
@@ -405,6 +422,7 @@ jobs:
           LIVE_CANARY_CONSOLE_URL: ${{ env.LIVE_URL }}
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: ${{ env.LIVE_URL }}
+          CONSOLE_LIVE_TEST_SESSION_JWT_FILE: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT_FILE }}
           CONSOLE_LIVE_TEST_SESSION_JWT: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT }}
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
@@ -425,6 +443,7 @@ jobs:
           LIVE_CANARY_CONSOLE_URL: ${{ env.LIVE_URL }}
           LIVE_PRODUCTION_CONSOLE_URL: ${{ env.LIVE_URL }}
           SELF_HOSTED_CONSOLE_URL: ${{ env.LIVE_URL }}
+          CONSOLE_LIVE_TEST_SESSION_JWT_FILE: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT_FILE }}
           CONSOLE_LIVE_TEST_SESSION_JWT: ${{ env.CONSOLE_LIVE_TEST_SESSION_JWT }}
           CONSOLE_LIVE_TEST_USER_ID: ${{ env.CONSOLE_LIVE_TEST_USER_ID }}
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}

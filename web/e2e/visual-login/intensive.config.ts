@@ -1,8 +1,19 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const isCI = Boolean(process.env.CI)
-const baseURL = process.env.VISUAL_LOGIN_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:4173'
-const hasExternalBaseUrl = Boolean(process.env.VISUAL_LOGIN_BASE_URL || process.env.PLAYWRIGHT_BASE_URL)
+const baseURL = process.env.VISUAL_LOGIN_BASE_URL
+  || process.env.PLAYWRIGHT_BASE_URL
+  || process.env.LIVE_CANARY_CONSOLE_URL
+  || process.env.LIVE_PRODUCTION_CONSOLE_URL
+  || process.env.SELF_HOSTED_CONSOLE_URL
+  || 'http://localhost:4173'
+const hasExternalBaseUrl = Boolean(
+  process.env.VISUAL_LOGIN_BASE_URL
+  || process.env.PLAYWRIGHT_BASE_URL
+  || process.env.LIVE_CANARY_CONSOLE_URL
+  || process.env.LIVE_PRODUCTION_CONSOLE_URL
+  || process.env.SELF_HOSTED_CONSOLE_URL,
+)
 
 export default defineConfig({
   testDir: '.',
