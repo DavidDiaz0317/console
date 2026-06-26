@@ -187,13 +187,24 @@ jobs:
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           current_image="$(kubectl -n "$LIVE_NAMESPACE" get deploy "$LIVE_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+          candidate_tag="${{ steps.candidate.outputs.tag }}"
+          candidate_image="${{ steps.candidate.outputs.image }}"
+          mutable_tag=false
+          case "$candidate_tag" in
+            main|latest) mutable_tag=true ;;
+          esac
           echo "current_image=${current_image:-missing}" >> "$GITHUB_OUTPUT"
-          if [ "$current_image" = "${{ steps.candidate.outputs.image }}" ]; then
+          echo "mutable_tag=$mutable_tag" >> "$GITHUB_OUTPUT"
+          if [ "$current_image" = "$candidate_image" ] && [ "$mutable_tag" != "true" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Live already runs $current_image"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "Live currently runs ${current_image:-missing}; candidate is ${{ steps.candidate.outputs.image }}"
+            if [ "$current_image" = "$candidate_image" ]; then
+              echo "Live image string already matches mutable tag $candidate_image; forcing a rollout to pick up the latest manifest."
+            else
+              echo "Live currently runs ${current_image:-missing}; candidate is $candidate_image"
+            fi
           fi
 
       - name: Capture current live Helm revision
@@ -229,11 +240,17 @@ jobs:
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
           prod_values="$RUNNER_TEMP/console-live/prod-values.yaml"
+          promote_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           cat > "$prod_values" <<EOF
           image:
             repository: "$IMAGE_REPOSITORY"
             tag: "${{ steps.candidate.outputs.tag }}"
             pullPolicy: Always
+          podAnnotations:
+            console-live.kubestellar.io/promote-run-id: "${{ github.run_id }}"
+            console-live.kubestellar.io/promote-candidate-tag: "${{ steps.candidate.outputs.tag }}"
+            console-live.kubestellar.io/promote-candidate-image: "${{ steps.candidate.outputs.image }}"
+            console-live.kubestellar.io/promote-at: "$promote_timestamp"
           clusterName: ks-console-ci-1
           service:
             type: ClusterIP
