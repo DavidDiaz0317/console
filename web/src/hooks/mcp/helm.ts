@@ -7,6 +7,11 @@ import { STORAGE_KEY_TOKEN } from '../../lib/constants'
 import { MIN_REFRESH_INDICATOR_MS, getEffectiveInterval } from './shared'
 import { subscribePolling } from './pollingManager'
 import { MCP_HOOK_TIMEOUT_MS, SHORT_DELAY_MS, FOCUS_DELAY_MS } from '../../lib/constants/network'
+import {
+  RateLimitError,
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../../lib/rateLimitBackoff'
 import type { HelmRelease, HelmHistoryEntry } from './types'
 
 // Demo Helm releases shown when in demo mode
@@ -56,6 +61,12 @@ const HELM_RELEASES_CACHE_KEY = 'kc-helm-releases-cache'
 const HELM_HISTORY_CACHE_KEY = 'kc-helm-history-cache'
 const HELM_CACHE_TTL_MS = 30000 // 30 seconds before stale
 const HELM_REFRESH_INTERVAL_MS = 120000 // 2 minutes auto-refresh
+
+function throwOnRateLimitedResponse(response: Response): void {
+  if (response.status !== 429) return
+  const backoff = setRateLimitBackoffFromResponse(response)
+  throw new RateLimitError(backoff.retryAfter)
+}
 
 interface HelmReleasesCache {
   data: HelmRelease[]
@@ -166,6 +177,7 @@ export function useHelmReleases(cluster?: string) {
       notifyListeners(true)
     }
     try {
+      throwIfRateLimited()
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
       const url = `/api/gitops/helm-releases?${params}`
@@ -235,6 +247,7 @@ export function useHelmReleases(cluster?: string) {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' }
         headers['Authorization'] = `Bearer ${token}`
         const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS) })
+        throwOnRateLimitedResponse(response)
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`)
         }
@@ -389,6 +402,7 @@ export function useHelmHistory(cluster?: string, release?: string, namespace?: s
     })
 
     try {
+      throwIfRateLimited()
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
       params.append('release', release)
@@ -410,6 +424,7 @@ export function useHelmHistory(cluster?: string, release?: string, namespace?: s
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       headers['Authorization'] = `Bearer ${token}`
       const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS) })
+      throwOnRateLimitedResponse(response)
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -539,6 +554,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
     }
 
     try {
+      throwIfRateLimited()
       const params = new URLSearchParams()
       if (cluster) params.append('cluster', cluster)
       params.append('release', release)
@@ -564,6 +580,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
         method: 'GET',
         headers,
         signal: AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS) })
+      throwOnRateLimitedResponse(response)
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`)
       }
@@ -664,6 +681,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
         setIsLoading(true)
         setIsRefreshing(true)
         try {
+          throwIfRateLimited()
           const params = new URLSearchParams()
           if (cluster) params.append('cluster', cluster)
           params.append('release', release)
@@ -677,6 +695,7 @@ export function useHelmValues(cluster?: string, release?: string, namespace?: st
             method: 'GET',
             headers,
             signal: AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS) })
+          throwOnRateLimitedResponse(response)
           if (!response.ok) {
             throw new Error(`API error: ${response.status}`)
           }

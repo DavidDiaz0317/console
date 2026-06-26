@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useGPUNodes, usePodIssues, useClusters } from '../hooks/useMCP'
+import { isLocalAgentSuppressed } from '../lib/constants/network'
 
 export interface AlertsMCPData {
   gpuNodes: ReturnType<typeof useGPUNodes>['nodes']
@@ -21,6 +22,37 @@ interface Props {
 }
 
 export default function AlertsDataFetcher({ onData }: Props) {
+  if (isLocalAgentSuppressed()) {
+    return <ClusterOnlyAlertsDataFetcher onData={onData} />
+  }
+
+  return <FullAlertsDataFetcher onData={onData} />
+}
+
+function ClusterOnlyAlertsDataFetcher({ onData }: Props) {
+  const { deduplicatedClusters: clusters, isLoading: isClustersLoading, error: clustersError } = useClusters()
+
+  const prevRef = useRef<string>('')
+  useEffect(() => {
+    const clusterHash = (clusters || []).map(c => `${c.name}:${c.healthy}:${c.nodeCount}`).join(',')
+    const errorStr = clustersError || null
+    const fp = `${clusterHash}|${isClustersLoading}|${errorStr}`
+    if (fp === prevRef.current) return
+    prevRef.current = fp
+    onData({
+      gpuNodes: [],
+      podIssues: [],
+      clusters: clusters || [],
+      isLoading: isClustersLoading,
+      error: errorStr,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onData is stable (useState setter)
+  }, [clusters, isClustersLoading, clustersError])
+
+  return null
+}
+
+function FullAlertsDataFetcher({ onData }: Props) {
   const { nodes: gpuNodes, isLoading: isGPULoading, error: gpuError } = useGPUNodes()
   const { issues: podIssues, isLoading: isPodIssuesLoading, error: podIssuesError } = usePodIssues()
   const { deduplicatedClusters: clusters, isLoading: isClustersLoading, error: clustersError } = useClusters()
@@ -47,7 +79,7 @@ export default function AlertsDataFetcher({ onData }: Props) {
       isLoading,
       error: errorStr,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps — onData is stable (useState setter)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onData is stable (useState setter)
   }, [gpuNodes, podIssues, clusters, isGPULoading, isPodIssuesLoading, isClustersLoading, gpuError, podIssuesError, clustersError])
 
   return null

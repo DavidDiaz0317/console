@@ -28,6 +28,10 @@ import {
 import { STORAGE_KEY_AUTH_TOKEN } from '../lib/constants/storage'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
 import {
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../lib/rateLimitBackoff'
+import {
   shouldDispatchBrowserNotification,
   type BrowserNotificationParams,
   sendNotifications,
@@ -159,15 +163,25 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
       if (!token || unmounted) return
       const currentClusters = clustersRef.current
       if (!currentClusters.length) return
+      try {
+        throwIfRateLimited()
+      } catch {
+        return
+      }
 
       const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
       const settled = await settledWithConcurrency(
         currentClusters.map(cluster => async () => {
           try {
+            throwIfRateLimited()
             const resp = await fetch(
               `${API_BASE}/api/mcp/gpu-nodes/health/cronjob/results?cluster=${encodeURIComponent(cluster.name)}`,
               { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS) }
             )
+            if (resp.status === 429) {
+              setRateLimitBackoffFromResponse(resp)
+              return null
+            }
             if (resp.ok) {
               const data = await resp.json().catch(() => null)
               if (data?.results && data.results.length > 0) {
@@ -178,7 +192,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
             // Silent — CronJob may not be installed on this cluster
           }
           return null
-        })
+        }),
+        1
       )
 
       const results: Record<string, GPUHealthCheckResult[]> = {}
@@ -207,10 +222,15 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     const fetchNightlyE2E = async () => {
       if (unmounted) return
       try {
+        throwIfRateLimited()
         const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
         const resp = await fetch(`${API_BASE}/api/public/nightly-e2e/runs`, {
           signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
         })
+        if (resp.status === 429) {
+          setRateLimitBackoffFromResponse(resp)
+          return
+        }
         if (resp.ok && !unmounted) {
           const data = await resp.json().catch(() => null)
           if (Array.isArray(data)) {

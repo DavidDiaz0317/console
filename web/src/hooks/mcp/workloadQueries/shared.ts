@@ -1,5 +1,9 @@
 import { MCP_HOOK_TIMEOUT_MS } from '../../../lib/constants/network'
 import type { ClusterErrorType } from '../../../lib/errorClassifier'
+import {
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../../../lib/rateLimitBackoff'
 import type {
   CronJob,
   DaemonSet,
@@ -155,10 +159,14 @@ export async function fetchInClusterCollection<T>(
   collectionKey: string,
 ): Promise<T[] | null> {
   try {
+    throwIfRateLimited()
     const response = await fetch(`/api/mcp/${resource}?${params.toString()}`, {
       signal: AbortSignal.timeout(MCP_HOOK_TIMEOUT_MS),
     })
     if (!response.ok) {
+      if (response.status === 429) {
+        setRateLimitBackoffFromResponse(response)
+      }
       return null
     }
     const data = await response.json() as Record<string, unknown> | T[]

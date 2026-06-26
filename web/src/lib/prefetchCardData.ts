@@ -14,6 +14,8 @@
 import { prefetchCache } from './cache'
 import { coreFetchers, specialtyFetchers } from '../hooks/useCachedData'
 import { isDemoMode } from './demoMode'
+import { isLocalAgentSuppressed } from './constants/network'
+import { isRateLimitBackoffActive } from './rateLimitBackoff'
 
 /** Delay before starting core data prefetch (after priority tier) */
 const CORE_PREFETCH_DELAY_MS = 150
@@ -58,6 +60,7 @@ async function runPrefetchQueue(entries: PrefetchEntry[]): Promise<void> {
   let cursor = 0
   const workers = Array.from({ length: Math.min(PREFETCH_CONCURRENCY, entries.length) }, async () => {
     while (cursor < entries.length) {
+      if (isRateLimitBackoffActive()) return
       const current = entries[cursor++]
       try {
         await prefetchCache(current.key, current.fetcher, current.initial)
@@ -77,7 +80,7 @@ export function prefetchCardData(): void {
   // In demo mode, cache hooks return synchronous demo data immediately.
   // Firing API requests would waste HTTP connections that card chunk
   // downloads need (browser limits to ~6 concurrent connections per origin).
-  if (isDemoMode()) return
+  if (isDemoMode() || isLocalAgentSuppressed() || isRateLimitBackoffActive()) return
 
   // Tier 1: Priority data for initial dashboard cards.
   runPrefetchQueue(PRIORITY_ENTRIES).catch((err) => { console.error('[prefetchCardData] priority prefetch failed:', err) })

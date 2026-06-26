@@ -11,6 +11,11 @@ import { fetchSSE } from '../sseClient'
 import { clusterCacheRef } from '../../hooks/mcp/clusterCacheRef'
 import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_TOKEN } from '../constants'
 import { FETCH_DEFAULT_TIMEOUT_MS } from '../constants/network'
+import {
+  RateLimitError,
+  setRateLimitBackoffFromResponse,
+  throwIfRateLimited,
+} from '../rateLimitBackoff'
 import { settledWithConcurrency } from '../utils/concurrency'
 import {
   ClustersResponseSchema,
@@ -40,9 +45,9 @@ export function isClusterModeBackend(): boolean {
     if (pref === 'kagenti' || pref === 'kagent') return true
     // In-cluster Helm deployments have no local kc-agent. The Go backend
     // authenticates via the pod's ServiceAccount — always route through it.
-    return isInClusterMode()
+    return isInClusterMode() || LOCAL_AGENT_HTTP_URL === ''
   } catch {
-    return false
+    return LOCAL_AGENT_HTTP_URL === ''
   }
 }
 
@@ -90,9 +95,10 @@ export function abortAllFetches(): void {
 type FetchParamValue = string | number | boolean | undefined
 
 interface RestFetcherConfig {
-  urlPrefix: string
+  urlPrefix: string | (() => string)
   timeoutMs: number
   useGlobalAbort?: boolean
+  useBackendWhenAgentSuppressed?: boolean
   errorLabel: string
 }
 
@@ -101,6 +107,8 @@ function makeRestFetcher(config: RestFetcherConfig) {
     endpoint: string,
     params?: Record<string, FetchParamValue>
   ): Promise<T> {
+    throwIfRateLimited()
+
     const token = getToken()
     if (!token) throw new Error('No authentication token')
 
@@ -111,7 +119,13 @@ function makeRestFetcher(config: RestFetcherConfig) {
       })
     }
 
-    const url = `${config.urlPrefix}${endpoint}?${searchParams}`
+    const configuredPrefix = typeof config.urlPrefix === 'function'
+      ? config.urlPrefix()
+      : config.urlPrefix
+    const urlPrefix = config.useBackendWhenAgentSuppressed && LOCAL_AGENT_HTTP_URL === ''
+      ? '/api/mcp/'
+      : configuredPrefix
+    const url = `${urlPrefix}${endpoint}?${searchParams}`
     const timeoutSignal = AbortSignal.timeout(config.timeoutMs)
     const signal = config.useGlobalAbort
       ? AbortSignal.any([globalFetchController.signal, timeoutSignal])
@@ -122,6 +136,10 @@ function makeRestFetcher(config: RestFetcherConfig) {
       signal })
 
     if (!response.ok) {
+      if (response.status === 429) {
+        const backoff = setRateLimitBackoffFromResponse(response)
+        throw new RateLimitError(backoff.retryAfter)
+      }
       let errorType = ''
       try {
         const body = await response.json()
@@ -143,9 +161,10 @@ function makeRestFetcher(config: RestFetcherConfig) {
 }
 
 export const fetchAPI = makeRestFetcher({
-  urlPrefix: `${LOCAL_AGENT_HTTP_URL}/`,
+  urlPrefix: () => `${LOCAL_AGENT_HTTP_URL}/`,
   timeoutMs: FETCH_DEFAULT_TIMEOUT_MS,
   useGlobalAbort: true,
+  useBackendWhenAgentSuppressed: true,
   errorLabel: '/api/mcp',
 })
 

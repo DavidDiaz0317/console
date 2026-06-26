@@ -17,6 +17,14 @@
 const viteEnv = (import.meta.env ?? {}) as Partial<ImportMetaEnv>
 const isDemoModeBuild = viteEnv.VITE_DEMO_MODE === 'true'
 const isNoLocalAgentBuild = viteEnv.VITE_NO_LOCAL_AGENT === 'true'
+const hasConfiguredLocalAgentURL = Boolean((viteEnv.VITE_KC_AGENT_URL || '').trim())
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname === '::1'
+}
 
 const _isNetlify = typeof window !== 'undefined' && (
   isDemoModeBuild ||
@@ -25,16 +33,24 @@ const _isNetlify = typeof window !== 'undefined' && (
   window.location.hostname === 'console.kubestellar.io'
 )
 
+const _isDeployedHostWithoutConfiguredAgent = typeof window !== 'undefined' &&
+  !isLoopbackHostname(window.location.hostname) &&
+  !hasConfiguredLocalAgentURL
+
 /**
  * Whether the local kc-agent should be suppressed.
  * True on Netlify deployments, or when VITE_NO_LOCAL_AGENT is set at build time,
- * or when the backend reports no_local_agent via /health (in-cluster deployments).
+ * on deployed hosts without an explicit agent URL, or when the backend reports
+ * no_local_agent via /health (in-cluster deployments).
  *
  * The build-time VITE_NO_LOCAL_AGENT covers custom builds (e.g. CI, Docker).
+ * The deployed-host default prevents public HTTPS/self-hosted installs from
+ * attempting localhost agent calls before /health has a chance to respond.
+ * VITE_KC_AGENT_URL remains the explicit opt-in for hosted agent setups.
  * The runtime flag (set via suppressLocalAgent()) covers pre-built images
  * deployed in-cluster where Vite env vars cannot be injected at runtime.
  */
-let _suppressAgent = _isNetlify || isNoLocalAgentBuild
+let _suppressAgent = _isNetlify || isNoLocalAgentBuild || _isDeployedHostWithoutConfiguredAgent
 
 /**
  * Called by the BrandingProvider after fetching /health to suppress agent
