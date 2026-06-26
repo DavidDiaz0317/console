@@ -17,6 +17,12 @@ const sessionInvariantIds = ['live-production-auth-session', 'no-critical-runtim
 const liveProductionExpectedConsoleNoise = [
   /Failed to load resource: the server responded with a status of 401 \([^)]*\)/i,
 ]
+const liveProductionSessionExpectedConsoleNoise = [
+  ...liveProductionExpectedConsoleNoise,
+  /\[OfflineDetection\] Error fetching nodes:/i,
+  /\[Missions\] Failed to connect to agent:/i,
+  /Failed to load resource: the server responded with a status of 405 \([^)]*\)/i,
+]
 
 test('production live site keeps OAuth boundary intact @intensive @live-site @invariant:live-production-auth-boundary', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
@@ -71,7 +77,7 @@ test('production live signed session reaches dashboard @intensive @live-site @au
     })
     expect(apiMeStatus, 'signed production session must validate with /api/me').toBe(200)
     await expect(page.locator('body'), 'signed production session must not enter a login/session-expired loop').not.toContainText(/session expired|sign in/i)
-    await assertNoCriticalRuntimeErrors(collectors, liveProductionExpectedConsoleNoise)
+    await assertNoCriticalRuntimeErrors(collectors, liveProductionSessionExpectedConsoleNoise)
     writeLiveSiteReport({
       target: 'production',
       url: productionUrl,

@@ -265,8 +265,12 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
     await gotoLiveCanaryRoute(page, baseUrl, '/')
     await expect
       .poll(() => page.evaluate(async () => {
-        const response = await fetch('/api/me', { credentials: 'same-origin' })
-        return response.status
+        try {
+          const response = await fetch('/api/me', { credentials: 'same-origin' })
+          return response.status
+        } catch {
+          return 0
+        }
       }), {
         message: 'signed live canary cookie must validate against /api/me before dashboard navigation',
         timeout: 20_000,
@@ -282,8 +286,12 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   await page.waitForURL(url => !url.pathname.startsWith('/auth/callback'), { timeout: 15_000 }).catch(() => undefined)
   await expect
     .poll(() => page.evaluate(async () => {
-      const response = await fetch('/api/me', { credentials: 'same-origin' })
-      return response.status
+      try {
+        const response = await fetch('/api/me', { credentials: 'same-origin' })
+        return response.status
+      } catch {
+        return 0
+      }
     }), {
       message: 'live canary dev session must validate against /api/me before dashboard navigation',
       timeout: 20_000,
