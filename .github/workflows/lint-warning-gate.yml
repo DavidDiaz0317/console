@@ -1,7 +1,8 @@
 name: Lint Warning Gate
 
 # Prevents React Compiler lint warnings from regressing.
-# Tracks warning count against a checked-in baseline and fails PRs that exceed it.
+# PR runs compare against the base branch. Manual runs compare against the
+# checked-in baseline.
 # See issue #17491 for context.
 
 on:
@@ -26,6 +27,8 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -39,21 +42,56 @@ jobs:
         id: count
         run: |
           set +e
-          RESULT=$(npx eslint . --format json 2>/dev/null)
-          WARNINGS=$(echo "$RESULT" | jq '[.[].messages[] | select(.severity == 1)] | length')
+          RESULT_FILE="$RUNNER_TEMP/eslint-current.json"
+          npx eslint . --format json > "$RESULT_FILE" 2>/dev/null
+          WARNINGS=$(jq '[.[].messages[] | select(.severity == 1)] | length' "$RESULT_FILE")
+          ERRORS=$(jq '[.[].messages[] | select(.severity == 2)] | length' "$RESULT_FILE")
           echo "warnings=$WARNINGS" >> "$GITHUB_OUTPUT"
-          echo "ℹ️ Current lint warning count: $WARNINGS"
+          echo "errors=$ERRORS" >> "$GITHUB_OUTPUT"
+          echo "Current lint warning count: $WARNINGS"
+          echo "Current lint error count: $ERRORS"
+
+      - name: Count base branch lint warnings
+        id: base-count
+        if: github.event_name == 'pull_request'
+        run: |
+          set +e
+          CURRENT_SHA=$(git rev-parse HEAD)
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git checkout --detach FETCH_HEAD >/dev/null 2>&1
+          RESULT_FILE="$RUNNER_TEMP/eslint-base.json"
+          npx eslint . --format json > "$RESULT_FILE" 2>/dev/null
+          BASE_WARNINGS=$(jq '[.[].messages[] | select(.severity == 1)] | length' "$RESULT_FILE")
+          BASE_ERRORS=$(jq '[.[].messages[] | select(.severity == 2)] | length' "$RESULT_FILE")
+          echo "warnings=$BASE_WARNINGS" >> "$GITHUB_OUTPUT"
+          echo "errors=$BASE_ERRORS" >> "$GITHUB_OUTPUT"
+          echo "Base branch lint warning count: $BASE_WARNINGS"
+          echo "Base branch lint error count: $BASE_ERRORS"
+          git checkout --detach "$CURRENT_SHA" >/dev/null 2>&1
 
       - name: Check against baseline
         run: |
-          BASELINE=$(cat ../.lint-warning-baseline 2>/dev/null || echo 800)
           WARNINGS=${{ steps.count.outputs.warnings }}
-          echo "Baseline: $BASELINE | Current: $WARNINGS"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_ERRORS=${{ steps.base-count.outputs.errors }}
+            if [ "$BASE_ERRORS" -gt 0 ]; then
+              echo "::notice::Base branch has $BASE_ERRORS lint errors; skipping warning-count comparison for this PR."
+              echo "Current branch lint errors are still enforced by the normal build gate."
+              exit 0
+            fi
+            BASELINE=${{ steps.base-count.outputs.warnings }}
+            BASELINE_LABEL="base branch"
+          else
+            BASELINE=$(cat ../.lint-warning-baseline 2>/dev/null || echo 800)
+            BASELINE_LABEL=".lint-warning-baseline"
+          fi
+
+          echo "Baseline ($BASELINE_LABEL): $BASELINE | Current: $WARNINGS"
           if [ "$WARNINGS" -gt "$BASELINE" ]; then
             echo "::error::Lint warning count regressed: $WARNINGS > $BASELINE"
-            echo "If you've fixed warnings, update .lint-warning-baseline to the new count."
+            echo "Reduce the new warnings before merging."
             exit 1
           fi
           if [ "$WARNINGS" -lt "$BASELINE" ]; then
-            echo "::notice::🎉 Warnings decreased ($WARNINGS < $BASELINE). Consider updating .lint-warning-baseline to $WARNINGS."
+            echo "::notice::Warnings decreased ($WARNINGS < $BASELINE). Consider updating .lint-warning-baseline to $WARNINGS."
           fi
