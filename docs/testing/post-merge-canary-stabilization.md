@@ -21,7 +21,7 @@
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `e21d58269f201183063268c7cc196b675c7c8231`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `9af0d787d450204732aeeb8f843c37a6a3078eb5`.
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -35,7 +35,7 @@ Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 | Claude Review | Failed external setup | Run `28294963236`; OIDC token is available, but the Claude Code GitHub App is not installed on the fork |
 | Console Live Promote dry run | Failed as live blocker | Run `28295615586`; `promoteProduction=false`, no production deploy, auth/session smoke passed, semantic tests stopped on live-site `502` and core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss` |
 | Failure issue update | Passed | Run `28295673458`; existing issue `#54` was updated/commented instead of creating a duplicate |
-| Profile trigger label-in-name follow-up | Passed locally | Fixed `navbar-profile-btn` so the accessible name includes the visible GitHub login. `npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`, `npm run build`, and the exact Playwright check `e2e/a11y.spec.ts --grep "menu items have accessible names from visible text"` passed |
+| Profile trigger label-in-name follow-up | Passed locally | Fixed `navbar-profile-btn` so the accessible name is derived from the visible GitHub login plus sr-only state text instead of an overriding `aria-label`. `npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`, `npm run build`, and the exact Playwright check `e2e/a11y.spec.ts --grep "menu items have accessible names from visible text"` passed |
 | Final upstream-sync build fix | Passed locally and in CI | After syncing upstream through `e292fb42c`, `MissionExport.tags` now defaults to `[]`; `npm run build` passed locally and CI build/build-gate/TTFI passed on runs `28298137018`, `28298136982`, and `28298137071` |
 | Shard 4 targeted follow-up | Passed locally | Fixed the update reconnect test to send progress to the replacement WebSocket route and pre-dismissed the ACMM intro for the post-login route sweep. Both failing shard-4 specs passed locally against `vite preview` with `PLAYWRIGHT_BASE_URL` set |
 
@@ -76,6 +76,13 @@ The next shard-4 run exposed a weak onboarding-tour selector: the test clicked a
 - `cd web && npx eslint e2e/user-flows/onboarding-tour.spec.ts`
 - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4180 npx playwright test e2e/user-flows/onboarding-tour.spec.ts --project=chromium --grep "Skip dismisses tour" --reporter=line` (skipped locally because no tour was visible, without clicking the unrelated banner)
 
+The following accessibility run still reported `label-content-name-mismatch` for the profile trigger because the `aria-label` path continued to override visible button content. Commit `9af0d787d450204732aeeb8f843c37a6a3078eb5` removes the trigger `aria-label` and lets the accessible name come from the visible login text plus sr-only state text. Local validation passed:
+
+- `cd web && npx eslint src/components/layout/UserProfileDropdown.tsx src/components/layout/__tests__/UserProfileDropdown.test.tsx` (warning only: existing `react-hooks/set-state-in-effect`)
+- `cd web && npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`
+- `cd web && npm run build`
+- `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181 npx playwright test e2e/a11y.spec.ts --project=chromium --grep "menu items have accessible names from visible text" --reporter=line`
+
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
 ## Main Branch Note
@@ -112,7 +119,7 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `.github/workflows/auth-drift.yml`: the Local Login UI Drift context now records the intended no-misleading-Terms-footer contract.
 - `.github/workflows/claude-code-review.yml`: the Claude review job now grants `id-token: write`, matching the OIDC error reported by the action.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts` and `web/e2e/visual-login/semantic/live-core-pages.spec.ts`: the `/nodes` live route no longer fetches cluster summary data just to assert pod totals. Node-route checks stay focused on node facts, reducing avoidable `/api/mcp/clusters` pressure in the paced canary.
-- `web/src/components/layout/UserProfileDropdown.tsx`: the profile dropdown trigger now includes the visible GitHub login in its accessible name, fixing the generic Playwright label-in-name failure for `navbar-profile-btn`.
+- `web/src/components/layout/UserProfileDropdown.tsx`: the profile dropdown trigger now derives its accessible name from the visible GitHub login and sr-only state text, fixing the generic Playwright label-in-name failure for `navbar-profile-btn`.
 - `web/src/components/layout/__tests__/UserProfileDropdown.test.tsx`: added a regression test for the profile trigger accessible name before and after opening the menu.
 - `web/src/components/layout/mission-sidebar/missionSidebarHelpers.ts`: exported missions now default missing imported tags to `[]`, matching the required `MissionExport.tags` type and fixing the TypeScript build failure introduced by the latest upstream sync.
 - `web/src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`: updated the regression expectation for the required empty tag array.
@@ -206,13 +213,13 @@ The branch now reduces false positives and cascade load, and the latest dry run 
 
 PR #65 also depends on follow-up reruns after this branch is pushed. The local changes now fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, branch-caused accessibility timing/order issues, Local Login UI Drift stale screenshot contract, Claude OIDC permission, and one avoidable live canary `/nodes` route cluster-summary fetch.
 
-As of the latest June 27 sync, the fork is current with upstream for this work: `origin/main...fork/main` is `0 6`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` by 17 commits after the latest rebase. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
+As of the latest June 27 sync, the fork is current with upstream for this work: `origin/main...fork/main` is `0 6`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` after the latest rebase and follow-up fixes. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
 
 The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2ce8` completed. The branch-specific build, Auth Drift, accessibility, and shard-4 fixes were green there, but PR #65 is still not merge-ready while required checks remain red. After the latest upstream rebase, fresh checks are required on the rebased head; the expected remaining red checks are broad generic Playwright shards 1-3, Mobile Browser Tests, Merge Test Reports, and the external Claude Review app setup check unless those are fixed or explicitly treated as pre-existing/non-blocking by project policy.
 
 ## Final Merge-Readiness Assessment
 
-As of rebased code-validation SHA `e21d58269f201183063268c7cc196b675c7c8231`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
+As of rebased code-validation SHA `9af0d787d450204732aeeb8f843c37a6a3078eb5`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
 
 Fixed or proven non-branch blockers:
 
@@ -220,7 +227,7 @@ Fixed or proven non-branch blockers:
 - Auth Drift Local Login UI Drift is fixed and passed on the PR.
 - Accessibility passed on the PR after the branch fixes.
 - Generic Playwright shard 4 passed on the PR after the update reconnect and post-login route-sweep fixes.
-- The PR-head profile trigger `label-content-name-mismatch` failure was fixed by including the visible login in the trigger accessible name and verified with the exact Playwright axe check.
+- The PR-head profile trigger `label-content-name-mismatch` failure was fixed by deriving the trigger accessible name from visible login text and sr-only state text, then verified with the exact Playwright axe check.
 - The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
 - Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
 - The failure issue workflow updates existing matching issue `#54` instead of opening duplicate issues.
