@@ -8,17 +8,20 @@
 - Fork `main` after June 26 sync: `c7371aa7c`
 - Fork `main` after June 27 fetch: `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`
 - Fork `main` after June 27 upstream sync: `f291f3abf84b8f45d251cb6ba9bb1f11e426697a`
+- Fork `main` after June 27 final upstream sync: `c7b77094472a3c0f3dac01cf83449dac9acf273a`
 - Upstream `main` included after sync: `f1740da9c`
 - Upstream `main` included after final June 27 sync: `66f803796`
+- Upstream `main` included after latest June 27 sync: `ad71673998f878b4cae8093502d0a0cd8c097855`
 - Backup branch before sync: `backup/fork-main-before-upstream-sync-20260626-215039`
 - Backup branch before final June 27 sync: `backup/fork-main-before-upstream-sync-20260627-115847`
+- Backup branch before latest June 27 sync: `backup/fork-main-before-upstream-sync-20260627-154922`
 - PR #48 merge commit from GitHub metadata: `02b2dd52a44284aed273a19b8b5af35ab0f311d1`
 - Post-merge verification run: `28190200153`
 - Current live canary issue: `#54`
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream. The code-validation SHA is `c67738a28a5fa01205df9e0b664f231a90e4473c`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `99c292a34e132ee25d9c3c2742b7135139c9a1f2`.
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -35,6 +38,26 @@ Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 | Profile trigger label-in-name follow-up | Passed locally | Fixed `navbar-profile-btn` so the accessible name includes the visible GitHub login. `npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`, `npm run build`, and the exact Playwright check `e2e/a11y.spec.ts --grep "menu items have accessible names from visible text"` passed |
 | Final upstream-sync build fix | Passed locally and in CI | After syncing upstream through `e292fb42c`, `MissionExport.tags` now defaults to `[]`; `npm run build` passed locally and CI build/build-gate/TTFI passed on runs `28298137018`, `28298136982`, and `28298137071` |
 | Shard 4 targeted follow-up | Passed locally | Fixed the update reconnect test to send progress to the replacement WebSocket route and pre-dismissed the ACMM intro for the post-login route sweep. Both failing shard-4 specs passed locally against `vite preview` with `PLAYWRIGHT_BASE_URL` set |
+
+Pre-rebase CI evidence for equivalent code at `1d884e2f720e7124239f4b2d06659de865bb2ce8`:
+
+| Area | Result | Evidence |
+|---|---|---|
+| Build and Deploy KC | Passed | Run `28298813801`; amd64 and arm64 image builds passed; deploy jobs skipped because this is a PR |
+| Auth Drift | Passed | Run `28298813831`; Hosted Demo No-Login, Localhost Login Dashboard, Local Login UI, and Fake OAuth passed; OAuth Staging skipped as expected |
+| Build Frontend | Passed | Run `28298813853` |
+| Accessibility | Passed | Run `28298813853` |
+| Generic Playwright shard 4 | Passed | Run `28298813853`; includes the locally fixed update reconnect and post-login dashboard UX targets |
+| Generic Playwright shards 1-3 | Failed | Run `28298813853`; broad generic-suite failures remain in auth logout, CI/CD, cluster dialogs, mission-control/mission-journey, namespace, navbar, GPU route, dashboard, and drag/drop areas |
+| Mobile Browser Tests | Failed | Run `28298813853`; failures remain in mobile accessibility, AI mode/CardChat, auth logout, CI/CD, and related generic-suite areas |
+| Merge Test Reports | Failed | Run `28298813853`; expected downstream result of failed Playwright shards/mobile |
+| Claude Review | Failed external setup | Run `28298813833`; OIDC permission is present, but the Claude Code GitHub App is not installed on the fork |
+
+After rebasing onto fork `main` at `c7b77094472a3c0f3dac01cf83449dac9acf273a`, the branch is no longer behind upstream. Fresh PR checks are required on the rebased head. Local rebase validation passed for the conflict area:
+
+- `git diff --check`
+- `cd web && npx eslint src/components/layout/mission-sidebar/missionSidebarHelpers.ts src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`
+- `cd web && npx vitest run src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -166,19 +189,20 @@ The branch now reduces false positives and cascade load, and the latest dry run 
 
 PR #65 also depends on follow-up reruns after this branch is pushed. The local changes now fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, branch-caused accessibility timing/order issues, Local Login UI Drift stale screenshot contract, Claude OIDC permission, and one avoidable live canary `/nodes` route cluster-summary fetch.
 
-As of the June 27 check, the fork is current with upstream for this work: `origin/main...fork/main` is `0 3`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` by 10 commits before this local follow-up commit. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
+As of the latest June 27 sync, the fork is current with upstream for this work: `origin/main...fork/main` is `0 6`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` by 17 commits after the latest rebase. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
 
-After pushing this follow-up, the remaining merge-readiness check is a fresh CI pass on the new SHA. If broad generic Playwright remains red with the same fork-main failures, the PR can be considered test-harness ready only if those checks are treated as pre-existing/non-blocking for this fork PR. It should not be marked non-draft as fully merge-ready while required checks are red.
+The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2ce8` completed. The branch-specific build, Auth Drift, accessibility, and shard-4 fixes were green there, but PR #65 is still not merge-ready while required checks remain red. After the latest upstream rebase, fresh checks are required on the rebased head; the expected remaining red checks are broad generic Playwright shards 1-3, Mobile Browser Tests, Merge Test Reports, and the external Claude Review app setup check unless those are fixed or explicitly treated as pre-existing/non-blocking by project policy.
 
 ## Final Merge-Readiness Assessment
 
-As of the latest validated code SHA, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules.
+As of rebased code-validation SHA `99c292a34e132ee25d9c3c2742b7135139c9a1f2`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
 
 Fixed or proven non-branch blockers:
 
 - Build and Deploy KC is fixed for fork image publishing and passed on the PR.
 - Auth Drift Local Login UI Drift is fixed and passed on the PR.
 - Accessibility passed on the PR after the branch fixes.
+- Generic Playwright shard 4 passed on the PR after the update reconnect and post-login route-sweep fixes.
 - The PR-head profile trigger `label-content-name-mismatch` failure was fixed by including the visible login in the trigger accessible name and verified with the exact Playwright axe check.
 - The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
 - Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
@@ -188,6 +212,7 @@ Remaining blockers:
 
 - Claude Review is blocked by fork setup, not branch code: the Claude Code GitHub App is not installed.
 - Generic Playwright E2E is still red. The broad shard failures reproduce on synced fork `main`, but they are still required-check blockers unless the project explicitly treats them as pre-existing base-suite debt for this PR.
+- Mobile Browser Tests is still red with broad generic-suite failures.
 - The live canary dry run still finds real live-site/API pressure issues: `502` runtime failures plus a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`.
 
 Recommended next action: keep PR #65 draft, fix or policy-exempt the broad generic Playwright base failures separately, install/configure the Claude app if that check remains required, and continue live-site product/infrastructure work from issue `#54`.
