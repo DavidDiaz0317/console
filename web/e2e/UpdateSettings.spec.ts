@@ -153,6 +153,21 @@ function sendProgress(
   sendProgressToRoutes(wsRoutes.routes, status, message, progress, error)
 }
 
+async function sendProgressUntilProgressBanner(
+  page: Page,
+  wsRoutes: WsRoutes,
+  status: string,
+  message: string,
+  progress: number,
+  error?: string,
+) {
+  await expect(async () => {
+    sendProgress(wsRoutes, status, message, progress, error)
+    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 1000 })
+    await expect(page.getByTestId('update-progress-message')).toContainText(message, { timeout: 1000 })
+  }).toPass({ timeout: 10000 })
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -200,8 +215,7 @@ test.describe('Update Settings', () => {
   test('countdown timer shows during update', async ({ page }) => {
     const ws = await setupUpdateTest(page)
 
-    sendProgress(ws, 'building', 'Building frontend...', 30)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
+    await sendProgressUntilProgressBanner(page, ws, 'building', 'Building frontend...', 30)
 
     // Countdown should be visible and contain a number (seconds remaining)
     const countdown = page.getByTestId('update-countdown')
@@ -289,9 +303,7 @@ test.describe('Update Settings', () => {
     const ws = await setupUpdateTest(page)
 
     // Start an update — UI should show the progress banner
-    sendProgress(ws, 'pulling', 'Pulling latest changes...', 10)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByTestId('update-progress-message')).toContainText('Pulling latest changes')
+    await sendProgressUntilProgressBanner(page, ws, 'pulling', 'Pulling latest changes...', 10)
 
     // Simulate a mid-update disconnect by closing every open WS connection
     const routeCountBeforeDisconnect = ws.routes.length
@@ -328,8 +340,7 @@ test.describe('Update Settings', () => {
     const ws = await setupUpdateTest(page)
 
     // Start update
-    sendProgress(ws, 'pulling', 'Pulling latest changes...', 10)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
+    await sendProgressUntilProgressBanner(page, ws, 'pulling', 'Pulling latest changes...', 10)
 
     // Progress through stages
     sendProgress(ws, 'building', 'Building frontend...', 30)
