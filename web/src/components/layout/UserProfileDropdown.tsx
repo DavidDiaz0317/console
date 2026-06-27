@@ -156,7 +156,7 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
   // Escape handling is provided by useKeyboardNav via onEscape: closeDropdown
 
   if (!user) return null
-  const profileMenuLabel = `${isOpen ? 'Close' : 'Open'} ${user.github_login} profile menu`
+  const profileMenuLabel = `${user.github_login} profile menu, ${isOpen ? 'close' : 'open'}`
 
   return (
     <div className="relative" ref={dropdownContainerRef}>
