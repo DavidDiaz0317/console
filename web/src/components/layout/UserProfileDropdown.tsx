@@ -156,7 +156,7 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
   // Escape handling is provided by useKeyboardNav via onEscape: closeDropdown
 
   if (!user) return null
-  const profileMenuLabel = `${user.github_login} profile menu, ${isOpen ? 'close' : 'open'}`
+  const profileMenuStateLabel = `profile menu, ${isOpen ? 'close' : 'open'}`
 
   return (
     <div className="relative" ref={dropdownContainerRef}>
@@ -166,7 +166,6 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
         type="button"
         data-testid="navbar-profile-btn"
         onClick={toggleDropdown}
-        aria-label={profileMenuLabel}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-controls="profile-dropdown-menu"
@@ -189,6 +188,7 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
         <div className="hidden sm:block text-left">
           <p className="text-sm font-medium text-foreground">{user.github_login}</p>
         </div>
+        <span className="sr-only">{profileMenuStateLabel}</span>
         <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
