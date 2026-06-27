@@ -21,7 +21,7 @@
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `99c292a34e132ee25d9c3c2742b7135139c9a1f2`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `b6aaaf833014caee881c2e774c354bac5d714283`.
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -58,6 +58,11 @@ After rebasing onto fork `main` at `c7b77094472a3c0f3dac01cf83449dac9acf273a`, t
 - `git diff --check`
 - `cd web && npx eslint src/components/layout/mission-sidebar/missionSidebarHelpers.ts src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`
 - `cd web && npx vitest run src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`
+
+The first rebased PR check run found one branch-actionable shard-4 race in `web/e2e/UpdateSettings.spec.ts`: the reconnect test sent its initial `update_progress` event before the React WebSocket handler was always registered. Commit `b6aaaf833014caee881c2e774c354bac5d714283` now reuses the retry-until-banner pattern for that initial progress state. Local validation passed:
+
+- `cd web && npx eslint e2e/UpdateSettings.spec.ts`
+- `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4178 npx playwright test e2e/UpdateSettings.spec.ts --project=chromium --grep "recovers state after WebSocket disconnect" --reporter=line`
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -195,7 +200,7 @@ The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2c
 
 ## Final Merge-Readiness Assessment
 
-As of rebased code-validation SHA `99c292a34e132ee25d9c3c2742b7135139c9a1f2`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
+As of rebased code-validation SHA `b6aaaf833014caee881c2e774c354bac5d714283`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
 
 Fixed or proven non-branch blockers:
 
