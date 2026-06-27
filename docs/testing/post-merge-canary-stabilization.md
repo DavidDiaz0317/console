@@ -21,7 +21,7 @@
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `40da0f4f4853aee3f54f5b75497a6ae1c2a5c975`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `e21d58269f201183063268c7cc196b675c7c8231`.
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -70,6 +70,11 @@ The final rebased PR check run also found the same profile trigger label/content
 - `cd web && npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`
 - `cd web && npm run build`
 - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4179 npx playwright test e2e/a11y.spec.ts --project=chromium --grep "menu items have accessible names from visible text" --reporter=line`
+
+The next shard-4 run exposed a weak onboarding-tour selector: the test clicked a dashboard "Dismiss banner" button instead of a tour skip/close control. Commit `e21d58269f201183063268c7cc196b675c7c8231` scopes the dismissal controls to the tour container. Local validation passed:
+
+- `cd web && npx eslint e2e/user-flows/onboarding-tour.spec.ts`
+- `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4180 npx playwright test e2e/user-flows/onboarding-tour.spec.ts --project=chromium --grep "Skip dismisses tour" --reporter=line` (skipped locally because no tour was visible, without clicking the unrelated banner)
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -207,7 +212,7 @@ The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2c
 
 ## Final Merge-Readiness Assessment
 
-As of rebased code-validation SHA `40da0f4f4853aee3f54f5b75497a6ae1c2a5c975`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
+As of rebased code-validation SHA `e21d58269f201183063268c7cc196b675c7c8231`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
 
 Fixed or proven non-branch blockers:
 
