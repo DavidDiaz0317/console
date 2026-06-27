@@ -156,6 +156,7 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
   // Escape handling is provided by useKeyboardNav via onEscape: closeDropdown
 
   if (!user) return null
+  const profileMenuLabel = `${isOpen ? 'Close' : 'Open'} ${user.github_login} profile menu`
 
   return (
     <div className="relative" ref={dropdownContainerRef}>
@@ -165,7 +166,7 @@ export function UserProfileDropdown({ user, onLogout, onPreferences }: UserProfi
         type="button"
         data-testid="navbar-profile-btn"
         onClick={toggleDropdown}
-        aria-label={isOpen ? 'Close profile menu' : 'Open profile menu'}
+        aria-label={profileMenuLabel}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-controls="profile-dropdown-menu"

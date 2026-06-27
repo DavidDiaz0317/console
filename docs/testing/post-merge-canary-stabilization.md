@@ -32,6 +32,7 @@ Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 | Claude Review | Failed external setup | Run `28294963236`; OIDC token is available, but the Claude Code GitHub App is not installed on the fork |
 | Console Live Promote dry run | Failed as live blocker | Run `28295615586`; `promoteProduction=false`, no production deploy, auth/session smoke passed, semantic tests stopped on live-site `502` and core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss` |
 | Failure issue update | Passed | Run `28295673458`; existing issue `#54` was updated/commented instead of creating a duplicate |
+| Profile trigger label-in-name follow-up | Passed locally | Fixed `navbar-profile-btn` so the accessible name includes the visible GitHub login. `npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`, `npm run build`, and the exact Playwright check `e2e/a11y.spec.ts --grep "menu items have accessible names from visible text"` passed |
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -69,6 +70,8 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `.github/workflows/auth-drift.yml`: the Local Login UI Drift context now records the intended no-misleading-Terms-footer contract.
 - `.github/workflows/claude-code-review.yml`: the Claude review job now grants `id-token: write`, matching the OIDC error reported by the action.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts` and `web/e2e/visual-login/semantic/live-core-pages.spec.ts`: the `/nodes` live route no longer fetches cluster summary data just to assert pod totals. Node-route checks stay focused on node facts, reducing avoidable `/api/mcp/clusters` pressure in the paced canary.
+- `web/src/components/layout/UserProfileDropdown.tsx`: the profile dropdown trigger now includes the visible GitHub login in its accessible name, fixing the generic Playwright label-in-name failure for `navbar-profile-btn`.
+- `web/src/components/layout/__tests__/UserProfileDropdown.test.tsx`: added a regression test for the profile trigger accessible name before and after opening the menu.
 
 ## PR #65 Check Triage
 
@@ -162,6 +165,7 @@ Fixed or proven non-branch blockers:
 - Build and Deploy KC is fixed for fork image publishing and passed on the PR.
 - Auth Drift Local Login UI Drift is fixed and passed on the PR.
 - Accessibility passed on the PR after the branch fixes.
+- The PR-head profile trigger `label-content-name-mismatch` failure was fixed by including the visible login in the trigger accessible name and verified with the exact Playwright axe check.
 - The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
 - Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
 - The failure issue workflow updates existing matching issue `#54` instead of opening duplicate issues.

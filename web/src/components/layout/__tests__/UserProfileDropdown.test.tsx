@@ -195,6 +195,17 @@ describe('UserProfileDropdown', () => {
     expect(screen.queryByTestId('navbar-profile-btn')).not.toBeInTheDocument()
   })
 
+  it('includes the visible login in the trigger accessible name', async () => {
+    renderDropdown()
+
+    const trigger = screen.getByRole('button', { name: /open testuser profile menu/i })
+    expect(trigger).toBeInTheDocument()
+
+    await userEvent.click(trigger)
+
+    expect(screen.getByRole('button', { name: /close testuser profile menu/i })).toBeInTheDocument()
+  })
+
   it('shows the contributor rank once instead of duplicating it in the coins row', async () => {
     renderDropdown()
     await openDropdown()
