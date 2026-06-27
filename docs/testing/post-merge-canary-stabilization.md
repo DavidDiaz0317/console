@@ -9,19 +9,22 @@
 - Fork `main` after June 27 fetch: `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`
 - Fork `main` after June 27 upstream sync: `f291f3abf84b8f45d251cb6ba9bb1f11e426697a`
 - Fork `main` after June 27 final upstream sync: `c7b77094472a3c0f3dac01cf83449dac9acf273a`
+- Fork `main` after June 27 follow-up upstream sync: `285a7b93d89616d9703284fe76984b5d839d2841`
 - Upstream `main` included after sync: `f1740da9c`
 - Upstream `main` included after final June 27 sync: `66f803796`
 - Upstream `main` included after latest June 27 sync: `ad71673998f878b4cae8093502d0a0cd8c097855`
+- Upstream `main` included after June 27 follow-up sync: `d9bfa9becfc73da9d90c484b012f14471822bdb8`
 - Backup branch before sync: `backup/fork-main-before-upstream-sync-20260626-215039`
 - Backup branch before final June 27 sync: `backup/fork-main-before-upstream-sync-20260627-115847`
 - Backup branch before latest June 27 sync: `backup/fork-main-before-upstream-sync-20260627-154922`
+- Backup branch before June 27 follow-up sync: `backup/fork-main-before-upstream-sync-20260627-173353`
 - PR #48 merge commit from GitHub metadata: `02b2dd52a44284aed273a19b8b5af35ab0f311d1`
 - Post-merge verification run: `28190200153`
 - Current live canary issue: `#54`
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `ad71673998f878b4cae8093502d0a0cd8c097855`. The latest rebased code-validation SHA is `9af0d787d450204732aeeb8f843c37a6a3078eb5`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `d9bfa9becfc73da9d90c484b012f14471822bdb8`. The latest rebased code-validation SHA is `2af4fa9aeb92a70bf457ac1375587f324149ae4c`.
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -76,12 +79,29 @@ The next shard-4 run exposed a weak onboarding-tour selector: the test clicked a
 - `cd web && npx eslint e2e/user-flows/onboarding-tour.spec.ts`
 - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4180 npx playwright test e2e/user-flows/onboarding-tour.spec.ts --project=chromium --grep "Skip dismisses tour" --reporter=line` (skipped locally because no tour was visible, without clicking the unrelated banner)
 
-The following accessibility run still reported `label-content-name-mismatch` for the profile trigger because the `aria-label` path continued to override visible button content. Commit `9af0d787d450204732aeeb8f843c37a6a3078eb5` removes the trigger `aria-label` and lets the accessible name come from the visible login text plus sr-only state text. Local validation passed:
+The following accessibility run still reported `label-content-name-mismatch` for the profile trigger because the `aria-label` path continued to override visible button content. Rebased commit `2af4fa9aeb92a70bf457ac1375587f324149ae4c` removes the trigger `aria-label` and lets the accessible name come from the visible login text plus sr-only state text. Local validation passed:
 
 - `cd web && npx eslint src/components/layout/UserProfileDropdown.tsx src/components/layout/__tests__/UserProfileDropdown.test.tsx` (warning only: existing `react-hooks/set-state-in-effect`)
 - `cd web && npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`
 - `cd web && npm run build`
 - `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4181 npx playwright test e2e/a11y.spec.ts --project=chromium --grep "menu items have accessible names from visible text" --reporter=line`
+
+After the follow-up upstream sync, fork `main` was updated to `285a7b93d89616d9703284fe76984b5d839d2841` and PR #65 was rebased onto it without conflicts. Follow-up local validation passed:
+
+- `git diff --check`
+- `node --check .github/scripts/console-live-promote-failure-issue.cjs`
+- `node --check .github/scripts/console-live-promote-failure-issue.test.cjs`
+- `node --check web/harness/scripts/compareBrowserMatrix.cjs`
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`
+- `cd web && npx eslint "e2e/visual-login/**/*.ts" "harness/**/*.ts"`
+- `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list`
+- `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list`
+- `cd web && npx playwright test --config e2e/visual-login/macos-popup.config.ts --list`
+- `cd web && npx eslint src/components/layout/UserProfileDropdown.tsx src/components/layout/__tests__/UserProfileDropdown.test.tsx` (warning only: existing `react-hooks/set-state-in-effect`)
+- `cd web && npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`
+- `cd web && npm run build`
+- `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4182 npx playwright test e2e/a11y.spec.ts --project=chromium --grep "menu items have accessible names from visible text" --reporter=line`
+- `cd web && npx playwright test --config e2e/auth-drift/auth-ui-drift.config.ts e2e/auth-drift/oauth-staging-login-drift.spec.ts` (3 passed, 1 expected local skip for external OAuth backend redirect contract)
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -213,13 +233,13 @@ The branch now reduces false positives and cascade load, and the latest dry run 
 
 PR #65 also depends on follow-up reruns after this branch is pushed. The local changes now fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, branch-caused accessibility timing/order issues, Local Login UI Drift stale screenshot contract, Claude OIDC permission, and one avoidable live canary `/nodes` route cluster-summary fetch.
 
-As of the latest June 27 sync, the fork is current with upstream for this work: `origin/main...fork/main` is `0 6`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` after the latest rebase and follow-up fixes. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
+As of the latest June 27 follow-up sync, the fork is current with upstream for this work: `origin/main...fork/main` is `0 7`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` after the latest rebase and follow-up fixes. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
 
 The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2ce8` completed. The branch-specific build, Auth Drift, accessibility, and shard-4 fixes were green there, but PR #65 is still not merge-ready while required checks remain red. After the latest upstream rebase, fresh checks are required on the rebased head; the expected remaining red checks are broad generic Playwright shards 1-3, Mobile Browser Tests, Merge Test Reports, and the external Claude Review app setup check unless those are fixed or explicitly treated as pre-existing/non-blocking by project policy.
 
 ## Final Merge-Readiness Assessment
 
-As of rebased code-validation SHA `9af0d787d450204732aeeb8f843c37a6a3078eb5`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
+As of rebased code-validation SHA `2af4fa9aeb92a70bf457ac1375587f324149ae4c`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
 
 Fixed or proven non-branch blockers:
 
