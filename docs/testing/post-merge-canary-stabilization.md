@@ -38,7 +38,8 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `.github/workflows/console-live-macos-canary.yml`: macOS/WebKit popup checks use the same 15 second default live-route delay.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts`: known optional/background live endpoints are recorded but do not block core route checks as generic network failures.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts`: core Kubernetes API `429` responses are now blocking `live-rate-limit-data-loss` failures. The first core rate-limit event writes a job-local marker so later live semantic tests skip instead of continuing to stress the same live site and generating secondary failures.
-- `.github/scripts/console-live-promote-failure-issue.cjs`: `429` evidence is now split into core resource rate limits versus optional/background endpoint pressure, so issue #54-style reports identify the actual blocker instead of lumping all rate limits together.
+- `web/e2e/visual-login/intensive.config.ts`: live-site/live-cluster runs now use zero Playwright retries, while normal CI keeps its existing retry behavior. This avoids doubling live API pressure and duplicate failure artifacts during scheduled canary runs.
+- `.github/scripts/console-live-promote-failure-issue.cjs`: `429` evidence is now split into core resource rate limits versus optional/background endpoint pressure, so issue #54-style reports identify the actual blocker instead of lumping all rate limits together. Raw log `429` parsing is line-scoped to avoid treating a websocket `429` plus later `/api/mcp/*` stack text as a core API rate-limit failure.
 - `.github/workflows/build-deploy.yml`: the GHCR image name is normalized to lowercase before Docker metadata/build/manifest/deploy steps. This fixes fork PR builds where `github.repository` is `DavidDiaz0317/console`, because Docker rejects uppercase repository names.
 - `web/playwright.config.ts`: the generic Playwright E2E workflow now ignores `auth-drift/**` and `visual-login/**`. Those suites require dedicated configs/workflows for their server, OAuth, and live-session setup; including them in generic E2E produced false `127.0.0.1:4176` and live-canary timeout failures.
 
@@ -63,7 +64,7 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
 
 - `git diff --check`: passed.
 - `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
-- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 19/19 tests.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 20/20 tests.
 - `node --check web/harness/scripts/compareBrowserMatrix.cjs`: passed.
 - YAML parse with the installed YAML parser: passed for `build-deploy.yml`, `post-merge-verify.yml`, `console-live-promote.yml`, and `console-live-macos-canary.yml`.
 - `cd web && npx eslint e2e/visual-login/**/*.ts harness/**/*.ts`: passed.
@@ -99,9 +100,18 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
   - Production health, OAuth boundary, and signed-session smoke passed.
   - Groundtruth collection confirmed `3` reachable contexts, `6` Ready nodes, `50` running pods, `16` namespaces, and `11` available deployments.
   - The run still hit core `429` pressure on `/api/mcp/clusters` and `/api/mcp/nodes`, then produced multiple secondary route/layout failures. This branch now treats that first core `429` as blocking and skips later live semantic tests in the same job to avoid that cascade.
+- Manual branch image publish: `Build and Deploy KC` run `28278984046`, branch `codex/post-merge-canary-stabilization`, `deploy_target=none`.
+  - Published `ghcr.io/daviddiaz0317/console:420144a58890874a8e7a8d2bad182441273b6943`.
+  - `deploy-vllm-d` and `deploy-pok-prod` were skipped because the ref was not `main`.
+- Manual canary-only run: `Console Live Promote` run `28279228318`, branch `codex/post-merge-canary-stabilization`, `candidate_sha=420144a58890874a8e7a8d2bad182441273b6943`, `promoteProduction=false`.
+  - Production deploy was skipped.
+  - Production health, OAuth boundary, and signed-session smoke passed.
+  - Live route evidence showed `/clusters`, `/nodes`, `/pods`, and Dashboard count markers matching groundtruth/API counts: `3` clusters, `6` Ready nodes, `50` pods, and `16` namespaces on Dashboard.
+  - The current live site still failed on real runtime/layout/data-availability issues: 502 console errors, blank card shells, `/namespaces` and `/deployments` unavailable state, and `/alerts` timing out. These are live product/UI issues, not screenshot-baseline noise.
+  - The failure-issue workflow updated existing issue `#54`. The follow-up classifier fix in this branch prevents websocket `429` log text from incorrectly dominating those UI/data failures as core API rate-limit failures.
 
 ## Remaining Blocker
 
-The branch now reduces false positives and cascade load, but `console-live` still hits a core resource `429` during a single serial semantic pass. That is a real live-site/product pressure issue, not just a test artifact. The next implementation slice should address product-side request pressure/backoff or fake-zero rendering for core Kubernetes resource APIs.
+The branch now reduces false positives and cascade load, and the latest dry run shows the main count assertions can pass against the current live site. The remaining blockers are live product/UI stability issues: optional/background service errors still surface as console/runtime failures, some routes render blank card shells, Namespaces and Deployments can render unavailable, and Alerts can time out. Those are the right failures for the canary to expose, but they are not fixed by this harness stabilization slice.
 
-PR #65 also depends on follow-up reruns after this branch is pushed. The local changes fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, and branch-caused accessibility timing/order issues. The Auth Drift screenshot mismatch, Claude Code Review setup failure, broad generic Playwright failures, and live-site core `429` product pressure remain outside this PR's merge-ready test-harness slice.
+PR #65 also depends on follow-up reruns after this branch is pushed. The local changes fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, and branch-caused accessibility timing/order issues. The Auth Drift screenshot mismatch, Claude Code Review setup failure, broad generic Playwright failures, and current live-site product/UI stability issues remain outside this PR's merge-ready test-harness slice.

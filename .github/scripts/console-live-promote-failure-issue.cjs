@@ -102,7 +102,7 @@ function parseRateLimitLine(value) {
       source: 'network-line',
     }
   }
-  const genericMatch = text.match(/\b429\b[\s\S]{0,180}?(https?:\/\/[^\s]+|\/api\/[^\s]+)/i)
+  const genericMatch = text.match(/\b429\b[^\r\n]{0,180}?(https?:\/\/[^\s]+|\/api\/[^\s]+)/i)
   if (genericMatch) {
     return {
       method: undefined,
@@ -141,8 +141,9 @@ function collectRateLimitEvidence({ evidenceItems = [], liveUiFailures = {}, log
   }
   for (const event of liveUiFailures.networkClassifications || []) pushEvent(event, 'liveUi.networkClassifications')
   for (const response of liveUiFailures.unexpectedNetworkResponses || []) pushEvent(parseRateLimitLine(response), 'liveUi.unexpectedNetworkResponses')
-  for (const match of sanitizeText(logText).matchAll(/\b(?:GET|POST|PUT|PATCH|DELETE)\s+429\s+[^\s]+|\b429\b[\s\S]{0,180}?(?:https?:\/\/[^\s]+|\/api\/[^\s]+)/gi)) {
-    pushEvent(parseRateLimitLine(match[0]), 'log')
+  for (const line of sanitizeText(logText).split(/\r?\n/)) {
+    if (!/\b429\b/i.test(line)) continue
+    pushEvent(parseRateLimitLine(line), 'log')
   }
 
   return dedupe(events.map((event) => JSON.stringify(event))).map((event) => JSON.parse(event))

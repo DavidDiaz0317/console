@@ -78,6 +78,16 @@ test('classifies only optional 429 responses separately from core resource data 
   }), 'optional-live-integration-unreachable')
 })
 
+test('does not merge websocket 429 text with later core API log lines', () => {
+  assert.equal(classify({}, [
+    "WebSocket connection to 'wss://console-live.kubestellar.io/ws' failed: Error during WebSocket handshake: Unexpected response code: 429",
+    'Error: live /namespaces must render fully loaded live data state',
+    'live-core-pages-render-real-data',
+    'at helpers/liveSiteAssertions.ts:963',
+    'const relatedEndpoint = "/api/mcp/nodes"',
+  ].join('\n')), 'core-page-live-data-missing')
+})
+
 test('classifies structured rate limit evidence as live data loss', () => {
   assert.equal(_test.classifyFailure({
     failures: [],
