@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test'
 import {
   setupDemoAndNavigate,
   setupDemoMode,
-  setupErrorCollector,
   waitForSubRoute,
   waitForDashboard,
   NETWORK_IDLE_TIMEOUT_MS,
@@ -125,8 +124,10 @@ test.describe('Deep Links', () => {
   test('page refresh preserves current route', async ({ page }) => {
     await setupDemoAndNavigate(page, '/clusters')
 
-    // Reload the page
-    await page.reload({ waitUntil: 'networkidle', timeout: ROUTE_LOAD_TIMEOUT_MS })
+    // Reload the page. The clusters route has long-lived stream/polling
+    // requests, so wait for the route UI instead of networkidle.
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: ROUTE_LOAD_TIMEOUT_MS })
+    await waitForSubRoute(page)
 
     // URL should still be /clusters (token persists in localStorage across reload)
     await expect(page).toHaveURL(/\/clusters/)
