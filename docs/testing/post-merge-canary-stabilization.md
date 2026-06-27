@@ -7,11 +7,33 @@
 - Current fork `main` commit at branch creation: `380fb7fd016994dd13c1ed96aa1fc46159efbd22`
 - Fork `main` after June 26 sync: `c7371aa7c`
 - Fork `main` after June 27 fetch: `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`
+- Fork `main` after June 27 upstream sync: `f291f3abf84b8f45d251cb6ba9bb1f11e426697a`
 - Upstream `main` included after sync: `f1740da9c`
+- Upstream `main` included after final June 27 sync: `66f803796`
 - Backup branch before sync: `backup/fork-main-before-upstream-sync-20260626-215039`
+- Backup branch before final June 27 sync: `backup/fork-main-before-upstream-sync-20260627-115847`
 - PR #48 merge commit from GitHub metadata: `02b2dd52a44284aed273a19b8b5af35ab0f311d1`
 - Post-merge verification run: `28190200153`
 - Current live canary issue: `#54`
+
+## Current June 27 Status
+
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream. The code-validation SHA is `c67738a28a5fa01205df9e0b664f231a90e4473c`.
+
+Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
+
+| Area | Result | Evidence |
+|---|---|---|
+| Build and Deploy KC | Passed | PR run `28294963262`; amd64 and arm64 image builds passed; deploy jobs skipped because this is a PR |
+| Manual no-deploy image publish | Passed | Run `28295242350`; image `ghcr.io/daviddiaz0317/console:c67738a28a5fa01205df9e0b664f231a90e4473c`; image index digest `sha256:f9883e071e3c075937373cbeed07aee82325d403553284c58f4e215800b521d6` |
+| Auth Drift | Passed | Run `28294963231`; Hosted Demo No-Login, Localhost Login Dashboard, Local Login UI, and Fake OAuth passed; OAuth Staging skipped as expected |
+| Accessibility | Passed | Run `28294963221` |
+| Generic Playwright E2E | Failed | Run `28294963221`; shards 1, 2, 3, and mobile failed. Broad failures reproduce on synced fork `main` run `28294272502`, so they are base-suite debt rather than this branch's live-canary changes |
+| Claude Review | Failed external setup | Run `28294963236`; OIDC token is available, but the Claude Code GitHub App is not installed on the fork |
+| Console Live Promote dry run | Failed as live blocker | Run `28295615586`; `promoteProduction=false`, no production deploy, auth/session smoke passed, semantic tests stopped on live-site `502` and core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss` |
+| Failure issue update | Passed | Run `28295673458`; existing issue `#54` was updated/commented instead of creating a duplicate |
+
+The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
 ## Main Branch Note
 
@@ -130,3 +152,24 @@ PR #65 also depends on follow-up reruns after this branch is pushed. The local c
 As of the June 27 check, the fork is current with upstream for this work: `origin/main...fork/main` is `0 3`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` by 10 commits before this local follow-up commit. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
 
 After pushing this follow-up, the remaining merge-readiness check is a fresh CI pass on the new SHA. If broad generic Playwright remains red with the same fork-main failures, the PR can be considered test-harness ready only if those checks are treated as pre-existing/non-blocking for this fork PR. It should not be marked non-draft as fully merge-ready while required checks are red.
+
+## Final Merge-Readiness Assessment
+
+As of the latest validated code SHA, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules.
+
+Fixed or proven non-branch blockers:
+
+- Build and Deploy KC is fixed for fork image publishing and passed on the PR.
+- Auth Drift Local Login UI Drift is fixed and passed on the PR.
+- Accessibility passed on the PR after the branch fixes.
+- The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
+- Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
+- The failure issue workflow updates existing matching issue `#54` instead of opening duplicate issues.
+
+Remaining blockers:
+
+- Claude Review is blocked by fork setup, not branch code: the Claude Code GitHub App is not installed.
+- Generic Playwright E2E is still red. The broad shard failures reproduce on synced fork `main`, but they are still required-check blockers unless the project explicitly treats them as pre-existing base-suite debt for this PR.
+- The live canary dry run still finds real live-site/API pressure issues: `502` runtime failures plus a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`.
+
+Recommended next action: keep PR #65 draft, fix or policy-exempt the broad generic Playwright base failures separately, install/configure the Claude app if that check remains required, and continue live-site product/infrastructure work from issue `#54`.
