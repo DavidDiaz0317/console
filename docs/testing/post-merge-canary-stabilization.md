@@ -24,7 +24,21 @@
 
 ## Current June 27 Status
 
-PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `d9bfa9becfc73da9d90c484b012f14471822bdb8`. The latest rebased code-validation SHA is `2af4fa9aeb92a70bf457ac1375587f324149ae4c`.
+PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `d9bfa9becfc73da9d90c484b012f14471822bdb8`. The latest pushed head before this evidence update is `7c474909b3919a1454b8594ea9142ca8149385f2`; the latest code-validation SHA before doc-only status commits is `2af4fa9aeb92a70bf457ac1375587f324149ae4c`.
+
+Remote evidence for `7c474909b3919a1454b8594ea9142ca8149385f2`:
+
+| Area | Result | Evidence |
+|---|---|---|
+| Build and Deploy KC | Passed | PR run `28302693905`; amd64 and arm64 image builds passed; deploy jobs skipped because this is a PR |
+| Manual no-deploy image publish | Passed | Run `28303671338`; image `ghcr.io/daviddiaz0317/console:7c474909b3919a1454b8594ea9142ca8149385f2`; image index digest `sha256:0f54b50c6d48606fcde324fb4021df7252149aeb22291546739910bccbd15c19`; deploy jobs skipped because `deploy_target=none` |
+| Auth Drift | Passed | Run `28302693908`; Hosted Demo No-Login, Localhost Login Dashboard, Local Login UI, and Fake OAuth passed; OAuth Staging skipped as expected |
+| Visual Login PR Protection | Passed | Run `28302693936`; Fast Visual/Login Guard passed |
+| Accessibility | Passed | Run `28302693922`; Accessibility Tests passed |
+| Generic Playwright E2E | Failed | Run `28302693922`; shards 1, 2, 3, mobile, and Merge Test Reports failed. The failures are broad generic-suite debt, and the profile dropdown clipping failure also reproduces on fork `main` run `28294272502` |
+| Claude Review | Failed external setup | Run `28302693907`; the Claude Code GitHub App is not installed/configured on the fork |
+| Console Live Promote dry run | Failed as live blocker | Run `28303928310`; `promoteProduction=false`, production deploy skipped, live health/OAuth boundary and signed-session smoke passed. `/clusters` UI matched groundtruth/API values (`3` clusters, `6` nodes, `6` Ready nodes, `50` pods). `/nodes` groundtruth markers matched `6` total and `6` Ready nodes, then authenticated `/api/mcp/nodes` returned `429` classified as `live-rate-limit-data-loss`. The run also observed a live `502` runtime/resource failure. Browser matrix and adequacy were skipped after semantic failure, avoiding a noisy cascade |
+| Failure issue update | Passed | Run `28303982507`; existing issue `#54` was updated/commented instead of creating a duplicate |
 
 Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 
@@ -239,7 +253,7 @@ The fresh CI pass on pre-rebase code SHA `1d884e2f720e7124239f4b2d06659de865bb2c
 
 ## Final Merge-Readiness Assessment
 
-As of rebased code-validation SHA `2af4fa9aeb92a70bf457ac1375587f324149ae4c`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until fresh checks complete cleanly or the remaining required-check failures are explicitly handled.
+As of pushed head `7c474909b3919a1454b8594ea9142ca8149385f2`, PR #65 is not ready to remove from draft and is not merge-safe under normal required-check rules until the remaining required-check failures are explicitly fixed or accepted as non-branch blockers by project policy.
 
 Fixed or proven non-branch blockers:
 
@@ -251,12 +265,14 @@ Fixed or proven non-branch blockers:
 - The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
 - Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
 - The failure issue workflow updates existing matching issue `#54` instead of opening duplicate issues.
+- Current-head image publishing is verified: `Build and Deploy KC` workflow-dispatch run `28303671338` published `ghcr.io/daviddiaz0317/console:7c474909b3919a1454b8594ea9142ca8149385f2` and skipped deploy jobs.
+- Current-head no-promote live canary is verified: `Console Live Promote` run `28303928310` skipped production deploy, passed live auth/session smoke, matched `/clusters` and `/nodes` groundtruth fields, then failed cleanly on a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`.
 
 Remaining blockers:
 
 - Claude Review is blocked by fork setup, not branch code: the Claude Code GitHub App is not installed.
 - Generic Playwright E2E is still red. The broad shard failures reproduce on synced fork `main`, but they are still required-check blockers unless the project explicitly treats them as pre-existing base-suite debt for this PR.
 - Mobile Browser Tests is still red with broad generic-suite failures.
-- The live canary dry run still finds real live-site/API pressure issues: `502` runtime failures plus a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`.
+- The live canary dry run still finds real live-site/API pressure issues: a live `502` runtime/resource failure plus a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`. This is no longer a noisy fake-zero cascade; it remains a real live product/infrastructure blocker tracked by issue `#54`.
 
 Recommended next action: keep PR #65 draft, fix or policy-exempt the broad generic Playwright base failures separately, install/configure the Claude app if that check remains required, and continue live-site product/infrastructure work from issue `#54`.
