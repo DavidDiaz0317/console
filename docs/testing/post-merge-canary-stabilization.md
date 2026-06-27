@@ -33,6 +33,8 @@ Remote evidence for `c67738a28a5fa01205df9e0b664f231a90e4473c`:
 | Console Live Promote dry run | Failed as live blocker | Run `28295615586`; `promoteProduction=false`, no production deploy, auth/session smoke passed, semantic tests stopped on live-site `502` and core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss` |
 | Failure issue update | Passed | Run `28295673458`; existing issue `#54` was updated/commented instead of creating a duplicate |
 | Profile trigger label-in-name follow-up | Passed locally | Fixed `navbar-profile-btn` so the accessible name includes the visible GitHub login. `npx vitest run src/components/layout/__tests__/UserProfileDropdown.test.tsx`, `npm run build`, and the exact Playwright check `e2e/a11y.spec.ts --grep "menu items have accessible names from visible text"` passed |
+| Final upstream-sync build fix | Passed locally and in CI | After syncing upstream through `e292fb42c`, `MissionExport.tags` now defaults to `[]`; `npm run build` passed locally and CI build/build-gate/TTFI passed on runs `28298137018`, `28298136982`, and `28298137071` |
+| Shard 4 targeted follow-up | Passed locally | Fixed the update reconnect test to send progress to the replacement WebSocket route and pre-dismissed the ACMM intro for the post-login route sweep. Both failing shard-4 specs passed locally against `vite preview` with `PLAYWRIGHT_BASE_URL` set |
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
@@ -72,6 +74,10 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts` and `web/e2e/visual-login/semantic/live-core-pages.spec.ts`: the `/nodes` live route no longer fetches cluster summary data just to assert pod totals. Node-route checks stay focused on node facts, reducing avoidable `/api/mcp/clusters` pressure in the paced canary.
 - `web/src/components/layout/UserProfileDropdown.tsx`: the profile dropdown trigger now includes the visible GitHub login in its accessible name, fixing the generic Playwright label-in-name failure for `navbar-profile-btn`.
 - `web/src/components/layout/__tests__/UserProfileDropdown.test.tsx`: added a regression test for the profile trigger accessible name before and after opening the menu.
+- `web/src/components/layout/mission-sidebar/missionSidebarHelpers.ts`: exported missions now default missing imported tags to `[]`, matching the required `MissionExport.tags` type and fixing the TypeScript build failure introduced by the latest upstream sync.
+- `web/src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`: updated the regression expectation for the required empty tag array.
+- `web/e2e/UpdateSettings.spec.ts`: the reconnect recovery test now targets only replacement WebSocket routes and retries until the reconnected socket receives the resumed progress event, preserving the update-state assertion without racing the reconnect handshake.
+- `web/e2e/user-flows/post-login-dashboard-ux.spec.ts`: the post-login route sweep now starts with the ACMM intro dismissed so the first-run education modal cannot intercept sidebar navigation while the test walks all visible routes.
 
 ## PR #65 Check Triage
 
@@ -106,6 +112,9 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
   - `cd web && npx playwright test e2e/auth-drift/oauth-staging-login-drift.spec.ts --project=chromium --list`: exit `1` because the generic config ignores `auth-drift/**`.
   - `cd web && npx playwright test e2e/visual-login/semantic/live-core-pages.spec.ts --project=chromium --list`: exit `1` because the generic config ignores `visual-login/**`.
 - `cd web && npm run build`: passed, including post-build vendor safety checks. Local build time was about 12 minutes.
+- `cd web && npx eslint src/components/layout/mission-sidebar/missionSidebarHelpers.ts src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`: passed.
+- `cd web && npx vitest run src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`: passed, 13 tests.
+- `cd web && npm run build`: passed after the final upstream-sync type fix.
 - `cd web && npx eslint e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed.
 - `cd web && npx eslint e2e/visual-login/helpers/liveSiteAssertions.ts e2e/visual-login/semantic/live-core-pages.spec.ts`: passed.
 - `cd web && npx playwright test --config e2e/auth-drift/auth-ui-drift.config.ts e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed, 3 tests passed and the external OAuth backend redirect contract skipped locally as expected.
@@ -118,6 +127,11 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
 - Representative local-preview smoke sample:
   - Command: build, `npm run preview -- --host 127.0.0.1 --port 4173`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173 npx playwright test e2e/Clusters.spec.ts e2e/navbar-responsive.spec.ts --project=chromium --grep "displays clusters page|overflow menu button is visible"`.
   - Result: passed.
+- Shard 4 targeted local-preview follow-up:
+  - Command: `npm run preview -- --host 127.0.0.1 --port 4177`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4177 npx playwright test e2e/UpdateSettings.spec.ts --project=chromium --grep "recovers state after WebSocket disconnect" --reporter=line`.
+  - Result: passed, 1 test.
+  - Command: `npm run preview -- --host 127.0.0.1 --port 4177`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4177 npx playwright test e2e/user-flows/post-login-dashboard-ux.spec.ts --project=chromium --reporter=line`.
+  - Result: passed, 1 test.
 
 ## Remaining Validation Needed
 

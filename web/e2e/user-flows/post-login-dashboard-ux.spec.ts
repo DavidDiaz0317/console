@@ -20,6 +20,13 @@ function routeMatcher(path: string): RegExp {
 }
 
 async function loginAndOpenInitialDashboard(page: Page) {
+  // The route sweep validates navigation after login, not first-run education.
+  // Dismiss the ACMM intro up front so its fixed modal cannot intercept later
+  // sidebar clicks while the test is walking every route.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('kc-acmm-intro-dismissed', '1')
+  })
+
   // Catch-all API mock prevents hangs on unmocked endpoints
   await mockApiFallback(page)
 

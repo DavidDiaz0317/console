@@ -125,6 +125,21 @@ async function setupUpdateTest(page: Page): Promise<WsRoutes> {
   return wsRoutes
 }
 
+function sendProgressToRoutes(
+  routes: WsRoutes['routes'],
+  status: string,
+  message: string,
+  progress: number,
+  error?: string,
+) {
+  const payload: Record<string, unknown> = { status, message, progress }
+  if (error) payload.error = error
+  const data = JSON.stringify({ type: 'update_progress', payload })
+  for (const ws of routes) {
+    ws.send(data)
+  }
+}
+
 /**
  * Helper: broadcast an update_progress WebSocket message to all mock connections.
  */
@@ -135,12 +150,7 @@ function sendProgress(
   progress: number,
   error?: string,
 ) {
-  const payload: Record<string, unknown> = { status, message, progress }
-  if (error) payload.error = error
-  const data = JSON.stringify({ type: 'update_progress', payload })
-  for (const ws of wsRoutes.routes) {
-    ws.send(data)
-  }
+  sendProgressToRoutes(wsRoutes.routes, status, message, progress, error)
 }
 
 // ---------------------------------------------------------------------------
@@ -297,10 +307,15 @@ test.describe('Update Settings', () => {
       .poll(() => ws.routes.length, { timeout: RECONNECT_TIMEOUT_MS })
       .toBeGreaterThan(routeCountBeforeDisconnect)
 
-    // Resume the update on the new connection(s) — send a later stage
-    sendProgress(ws, 'building', 'Building Go binaries...', 60)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByTestId('update-progress-message')).toContainText('Building Go binaries')
+    // Resume the update on the replacement connection. Wait until the new
+    // socket is ready to receive progress so the assertion does not race the
+    // reconnect handshake.
+    await expect(async () => {
+      const reconnectedRoutes = ws.routes.slice(routeCountBeforeDisconnect)
+      sendProgressToRoutes(reconnectedRoutes, 'building', 'Building Go binaries...', 60)
+      await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 1000 })
+      await expect(page.getByTestId('update-progress-message')).toContainText('Building Go binaries', { timeout: 1000 })
+    }).toPass({ timeout: RECONNECT_TIMEOUT_MS })
 
     // Complete the update
     sendProgress(ws, 'done', 'Update complete — restart successful', 100)
