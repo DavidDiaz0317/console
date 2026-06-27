@@ -6,6 +6,7 @@
 - Base branch requested: `main`
 - Current fork `main` commit at branch creation: `380fb7fd016994dd13c1ed96aa1fc46159efbd22`
 - Fork `main` after June 26 sync: `c7371aa7c`
+- Fork `main` after June 27 fetch: `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`
 - Upstream `main` included after sync: `f1740da9c`
 - Backup branch before sync: `backup/fork-main-before-upstream-sync-20260626-215039`
 - PR #48 merge commit from GitHub metadata: `02b2dd52a44284aed273a19b8b5af35ab0f311d1`
@@ -42,6 +43,10 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `.github/scripts/console-live-promote-failure-issue.cjs`: `429` evidence is now split into core resource rate limits versus optional/background endpoint pressure, so issue #54-style reports identify the actual blocker instead of lumping all rate limits together. Raw log `429` parsing is line-scoped to avoid treating a websocket `429` plus later `/api/mcp/*` stack text as a core API rate-limit failure.
 - `.github/workflows/build-deploy.yml`: the GHCR image name is normalized to lowercase before Docker metadata/build/manifest/deploy steps. This fixes fork PR builds where `github.repository` is `DavidDiaz0317/console`, because Docker rejects uppercase repository names.
 - `web/playwright.config.ts`: the generic Playwright E2E workflow now ignores `auth-drift/**` and `visual-login/**`. Those suites require dedicated configs/workflows for their server, OAuth, and live-session setup; including them in generic E2E produced false `127.0.0.1:4176` and live-canary timeout failures.
+- `web/e2e/auth-drift/oauth-staging-login-drift.spec.ts`: the local OAuth login UI drift check no longer compares against the stale screenshot baseline that expected the removed Terms of Service footer. It now asserts the intended login contract directly: logo, heading, GitHub button, no demo/hosted setup UI, no misleading Terms footer, card geometry, and mobile fit. Current screenshots are attached as evidence, not used as auto-updated baselines.
+- `.github/workflows/auth-drift.yml`: the Local Login UI Drift context now records the intended no-misleading-Terms-footer contract.
+- `.github/workflows/claude-code-review.yml`: the Claude review job now grants `id-token: write`, matching the OIDC error reported by the action.
+- `web/e2e/visual-login/helpers/liveSiteAssertions.ts` and `web/e2e/visual-login/semantic/live-core-pages.spec.ts`: the `/nodes` live route no longer fetches cluster summary data just to assert pod totals. Node-route checks stay focused on node facts, reducing avoidable `/api/mcp/clusters` pressure in the paced canary.
 
 ## PR #65 Check Triage
 
@@ -50,11 +55,11 @@ For this stabilization branch, the working base is the current fork `main` so th
 | Build and Deploy KC | `28277130608`, `28277989008` | Branch/fork workflow bug | Fixed by lowercasing `IMAGE_NAME`. PR build passed, and manual branch image publish succeeded for SHA `83a29e5cf253d7066bc27d361faa078d4cc14279`; deploy jobs were skipped because the ref was not `main` |
 | Pre-Merge Build Gate | `28277130628` | Branch/sync syntax issue | Passed after removing unmatched braces from three synced hook test files |
 | Lint Warning Gate | `28277130619` | Fork-main warning baseline drift | Passed after comparing PR warnings against the base branch instead of the stale static count |
-| Auth Drift / Local Login UI Drift | `28274238064` | Existing fork-main auth drift baseline mismatch | Not changed here. The product unit test asserts no terms footer, while the screenshot baseline still expects `By signing in... Terms of Service`; this should be handled as an auth-drift baseline/product-contract decision outside this PR |
+| Auth Drift / Local Login UI Drift | `28280401235` | Branch/fork test contract drift after upstream removed the misleading Terms footer | Fixed locally by replacing the stale screenshot assertion with semantic/geometry contract checks and screenshot evidence attachments. Local run passed: 3 passed, 1 expected external-backend contract skip |
 | Playwright E2E / Accessibility Tests | `28277130604` | Branch-caused timing/order sensitivity | Passed after waiting for the first focusable element and making the dashboard keyboard reachability assertion order-tolerant |
 | Playwright E2E / special-suite failures | `28274238051` | Generic E2E was running dedicated suites with missing setup | Fixed by excluding `auth-drift/**` and `visual-login/**` from the generic config; dedicated Auth Drift and Visual Login workflows still run them |
 | Playwright E2E / broad app failures | `28277130604` | Existing generic E2E instability/debt after upstream sync | Not fixed in this PR. The failing specs are unrelated to this diff and include mission journey/composer expectations, CI/CD controls, namespace persistence, GPU reservation auth console errors, update WebSocket progress, navbar/dropdown layout, and dashboard drag/drop/layout assertions |
-| Claude Code Review | `28274238085` | Workflow configuration | Not branch-caused. The action failed before review because it could not fetch an OIDC token and reported missing `id-token: write`/credentials |
+| Claude Code Review | `28280401226` | Workflow configuration | Fixed locally by adding `id-token: write` to the Claude review job permissions. Needs remote rerun on the pushed SHA |
 
 ## Canary Issue #54 Summary
 
@@ -76,6 +81,12 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
   - `cd web && npx playwright test e2e/auth-drift/oauth-staging-login-drift.spec.ts --project=chromium --list`: exit `1` because the generic config ignores `auth-drift/**`.
   - `cd web && npx playwright test e2e/visual-login/semantic/live-core-pages.spec.ts --project=chromium --list`: exit `1` because the generic config ignores `visual-login/**`.
 - `cd web && npm run build`: passed, including post-build vendor safety checks. Local build time was about 12 minutes.
+- `cd web && npx eslint e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed.
+- `cd web && npx eslint e2e/visual-login/helpers/liveSiteAssertions.ts e2e/visual-login/semantic/live-core-pages.spec.ts`: passed.
+- `cd web && npx playwright test --config e2e/auth-drift/auth-ui-drift.config.ts e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed, 3 tests passed and the external OAuth backend redirect contract skipped locally as expected.
+- `cd web && npx eslint e2e/visual-login/**/*.ts harness/**/*.ts e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed.
+- `cd web && npx vitest run src/components/auth/Login.test.tsx src/lib/__tests__/api-methods.test.ts`: passed, 56 tests.
+- `cd web && npx vitest run src/lib/__tests__/sseClient.test.ts src/hooks/__tests__/useCachedData-kubectl.test.ts src/hooks/__tests__/useCertManager-caching.test.ts src/hooks/__tests__/useMetricsHistory-advanced.test.ts`: passed, 61 passed and 1 skipped.
 - Representative hosted smoke sample:
   - Command: `PLAYWRIGHT_BASE_URL=https://console.kubestellar.io npx playwright test e2e/Clusters.spec.ts e2e/navbar-responsive.spec.ts --project=chromium --grep "displays clusters page|overflow menu button is visible"`
   - Result: failed on the hosted login page, but no longer failed with the literal `{}` document shell. This confirms the route fallback no longer intercepts the app document. The remaining hosted-login behavior is why the workflow uses a local preview fallback when deploy readiness is not confirmed.
@@ -114,4 +125,8 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
 
 The branch now reduces false positives and cascade load, and the latest dry run shows the main count assertions can pass against the current live site. The remaining blockers are live product/UI stability issues: optional/background service errors still surface as console/runtime failures, some routes render blank card shells, Namespaces and Deployments can render unavailable, and Alerts can time out. Those are the right failures for the canary to expose, but they are not fixed by this harness stabilization slice.
 
-PR #65 also depends on follow-up reruns after this branch is pushed. The local changes fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, and branch-caused accessibility timing/order issues. The Auth Drift screenshot mismatch, Claude Code Review setup failure, broad generic Playwright failures, and current live-site product/UI stability issues remain outside this PR's merge-ready test-harness slice.
+PR #65 also depends on follow-up reruns after this branch is pushed. The local changes now fix the fork GHCR uppercase failure, generic-E2E special-suite false positives, pre-merge build syntax errors, lint warning baseline drift, branch-caused accessibility timing/order issues, Local Login UI Drift stale screenshot contract, Claude OIDC permission, and one avoidable live canary `/nodes` route cluster-summary fetch.
+
+As of the June 27 check, the fork is current with upstream for this work: `origin/main...fork/main` is `0 3`, so fork `main` is ahead with fork-private work and not behind upstream. PR #65 is ahead of fork `main` by 10 commits before this local follow-up commit. The broad generic Playwright shard failures also reproduce on fork `main` at `a3dcd8f99742a92038727dd0ab30e77fd71a43b1`, including mission-control, deep-link blank-page, logout/dropdown, CI/CD, and keyboard-navigation failures. They are not introduced by the current PR diff, but they still keep the overall Playwright workflow red until that suite debt is handled separately.
+
+After pushing this follow-up, the remaining merge-readiness check is a fresh CI pass on the new SHA. If broad generic Playwright remains red with the same fork-main failures, the PR can be considered test-harness ready only if those checks are treated as pre-existing/non-blocking for this fork PR. It should not be marked non-draft as fully merge-ready while required checks are red.

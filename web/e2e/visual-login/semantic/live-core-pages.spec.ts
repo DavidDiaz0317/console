@@ -75,12 +75,10 @@ const coreRoutes: CoreRoute[] = [
     expectedFields: groundTruth => ({
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
-      'pods-total': groundTruth.pods.total,
     }),
     apiFields: apiFacts => ({
       'nodes-total': apiFacts.nodes.total,
       'nodes-ready': apiFacts.nodes.ready,
-      'pods-total': apiFacts.clusters.podsTotal,
     }),
   },
   {

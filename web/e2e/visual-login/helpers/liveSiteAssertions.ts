@@ -772,7 +772,10 @@ export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 
       }
     }
 
-    const clustersResponse = await getJson('/api/mcp/clusters')
+    const needsClusterSummary = shouldFetch('clusters') || factScope === 'namespaces'
+    const clustersResponse = needsClusterSummary
+      ? await getJson('/api/mcp/clusters')
+      : { status: null, data: null, count: null }
     const clusters = Array.isArray((clustersResponse.data as { clusters?: unknown[] } | null)?.clusters)
       ? (clustersResponse.data as { clusters: Array<Record<string, unknown>> }).clusters
       : []

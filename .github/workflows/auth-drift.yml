@@ -66,7 +66,7 @@ jobs:
               type: 'local-vite-mocked-oauth-ui',
               loginUrl: 'http://127.0.0.1:4176/login',
             },
-            expectedContract: 'OAuth login card, GitHub button, branding, and mobile layout remain visually stable.',
+            expectedContract: 'OAuth login card, GitHub button, branding, no misleading Terms footer, and mobile layout remain stable.',
           };
           fs.writeFileSync('e2e/test-results/auth-drift-context/context.json', JSON.stringify(context, null, 2));
           NODE
