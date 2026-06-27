@@ -70,6 +70,84 @@ function dedupe(items) {
   return [...new Set((items || []).filter(Boolean))]
 }
 
+const CORE_RESOURCE_ENDPOINT_PATTERN = /\/api\/(?:mcp\/)?(?:clusters|nodes|pods|deployments|namespaces)(?:[/?]|$)|\/api\/namespaces(?:[/?]|$)/i
+const OPTIONAL_LIVE_ENDPOINT_PATTERN = /\/api\/(?:agent\/token|agent\/auto-update\/|gitops\/|public\/nightly-e2e\/|stellar\/stream|stellar\/(?:notifications|actions|tasks|activity|watches|solves)|github\/repos\/|rewards\/|medium\/blog|youtube\/playlist|active-users|token-usage\/|feedback\/|kagenti-provider\/status)|\/api\/mcp\/(?:pod-issues|gpu-nodes)\/stream(?:[/?]|$)/i
+
+function endpointPath(value) {
+  const text = String(value || '')
+  try {
+    return new URL(text, 'https://console-live.kubestellar.io').pathname
+  } catch {
+    const match = text.match(/(\/api\/[^\s"'`),]+)/i)
+    return match ? match[1].replace(/[.,;:]+$/, '') : text
+  }
+}
+
+function isCoreResourceEndpoint(value) {
+  return CORE_RESOURCE_ENDPOINT_PATTERN.test(endpointPath(value))
+}
+
+function isOptionalLiveEndpoint(value) {
+  return OPTIONAL_LIVE_ENDPOINT_PATTERN.test(endpointPath(value))
+}
+
+function parseRateLimitLine(value) {
+  const text = sanitizeText(value)
+  const networkMatch = text.match(/\b(GET|POST|PUT|PATCH|DELETE)\s+429\s+([^\s]+)/i)
+  if (networkMatch) {
+    return {
+      method: networkMatch[1].toUpperCase(),
+      status: 429,
+      url: networkMatch[2].replace(/[.,;:]+$/, ''),
+      source: 'network-line',
+    }
+  }
+  const genericMatch = text.match(/\b429\b[\s\S]{0,180}?(https?:\/\/[^\s]+|\/api\/[^\s]+)/i)
+  if (genericMatch) {
+    return {
+      method: undefined,
+      status: 429,
+      url: genericMatch[1].replace(/[.,;:]+$/, ''),
+      source: 'text',
+    }
+  }
+  return null
+}
+
+function collectRateLimitEvidence({ evidenceItems = [], liveUiFailures = {}, logText = '' }) {
+  const events = []
+  const pushEvent = (event, source) => {
+    if (!event) return
+    const status = Number(event.status)
+    if (status !== 429 && !/live-rate-limit-data-loss|too many requests|rate limited/i.test(String(event.classification || event.error || ''))) return
+    const url = event.url || event.endpoint || event.href || ''
+    if (!url && status !== 429) return
+    events.push({
+      method: event.method,
+      status: status || 429,
+      url,
+      retryAfter: event.retryAfter,
+      classification: event.classification,
+      source,
+      core: isCoreResourceEndpoint(url),
+      optional: isOptionalLiveEndpoint(url),
+    })
+  }
+
+  for (const item of evidenceItems) {
+    const network = item.network || {}
+    for (const event of network.rateLimitEvents || []) pushEvent(event, 'evidence.rateLimitEvents')
+    for (const response of network.errorResponses || []) pushEvent(response, 'evidence.errorResponses')
+  }
+  for (const event of liveUiFailures.networkClassifications || []) pushEvent(event, 'liveUi.networkClassifications')
+  for (const response of liveUiFailures.unexpectedNetworkResponses || []) pushEvent(parseRateLimitLine(response), 'liveUi.unexpectedNetworkResponses')
+  for (const match of sanitizeText(logText).matchAll(/\b(?:GET|POST|PUT|PATCH|DELETE)\s+429\s+[^\s]+|\b429\b[\s\S]{0,180}?(?:https?:\/\/[^\s]+|\/api\/[^\s]+)/gi)) {
+    pushEvent(parseRateLimitLine(match[0]), 'log')
+  }
+
+  return dedupe(events.map((event) => JSON.stringify(event))).map((event) => JSON.parse(event))
+}
+
 function testStatusFailed(status) {
   return status && !['passed', 'skipped', 'expected'].includes(status)
 }
@@ -361,7 +439,9 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const browserMatrixFailures = liveUiFailures.browserMatrixFailures || []
   const networkClassifications = liveUiFailures.networkClassifications || []
   const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
-  const rateLimitEvents = evidenceItems.flatMap((item) => item.network?.rateLimitEvents || [])
+  const rateLimitEvents = collectRateLimitEvidence({ evidenceItems, liveUiFailures, logText })
+  const hasCoreRateLimit = rateLimitEvents.some((event) => event.core)
+  const hasOptionalRateLimit = rateLimitEvents.some((event) => event.optional)
   const hasProductEvidence = (
     failures.length
     || evidenceItems.length
@@ -376,12 +456,10 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
     || (liveUiFailures.unexpectedRequestFailures || []).length
     || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
     || /live-network-error|startup-error|infrastructure connection error|unexpected app-origin|4xx|5xx|bad request/.test(text)
-  const hasRateLimitResponse = unexpectedNetworkResponses.some(response =>
-    /\b429\b/.test(String(response))
-    && /\/api\/(?:mcp\/|namespaces|agent\/token|dashboards|gitops\/|stellar\/)|\/api\/namespaces/i.test(String(response))
-  )
   if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
-  if (rateLimitEvents.length || networkClassifications.some(item => item.classification === 'live-rate-limit-data-loss') || hasRateLimitResponse || /live-rate-limit-data-loss|(?:http|get|post|put|delete)\s+429|too many requests|rate limited/.test(text)) return 'live-rate-limit-data-loss'
+  if (hasCoreRateLimit || networkClassifications.some(item =>
+    item.classification === 'live-rate-limit-data-loss' && isCoreResourceEndpoint(item.url)
+  )) return 'live-rate-limit-data-loss'
   if (browserMatrixFailures.some(failure => failure.classification === 'canary-setup') || text.includes('canary-setup')) return 'canary-setup'
   if ((liveUiFailures.apiUiMismatches || []).length || /ui-api-mismatch/.test(text)) return 'ui-api-mismatch'
   if (networkClassifications.some(item => item.classification === 'local-agent-status-unreachable')) return 'local-agent-status-unreachable'
@@ -401,6 +479,8 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-layout-drift') || text.includes('browser-layout-drift')) return 'browser-layout-drift'
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-visual-baseline') || text.includes('browser-visual-baseline')) return 'browser-visual-baseline'
   if (browserMatrixFailures.some(failure => failure.classification === 'auth-boundary') || text.includes('auth-boundary')) return 'auth-boundary'
+  if (hasOptionalRateLimit || networkClassifications.some(item => item.classification === 'optional-live-integration-unreachable')) return 'optional-live-integration-unreachable'
+  if (rateLimitEvents.length || /too many requests|rate limited/.test(text)) return 'live-network-error'
   if (hasLiveNetworkFailure) return 'live-network-error'
   if (/cluster-dashboard-groundtruth-match|groundtruth/.test(text)) return 'groundtruth-mismatch'
   if (/oauth|\/api\/me|auth boundary|unauthenticated/.test(text)) return 'auth-boundary'
@@ -419,6 +499,9 @@ function likelyAreasFor(type) {
   }
   if (type === 'live-network-error') {
     return ['web/src/hooks/**', 'web/src/lib/**', 'web/src/components/cards/**', 'cmd/console/**']
+  }
+  if (type === 'optional-live-integration-unreachable') {
+    return ['web/src/hooks/**', 'web/src/components/cards/**', 'web/src/components/stellar/**', 'web/e2e/visual-login/helpers/liveSiteAssertions.ts']
   }
   if (type === 'live-rate-limit-data-loss') {
     return ['cmd/console/**', 'web/src/hooks/**', 'web/src/components/namespaces/**', 'web/e2e/visual-login/helpers/liveSiteAssertions.ts']
@@ -510,6 +593,7 @@ function shortFailure(type, failures) {
   if (type === 'live-ui-forbidden-artifact') return 'live UI shows demo or local-only artifact'
   if (type === 'live-ui-warning-flood') return 'live UI shows warning flood'
   if (type === 'live-network-error') return 'live UI has unexpected network errors'
+  if (type === 'optional-live-integration-unreachable') return 'optional live integration is unavailable or rate-limited'
   if (type === 'live-rate-limit-data-loss') return 'resource API rate limiting causes live data loss'
   if (type === 'ui-api-mismatch') return 'UI does not match authenticated API data'
   if (type === 'local-agent-status-unreachable') return 'local agent status endpoint is unreachable'
@@ -590,6 +674,9 @@ function logExcerpt(logs) {
 
 function parseImageState(logText, run) {
   const cleaned = sanitizeText(logText)
+  const resolvedMatches = [...cleaned.matchAll(/Resolved candidate image ([^\s\r\n]+)/g)]
+    .map((match) => match[1].trim().replace(/^"|"$/g, ''))
+    .filter((image) => !image.includes('$'))
   const currentMatches = [...cleaned.matchAll(/Live currently runs ([^;\r\n]+); candidate is ([^\s\r\n]+)/g)]
     .map((match) => ({ current: match[1].trim(), candidate: match[2].trim().replace(/^"|"$/g, '') }))
     .filter((match) => !match.current.includes('${') && !match.candidate.includes('${'))
@@ -598,7 +685,8 @@ function parseImageState(logText, run) {
     .filter((image) => !image.includes('$'))
   const currentMatch = currentMatches[currentMatches.length - 1]
   const alreadyMatch = alreadyMatches[alreadyMatches.length - 1]
-  const candidate = currentMatch?.candidate || `${IMAGE_REPOSITORY}:${run.head_sha}`
+  const resolvedCandidate = resolvedMatches[resolvedMatches.length - 1]
+  const candidate = currentMatch?.candidate || resolvedCandidate || `${IMAGE_REPOSITORY}:${run.head_sha}`
   return {
     current: currentMatch?.current || alreadyMatch || 'not parsed',
     candidate,
@@ -628,26 +716,21 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
-function summarizeNetworkEvidence(evidenceItems) {
+function summarizeNetworkEvidence(evidenceItems, liveUiFailures = {}) {
   const requestCountsByEndpoint = {}
-  const rateLimitEvents = []
   for (const item of evidenceItems) {
     const network = item.network || {}
     for (const [endpoint, count] of Object.entries(network.requestCountsByEndpoint || {})) {
       requestCountsByEndpoint[endpoint] = (requestCountsByEndpoint[endpoint] || 0) + Number(count || 0)
     }
-    for (const event of network.rateLimitEvents || []) {
-      rateLimitEvents.push(event)
-    }
   }
+  const rateLimitEvents = collectRateLimitEvidence({ evidenceItems, liveUiFailures, logText: '' })
   return {
     topRequestCounts: Object.entries(requestCountsByEndpoint)
       .sort((left, right) => right[1] - left[1])
       .slice(0, 25)
       .map(([endpoint, count]) => ({ endpoint, count })),
-    rateLimitEvents: dedupe(rateLimitEvents.map((event) => JSON.stringify(event)))
-      .map((event) => JSON.parse(event))
-      .slice(0, 25),
+    rateLimitEvents: rateLimitEvents.slice(0, 25),
   }
 }
 
@@ -746,7 +829,7 @@ function buildBody({
   )
   const attachmentPaths = dedupe(failures.flatMap((failure) => failure.attachments || []))
   const likelyFiles = likelyAreasFor(failureType)
-  const networkSummary = summarizeNetworkEvidence(evidenceItems)
+  const networkSummary = summarizeNetworkEvidence(evidenceItems, liveUiFailures)
 
   return [
     marker,
@@ -1050,5 +1133,6 @@ module.exports = async ({ github, context, core }) => {
 
 module.exports._test = {
   classifyFailure,
+  parseImageState,
   selectExistingIssue,
 }

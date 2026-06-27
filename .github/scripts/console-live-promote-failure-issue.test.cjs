@@ -54,6 +54,30 @@ test('classifies raw GET 429 API responses as live data loss', () => {
   }), 'live-rate-limit-data-loss')
 })
 
+test('does not let optional 429 responses mask dashboard mismatches', () => {
+  assert.equal(classify({
+    dashboardMismatches: [{
+      field: 'dashboard-namespaces-total',
+      expected: 16,
+      actual: 0,
+      route: '/',
+    }],
+    unexpectedNetworkResponses: [
+      'GET 429 https://console-live.kubestellar.io/api/stellar/stream',
+      'GET 429 https://console-live.kubestellar.io/api/agent/token',
+    ],
+  }), 'dashboard-groundtruth-mismatch')
+})
+
+test('classifies only optional 429 responses separately from core resource data loss', () => {
+  assert.equal(classify({
+    unexpectedNetworkResponses: [
+      'GET 429 https://console-live.kubestellar.io/api/gitops/helm-releases',
+      'GET 429 https://console-live.kubestellar.io/api/public/nightly-e2e/runs',
+    ],
+  }), 'optional-live-integration-unreachable')
+})
+
 test('classifies structured rate limit evidence as live data loss', () => {
   assert.equal(_test.classifyFailure({
     failures: [],
@@ -152,6 +176,13 @@ test('keeps canary setup as fallback when no parsed product evidence exists', ()
 
 test('prioritizes canary setup over product-looking log noise', () => {
   assert.equal(classify({}, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing\nGET 429 /api/mcp/pods'), 'canary-setup')
+})
+
+test('parses resolved candidate image before falling back to run SHA', () => {
+  const imageState = _test.parseImageState('Resolved candidate image ghcr.io/daviddiaz0317/console:main', {
+    head_sha: 'abc123',
+  })
+  assert.equal(imageState.candidate, 'ghcr.io/daviddiaz0317/console:main')
 })
 
 test('does not let unexecuted canary setup command text override parsed network evidence', () => {

@@ -16,7 +16,7 @@ on:
       promoteProduction:
         description: 'Deploy the candidate to console-live before running tests'
         required: false
-        default: 'true'
+        default: 'false'
         type: choice
         options: ['true', 'false']
   schedule:
@@ -48,14 +48,15 @@ env:
   LIVE_CLUSTER_FIXTURE_CONTEXT: ${{ vars.LIVE_CLUSTER_FIXTURE_CONTEXT || 'ks-console-ci-1' }}
   LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
   LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
-  LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '3000' }}
+  LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '15000' }}
+  LIVE_CANARY_PHASE_COOLDOWN_MS: ${{ vars.LIVE_CANARY_PHASE_COOLDOWN_MS || '90000' }}
   CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ vars.CONSOLE_LIVE_TEST_SESSION_COUNT || '80' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_TEST_USER_ID: ${{ secrets.CONSOLE_LIVE_TEST_USER_ID || vars.CONSOLE_LIVE_TEST_USER_ID }}
   CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ secrets.CONSOLE_LIVE_TEST_GITHUB_LOGIN || vars.CONSOLE_LIVE_TEST_GITHUB_LOGIN || 'DavidDiaz0317' }}
   CONSOLE_LIVE_TEST_USER_ROLE: ${{ vars.CONSOLE_LIVE_TEST_USER_ROLE || 'admin' }}
-  PROMOTE_PRODUCTION: ${{ github.event_name == 'workflow_dispatch' && inputs.promoteProduction || 'true' }}
+  PROMOTE_PRODUCTION: ${{ github.event_name == 'workflow_dispatch' && inputs.promoteProduction || 'false' }}
   CANDIDATE_SHA_INPUT: ${{ inputs.candidate_sha || '' }}
   CANDIDATE_TAG_INPUT: ${{ inputs.candidate_tag || '' }}
 
@@ -426,6 +427,7 @@ jobs:
           cat "$RUNNER_TEMP/console-live/live-rollback.log"
 
       - name: Run live semantic tests against public URL
+        id: live_semantic
         timeout-minutes: 25
         working-directory: web
         env:
@@ -447,8 +449,19 @@ jobs:
           LIVE_CANARY_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_ROUTE_DELAY_MS }}
         run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site --grep-invert "production live" --workers=1
 
+      - name: Cool down before browser matrix
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' && steps.live_semantic.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep_seconds=$((LIVE_CANARY_PHASE_COOLDOWN_MS / 1000))
+          if [ "$sleep_seconds" -gt 0 ]; then
+            echo "Cooling down ${sleep_seconds}s before browser matrix to avoid rate-limit cascades."
+            sleep "$sleep_seconds"
+          fi
+
       - name: Run live browser matrix against public URL
-        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' && steps.live_semantic.outcome == 'success' }}
         timeout-minutes: 30
         working-directory: web
         env:
@@ -477,7 +490,7 @@ jobs:
           exit "$status"
 
       - name: Compare live browser matrix
-        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' && steps.live_semantic.outcome == 'success' }}
         timeout-minutes: 5
         working-directory: web
         run: npm run test:visual:browser-matrix:compare
@@ -504,7 +517,7 @@ jobs:
           retention-days: 14
 
       - name: Run test adequacy analyzer
-        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.live_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' && steps.live_semantic.outcome == 'success' }}
         timeout-minutes: 10
         working-directory: web
         run: npm run test:visual:adequacy

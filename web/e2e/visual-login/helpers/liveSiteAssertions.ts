@@ -87,6 +87,7 @@ const forbiddenLiveUiPatterns = [
 
 const optionalLiveNetworkPatterns = [
   /\/api\/github\/repos\//i,
+  /\/api\/agent\/token(?:[/?]|$)/i,
   /\/api\/agent\/auto-update\//i,
   /\/api\/rewards\//i,
   /\/api\/medium\/blog/i,
@@ -94,6 +95,10 @@ const optionalLiveNetworkPatterns = [
   /\/api\/active-users/i,
   /\/api\/token-usage\//i,
   /\/api\/feedback\//i,
+  /\/api\/gitops\//i,
+  /\/api\/public\/nightly-e2e\//i,
+  /\/api\/mcp\/(?:pod-issues|gpu-nodes)\/stream(?:[/?]|$)/i,
+  /\/api\/stellar\/stream(?:[/?]|$)/i,
   /\/api\/stellar\/(?:notifications|actions|tasks|activity|watches|solves)/i,
   /\/api\/kagenti-provider\/status/i,
 ]
@@ -178,7 +183,7 @@ async function seedPreauthenticatedLiveCanarySession(page: Page) {
 }
 
 function liveRouteDelayMs(): number {
-  const rawValue = process.env.LIVE_CANARY_ROUTE_DELAY_MS || '3000'
+  const rawValue = process.env.LIVE_CANARY_ROUTE_DELAY_MS || '15000'
   const parsed = Number(rawValue)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
