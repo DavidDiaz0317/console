@@ -20,6 +20,7 @@ import {
   gotoLiveCanaryRoute,
   type LiveApiFactScope,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   recordLiveUiFailures,
   writeLiveRouteEvidence,
   writeLiveSiteReport,
@@ -134,6 +135,8 @@ const coreRoutes: CoreRoute[] = [
 for (const coreRoute of coreRoutes) {
   test(`live core page renders real data: ${coreRoute.label} @intensive @live-site @core-page @invariant:live-core-pages-render-real-data`, async ({ page }, testInfo) => {
     invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+    const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+    if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
     const collectors = installEvidenceCollectors(page)
     const baseUrl = liveCanaryUrl()
     const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'

@@ -67,6 +67,12 @@ export type LiveApiFacts = {
 
 export type LiveApiFactScope = 'all' | 'dashboard' | 'clusters' | 'nodes' | 'pods' | 'namespaces' | 'deployments' | 'alerts'
 
+type LiveNetworkClassification = {
+  classification: string
+  status?: number
+  url: string
+}
+
 type GroundtruthFieldState = {
   field: string
   markerCount: number
@@ -658,6 +664,38 @@ export function writeLiveRouteEvidence(entry: Record<string, unknown>) {
   fs.writeFileSync(outPath, safeJsonStringify(existing))
 }
 
+function liveRateLimitDataLossPath() {
+  const outDir = process.env.RUNNER_TEMP
+    ? path.resolve(process.env.RUNNER_TEMP, 'console-live')
+    : path.resolve(process.cwd(), 'test-results/reports')
+  fs.mkdirSync(outDir, { recursive: true })
+  return path.join(outDir, 'live-rate-limit-data-loss.json')
+}
+
+function markLiveRateLimitDataLoss(route: string, classifications: LiveNetworkClassification[]) {
+  const details = {
+    timestamp: new Date().toISOString(),
+    runId: process.env.GITHUB_RUN_ID || null,
+    route,
+    classifications,
+  }
+  fs.writeFileSync(liveRateLimitDataLossPath(), safeJsonStringify(details))
+}
+
+export function liveRateLimitDataLossSkipReason(): string | null {
+  const markerPath = liveRateLimitDataLossPath()
+  if (!fs.existsSync(markerPath)) return null
+  try {
+    const details = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { route?: string; classifications?: LiveNetworkClassification[] }
+    const endpoints = (details.classifications || [])
+      .map(item => `${item.url}${item.status ? ` (${item.status})` : ''}`)
+      .join(', ')
+    return `Skipping after core live Kubernetes API rate limit on ${details.route || 'an earlier route'}${endpoints ? `: ${endpoints}` : ''}.`
+  } catch {
+    return 'Skipping after an earlier core live Kubernetes API rate-limit event.'
+  }
+}
+
 function parseVisibleNumber(value: string | null): number | null {
   if (!value) return null
   const match = value.replace(/,/g, '').match(/-?\d+/)
@@ -976,11 +1014,16 @@ export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, 
     .map(([field, expectedValue]) => groundtruthFieldMismatch(states[field], expectedValue as number, route))
     .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
 
-  const networkClassifications = Object.entries(apiFacts.endpoints)
+  const networkClassifications: LiveNetworkClassification[] = Object.entries(apiFacts.endpoints)
     .flatMap(([url, fact]) => {
       const classification = networkClassification(fact.status ?? undefined, url)
       return classification ? [{ classification, status: fact.status ?? undefined, url }] : []
     })
+  const rateLimitDataLoss = networkClassifications
+    .filter(item => item.classification === 'live-rate-limit-data-loss')
+  if (rateLimitDataLoss.length > 0) {
+    markLiveRateLimitDataLoss(route, rateLimitDataLoss)
+  }
 
   if (mismatches.length || networkClassifications.length) {
     await recordLiveUiFailures(page, {
@@ -1000,7 +1043,6 @@ export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, 
   const blockingNetworkClassifications = networkClassifications.filter(item =>
     item.classification !== 'local-agent-status-unreachable'
     && item.classification !== 'optional-live-integration-unreachable'
-    && !(item.classification === 'live-rate-limit-data-loss' && mismatches.length === 0)
   )
   expect(mismatches, `live ${route} UI fields must match authenticated API data`).toEqual([])
   expect(blockingNetworkClassifications, `live ${route} authenticated resource APIs must not return blocking 4xx/5xx responses`).toEqual([])

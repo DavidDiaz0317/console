@@ -17,6 +17,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -35,6 +36,8 @@ const liveDashboardExpectedConsoleNoise = [
 
 test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @groundtruth @invariant:live-dashboard-groundtruth-match', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'

@@ -16,6 +16,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   readGroundtruthFieldNumbers,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
@@ -63,6 +64,8 @@ const liveCanaryExpectedConsoleNoise = [
 
 test('live canary UI matches Kubernetes groundtruth without screenshot baselines @intensive @live-site @groundtruth @invariant:live-canary-ui-layout-stable', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'

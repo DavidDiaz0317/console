@@ -12,6 +12,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   recordLiveUiFailures,
   writeLiveRouteEvidence,
   writeLiveSiteReport,
@@ -52,6 +53,8 @@ async function clickRequiredControl(page: Page, route: string, control: string, 
 
 test('live interactive surfaces work @intensive @live-site @interactions @invariant:live-interactive-surfaces-work', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
