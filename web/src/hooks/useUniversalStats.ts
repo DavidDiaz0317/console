@@ -92,8 +92,9 @@ export function useUniversalStats() {
 
   // ─── Pod-derived values ───
   const podIssuesList = podIssues || []
-  const { pendingPods, highRestartPods } = useMemo(() => ({
+  const { pendingPods, crashLoopPods, highRestartPods } = useMemo(() => ({
     pendingPods: podIssuesList.filter(p => p.status === 'Pending').length,
+    crashLoopPods: podIssuesList.filter(p => /crashloop|crash loop/i.test([p.status, p.reason, ...(p.issues || [])].filter(Boolean).join(' '))).length,
     highRestartPods: podIssuesList.filter(p => p.restarts > HIGH_RESTART_THRESHOLD).length,
   }), [podIssuesList])
 
@@ -228,6 +229,8 @@ export function useUniversalStats() {
           groundtruthFields: {
             'pods-total': totalPods,
             'pods-running': totalPods,
+            'pods-pending': pendingPods,
+            'pods-crashloop': crashLoopPods,
           },
           sublabel: 'total pods',
           onClick: () => drillToAllPods(),
@@ -498,7 +501,7 @@ export function useUniversalStats() {
   }, [
     totalClusters, healthyClusters, unhealthyClusters, unreachableClusters,
     healthyNodes, totalNodes, totalPods, totalCPUs, totalMemoryGB, totalStorageGB, uniqueNamespaces,
-    podIssuesList, pendingPods, highRestartPods,
+    podIssuesList, pendingPods, crashLoopPods, highRestartPods,
     allDeployments, allDeploymentIssues,
     allPVCs, boundPVCs, storageClassCount,
     allServices, lbCount, npCount, cipCount, ingresses,

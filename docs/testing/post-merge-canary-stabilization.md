@@ -487,6 +487,21 @@ The first blocker is now isolated:
 
 Follow-up in this branch adds behavior-neutral semantic markers to the shared stats surface and to the Dashboard/Clusters stat values. The next dry-run canary should classify the same product issue as a concrete UI/API/groundtruth mismatch, for example expected `clusters-total=3` but UI rendered `0`, instead of failing first on absent markers.
 
+Current-head marker validation:
+
+- `Build and Deploy KC` workflow-dispatch run `28336541374` published `ghcr.io/daviddiaz0317/console:af13642d8fae7b7f2ee60e9bfba51d87cb73a69c`.
+- `Console Live Promote` workflow-dispatch run `28336853991` tested that exact image with `promoteProduction=false`.
+- The workflow again tested `TEST_TARGET_KIND=private-canary`; production deploy and production verification steps were skipped.
+- Private canary rollout, port-forward, auth-boundary, and signed-session smoke all passed.
+- The first semantic failure is now the intended concrete mismatch:
+  - `clusters-total`: expected `3`, UI rendered `0`
+  - `nodes-ready`: expected `6`, UI rendered `0`
+  - `nodes-total`: expected `6`, UI rendered `0`
+  - `pods-total`: expected `51`, UI rendered `0`
+  - `pods-running`: expected `51`, UI rendered `0`
+- The run stopped after this first semantic blocker; nine later tests did not run, keeping live-site pressure bounded.
+- The same run exposed one remaining marker completeness gap: `pods-pending` and `pods-crashloop` were missing from the generic stats provider. The follow-up adds those hidden fields from pod issue status/reason data so future failures stay count-focused.
+
 Additional local validation for the semantic marker follow-up:
 
 - `cd web && npm run build`: passed, including TypeScript and post-build vendor safety checks.
