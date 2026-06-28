@@ -57,6 +57,9 @@ Remote validation started after pushing `2f5d340e1`:
 - `Build and Deploy KC` workflow-dispatch run `28314888819` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published the SHA image and skipped deploy jobs.
 - `Console Live Promote` workflow-dispatch run `28315130388` used `candidate_sha=2f5d340e125384aa95b0433aa3dd0f3bc439c1f2` and `promoteProduction=false`. It failed before tests at private canary Helm install because Helm 4 tried to patch the already-existing namespace from `--create-namespace`, which the namespace-scoped deploy service account is not allowed to do. Public production was not touched.
 - Follow-up fix: remove `--create-namespace` from the canary and production Helm upgrades. The workflow already depends on the namespace existing because it creates live secrets in that namespace before Helm runs.
+- `Build and Deploy KC` workflow-dispatch run `28315161886` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published image `ghcr.io/daviddiaz0317/console:d7c3178d714a600e77c00936ecaa5d378ff17d89` and skipped deploy jobs.
+- `Console Live Promote` workflow-dispatch run `28315408807` used `candidate_sha=d7c3178d714a600e77c00936ecaa5d378ff17d89` and `promoteProduction=false`. It failed before tests at private canary Helm install because the namespace-scoped deploy service account cannot create a new broad `ClusterRole`/`ClusterRoleBinding` for the canary release. Public production was not touched.
+- Follow-up fix: private canary releases now set `serviceAccount.create=false`, reuse the existing live service account, and set `rbac.create=false` so canary dry runs exercise the same cluster permissions as production without requiring the deployer to create new cluster-scoped RBAC.
 
 ## Current June 27 Status
 

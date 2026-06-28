@@ -38,6 +38,7 @@ env:
   LIVE_NAMESPACE: kubestellar-console-live
   LIVE_RELEASE: kc-live
   LIVE_DEPLOYMENT: kc-live-kubestellar-console
+  LIVE_SERVICE_ACCOUNT: ${{ vars.CONSOLE_LIVE_SERVICE_ACCOUNT || 'kc-live-kubestellar-console' }}
   CANARY_RELEASE: ${{ vars.CONSOLE_LIVE_CANARY_RELEASE || 'kc-live-canary' }}
   CANARY_DEPLOYMENT: ${{ vars.CONSOLE_LIVE_CANARY_DEPLOYMENT || 'kc-live-canary-kubestellar-console' }}
   CANARY_SERVICE: ${{ vars.CONSOLE_LIVE_CANARY_SERVICE || 'kc-live-canary-kubestellar-console' }}
@@ -262,6 +263,9 @@ jobs:
           clusterName: ks-console-ci-1
           service:
             type: ClusterIP
+          serviceAccount:
+            create: false
+            name: "$LIVE_SERVICE_ACCOUNT"
           ingress:
             enabled: false
           route:
@@ -285,6 +289,7 @@ jobs:
             allowedGitHubLogins: "$CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS"
             adminGitHubLogins: "$CONSOLE_LIVE_ADMIN_GITHUB_LOGINS"
           rbac:
+            create: false
             resourceQuotasReadOnly: true
             namespaceCreationEnabled: false
           selfUpgrade:
