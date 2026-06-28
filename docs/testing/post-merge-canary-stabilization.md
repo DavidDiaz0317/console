@@ -63,6 +63,8 @@ Remote validation started after pushing `2f5d340e1`:
 - `Build and Deploy KC` workflow-dispatch run `28315504674` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published image `ghcr.io/daviddiaz0317/console:4d0524f65a6b52f44841ff292d66f4f02e8508b5` and skipped deploy jobs.
 - `Console Live Promote` workflow-dispatch run `28315735307` used `candidate_sha=4d0524f65a6b52f44841ff292d66f4f02e8508b5` and `promoteProduction=false`. It cleared the namespace/RBAC blockers, then failed before tests because the private canary Deployment did not become ready within the Helm timeout. Public production was not touched.
 - Follow-up fix: private canary Helm installs no longer use `--atomic`; on install/readiness failure the workflow prints Helm status, canary resources, Deployment/pod descriptions, pod logs, and recent namespace events before the always-run cleanup step removes the canary release.
+- `Console Live Promote` workflow-dispatch run `28316014287` used the same candidate image with diagnostic workflow commit `29919a068`. It confirmed the canary image pulled successfully and the pod was crash-looping, but the namespace-scoped deployer cannot read `pods/log`. The rendered canary values had `persistence.enabled=false` while `DATABASE_PATH` still pointed to `/app/data/console.db`; with the chart's read-only root filesystem, that path is not writable without the persistent volume. Public production was not touched.
+- Follow-up fix: private canary releases now set `database.sqlitePath=/tmp/console-live-canary/console.db`, using the chart's existing writable `/tmp` `emptyDir` while keeping canary persistence disabled.
 
 ## Current June 27 Status
 

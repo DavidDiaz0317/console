@@ -272,6 +272,8 @@ jobs:
             enabled: false
           persistence:
             enabled: false
+          database:
+            sqlitePath: /tmp/console-live-canary/console.db
           backup:
             enabled: false
           podSecurityContext:
