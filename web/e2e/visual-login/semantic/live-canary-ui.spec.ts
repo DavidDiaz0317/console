@@ -7,6 +7,7 @@ import {
 } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
+  assertLiveApiUiFields,
   assertGroundtruthFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
@@ -16,6 +17,7 @@ import {
   dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
+  collectLiveApiFacts,
   liveCanaryUrl,
   liveRateLimitDataLossSkipReason,
   writeLiveSiteReport,
@@ -85,11 +87,19 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     collectors.pageErrors.length = 0
     collectors.failedRequests.length = 0
     collectors.errorResponses.length = 0
-    const response = await gotoLiveCanaryRoute(page, baseUrl, '/clusters?groundtruth=1')
+    const route = '/clusters?groundtruth=1'
+    const response = await gotoLiveCanaryRoute(page, baseUrl, route)
     expect(response?.ok(), 'live canary /clusters route must be reachable').toBeTruthy()
     await dismissOptionalLiveOverlays(page)
-    await assertLiveDashboardShell(page, '/clusters?groundtruth=1')
+    await assertLiveDashboardShell(page, route)
     await assertNoForbiddenLiveUi(page)
+    const clusterApiFacts = await collectLiveApiFacts(page, 'clusters')
+    await assertLiveApiUiFields(page, clusterApiFacts, route, {
+      'clusters-total': clusterApiFacts.clusters.total,
+      'nodes-ready': clusterApiFacts.clusters.nodesReady,
+      'nodes-total': clusterApiFacts.clusters.nodesTotal,
+      'pods-total': clusterApiFacts.clusters.podsTotal,
+    })
     await assertGroundtruthFields(page, {
       'clusters-total': groundTruth.contexts.reachable,
       'nodes-ready': groundTruth.nodes.ready,
@@ -98,10 +108,10 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
       'pods-running': groundTruth.pods.running,
       'pods-pending': groundTruth.pods.pending,
       'pods-crashloop': groundTruth.pods.crashLoopBackOff,
-    }, '/clusters?groundtruth=1')
+    }, route)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], '/clusters?groundtruth=1')
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], route)
     await assertNoCriticalRuntimeErrors(collectors, liveCanaryExpectedConsoleNoise)
 
     writeLiveSiteReport({

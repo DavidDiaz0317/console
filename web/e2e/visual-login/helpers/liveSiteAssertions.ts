@@ -1030,14 +1030,31 @@ export async function assertGroundtruthFields(page: Page, expected: Record<strin
 }
 
 export async function assertLiveApiUiFields(page: Page, apiFacts: LiveApiFacts, route: string, expected: Record<string, number | null>) {
-  const stateEntries = await Promise.all(
-    Object.keys(expected).map(async field => [field, await readGroundtruthFieldState(page, field)] as const)
-  )
-  const states = Object.fromEntries(stateEntries)
+  const expectedComparable = Object.fromEntries(
+    Object.entries(expected).filter(([, expectedValue]) => expectedValue !== null)
+  ) as Record<string, number>
+  const readStates = async (): Promise<Record<string, GroundtruthFieldState>> => {
+    const stateEntries = await Promise.all(
+      Object.keys(expected).map(async field => [field, await readGroundtruthFieldState(page, field)] as const)
+    )
+    return Object.fromEntries(stateEntries)
+  }
+
+  await expect.poll(async () => {
+    const current = await readStates()
+    return Object.entries(expectedComparable)
+      .map(([field, expectedValue]) => groundtruthFieldMismatch(current[field], expectedValue, route))
+      .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
+      .map(mismatch => `${mismatch.field}: ${mismatch.reason}; expected ${mismatch.expected}, got ${mismatch.actualValues.join(', ')}`)
+  }, {
+    message: `live ${route} UI fields should hydrate to authenticated API data`,
+    timeout: 20_000,
+  }).toEqual([]).catch(() => undefined)
+
+  const states = await readStates()
   const actual = Object.fromEntries(Object.entries(states).map(([field, state]) => [field, state.value]))
-  const mismatches = Object.entries(expected)
-    .filter(([, expectedValue]) => expectedValue !== null)
-    .map(([field, expectedValue]) => groundtruthFieldMismatch(states[field], expectedValue as number, route))
+  const mismatches = Object.entries(expectedComparable)
+    .map(([field, expectedValue]) => groundtruthFieldMismatch(states[field], expectedValue, route))
     .filter((mismatch): mismatch is NonNullable<typeof mismatch> => mismatch !== null)
 
   const networkClassifications: LiveNetworkClassification[] = Object.entries(apiFacts.endpoints)

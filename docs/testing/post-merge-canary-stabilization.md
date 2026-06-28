@@ -508,3 +508,18 @@ Additional local validation for the semantic marker follow-up:
 - `cd web && npx vitest run src/components/ui/StatsOverview.test.tsx`: passed, 7/7 tests.
 - `cd web && npx eslint src/components/ui/StatsOverview.tsx src/components/ui/StatsOverview.test.tsx src/components/clusters/Clusters.tsx src/components/dashboard/DashboardState.ts src/hooks/useUniversalStats.ts e2e/visual-login/semantic/live-canary-ui.spec.ts e2e/visual-login/helpers/liveSiteAssertions.ts`: passed with existing warnings only.
 - `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list`: passed, 12 tests listed.
+
+## June 28 Cookie-Only Session Follow-Up
+
+The current private-canary blocker is narrower than the earlier broad `429` cascade. Run `28337504104` tested image `ghcr.io/daviddiaz0317/console:4861971163a3552cf97c6d2eaa9a71f21b817f86` with `promoteProduction=false`, `TEST_TARGET_KIND=private-canary`, and `TEST_CONSOLE_URL=http://127.0.0.1:18080`. Production deploy and production verification stayed skipped.
+
+That run proved Kubernetes groundtruth was available (`3` contexts, `6` Ready nodes, `51` running pods, `16` namespaces, and `12` available deployments), but `/clusters?groundtruth=1` rendered all shared cluster stat markers as `0`. Trace inspection showed the page made zero `/api/mcp/clusters` requests during the failing route load. The issue was not a backend rate-limit change: the frontend cluster fetch path skipped backend requests when no localStorage bearer token existed, even though live OAuth sessions are cookie-backed through the HttpOnly `kc_auth` cookie.
+
+The follow-up fix allows the frontend to treat `kc-has-session=true` as a cookie-backed backend session for cluster fetch orchestration and shared REST fetchers. Requests still send an `Authorization` header when a bearer token exists, but cookie-only production sessions now use `credentials: same-origin` plus `X-Requested-With: XMLHttpRequest`. The live canary also records one route-relevant `/api/mcp/clusters` API-vs-UI comparison for `/clusters?groundtruth=1`, with a short hydration poll to avoid false mismatches.
+
+Local validation for this follow-up:
+
+- `cd web && npx eslint e2e/visual-login/helpers/liveSiteAssertions.ts e2e/visual-login/semantic/live-canary-ui.spec.ts src/hooks/mcp/sharedImpl.orchestration.ts src/lib/cache/fetcherUtils.ts src/hooks/mcp/__tests__/shared-cache-fetch.test.ts src/hooks/__tests__/useCachedData.fetchers.test.ts`: passed with existing warnings only in `shared-cache-fetch.test.ts`.
+- `cd web && npx vitest run src/hooks/mcp/__tests__/shared-cache-fetch.test.ts src/hooks/__tests__/useCachedData.fetchers.test.ts`: passed, 118/118 tests.
+
+Next required proof: publish the new branch SHA image, then run `Console Live Promote` with `promoteProduction=false` and that explicit SHA. The expected improvement is that `/clusters?groundtruth=1` now calls `/api/mcp/clusters`; if the UI still renders `0`, the evidence should classify it as a real API/UI/groundtruth mismatch rather than a missing backend fetch.
