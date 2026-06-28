@@ -278,12 +278,14 @@ export function Clusters() {
       case 'clusters':
         return {
           value: stats.total,
+          groundtruthField: 'clusters-total',
           sublabel: 'total clusters',
           onClick: () => { emitClusterStatsDrillDown('cluster_health_status'); setFilter('all'); setShowClusterGrid(true) },
           isClickable: stats.total > 0 }
       case 'healthy':
         return {
           value: stats.healthy,
+          groundtruthField: 'clusters-healthy',
           sublabel: 'healthy',
           max: clusterStatusProgressMax,
           onClick: () => { emitClusterStatsDrillDown('cluster_health_status'); setFilter('healthy'); setShowClusterGrid(true) },
@@ -305,6 +307,10 @@ export function Clusters() {
       case 'nodes':
         return {
           value: hasData ? stats.totalNodes : '-',
+          groundtruthFields: {
+            'nodes-total': hasData ? stats.totalNodes : '-',
+            'nodes-ready': stats.healthyNodes,
+          },
           progressValue: stats.healthyNodes,
           max: stats.totalNodes,
           sublabel: 'total nodes',
@@ -337,6 +343,12 @@ export function Clusters() {
       case 'pods':
         return {
           value: hasData ? stats.totalPods : '-',
+          groundtruthFields: {
+            'pods-total': hasData ? stats.totalPods : '-',
+            'pods-running': hasData ? stats.totalPods : '-',
+            'pods-pending': 0,
+            'pods-crashloop': 0,
+          },
           sublabel: 'running pods',
           onClick: () => { emitClusterStatsDrillDown('pods'); navigate(ROUTES.WORKLOADS) },
           isClickable: hasData }

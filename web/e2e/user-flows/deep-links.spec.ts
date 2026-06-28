@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   setupDemoAndNavigate,
-  ELEMENT_VISIBLE_TIMEOUT_MS,
   NETWORK_IDLE_TIMEOUT_MS,
 } from '../helpers/setup'
 
@@ -74,7 +73,17 @@ const MISSION_DEEP_LINKS = [
   '/missions/install-open-cluster-management',
 ] as const
 
-const ALL_ROUTES = [...DASHBOARD_ROUTES, ...LANDING_ROUTES] as const
+async function expectPageNotBlank(page: Page, label: string) {
+  await expect
+    .poll(
+      async () => (await page.evaluate(() => (document.body.innerText || '').trim())).length,
+      {
+        message: `${label} rendered a blank page`,
+        timeout: CONTENT_TIMEOUT_MS,
+      }
+    )
+    .toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+}
 
 test.describe('Deep Links — Dashboard Routes', () => {
   for (const route of DASHBOARD_ROUTES) {
@@ -84,11 +93,7 @@ test.describe('Deep Links — Dashboard Routes', () => {
       await setupDemoAndNavigate(page, route)
       await page.waitForLoadState('domcontentloaded')
 
-      const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-      expect(
-        bodyText.length,
-        `Route "${route}" rendered a blank page (body text length: ${bodyText.length})`,
-      ).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+      await expectPageNotBlank(page, `Route "${route}"`)
 
       const crash = page.getByText(/something went wrong|application error|unhandled error/i)
       await expect(crash).not.toBeVisible()
@@ -105,11 +110,7 @@ test.describe('Deep Links — Landing Pages', () => {
       // so set up demo mode first to prevent redirect to /login.
       await setupDemoAndNavigate(page, route)
 
-      const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-      expect(
-        bodyText.length,
-        `Landing page "${route}" rendered a blank page`,
-      ).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+      await expectPageNotBlank(page, `Landing page "${route}"`)
 
       const crash = page.getByText(/something went wrong|application error|unhandled error/i)
       await expect(crash).not.toBeVisible()
@@ -125,11 +126,7 @@ test.describe('Deep Links — Mission Deep Links', () => {
       // Mission landing pages need demo context to avoid auth redirects
       await setupDemoAndNavigate(page, route)
 
-      const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-      expect(
-        bodyText.length,
-        `Mission "${missionName}" rendered a blank page`,
-      ).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+      await expectPageNotBlank(page, `Mission "${missionName}"`)
 
       const crash = page.getByText(/something went wrong|application error|unhandled error/i)
       await expect(crash).not.toBeVisible()
@@ -141,8 +138,7 @@ test.describe('Deep Links — Query Params & Special Routes', () => {
   test('/?browse=missions renders missions content', async ({ page }) => {
     await setupDemoAndNavigate(page, '/?browse=missions')
 
-    const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-    expect(bodyText.length).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+    await expectPageNotBlank(page, 'Missions browse query route')
 
     const crash = page.getByText(/something went wrong|application error/i)
     await expect(crash).not.toBeVisible()
@@ -151,8 +147,7 @@ test.describe('Deep Links — Query Params & Special Routes', () => {
   test('route with hash fragment does not crash', async ({ page }) => {
     await setupDemoAndNavigate(page, '/settings#appearance')
 
-    const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-    expect(bodyText.length).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+    await expectPageNotBlank(page, 'Settings tab query route')
   })
 })
 
@@ -184,7 +179,6 @@ test.describe('Deep Links — Navigation Integrity', () => {
     expect(finalUrl).not.toContain('redirect')
 
     // Page should have content
-    const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-    expect(bodyText.length).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+    await expectPageNotBlank(page, 'Unknown route fallback')
   })
 })

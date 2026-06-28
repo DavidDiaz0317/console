@@ -54,6 +54,40 @@ test('classifies raw GET 429 API responses as live data loss', () => {
   }), 'live-rate-limit-data-loss')
 })
 
+test('does not let optional 429 responses mask dashboard mismatches', () => {
+  assert.equal(classify({
+    dashboardMismatches: [{
+      field: 'dashboard-namespaces-total',
+      expected: 16,
+      actual: 0,
+      route: '/',
+    }],
+    unexpectedNetworkResponses: [
+      'GET 429 https://console-live.kubestellar.io/api/stellar/stream',
+      'GET 429 https://console-live.kubestellar.io/api/agent/token',
+    ],
+  }), 'dashboard-groundtruth-mismatch')
+})
+
+test('classifies only optional 429 responses separately from core resource data loss', () => {
+  assert.equal(classify({
+    unexpectedNetworkResponses: [
+      'GET 429 https://console-live.kubestellar.io/api/gitops/helm-releases',
+      'GET 429 https://console-live.kubestellar.io/api/public/nightly-e2e/runs',
+    ],
+  }), 'optional-live-integration-unreachable')
+})
+
+test('does not merge websocket 429 text with later core API log lines', () => {
+  assert.equal(classify({}, [
+    "WebSocket connection to 'wss://console-live.kubestellar.io/ws' failed: Error during WebSocket handshake: Unexpected response code: 429",
+    'Error: live /namespaces must render fully loaded live data state',
+    'live-core-pages-render-real-data',
+    'at helpers/liveSiteAssertions.ts:963',
+    'const relatedEndpoint = "/api/mcp/nodes"',
+  ].join('\n')), 'core-page-live-data-missing')
+})
+
 test('classifies structured rate limit evidence as live data loss', () => {
   assert.equal(_test.classifyFailure({
     failures: [],
@@ -83,6 +117,21 @@ test('prioritizes rate-limit data loss over secondary text-collision evidence', 
       'GET 429 http://127.0.0.1:18080/api/mcp/clusters',
     ],
   }, 'Error: live UI visible text must not severely overlap'), 'live-rate-limit-data-loss')
+})
+
+test('does not let log-only rate-limit helper text mask UI overlap evidence', () => {
+  assert.equal(classify({
+    textCollisions: [{
+      first: 'Unhealthy (',
+      second: 'Backend unavailable',
+      ratio: 0.59,
+    }],
+    networkClassifications: [],
+  }, [
+    'Error: live UI visible text must not severely overlap',
+    'const rateLimitDataLoss = networkClassifications.filter(item => item.classification === "live-rate-limit-data-loss")',
+    'if (response.status === 429) await retry("/api/mcp/nodes")',
+  ].join('\n')), 'live-ui-overlap')
 })
 
 test('prioritizes dashboard mismatches over secondary text-collision evidence', () => {
@@ -152,6 +201,13 @@ test('keeps canary setup as fallback when no parsed product evidence exists', ()
 
 test('prioritizes canary setup over product-looking log noise', () => {
   assert.equal(classify({}, 'Candidate image is not available in GHCR: ghcr.io/daviddiaz0317/console:missing\nGET 429 /api/mcp/pods'), 'canary-setup')
+})
+
+test('parses resolved candidate image before falling back to run SHA', () => {
+  const imageState = _test.parseImageState('Resolved candidate image ghcr.io/daviddiaz0317/console:main', {
+    head_sha: 'abc123',
+  })
+  assert.equal(imageState.candidate, 'ghcr.io/daviddiaz0317/console:main')
 })
 
 test('does not let unexecuted canary setup command text override parsed network evidence', () => {

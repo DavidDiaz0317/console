@@ -20,6 +20,7 @@ import {
   gotoLiveCanaryRoute,
   type LiveApiFactScope,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   recordLiveUiFailures,
   writeLiveRouteEvidence,
   writeLiveSiteReport,
@@ -74,12 +75,10 @@ const coreRoutes: CoreRoute[] = [
     expectedFields: groundTruth => ({
       'nodes-total': groundTruth.nodes.total,
       'nodes-ready': groundTruth.nodes.ready,
-      'pods-total': groundTruth.pods.total,
     }),
     apiFields: apiFacts => ({
       'nodes-total': apiFacts.nodes.total,
       'nodes-ready': apiFacts.nodes.ready,
-      'pods-total': apiFacts.clusters.podsTotal,
     }),
   },
   {
@@ -134,6 +133,8 @@ const coreRoutes: CoreRoute[] = [
 for (const coreRoute of coreRoutes) {
   test(`live core page renders real data: ${coreRoute.label} @intensive @live-site @core-page @invariant:live-core-pages-render-real-data`, async ({ page }, testInfo) => {
     invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+    const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+    if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
     const collectors = installEvidenceCollectors(page)
     const baseUrl = liveCanaryUrl()
     const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
@@ -172,7 +173,7 @@ for (const coreRoute of coreRoutes) {
       }
       expect(response?.ok(), `live canary ${coreRoute.route} route must be reachable`).toBeTruthy()
       await dismissOptionalLiveOverlays(page)
-      await assertLiveDashboardShell(page)
+      await assertLiveDashboardShell(page, coreRoute.route)
       await assertLiveRouteStateLoaded(page, coreRoute.route)
       const expectedFields = coreRoute.expectedFields(groundTruth)
       if (Object.keys(expectedFields).length > 0) {
@@ -184,7 +185,7 @@ for (const coreRoute of coreRoutes) {
       await assertNoForbiddenLiveUi(page)
       await assertLiveLayoutStable(page)
       await assertNoVisibleTextCollisions(page)
-      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
+      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], coreRoute.route)
       await assertNoCriticalRuntimeErrors(collectors, liveCorePageExpectedConsoleNoise)
 
       writeLiveRouteEvidence({

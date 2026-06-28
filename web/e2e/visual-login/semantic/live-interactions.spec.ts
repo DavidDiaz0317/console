@@ -12,6 +12,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   recordLiveUiFailures,
   writeLiveRouteEvidence,
   writeLiveSiteReport,
@@ -52,6 +53,8 @@ async function clickRequiredControl(page: Page, route: string, control: string, 
 
 test('live interactive surfaces work @intensive @live-site @interactions @invariant:live-interactive-surfaces-work', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
@@ -74,7 +77,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/')
     expect(response?.ok(), 'live canary Dashboard route must be reachable for interaction checks').toBeTruthy()
     await dismissOptionalLiveOverlays(page)
-    await assertLiveDashboardShell(page)
+    await assertLiveDashboardShell(page, '/')
 
     await test.step('global search accepts live queries', async () => {
       const search = await requiredControl(page, '/', 'global search', [
@@ -153,7 +156,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
     await dismissOptionalLiveOverlays(page)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], '/')
     await assertNoCriticalRuntimeErrors(collectors, liveInteractionExpectedConsoleNoise)
 
     writeLiveSiteReport({

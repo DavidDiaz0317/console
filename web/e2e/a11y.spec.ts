@@ -76,6 +76,12 @@ test.describe('Accessibility Audits', () => {
       await page.goto('/')
       await page.waitForLoadState('domcontentloaded')
 
+      const focusableSelector = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      await page.locator(focusableSelector).first().waitFor({
+        state: 'attached',
+        timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
+      })
+
       // Tab through focusable elements
       const focusableCount = await page.evaluate(() => {
         const focusable = document.querySelectorAll(

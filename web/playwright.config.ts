@@ -32,6 +32,11 @@ export default defineConfig({
   // separately. They have their own configs (visual.config.ts,
   // app-visual.config.ts) and must not run in the main chromium shards.
   //
+  // Auth drift and visual-login live canary suites also have dedicated
+  // configs/workflows. The generic E2E workflow does not start their mocked
+  // OAuth server or live canary session, so including them here produces
+  // false failures while their dedicated workflows still exercise them.
+  //
   // Mission tests (deeplink, explorer-import) use Playwright's `page.request`
   // (Node.js-level HTTP) to hit real backend endpoints — they cannot run when
   // PLAYWRIGHT_BASE_URL points at a standalone Vite preview (CI default).
@@ -39,6 +44,8 @@ export default defineConfig({
   // (see webServer config below), so mission tests can run locally.
   testIgnore: [
     '**/visual/**',
+    '**/auth-drift/**',
+    '**/visual-login/**',
     ...(env.PLAYWRIGHT_BASE_URL
       ? ['**/nightly/mission-deeplink.spec.ts', '**/nightly/mission-explorer-import.spec.ts']
       : []),

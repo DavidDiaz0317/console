@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { attachEvidenceOnFailure } from '../../../harness/evidence/attachEvidence'
 import { installEvidenceCollectors } from '../../../harness/evidence/collectEvidence'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
@@ -7,6 +7,8 @@ import {
 } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
+  assertLiveApiUiFields,
+  assertGroundtruthFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
   assertNoForbiddenLiveUi,
@@ -15,8 +17,9 @@ import {
   dismissOptionalLiveOverlays,
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
+  collectLiveApiFacts,
   liveCanaryUrl,
-  readGroundtruthFieldNumbers,
+  liveRateLimitDataLossSkipReason,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -27,19 +30,6 @@ function readPositiveIntEnv(name: string, fallback: number) {
     throw new Error(`${name} must be a positive integer, got ${rawValue}`)
   }
   return value
-}
-
-async function expectGroundTruthField(page: Page, field: string, expected: number) {
-  await expect.poll(async () => {
-    const values = await readGroundtruthFieldNumbers(page, field)
-    const uniqueValues = [...new Set(values)]
-    if (values.length === 0) return `missing-or-unparseable:${field}`
-    if (uniqueValues.length > 1) return `duplicate-disagreement:${uniqueValues.join(',')}`
-    return uniqueValues[0] === expected ? 'ok' : `expected:${expected}:actual:${uniqueValues[0]}`
-  }, {
-    message: `data-groundtruth-field="${field}" should match live Kubernetes ground truth`,
-    timeout: 20_000,
-  }).toBe('ok')
 }
 
 const invariantIds = [
@@ -63,6 +53,8 @@ const liveCanaryExpectedConsoleNoise = [
 
 test('live canary UI matches Kubernetes groundtruth without screenshot baselines @intensive @live-site @groundtruth @invariant:live-canary-ui-layout-stable', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
@@ -95,21 +87,31 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     collectors.pageErrors.length = 0
     collectors.failedRequests.length = 0
     collectors.errorResponses.length = 0
-    const response = await gotoLiveCanaryRoute(page, baseUrl, '/clusters?groundtruth=1')
+    const route = '/clusters?groundtruth=1'
+    const response = await gotoLiveCanaryRoute(page, baseUrl, route)
     expect(response?.ok(), 'live canary /clusters route must be reachable').toBeTruthy()
     await dismissOptionalLiveOverlays(page)
-    await assertLiveDashboardShell(page)
+    await assertLiveDashboardShell(page, route)
     await assertNoForbiddenLiveUi(page)
-    await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
-    await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
-    await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
-    await expectGroundTruthField(page, 'pods-total', groundTruth.pods.total)
-    await expectGroundTruthField(page, 'pods-running', groundTruth.pods.running)
-    await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
-    await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)
+    const clusterApiFacts = await collectLiveApiFacts(page, 'clusters')
+    await assertLiveApiUiFields(page, clusterApiFacts, route, {
+      'clusters-total': clusterApiFacts.clusters.total,
+      'nodes-ready': clusterApiFacts.clusters.nodesReady,
+      'nodes-total': clusterApiFacts.clusters.nodesTotal,
+      'pods-total': clusterApiFacts.clusters.podsTotal,
+    })
+    await assertGroundtruthFields(page, {
+      'clusters-total': groundTruth.contexts.reachable,
+      'nodes-ready': groundTruth.nodes.ready,
+      'nodes-total': groundTruth.nodes.total,
+      'pods-total': groundTruth.pods.total,
+      'pods-running': groundTruth.pods.running,
+      'pods-pending': groundTruth.pods.pending,
+      'pods-crashloop': groundTruth.pods.crashLoopBackOff,
+    }, route)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], route)
     await assertNoCriticalRuntimeErrors(collectors, liveCanaryExpectedConsoleNoise)
 
     writeLiveSiteReport({
