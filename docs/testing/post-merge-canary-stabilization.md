@@ -52,6 +52,12 @@ Local validation after the June 28 private-candidate update:
 
 Local limitation: this workstation does not have `go`/`gofmt` on `PATH`, so the Go bootstrap helper still needs CI build validation.
 
+Remote validation started after pushing `2f5d340e1`:
+
+- `Build and Deploy KC` workflow-dispatch run `28314888819` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published the SHA image and skipped deploy jobs.
+- `Console Live Promote` workflow-dispatch run `28315130388` used `candidate_sha=2f5d340e125384aa95b0433aa3dd0f3bc439c1f2` and `promoteProduction=false`. It failed before tests at private canary Helm install because Helm 4 tried to patch the already-existing namespace from `--create-namespace`, which the namespace-scoped deploy service account is not allowed to do. Public production was not touched.
+- Follow-up fix: remove `--create-namespace` from the canary and production Helm upgrades. The workflow already depends on the namespace existing because it creates live secrets in that namespace before Helm runs.
+
 ## Current June 27 Status
 
 PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `d9bfa9becfc73da9d90c484b012f14471822bdb8`. The latest pushed head before this evidence update is `7c474909b3919a1454b8594ea9142ca8149385f2`; the latest code-validation SHA before doc-only status commits is `2af4fa9aeb92a70bf457ac1375587f324149ae4c`.

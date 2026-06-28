@@ -307,7 +307,6 @@ jobs:
           EOF
           helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$LIVE_NAMESPACE" \
-            --create-namespace \
             --reset-values \
             -f "$canary_values" \
             --atomic \
@@ -449,7 +448,6 @@ jobs:
           EOF
           helm upgrade --install "$LIVE_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$LIVE_NAMESPACE" \
-            --create-namespace \
             --reset-values \
             -f "$prod_values" \
             --atomic \
