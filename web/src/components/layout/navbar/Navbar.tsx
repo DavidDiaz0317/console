@@ -176,26 +176,6 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
         {/* Extended desktop items: 2xl+ (1536px) — keep these in the overflow
              menu at 1280px so alerts and the user menu remain clickable. */}
         <div data-testid="navbar-extended-actions" className="hidden 2xl:flex items-center gap-2">
-          {!isSidebarOpen && (
-            <button
-              type="button"
-              onClick={openSidebar}
-              data-tour="ai-missions-toggle"
-              data-testid="navbar-ai-missions-btn"
-              className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
-              aria-label={t('missionSidebar.openAIMissions')}
-              title={t('missionSidebar.openAIMissions')}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{t('missionSidebar.aiMissions')}</span>
-              {missionsNeedingAttention > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full animate-pulse">
-                  {missionsNeedingAttention}
-                </span>
-              )}
-            </button>
-          )}
-
           {/* Update Indicator */}
           <UpdateIndicator />
 
@@ -232,19 +212,20 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
             <LearnDropdown />
           </div>
 
-          {/* AI Missions stays directly reachable at the default 1280px E2E viewport
-              without bringing back the wide text button that overflowed the user menu. */}
+          {/* AI Missions stays directly reachable at the default 1280px E2E viewport.
+              The label expands only at 2xl so the 1280px user menu cannot overflow. */}
           {!isSidebarOpen && (
             <Tooltip content={t('missionSidebar.openAIMissions')} side="bottom">
               <button
                 type="button"
                 onClick={openSidebar}
                 data-tour="ai-missions-toggle"
-                data-testid="navbar-ai-missions-compact-btn"
-                className="relative hidden xl:flex 2xl:hidden h-9 w-9 items-center justify-center rounded-lg transition-colors bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                data-testid="navbar-ai-missions-btn"
+                className="relative hidden xl:flex h-9 w-9 2xl:w-auto items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-0 2xl:px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
                 aria-label={t('missionSidebar.openAIMissions')}
               >
                 <Sparkles className="w-4 h-4" />
+                <span className="hidden 2xl:inline">{t('missionSidebar.aiMissions')}</span>
                 {missionsNeedingAttention > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full animate-pulse">
                     {missionsNeedingAttention}

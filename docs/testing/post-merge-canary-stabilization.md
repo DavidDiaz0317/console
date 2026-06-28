@@ -142,7 +142,7 @@ Generic Playwright comparison against fork `main`:
 - The follow-up auth/logout and navbar/profile failures that were present on fork `main` are no longer present in the PR run: `auth/logout-flow.spec.ts`, `navbar-responsive.spec.ts`, and `nightly/navbar-dropdown-visibility.spec.ts`.
 - The PR run eliminated the generic config false positives from `auth-drift/**` and `visual-login/**`; those suites remain covered by their dedicated workflows.
 - Three PR-only failures were traced to the branch navbar overflow change: `ResolutionMemory.spec.ts` could no longer see `data-tour="ai-missions-toggle"` at the default 1280px viewport after the wide AI Missions button moved into overflow below `2xl`.
-- The branch now restores a compact icon-only AI Missions trigger for `xl` to `<2xl` widths while keeping the wide text button at `2xl+`. The overflow-hidden-at-2xl test now uses `data-testid="navbar-overflow-btn"` instead of a broad Tailwind utility selector.
+- The branch now uses one responsive AI Missions trigger: icon-only at `xl` widths and text+icon at `2xl+`. This avoids duplicate hidden `data-tour="ai-missions-toggle"` elements while keeping the 1280px user menu from overflowing. The overflow-hidden-at-2xl test now uses `data-testid="navbar-overflow-btn"` instead of a broad Tailwind utility selector.
 
 June 28 local validation after the compact AI Missions follow-up:
 
@@ -163,6 +163,7 @@ June 28 local validation after the compact AI Missions follow-up:
 - Vite dev server on `127.0.0.1:4206`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4206 npx playwright test e2e/marketplace-deep.spec.ts e2e/mission-regression.spec.ts e2e/mission-share.spec.ts --project=chromium --grep "type filter buttons are present|missions listing page loads|share channels are shown" --workers=1 --reporter=line`: passed; the sampled PR-only CI failures did not reproduce locally.
 - Vite dev server on `127.0.0.1:4207`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4207 npx playwright test e2e/deep-links-and-data-flow.spec.ts --project=mobile-chrome --grep "direct URL to /settings loads settings page" --workers=1 --reporter=line`: passed; the mobile CI failure did not reproduce locally.
 - `cd web && npm run build`: passed, including post-build vendor safety checks. Local build time was `442s`.
+- Follow-up after CI showed the first compact attempt still duplicated the hidden tour marker: Vite dev server on `127.0.0.1:4208`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4208 npx playwright test e2e/navbar-responsive.spec.ts e2e/nightly/navbar-dropdown-visibility.spec.ts e2e/ResolutionMemory.spec.ts --project=chromium --grep "Navbar responsive layout|Navbar dropdown visibility|AI missions sidebar toggle button is visible|mission sidebar opens when clicking toggle|fullscreen mode expands" --workers=1 --reporter=line`: passed. `cd web && npm run build`: passed, including post-build vendor safety checks. Local build time was `353s`.
 
 Current readiness assessment:
 
