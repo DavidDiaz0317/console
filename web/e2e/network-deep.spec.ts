@@ -33,6 +33,10 @@ const STAT_SUBLABEL_NODEPORT = 'node-level access'
 const STAT_SUBLABEL_CLUSTERIP = 'internal only'
 const STAT_SUBLABEL_ENDPOINTS = 'endpoints'
 
+function routeStat(page: import('@playwright/test').Page, text: string | RegExp) {
+  return page.locator('main').getByText(text).first()
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -81,32 +85,34 @@ test.describe('Network Deep Tests (/network)', () => {
 
   test('shows total services stat', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_SERVICES).first()
+    const stat = routeStat(page, STAT_SUBLABEL_SERVICES)
     await expect(stat).toBeVisible({ timeout: 30000 })
   })
 
   test('shows LoadBalancer count with "external access" sublabel', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_LOADBALANCER).first()
+    const stat = routeStat(page, STAT_SUBLABEL_LOADBALANCER)
     await expect(stat).toBeVisible({ timeout: 30000 })
   })
 
   test('shows NodePort count with "node-level access" sublabel', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_NODEPORT).first()
+    const stat = routeStat(page, STAT_SUBLABEL_NODEPORT)
     await expect(stat).toBeVisible({ timeout: 30000 })
   })
 
   test('shows ClusterIP count with "internal only" sublabel', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_CLUSTERIP).first()
+    const stat = routeStat(page, STAT_SUBLABEL_CLUSTERIP)
     await expect(stat).toBeVisible({ timeout: 30000 })
   })
 
   test('shows endpoints stat', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_ENDPOINTS).first()
-    await expect(stat).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('main')).toContainText(
+      new RegExp(`Endpoints\\s*\\d+\\s*${STAT_SUBLABEL_ENDPOINTS}`, 'i'),
+      { timeout: 30000 }
+    )
   })
 
   test('refresh button is clickable', async ({ page }) => {
