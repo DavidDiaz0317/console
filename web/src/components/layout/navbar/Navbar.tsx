@@ -164,7 +164,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
            button is visible (#4409). Individual critical items use shrink-0. */}
       <div className="flex items-center gap-1 md:gap-3 min-w-0">
         {/* Core desktop items: lg+ (1024px) */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div data-testid="navbar-core-actions" className="hidden lg:flex items-center gap-2">
           {/* Unified Filter */}
           <ClusterFilterPanel />
 
@@ -173,9 +173,9 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
           <Suspense fallback={null}><AgentSelector compact /></Suspense>
         </div>
 
-        {/* Extended desktop items: xl+ (1280px) — moved from lg to xl to
-             prevent button overflow at the 1024px breakpoint (#10001). */}
-        <div className="hidden xl:flex items-center gap-2">
+        {/* Extended desktop items: 2xl+ (1536px) — keep these in the overflow
+             menu at 1280px so alerts and the user menu remain clickable. */}
+        <div data-testid="navbar-extended-actions" className="hidden 2xl:flex items-center gap-2">
           {!isSidebarOpen && (
             <button
               type="button"
@@ -253,8 +253,8 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
           <AlertBadge />
         </div>
 
-        {/* Overflow menu — visible below xl for items hidden at narrow widths */}
-        <div className="relative xl:hidden shrink-0">
+        {/* Overflow menu — visible below 2xl for items hidden at narrower widths */}
+        <div className="relative 2xl:hidden shrink-0">
           <button
             data-testid="navbar-overflow-btn"
             onClick={() => setShowMobileMore(!showMobileMore)}

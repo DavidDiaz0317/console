@@ -202,6 +202,11 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
 - `cd web && npx eslint e2e/visual-login/**/*.ts harness/**/*.ts e2e/auth-drift/oauth-staging-login-drift.spec.ts`: passed.
 - `cd web && npx vitest run src/components/auth/Login.test.tsx src/lib/__tests__/api-methods.test.ts`: passed, 56 tests.
 - `cd web && npx vitest run src/lib/__tests__/sseClient.test.ts src/hooks/__tests__/useCachedData-kubectl.test.ts src/hooks/__tests__/useCertManager-caching.test.ts src/hooks/__tests__/useMetricsHistory-advanced.test.ts`: passed, 61 passed and 1 skipped.
+- Follow-up navbar/auth targeted validation:
+  - `cd web && npx eslint src/components/layout/navbar/Navbar.tsx e2e/navbar-responsive.spec.ts e2e/auth/logout-flow.spec.ts`: exit `0`; two existing `react-hooks/set-state-in-effect` warnings remain in `Navbar.tsx`.
+  - Vite preview on `127.0.0.1:4198`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4198 npx playwright test e2e/auth/logout-flow.spec.ts --project=chromium --workers=1 --reporter=line`: passed, 4 tests.
+  - Vite preview on `127.0.0.1:4199`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4199 npx playwright test e2e/nightly/navbar-dropdown-visibility.spec.ts e2e/navbar-responsive.spec.ts e2e/auth/logout-flow.spec.ts --project=chromium --workers=1 --reporter=line`: passed, 19 tests and 1 expected skip.
+  - `git diff --check`: passed after the follow-up changes.
 - Representative hosted smoke sample:
   - Command: `PLAYWRIGHT_BASE_URL=https://console.kubestellar.io npx playwright test e2e/Clusters.spec.ts e2e/navbar-responsive.spec.ts --project=chromium --grep "displays clusters page|overflow menu button is visible"`
   - Result: failed on the hosted login page, but no longer failed with the literal `{}` document shell. This confirms the route fallback no longer intercepts the app document. The remaining hosted-login behavior is why the workflow uses a local preview fallback when deploy readiness is not confirmed.
@@ -264,6 +269,8 @@ Fixed or proven non-branch blockers:
 - Accessibility passed on the PR after the branch fixes.
 - Generic Playwright shard 4 passed on the PR after the update reconnect and post-login route-sweep fixes.
 - The PR-head profile trigger `label-content-name-mismatch` failure was fixed by deriving the trigger accessible name from visible login text and sr-only state text, then verified with the exact Playwright axe check.
+- The PR-head navbar/profile overflow failure at the 1280px viewport was fixed by keeping extended navbar actions in the overflow menu until `2xl`, preserving alert/profile clickability at desktop CI widths.
+- The auth logout E2E spec now follows the actual menuitem plus confirmation-dialog flow, uses the current `kc-auth-token-sync` cross-tab logout event, and prevents one-time test auth seeding from re-authenticating later post-logout navigations.
 - The branch-only `/clusters` reload flake in generic Playwright was fixed and passed locally.
 - Console Live Promote now avoids the old noisy cascade: after the first blocking live semantic failure, later semantic/browser/adequacy checks are skipped instead of adding extra live-site pressure.
 - The failure issue workflow updates existing matching issue `#54` instead of opening duplicate issues.
