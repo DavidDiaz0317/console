@@ -538,3 +538,12 @@ Follow-up classifier fix: the first failure-issue run updated `#54` as `live-rat
 
 - `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
 - `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 21/21 tests.
+
+Current PR red-check classification after pushing `2a42ac765b2fb28326b6cb7a1ff78f5a0222b58b`:
+
+| Check | Classification | Evidence | Canary action |
+|---|---|---|---|
+| Claude Code Review / `claude-review` | Fork setup noise | Run `28338930523` failed because the Claude Code GitHub App is not installed on `DavidDiaz0317/console` | Ignore for canary readiness |
+| Nil Safety / `pr-check` | Unrelated broad backend/test debt | Run `28338930521` reported nilaway findings in `pkg/api/handlers/workloads/cluster_groups_test.go` and `pkg/stellar/solver/solver.go`, outside this branch's live canary/frontend fetch changes | Do not chase in this canary slice |
+| Update Mechanism Guard / `Update Mechanism Tests` | Workflow/path configuration debt unrelated to canary | Run `28338930517` greps for missing `pkg/agent/updater_*` files and fails source invariants before exercising canary code | Do not chase in this canary slice |
+| Build and Deploy KC PR matrix | Candidate-image validation is already satisfied by manual dispatch | Run `28338475335` already published the explicit SHA image used by the private canary; current PR matrix jobs are not the source of canary evidence | Watch only if future candidate image dispatch fails |
