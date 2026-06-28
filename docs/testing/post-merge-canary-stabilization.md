@@ -157,7 +157,7 @@ For this stabilization branch, the working base is the current fork `main` so th
 - `web/src/components/layout/__tests__/UserProfileDropdown.test.tsx`: added a regression test for the profile trigger accessible name before and after opening the menu.
 - `web/src/components/layout/mission-sidebar/missionSidebarHelpers.ts`: exported missions now default missing imported tags to `[]`, matching the required `MissionExport.tags` type and fixing the TypeScript build failure introduced by the latest upstream sync.
 - `web/src/components/layout/mission-sidebar/__tests__/missionSidebarHelpers.test.ts`: updated the regression expectation for the required empty tag array.
-- `web/e2e/UpdateSettings.spec.ts`: the reconnect recovery test now targets only replacement WebSocket routes and retries until the reconnected socket receives the resumed progress event, preserving the update-state assertion without racing the reconnect handshake.
+- `web/e2e/UpdateSettings.spec.ts`: the reconnect recovery test now targets only replacement WebSocket routes and retries until the reconnected socket receives the resumed progress event, preserving the update-state assertion without racing the reconnect handshake. The update-complete banner checks also retry the mocked `done` event until the UI observes the WebSocket message, fixing the final-head shard-4 health-banner flake without weakening the refresh-link assertions.
 - `web/e2e/user-flows/post-login-dashboard-ux.spec.ts`: the post-login route sweep now starts with the ACMM intro dismissed so the first-run education modal cannot intercept sidebar navigation while the test walks all visible routes.
 
 ## PR #65 Check Triage
@@ -211,6 +211,8 @@ Issue #54 currently classifies the live canary blocker as `live-rate-limit-data-
 - Shard 4 targeted local-preview follow-up:
   - Command: `npm run preview -- --host 127.0.0.1 --port 4177`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4177 npx playwright test e2e/UpdateSettings.spec.ts --project=chromium --grep "recovers state after WebSocket disconnect" --reporter=line`.
   - Result: passed, 1 test.
+  - Command: `npx vite preview --host 127.0.0.1 --port 4185`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4185 npx playwright test e2e/UpdateSettings.spec.ts --project=chromium --reporter=line`.
+  - Result: passed, 11 tests.
   - Command: `npm run preview -- --host 127.0.0.1 --port 4177`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4177 npx playwright test e2e/user-flows/post-login-dashboard-ux.spec.ts --project=chromium --reporter=line`.
   - Result: passed, 1 test.
 

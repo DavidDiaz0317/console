@@ -168,6 +168,14 @@ async function sendProgressUntilProgressBanner(
   }).toPass({ timeout: 10000 })
 }
 
+async function sendProgressUntilDoneBanner(page: Page, wsRoutes: WsRoutes) {
+  await expect(async () => {
+    sendProgress(wsRoutes, 'done', 'Update complete - restart successful', 100)
+    await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 1000 })
+    await expect(page.getByTestId('update-refresh-button')).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 10000 })
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -255,6 +263,8 @@ test.describe('Update Settings', () => {
     // confirms status === 'ok'
     sendProgress(ws, 'done', 'Update complete — restart successful', 100)
 
+    await sendProgressUntilDoneBanner(page, ws)
+
     // Done banner and refresh button should appear
     await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
     await expect(page.getByTestId('update-refresh-button')).toBeVisible()
@@ -268,6 +278,7 @@ test.describe('Update Settings', () => {
     const ws = await setupUpdateTest(page)
 
     sendProgress(ws, 'done', 'Update complete — restart successful', 100)
+    await sendProgressUntilDoneBanner(page, ws)
     await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
 
     // Click dismiss
@@ -331,6 +342,7 @@ test.describe('Update Settings', () => {
 
     // Complete the update
     sendProgress(ws, 'done', 'Update complete — restart successful', 100)
+    await sendProgressUntilDoneBanner(page, ws)
     await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
     await expect(page.getByTestId('update-progress-banner')).not.toBeVisible()
     await expect(page.getByTestId('update-refresh-button')).toBeVisible()
@@ -352,6 +364,7 @@ test.describe('Update Settings', () => {
 
     // Complete
     sendProgress(ws, 'done', 'Update complete — restart successful', 100)
+    await sendProgressUntilDoneBanner(page, ws)
     await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
     await expect(page.getByTestId('update-progress-banner')).not.toBeVisible()
     await expect(page.getByTestId('update-refresh-button')).toBeVisible()
