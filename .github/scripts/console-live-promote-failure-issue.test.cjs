@@ -119,6 +119,21 @@ test('prioritizes rate-limit data loss over secondary text-collision evidence', 
   }, 'Error: live UI visible text must not severely overlap'), 'live-rate-limit-data-loss')
 })
 
+test('does not let log-only rate-limit helper text mask UI overlap evidence', () => {
+  assert.equal(classify({
+    textCollisions: [{
+      first: 'Unhealthy (',
+      second: 'Backend unavailable',
+      ratio: 0.59,
+    }],
+    networkClassifications: [],
+  }, [
+    'Error: live UI visible text must not severely overlap',
+    'const rateLimitDataLoss = networkClassifications.filter(item => item.classification === "live-rate-limit-data-loss")',
+    'if (response.status === 429) await retry("/api/mcp/nodes")',
+  ].join('\n')), 'live-ui-overlap')
+})
+
 test('prioritizes dashboard mismatches over secondary text-collision evidence', () => {
   assert.equal(classify({
     textCollisions: [{

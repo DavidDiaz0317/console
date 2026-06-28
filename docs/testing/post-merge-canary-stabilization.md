@@ -523,3 +523,18 @@ Local validation for this follow-up:
 - `cd web && npx vitest run src/hooks/mcp/__tests__/shared-cache-fetch.test.ts src/hooks/__tests__/useCachedData.fetchers.test.ts`: passed, 118/118 tests.
 
 Next required proof: publish the new branch SHA image, then run `Console Live Promote` with `promoteProduction=false` and that explicit SHA. The expected improvement is that `/clusters?groundtruth=1` now calls `/api/mcp/clusters`; if the UI still renders `0`, the evidence should classify it as a real API/UI/groundtruth mismatch rather than a missing backend fetch.
+
+## June 28 Cookie-Only Session Remote Proof
+
+- `Build and Deploy KC` workflow-dispatch run `28338475335` published image `ghcr.io/daviddiaz0317/console:fcd492c4f92c94046310451448efe38464ef576d`.
+- `Console Live Promote` workflow-dispatch run `28338777287` tested that exact image with `promoteProduction=false`.
+- The workflow used `TEST_TARGET_KIND=private-canary` and `TEST_CONSOLE_URL=http://127.0.0.1:18080`. Production deploy, production verify, and production rollback steps were skipped.
+- Private canary rollout, port-forward, auth-boundary, and signed-session smoke passed.
+- `/clusters?groundtruth=1` now calls `/api/mcp/clusters`: the API returned `200` with `3` clusters, and route evidence showed UI values matching API and Kubernetes groundtruth (`3` clusters, `6` total/Ready nodes, `51` pods, `51` running pods, `0` pending pods, `0` crashloop pods).
+- The first remaining canary blocker is now a real UI/runtime issue: visible overlap on the Clusters page around the backend-unavailable/offline panel, including `Unhealthy (` over `Backend unavailable`, `Offline (` over `Restart`, and disabled cluster actions overlapping the explanatory backend-unavailable text.
+- The evidence screenshot path is `e2e/visual-login/test-results/visual-login-intensive/semantic-live-canary-ui-li-d32fc-ive-canary-ui-layout-stable-semantic-groundtruth/test-failed-1.png` in artifact `console-live-promote-evidence`.
+
+Follow-up classifier fix: the first failure-issue run updated `#54` as `live-rate-limit-data-loss` because log-only source snippets mentioned rate-limit helper code. The issue generator now lets structured core `429` evidence continue to win, but it does not let log-only `429` helper text mask parsed UI-overlap evidence. Local validation:
+
+- `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 21/21 tests.

@@ -442,6 +442,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   const unexpectedNetworkResponses = liveUiFailures.unexpectedNetworkResponses || []
   const rateLimitEvents = collectRateLimitEvidence({ evidenceItems, liveUiFailures, logText })
   const hasCoreRateLimit = rateLimitEvents.some((event) => event.core)
+  const hasStructuredCoreRateLimit = rateLimitEvents.some((event) => event.core && event.source !== 'log')
   const hasOptionalRateLimit = rateLimitEvents.some((event) => event.optional)
   const hasProductEvidence = (
     failures.length
@@ -458,7 +459,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
     || browserMatrixFailures.some(failure => failure.classification === 'live-network-error')
     || /live-network-error|startup-error|infrastructure connection error|unexpected app-origin|4xx|5xx|bad request/.test(text)
   if ((hasCandidateImageFailure || hasCanaryInfraFailure) && !hasProductEvidence) return 'canary-setup'
-  if (hasCoreRateLimit || networkClassifications.some(item =>
+  if (hasStructuredCoreRateLimit || networkClassifications.some(item =>
     item.classification === 'live-rate-limit-data-loss' && isCoreResourceEndpoint(item.url)
   )) return 'live-rate-limit-data-loss'
   if (browserMatrixFailures.some(failure => failure.classification === 'canary-setup') || text.includes('canary-setup')) return 'canary-setup'
@@ -481,6 +482,7 @@ function classifyFailure({ failures, evidenceItems, liveUiFailures, logText }) {
   if (browserMatrixFailures.some(failure => failure.classification === 'browser-visual-baseline') || text.includes('browser-visual-baseline')) return 'browser-visual-baseline'
   if (browserMatrixFailures.some(failure => failure.classification === 'auth-boundary') || text.includes('auth-boundary')) return 'auth-boundary'
   if (hasOptionalRateLimit || networkClassifications.some(item => item.classification === 'optional-live-integration-unreachable')) return 'optional-live-integration-unreachable'
+  if (hasCoreRateLimit) return 'live-rate-limit-data-loss'
   if (rateLimitEvents.length || /too many requests|rate limited/.test(text)) return 'live-network-error'
   if (hasLiveNetworkFailure) return 'live-network-error'
   if (/cluster-dashboard-groundtruth-match|groundtruth/.test(text)) return 'groundtruth-mismatch'
