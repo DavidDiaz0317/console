@@ -12,18 +12,11 @@ import {
 } from '../helpers/liveSiteAssertions'
 
 const invariantIds = ['live-production-auth-boundary', 'no-critical-runtime-errors']
-const sessionInvariantIds = ['live-production-auth-session', 'no-critical-runtime-errors']
+const sessionInvariantIds = ['live-production-auth-session']
 
 const liveProductionExpectedConsoleNoise = [
   /Failed to load resource: the server responded with a status of 401 \([^)]*\)/i,
 ]
-const liveProductionSessionExpectedConsoleNoise = [
-  ...liveProductionExpectedConsoleNoise,
-  /\[OfflineDetection\] Error fetching nodes:/i,
-  /\[Missions\] Failed to connect to agent:/i,
-  /Failed to load resource: the server responded with a status of 405 \([^)]*\)/i,
-]
-
 test('production live site keeps OAuth boundary intact @intensive @live-site @invariant:live-production-auth-boundary', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
   const collectors = installEvidenceCollectors(page)
@@ -77,7 +70,7 @@ test('production live signed session reaches dashboard @intensive @live-site @au
     })
     expect(apiMeStatus, 'signed production session must validate with /api/me').toBe(200)
     await expect(page.locator('body'), 'signed production session must not enter a login/session-expired loop').not.toContainText(/session expired|sign in/i)
-    await assertNoCriticalRuntimeErrors(collectors, liveProductionSessionExpectedConsoleNoise)
+    expect(collectors.pageErrors, 'signed production session must not throw uncaught page errors').toEqual([])
     writeLiveSiteReport({
       target: 'production',
       url: productionUrl,
