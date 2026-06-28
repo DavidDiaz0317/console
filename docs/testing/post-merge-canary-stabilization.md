@@ -548,3 +548,23 @@ Current PR red-check classification after pushing `d0f00e8ae6e828e623f3fdb15a31d
 | Nil Safety / `pr-check` | Unrelated broad backend/test debt | Run `28339060811` reported nilaway findings in `pkg/api/handlers/workloads/cluster_groups_test.go` and `pkg/stellar/solver/solver.go`, outside this branch's live canary/frontend fetch changes | Do not chase in this canary slice |
 | Update Mechanism Guard / `Update Mechanism Tests` | Workflow/path configuration debt unrelated to canary | Run `28339060807` greps for missing `pkg/agent/updater_*` files and fails source invariants before exercising canary code | Do not chase in this canary slice |
 | Build and Deploy KC PR matrix | Candidate-image validation is already satisfied by manual dispatch | Run `28338475335` already published the explicit SHA image used by the private canary; current PR matrix jobs are not the source of canary evidence | Watch only if future candidate image dispatch fails |
+
+## June 28 Exact-Head Canary Revalidation
+
+After the final docs/status update, the current product candidate was revalidated explicitly:
+
+- `Build and Deploy KC` workflow-dispatch run `28339255804` passed for branch `codex/post-merge-canary-stabilization` and published the current candidate image `ghcr.io/daviddiaz0317/console:f2cff2a2746aa0f18b9b4d090740f3c32d08bb55`.
+- `Console Live Promote` workflow-dispatch run `28339495277` tested that exact image with `candidate_sha=f2cff2a2746aa0f18b9b4d090740f3c32d08bb55` and `promoteProduction=false`.
+- The workflow used `TEST_TARGET_KIND=private-canary` and `TEST_CONSOLE_URL=http://127.0.0.1:18080`. Public `console-live` deploy, public verify, and public rollback steps were skipped.
+- Private canary rollout, port-forward, auth-boundary, and signed-session smoke passed.
+- Live canary pacing was normalized to `LIVE_CANARY_ROUTE_DELAY_MS=15000` and `LIVE_CANARY_PHASE_COOLDOWN_MS=90000`; semantic tests ran serially with `--workers=1 --max-failures=1`.
+- Kubernetes groundtruth saw `3` reachable contexts, `6` Ready nodes, `51` running pods, `16` namespaces, and `12` available deployments.
+- Route evidence for `/clusters?groundtruth=1` matched API/UI/groundtruth values: `3` clusters, `6` total/Ready nodes, `51` pods, `51` running pods, `0` pending pods, and `0` crashloop pods.
+- The first failure remained the same real UI blocker: `live-ui-overlap` on the My Clusters page, where the backend-unavailable/offline panel overlaps cluster tabs/actions.
+- Browser matrix and adequacy were skipped after the first semantic blocker, as intended.
+
+Issue-loop validation for the exact-head canary:
+
+- The automatic failure-issue workflow on fork `main` still used the older classifier and commented on closed issue `#50` as `live-rate-limit-data-loss`; this is expected until PR `#65` is merged because `workflow_run` uses the default-branch workflow/script.
+- Branch backfill run `28339607851` used the PR `#65` classifier and updated open issue `#54` correctly as `[console-live][canary-blocked][live-ui-overlap] visible text overlap blocks promotion`.
+- The remaining gap is not a rate-limit or fake-zero issue. It is the visible Clusters page overlay collision tracked by issue `#54`.
