@@ -60,6 +60,9 @@ Remote validation started after pushing `2f5d340e1`:
 - `Build and Deploy KC` workflow-dispatch run `28315161886` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published image `ghcr.io/daviddiaz0317/console:d7c3178d714a600e77c00936ecaa5d378ff17d89` and skipped deploy jobs.
 - `Console Live Promote` workflow-dispatch run `28315408807` used `candidate_sha=d7c3178d714a600e77c00936ecaa5d378ff17d89` and `promoteProduction=false`. It failed before tests at private canary Helm install because the namespace-scoped deploy service account cannot create a new broad `ClusterRole`/`ClusterRoleBinding` for the canary release. Public production was not touched.
 - Follow-up fix: private canary releases now set `serviceAccount.create=false`, reuse the existing live service account, and set `rbac.create=false` so canary dry runs exercise the same cluster permissions as production without requiring the deployer to create new cluster-scoped RBAC.
+- `Build and Deploy KC` workflow-dispatch run `28315504674` passed for branch `codex/post-merge-canary-stabilization` with `deploy_target=none`; it published image `ghcr.io/daviddiaz0317/console:4d0524f65a6b52f44841ff292d66f4f02e8508b5` and skipped deploy jobs.
+- `Console Live Promote` workflow-dispatch run `28315735307` used `candidate_sha=4d0524f65a6b52f44841ff292d66f4f02e8508b5` and `promoteProduction=false`. It cleared the namespace/RBAC blockers, then failed before tests because the private canary Deployment did not become ready within the Helm timeout. Public production was not touched.
+- Follow-up fix: private canary Helm installs no longer use `--atomic`; on install/readiness failure the workflow prints Helm status, canary resources, Deployment/pod descriptions, pod logs, and recent namespace events before the always-run cleanup step removes the canary release.
 
 ## Current June 27 Status
 

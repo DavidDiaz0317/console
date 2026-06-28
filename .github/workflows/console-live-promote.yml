@@ -310,14 +310,22 @@ jobs:
             - name: CONSOLE_LIVE_TEST_USER_ROLE
               value: "$CONSOLE_LIVE_TEST_USER_ROLE"
           EOF
-          helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
+          if ! helm upgrade --install "$CANARY_RELEASE" ./deploy/helm/kubestellar-console \
             --namespace "$LIVE_NAMESPACE" \
             --reset-values \
             -f "$canary_values" \
-            --atomic \
-            --cleanup-on-fail \
             --wait \
-            --timeout 10m
+            --timeout 10m; then
+            echo "::group::Private canary diagnostics"
+            helm status "$CANARY_RELEASE" -n "$LIVE_NAMESPACE" || true
+            kubectl -n "$LIVE_NAMESPACE" get all -l "app.kubernetes.io/instance=$CANARY_RELEASE" -o wide || true
+            kubectl -n "$LIVE_NAMESPACE" describe deploy "$CANARY_DEPLOYMENT" || true
+            kubectl -n "$LIVE_NAMESPACE" describe pods -l "app.kubernetes.io/instance=$CANARY_RELEASE" || true
+            kubectl -n "$LIVE_NAMESPACE" logs -l "app.kubernetes.io/instance=$CANARY_RELEASE" --all-containers --tail=200 || true
+            kubectl -n "$LIVE_NAMESPACE" get events --sort-by=.lastTimestamp | tail -80 || true
+            echo "::endgroup::"
+            exit 1
+          fi
           kubectl -n "$LIVE_NAMESPACE" rollout status "deployment/$CANARY_DEPLOYMENT" --timeout=3m
           canary_image="$(kubectl -n "$LIVE_NAMESPACE" get deploy "$CANARY_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
           if [ "$canary_image" != "${{ steps.candidate.outputs.image }}" ]; then
