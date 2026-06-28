@@ -77,7 +77,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/')
     expect(response?.ok(), 'live canary Dashboard route must be reachable for interaction checks').toBeTruthy()
     await dismissOptionalLiveOverlays(page)
-    await assertLiveDashboardShell(page)
+    await assertLiveDashboardShell(page, '/')
 
     await test.step('global search accepts live queries', async () => {
       const search = await requiredControl(page, '/', 'global search', [
@@ -156,7 +156,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
     await dismissOptionalLiveOverlays(page)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl)
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], '/')
     await assertNoCriticalRuntimeErrors(collectors, liveInteractionExpectedConsoleNoise)
 
     writeLiveSiteReport({

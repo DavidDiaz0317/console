@@ -173,7 +173,7 @@ for (const coreRoute of coreRoutes) {
       }
       expect(response?.ok(), `live canary ${coreRoute.route} route must be reachable`).toBeTruthy()
       await dismissOptionalLiveOverlays(page)
-      await assertLiveDashboardShell(page)
+      await assertLiveDashboardShell(page, coreRoute.route)
       await assertLiveRouteStateLoaded(page, coreRoute.route)
       const expectedFields = coreRoute.expectedFields(groundTruth)
       if (Object.keys(expectedFields).length > 0) {
@@ -185,7 +185,7 @@ for (const coreRoute of coreRoutes) {
       await assertNoForbiddenLiveUi(page)
       await assertLiveLayoutStable(page)
       await assertNoVisibleTextCollisions(page)
-      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
+      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], coreRoute.route)
       await assertNoCriticalRuntimeErrors(collectors, liveCorePageExpectedConsoleNoise)
 
       writeLiveRouteEvidence({

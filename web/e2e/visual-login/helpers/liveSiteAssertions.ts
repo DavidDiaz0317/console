@@ -371,7 +371,15 @@ export async function establishLiveCanarySession(page: Page, baseUrl: string) {
   await dismissOptionalLiveOverlays(page)
 }
 
-export async function assertLiveDashboardShell(page: Page) {
+export async function assertLiveDashboardShell(page: Page, route = 'live-shell') {
+  const bodyText = await page.locator('body').innerText({ timeout: 2_000 }).catch(() => '')
+  if (/infrastructure connection error|rate limited|too many requests|http 429/i.test(bodyText)) {
+    markLiveRateLimitDataLoss(route, [{
+      classification: 'live-rate-limit-data-loss',
+      status: 429,
+      url: 'visible-live-rate-limit-screen',
+    }])
+  }
   await assertUrlIsNotAuth(page)
   await assertDashboardContentVisible(page)
   await assertNotBlank(page)
@@ -560,6 +568,7 @@ export function assertNoUnexpectedLiveNetworkErrors(
   collectors: EvidenceCollectors,
   baseUrl: string,
   additionalAllowed: RegExp[] = [],
+  route = 'network-check',
 ) {
   const origin = new URL(baseUrl).origin
   const allowed = [
@@ -589,26 +598,32 @@ export function assertNoUnexpectedLiveNetworkErrors(
     .filter(entry => !/net::ERR_ABORTED/i.test(entry.failureText || ''))
     .map(entry => `${entry.method} ${entry.url} ${entry.failureText || ''}`.trim())
 
+  const networkClassifications = collectors.errorResponses
+    .filter(entry => {
+      try {
+        return new URL(entry.url).origin === origin
+      } catch {
+        return false
+      }
+    })
+    .flatMap(entry => {
+      const classification = networkClassification(entry.status, entry.url)
+      return classification
+        ? [{ classification, method: entry.method, status: entry.status, url: entry.url }]
+        : []
+    })
+  const rateLimitDataLoss = networkClassifications.filter(item => item.classification === 'live-rate-limit-data-loss')
+  if (rateLimitDataLoss.length > 0) {
+    markLiveRateLimitDataLoss(route, rateLimitDataLoss)
+  }
+
   collectors.liveUiFailures = {
     ...(collectors.liveUiFailures || {}),
     unexpectedNetworkResponses: unexpectedResponses,
     unexpectedRequestFailures: unexpectedFailures,
     networkClassifications: [
       ...((collectors.liveUiFailures || {}).networkClassifications || []),
-      ...collectors.errorResponses
-        .filter(entry => {
-          try {
-            return new URL(entry.url).origin === origin
-          } catch {
-            return false
-          }
-        })
-        .flatMap(entry => {
-          const classification = networkClassification(entry.status, entry.url)
-          return classification
-            ? [{ classification, method: entry.method, status: entry.status, url: entry.url }]
-            : []
-        })
+      ...networkClassifications,
     ],
   }
   expect(unexpectedResponses, 'live UI must not produce unexpected app-origin 4xx/5xx responses').toEqual([])
@@ -702,8 +717,10 @@ function parseVisibleNumber(value: string | null): number | null {
   return match ? Number(match[0]) : null
 }
 
+const liveRateLimitDataLossEndpointPattern = /\/api\/(?:mcp\/)?(?:namespaces|nodes|pods|deployments|clusters)|\/api\/namespaces|\/api\/stellar\/state|\/api\/kagent\/status/i
+
 function networkClassification(status: number | undefined, url: string): string | null {
-  if (status === 429 && /\/api\/(?:mcp\/)?(?:namespaces|nodes|pods|deployments|clusters)|\/api\/namespaces/i.test(url)) {
+  if (status === 429 && liveRateLimitDataLossEndpointPattern.test(url)) {
     return 'live-rate-limit-data-loss'
   }
   if (status === 502 && /\/api\/agent\/auto-update\/status/i.test(url)) {
