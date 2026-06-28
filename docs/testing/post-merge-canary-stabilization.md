@@ -22,6 +22,36 @@
 - Post-merge verification run: `28190200153`
 - Current live canary issue: `#54`
 
+## Current June 28 Canary Readiness Update
+
+PR #65 is still a canary/live-testing stabilization slice and should stay draft until the canary-only path is validated remotely. The latest local branch work changes `Console Live Promote` dry-run behavior so `promoteProduction=false` now deploys the candidate image into a private `kc-live-canary` Helm release, reaches it through an Actions-only port-forward, and runs the live semantic/browser checks against that candidate URL. Public `https://console-live.kubestellar.io` is still touched only when `promoteProduction=true`.
+
+Failure classification is now:
+
+| Area | Classification | Current handling |
+|---|---|---|
+| Console Live Promote dry run semantics | Canary-critical workflow gap | Fixed locally: dry runs now test the candidate image privately instead of retesting the already-live public site |
+| Candidate image availability | Candidate build blocker if missing | Manual dispatch without `candidate_tag`/`candidate_sha` now resolves to the selected branch SHA. If that SHA image is missing from GHCR, the workflow fails clearly before deployment |
+| Live `429` on core Kubernetes APIs | Real canary/product blocker | Still tracked as `live-rate-limit-data-loss` in issue `#54`; the harness skips heavier follow-up checks after the first core rate-limit event to avoid cascades |
+| Live `502` runtime/resource failures | Real canary/product blocker | Kept as canary evidence; not hidden by optional/background endpoint handling |
+| Generic Playwright and Mobile Browser red checks | Broad app/base-suite debt unless a failure maps to canary code | Out of scope for this canary readiness slice unless they block candidate image creation or canary execution |
+| Claude Review | Fork/external setup noise | Requires the Claude Code GitHub App/configuration on the fork; not a canary product failure |
+
+Private canary auth remains strict. The canary release keeps `DEV_MODE=false` and uses the same OAuth/JWT secrets as live, but sets `CONSOLE_LIVE_TEST_USER_BOOTSTRAP=true` only on the private canary so the signed test cookie maps to an active local user in the ephemeral canary database. The production `kc-live` values do not enable this bootstrap.
+
+Local validation after the June 28 private-candidate update:
+
+- `git diff --check`: passed.
+- `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 20/20 tests.
+- `node --check web/harness/scripts/compareBrowserMatrix.cjs`: passed.
+- `cd web && npx eslint e2e/visual-login/**/*.ts harness/**/*.ts`: passed.
+- `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site --list`: listed 12 live-site tests.
+- `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list`: listed Chromium, Firefox, and WebKit live browser-matrix tests.
+- YAML parse with PyYAML: passed for `.github/workflows/console-live-promote.yml`.
+
+Local limitation: this workstation does not have `go`/`gofmt` on `PATH`, so the Go bootstrap helper still needs CI build validation.
+
 ## Current June 27 Status
 
 PR #65 was rebased onto the synced fork `main` after the fork was brought current with upstream through `d9bfa9becfc73da9d90c484b012f14471822bdb8`. The latest pushed head before this evidence update is `7c474909b3919a1454b8594ea9142ca8149385f2`; the latest code-validation SHA before doc-only status commits is `2af4fa9aeb92a70bf457ac1375587f324149ae4c`.
@@ -195,7 +225,8 @@ For this stabilization branch, the working base is the current fork `main` so th
 
 - `web/e2e/helpers/setup.ts`: the hosted `console.kubestellar.io` fallback now only mocks `/api/*`; documents, chunks, CSS, and other assets load normally.
 - `.github/workflows/post-merge-verify.yml`: deploy-timeout fallback now builds `web` and serves a local Vite preview instead of testing whatever production currently serves. The targeted-test timeout was raised from 15 to 35 minutes to cover build plus the selected specs.
-- `.github/workflows/console-live-promote.yml`: scheduled/manual default is canary-only unless `promoteProduction=true` is explicitly selected. The live route delay defaults to 15 seconds, and browser matrix/adequacy runs are skipped when semantic live checks already failed.
+- `.github/workflows/console-live-promote.yml`: scheduled/manual default is canary-only unless `promoteProduction=true` is explicitly selected. Dry runs deploy the resolved candidate image to a private `kc-live-canary` Helm release, test it through an Actions-only port-forward, and keep public `console-live` unchanged. The live route delay defaults to 15 seconds, and browser matrix/adequacy runs are skipped when semantic live checks already failed.
+- `pkg/api/server.go`: added an opt-in `CONSOLE_LIVE_TEST_USER_BOOTSTRAP=true` startup seed for the private canary's signed-cookie test user. It keeps auth strict by creating/updating the configured user in the canary DB; production values do not enable it.
 - `.github/workflows/console-live-macos-canary.yml`: macOS/WebKit popup checks use the same 15 second default live-route delay.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts`: known optional/background live endpoints are recorded but do not block core route checks as generic network failures.
 - `web/e2e/visual-login/helpers/liveSiteAssertions.ts`: core Kubernetes API `429` responses are now blocking `live-rate-limit-data-loss` failures. The first core rate-limit event writes a job-local marker so later live semantic tests skip instead of continuing to stress the same live site and generating secondary failures.
