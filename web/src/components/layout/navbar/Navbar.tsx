@@ -232,6 +232,28 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
             <LearnDropdown />
           </div>
 
+          {/* AI Missions stays directly reachable at the default 1280px E2E viewport
+              without bringing back the wide text button that overflowed the user menu. */}
+          {!isSidebarOpen && (
+            <Tooltip content={t('missionSidebar.openAIMissions')} side="bottom">
+              <button
+                type="button"
+                onClick={openSidebar}
+                data-tour="ai-missions-toggle"
+                data-testid="navbar-ai-missions-compact-btn"
+                className="relative hidden xl:flex 2xl:hidden h-9 w-9 items-center justify-center rounded-lg transition-colors bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                aria-label={t('missionSidebar.openAIMissions')}
+              >
+                <Sparkles className="w-4 h-4" />
+                {missionsNeedingAttention > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-primary text-primary-foreground rounded-full animate-pulse">
+                    {missionsNeedingAttention}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
+          )}
+
           {/* Theme toggle */}
           <Tooltip content={t('help.themeToggle')} side="bottom">
             <button

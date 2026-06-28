@@ -119,6 +119,59 @@ After the follow-up upstream sync, fork `main` was updated to `285a7b93d89616d97
 
 The only branch-caused generic Playwright failure identified after the rebase was `web/e2e/deep-links-and-data-flow.spec.ts` waiting for `networkidle` on `/clusters`. That route has long-lived stream/polling requests, so the test now waits for `domcontentloaded` and then asserts the subroute UI. The targeted local regression test passed after the change.
 
+## June 28 PR #65 Status
+
+Latest pushed PR head before the compact AI Missions follow-up: `2db35679b97ba34385cfab336636284d4d68e7ac`. Latest local validation/follow-up commit: `FINAL_SHA_TBD`.
+
+Remote evidence for `2db35679b97ba34385cfab336636284d4d68e7ac`:
+
+| Area | Result | Evidence |
+|---|---|---|
+| Build and Deploy KC | Passed | Run `28309505077`; amd64 and arm64 image builds passed; deploy jobs skipped because this is a PR |
+| Auth Drift | Passed | Run `28309505088`; Hosted Demo No-Login, Localhost Login Dashboard, Local Login UI, and Fake OAuth passed; OAuth Staging skipped as expected |
+| Visual Login PR Protection | Passed | Run `28309505070`; Fast Visual/Login Guard passed |
+| Accessibility | Passed | Run `28309505063`; Accessibility Tests passed |
+| Build Frontend | Passed | Run `28309505063`; frontend build job passed |
+| Generic Playwright E2E | Failed | Run `28309505063`; chromium shards 1, 2, and 3 failed, shard 4 passed, Mobile Browser Tests cancelled at the 30 minute job limit, and Merge Test Reports failed downstream of failed shards |
+| Claude Review | Failed external setup | Run `28309505082`; the action received an OIDC token but failed app-token exchange with `401 Unauthorized - Claude Code is not installed on this repository` |
+
+Generic Playwright comparison against fork `main`:
+
+- Latest fork `main` Playwright run `28302453959` also failed, with `133` parsed unexpected outcomes.
+- PR run `28309505063` had `70` parsed unexpected outcomes.
+- The follow-up auth/logout and navbar/profile failures that were present on fork `main` are no longer present in the PR run: `auth/logout-flow.spec.ts`, `navbar-responsive.spec.ts`, and `nightly/navbar-dropdown-visibility.spec.ts`.
+- The PR run eliminated the generic config false positives from `auth-drift/**` and `visual-login/**`; those suites remain covered by their dedicated workflows.
+- Three PR-only failures were traced to the branch navbar overflow change: `ResolutionMemory.spec.ts` could no longer see `data-tour="ai-missions-toggle"` at the default 1280px viewport after the wide AI Missions button moved into overflow below `2xl`.
+- The branch now restores a compact icon-only AI Missions trigger for `xl` to `<2xl` widths while keeping the wide text button at `2xl+`. The overflow-hidden-at-2xl test now uses `data-testid="navbar-overflow-btn"` instead of a broad Tailwind utility selector.
+
+June 28 local validation after the compact AI Missions follow-up:
+
+- `git diff --check`: passed.
+- `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
+- `node --check .github/scripts/console-live-promote-failure-issue.test.cjs`: passed.
+- `node --check web/harness/scripts/compareBrowserMatrix.cjs`: passed.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 20/20 tests.
+- `cd web && npx eslint "e2e/visual-login/**/*.ts" "harness/**/*.ts"`: passed.
+- `cd web && npx eslint src/components/layout/navbar/Navbar.tsx e2e/navbar-responsive.spec.ts e2e/nightly/navbar-dropdown-visibility.spec.ts e2e/ResolutionMemory.spec.ts`: exit `0`; two existing `react-hooks/set-state-in-effect` warnings remain in `Navbar.tsx`.
+- `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list`: passed, 12 tests selected.
+- `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list`: passed, 3 browser projects selected.
+- `cd web && npx playwright test --config e2e/visual-login/macos-popup.config.ts --list`: passed, 1 macOS/WebKit popup test selected.
+- Vite dev server on `127.0.0.1:4202`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4202 npx playwright test e2e/navbar-responsive.spec.ts e2e/nightly/navbar-dropdown-visibility.spec.ts --project=chromium --workers=1 --reporter=line`: passed.
+- Vite dev server on `127.0.0.1:4203`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4203 npx playwright test e2e/ResolutionMemory.spec.ts --project=chromium --grep "AI missions sidebar toggle button is visible|mission sidebar opens when clicking toggle|fullscreen mode expands" --workers=1 --reporter=line`: passed.
+- Vite dev server on `127.0.0.1:4204`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4204 npx playwright test e2e/CardChat.spec.ts --project=chromium --grep "switching AI mode to high" --workers=1 --reporter=line`: passed; the PR-only CI failure did not reproduce locally.
+- Vite dev server on `127.0.0.1:4205`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4205 npx playwright test e2e/network-deep.spec.ts --project=chromium --grep "shows endpoints stat" --workers=1 --reporter=line`: passed; the PR-only CI failure did not reproduce locally.
+- Vite dev server on `127.0.0.1:4206`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4206 npx playwright test e2e/marketplace-deep.spec.ts e2e/mission-regression.spec.ts e2e/mission-share.spec.ts --project=chromium --grep "type filter buttons are present|missions listing page loads|share channels are shown" --workers=1 --reporter=line`: passed; the sampled PR-only CI failures did not reproduce locally.
+- Vite dev server on `127.0.0.1:4207`, then `PLAYWRIGHT_BASE_URL=http://127.0.0.1:4207 npx playwright test e2e/deep-links-and-data-flow.spec.ts --project=mobile-chrome --grep "direct URL to /settings loads settings page" --workers=1 --reporter=line`: passed; the mobile CI failure did not reproduce locally.
+- `cd web && npm run build`: passed, including post-build vendor safety checks. Local build time was `442s`.
+
+Current readiness assessment:
+
+- Build and Deploy KC, Auth Drift, Accessibility, Visual Login PR Protection, CodeQL, Pre-Merge Build Gate, and the targeted navbar/logout/AI-Missions checks are green or locally fixed.
+- Claude Review is an external fork setup blocker until the Claude Code GitHub App is installed on `DavidDiaz0317/console`.
+- Generic Playwright remains red. Most remaining failures reproduce on fork `main`; the branch-caused AI Missions visibility regression is fixed locally and needs a fresh PR run after push.
+- The latest canary-only evidence remains run `28303928310`, classified as `live-rate-limit-data-loss` plus live runtime/resource failures; the workflow avoided the old noisy cascade by skipping heavier follow-up checks after semantic failure.
+- After the June 28 fetch, fork `main` is again behind upstream `kubestellar/console:main` by 3 commits (`8d4a427eb`, `f7dc64231`, `9ba01150c`). This PR branch is current with fork `main`, but a final upstream sync/rebase should be done before removing draft if the requirement is strict alignment with upstream `main`.
+
 ## Main Branch Note
 
 GitHub still records PR #48 as merged into `main` at `02b2dd52a44284aed273a19b8b5af35ab0f311d1`, but the current fork `main` now points at `c7371aa7c`, a merge of upstream `main` at `f1740da9c` plus the fork-private live/auth testing layer. Those two commits are not ancestors of each other.

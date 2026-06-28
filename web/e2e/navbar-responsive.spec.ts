@@ -189,7 +189,7 @@ test.describe('Navbar responsive layout', () => {
     await setupPage(page)
 
     const nav = page.locator('nav[data-tour="navbar"]')
-    const overflowContainer = nav.locator('.relative.\\32xl\\:hidden')
-    await expect(overflowContainer).toBeHidden()
+    const overflowButton = nav.getByTestId('navbar-overflow-btn')
+    await expect(overflowButton).toBeHidden()
   })
 })
