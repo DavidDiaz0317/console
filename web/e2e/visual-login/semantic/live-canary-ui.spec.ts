@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { attachEvidenceOnFailure } from '../../../harness/evidence/attachEvidence'
 import { installEvidenceCollectors } from '../../../harness/evidence/collectEvidence'
 import { collectK8sGroundTruth } from '../../../harness/groundtruth/collectK8sGroundTruth'
@@ -7,6 +7,7 @@ import {
 } from '../helpers/visualLoginAssertions'
 import {
   annotateLiveInvariant,
+  assertGroundtruthFields,
   assertLiveDashboardShell,
   assertLiveLayoutStable,
   assertNoForbiddenLiveUi,
@@ -17,7 +18,6 @@ import {
   gotoLiveCanaryRoute,
   liveCanaryUrl,
   liveRateLimitDataLossSkipReason,
-  readGroundtruthFieldNumbers,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -28,19 +28,6 @@ function readPositiveIntEnv(name: string, fallback: number) {
     throw new Error(`${name} must be a positive integer, got ${rawValue}`)
   }
   return value
-}
-
-async function expectGroundTruthField(page: Page, field: string, expected: number) {
-  await expect.poll(async () => {
-    const values = await readGroundtruthFieldNumbers(page, field)
-    const uniqueValues = [...new Set(values)]
-    if (values.length === 0) return `missing-or-unparseable:${field}`
-    if (uniqueValues.length > 1) return `duplicate-disagreement:${uniqueValues.join(',')}`
-    return uniqueValues[0] === expected ? 'ok' : `expected:${expected}:actual:${uniqueValues[0]}`
-  }, {
-    message: `data-groundtruth-field="${field}" should match live Kubernetes ground truth`,
-    timeout: 20_000,
-  }).toBe('ok')
 }
 
 const invariantIds = [
@@ -103,13 +90,15 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     await dismissOptionalLiveOverlays(page)
     await assertLiveDashboardShell(page, '/clusters?groundtruth=1')
     await assertNoForbiddenLiveUi(page)
-    await expectGroundTruthField(page, 'clusters-total', groundTruth.contexts.reachable)
-    await expectGroundTruthField(page, 'nodes-ready', groundTruth.nodes.ready)
-    await expectGroundTruthField(page, 'nodes-total', groundTruth.nodes.total)
-    await expectGroundTruthField(page, 'pods-total', groundTruth.pods.total)
-    await expectGroundTruthField(page, 'pods-running', groundTruth.pods.running)
-    await expectGroundTruthField(page, 'pods-pending', groundTruth.pods.pending)
-    await expectGroundTruthField(page, 'pods-crashloop', groundTruth.pods.crashLoopBackOff)
+    await assertGroundtruthFields(page, {
+      'clusters-total': groundTruth.contexts.reachable,
+      'nodes-ready': groundTruth.nodes.ready,
+      'nodes-total': groundTruth.nodes.total,
+      'pods-total': groundTruth.pods.total,
+      'pods-running': groundTruth.pods.running,
+      'pods-pending': groundTruth.pods.pending,
+      'pods-crashloop': groundTruth.pods.crashLoopBackOff,
+    }, '/clusters?groundtruth=1')
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
     await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], '/clusters?groundtruth=1')

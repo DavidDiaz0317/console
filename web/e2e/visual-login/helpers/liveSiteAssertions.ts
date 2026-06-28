@@ -191,7 +191,12 @@ async function seedPreauthenticatedLiveCanarySession(page: Page) {
 function liveRouteDelayMs(): number {
   const rawValue = process.env.LIVE_CANARY_ROUTE_DELAY_MS || '15000'
   const parsed = Number(rawValue)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+  const configuredDelay = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+  const rawMinimum = process.env.LIVE_CANARY_MIN_ROUTE_DELAY_MS
+    || (process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true' ? '15000' : '0')
+  const minimum = Number(rawMinimum)
+  const minimumDelay = Number.isFinite(minimum) && minimum > 0 ? minimum : 0
+  return Math.max(configuredDelay, minimumDelay)
 }
 
 async function paceLiveRoute(page: Page) {
@@ -744,12 +749,13 @@ export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 
       || (factScope === 'dashboard' && (endpointScope === 'clusters' || endpointScope === 'namespaces'))
     const retryAfterMs = (response: Response) => {
       const rawValue = response.headers.get('retry-after')
-      if (!rawValue) return 2_000
+      const jitterMs = Math.floor(Math.random() * 1_000)
+      if (!rawValue) return 2_000 + jitterMs
       const seconds = Number(rawValue)
-      if (Number.isFinite(seconds)) return Math.min(Math.max(seconds * 1_000, 1_000), 10_000)
+      if (Number.isFinite(seconds)) return Math.min(Math.max(seconds * 1_000, 1_000), 65_000) + jitterMs
       const dateMs = Date.parse(rawValue)
-      if (Number.isFinite(dateMs)) return Math.min(Math.max(dateMs - Date.now(), 1_000), 10_000)
-      return 2_000
+      if (Number.isFinite(dateMs)) return Math.min(Math.max(dateMs - Date.now(), 1_000), 65_000) + jitterMs
+      return 2_000 + jitterMs
     }
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 

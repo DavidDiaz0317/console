@@ -396,3 +396,73 @@ Recommended next action: keep PR #65 draft, fix or policy-exempt the broad gener
 - `Console Live Promote` dry run `28317185922` confirmed the private canary deployment became ready with that fix, then failed because the live deployer service account lacked `create` on the `pods/portforward` subresource. The live OKE `ks-console-ci-1` ClusterRole `console-live-deployer` was patched with `pods/portforward:create` and `pods/log:get,list` so CI can tunnel to the private canary and collect crash diagnostics.
 - `Console Live Promote` dry run `28317360070` then reached the signed-session smoke against the private canary. The smoke reached the dashboard and `/api/me` path, but failed early because it treated resource 403/502 console messages as an auth-session blocker. The follow-up narrows that smoke to auth/session invariants and leaves resource/runtime failures to the deeper live semantic checks.
 - `Console Live Promote` dry run `28317466991` passed private canary deployment, port-forward, auth boundary, and signed-session smoke, then failed in the live semantic route tests. The artifacts show a real live-data issue: groundtruth saw `3` contexts, `6` Ready nodes, `51` running pods, `16` namespaces, and `12` deployments, while the canary UI showed zero clusters on Dashboard and later rendered an infrastructure connection error from `/api/stellar/state` and `/api/kagent/status` `429` responses. The follow-up expands rate-limit classification to those startup/data-source endpoints and records visible infrastructure rate-limit screens so later route tests skip after the first core rate-limit failure instead of creating a cascade.
+
+## June 28 Canary-Only Reconfirmation
+
+Current branch state after fetching both remotes on June 28:
+
+- Branch: `codex/post-merge-canary-stabilization`
+- PR: `#65`, draft, open, mergeable
+- Local head before this report update: `7bc9beb3238153a1947b083c8f3e57e14fa744cb`
+- Fork `main`: `b3f07c524` after weekly auto-QA tuning update, so this branch is `1` commit behind fork `main` and `42` commits ahead.
+- Upstream `kubestellar/console:main`: `f51085fa4`; current fork `main` is `18` upstream commits behind and `8` fork-private commits ahead. This branch should not be considered aligned with the real upstream tip until the fork is explicitly synced again.
+
+Failure classification for the latest current-state review:
+
+| Area | Classification | Evidence | Handling |
+|---|---|---|---|
+| `Console Live Promote` private candidate path | Canary-critical | Run `28334869605` deployed `ghcr.io/daviddiaz0317/console:8358809068fd5c46bdc8bae2000f3012f9f94b9b` to private canary, verified image match, port-forwarded, passed private auth boundary, and passed signed-session smoke | Working; production was not promoted |
+| Candidate image build/publish | Candidate-image validation blocker only when a target SHA image is missing | PR Build and Deploy run `28334867481` built amd64/arm64 successfully but skipped merge/push on PR. Manual no-deploy build run `28316952896` published SHA image `8358809068fd5c46bdc8bae2000f3012f9f94b9b` | A manual `Build and Deploy KC` dispatch with `deploy_target=none` is still required to publish each branch HEAD image before canary validation |
+| Live semantic route failures | Real canary/product issues | Run `28334869605` groundtruth saw `3` contexts, `6` Ready nodes, `51` running pods, `16` namespaces, and `12` available deployments, while UI evidence showed missing route markers, Dashboard zero/no-cluster states, and later an infrastructure connection error from `/api/stellar/state` and `/api/kagent/status` `429` responses | Keep as blocking canary failures; do not update baselines or weaken assertions |
+| Route-delay configuration | Canary test misconfiguration | The run environment showed `LIVE_CANARY_ROUTE_DELAY_MS=3000`, even though the workflow default was documented as `15000` | Fixed by setting fork variable to `15000` and adding workflow/helper minimum guards so live canary runs cannot use less than `15000ms` route pacing |
+| Semantic failure cascade | Canary harness accuracy gap | The latest dry-run ran 10 live semantic tests and reported 9 failures after the first blocker, which obscured root cause and added unnecessary live-site load | Fixed by running the live semantic phase with `--max-failures=1`; browser matrix and adequacy already run only after semantic success |
+| Core `429` retry handling | Canary harness accuracy gap | `collectLiveApiFacts` retried once but capped `Retry-After` to 10 seconds, which was too short for a low-frequency 12-hour canary | Fixed in the test helper only: it now honors one `Retry-After` wait up to a normal 60-second window plus jitter before classifying the resource API as rate-limited |
+| Broad Playwright/mobile failures | Unrelated broad app test failures unless a failure maps to canary code | Current PR check rollup still has generic Playwright shards in progress/failing separately from the canary workflow | Out of scope for this canary-readiness slice unless they block candidate image creation or canary execution |
+| Claude Review | Fork/external setup noise | PR check still fails because Claude Code is not installed/configured on the fork | Out of scope for canary readiness |
+| Auth Drift | Not canary-blocking in current review | Latest PR rollup shows Hosted Demo, Localhost Login Dashboard, Local Login UI, and Fake OAuth passed | No action needed for this objective |
+
+Current answer to the core 429/fake-zero questions:
+
+- The latest artifacts do not prove the exact number of `/api/mcp/clusters` requests before the first 429 because only the final timed-out route evidence was uploaded under `web/test-results/evidence`. They do prove repeated app-origin calls during the cascade, including `/api/kagent/status` and `/api/stellar/state`, and they prove the UI reached settled missing/zero live-data states after 20-30 second hydration waits.
+- The earlier clean canary run `28303928310` showed the canary could initially hydrate `/clusters` and `/nodes` to the correct `3` clusters and `6` nodes, then fail on a core `/api/mcp/nodes` `429`. That makes the blocker a real live API pressure/data-loss issue, not only a selector or screenshot-baseline issue.
+- The latest run `28334869605` showed an even earlier settled Dashboard/route marker failure before the explicit 429 classification was written. The harness now stops after the first semantic blocker and records shared route evidence for the `/clusters?groundtruth=1` smoke, so the next run should produce one actionable blocker instead of nine secondary failures.
+- Product code rate limits were not globally disabled or raised. The only rate-limit behavior changed here is canary/test-side pacing and one Retry-After-aware retry in the Playwright API fact collector.
+
+Updated canary-only validation command after this change:
+
+```bash
+# first publish the branch image, if HEAD is not already in GHCR
+gh workflow run "Build and Deploy KC" \
+  --repo DavidDiaz0317/console \
+  --ref codex/post-merge-canary-stabilization \
+  -f deploy_target=none
+
+# then test the explicit candidate SHA without public promotion
+gh workflow run "Console Live Promote" \
+  --repo DavidDiaz0317/console \
+  --ref codex/post-merge-canary-stabilization \
+  -f candidate_sha=<HEAD_SHA> \
+  -f promoteProduction=false
+```
+
+Expected next canary result:
+
+- Candidate image is explicit in the workflow summary/logs.
+- Private `kc-live-canary` is deployed and tested through port-forward.
+- Public `console-live` remains unchanged because `promoteProduction=false`.
+- Semantic checks run serially with at least `15000ms` route pacing.
+- If the live data issue remains, the run stops on the first semantic blocker and uploads one clear `console-live-promote-evidence` artifact.
+
+Local validation after the June 28 pacing/cascade update:
+
+- `git diff --check`: passed.
+- `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
+- `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 20/20 tests.
+- `node --check web/harness/scripts/compareBrowserMatrix.cjs`: passed.
+- PyYAML parse of `.github/workflows/console-live-promote.yml` and `.github/workflows/console-live-macos-canary.yml`: passed.
+- `cd web && npx eslint e2e/visual-login/helpers/liveSiteAssertions.ts e2e/visual-login/semantic/live-canary-ui.spec.ts`: passed.
+- `cd web && npx eslint "e2e/visual-login/**/*.ts" "harness/**/*.ts"`: passed.
+- `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list`: passed, 12 tests listed.
+- `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list`: passed, 3 tests listed.
+- `cd web && npx playwright test --config e2e/visual-login/macos-popup.config.ts --list`: passed, 1 test listed.
+- `cd web && npm run build`: passed, including post-build vendor safety checks.

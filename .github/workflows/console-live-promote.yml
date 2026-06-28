@@ -56,7 +56,9 @@ env:
   LIVE_FIXTURE_NAMESPACE: ${{ vars.LIVE_FIXTURE_NAMESPACE || 'ks-live-ui-fixtures' }}
   LIVE_SITE_AI_AUDIT: ${{ vars.LIVE_SITE_AI_AUDIT || 'off' }}
   LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '15000' }}
+  LIVE_CANARY_MIN_ROUTE_DELAY_MS: '15000'
   LIVE_CANARY_PHASE_COOLDOWN_MS: ${{ vars.LIVE_CANARY_PHASE_COOLDOWN_MS || '90000' }}
+  LIVE_CANARY_MIN_PHASE_COOLDOWN_MS: '90000'
   CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ vars.CONSOLE_LIVE_TEST_SESSION_COUNT || '80' }}
   CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || vars.CONSOLE_LIVE_ALLOWED_GITHUB_LOGINS || 'DavidDiaz0317' }}
   CONSOLE_LIVE_ADMIN_GITHUB_LOGINS: ${{ secrets.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || vars.CONSOLE_LIVE_ADMIN_GITHUB_LOGINS || 'DavidDiaz0317' }}
@@ -77,6 +79,35 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Normalize live canary pacing
+        shell: bash
+        run: |
+          set -euo pipefail
+          normalize_ms() {
+            local raw="$1"
+            local minimum="$2"
+            local label="$3"
+            if ! [[ "$raw" =~ ^[0-9]+$ ]]; then
+              echo "$minimum"
+              echo "${label}=${minimum} (defaulted from non-numeric '${raw}')" >> "$GITHUB_STEP_SUMMARY"
+              return
+            fi
+            if [ "$raw" -lt "$minimum" ]; then
+              echo "$minimum"
+              echo "${label}=${minimum} (raised from ${raw} to protect the 12-hour live target)" >> "$GITHUB_STEP_SUMMARY"
+              return
+            fi
+            echo "$raw"
+            echo "${label}=${raw}" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          route_delay="$(normalize_ms "${LIVE_CANARY_ROUTE_DELAY_MS:-}" "$LIVE_CANARY_MIN_ROUTE_DELAY_MS" LIVE_CANARY_ROUTE_DELAY_MS)"
+          phase_cooldown="$(normalize_ms "${LIVE_CANARY_PHASE_COOLDOWN_MS:-}" "$LIVE_CANARY_MIN_PHASE_COOLDOWN_MS" LIVE_CANARY_PHASE_COOLDOWN_MS)"
+          {
+            echo "LIVE_CANARY_ROUTE_DELAY_MS=$route_delay"
+            echo "LIVE_CANARY_PHASE_COOLDOWN_MS=$phase_cooldown"
+          } >> "$GITHUB_ENV"
 
       - name: Set up kubectl
         uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
@@ -586,6 +617,7 @@ jobs:
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
           LIVE_CANARY_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_ROUTE_DELAY_MS }}
+          LIVE_CANARY_MIN_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_MIN_ROUTE_DELAY_MS }}
         run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "production live" --workers=1
 
       - name: Roll back live on session-smoke failure
@@ -621,7 +653,8 @@ jobs:
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
           LIVE_CANARY_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_ROUTE_DELAY_MS }}
-        run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site --grep-invert "production live" --workers=1
+          LIVE_CANARY_MIN_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_MIN_ROUTE_DELAY_MS }}
+        run: npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep @live-site --grep-invert "production live" --workers=1 --max-failures=1
 
       - name: Cool down before browser matrix
         if: ${{ !cancelled() && steps.canary_smoke.outcome == 'success' && steps.session_smoke.outcome == 'success' && steps.live_semantic.outcome == 'success' }}
@@ -654,6 +687,7 @@ jobs:
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
           LIVE_CANARY_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_ROUTE_DELAY_MS }}
+          LIVE_CANARY_MIN_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_MIN_ROUTE_DELAY_MS }}
         shell: bash
         run: |
           set -euo pipefail
@@ -688,6 +722,7 @@ jobs:
             web/e2e/visual-login/test-results/evidence/
             web/e2e/visual-login/test-results/visual-login-intensive/
             ${{ runner.temp }}/console-live/live-rollback.log
+            ${{ runner.temp }}/console-live/live-rate-limit-data-loss.json
             ${{ runner.temp }}/console-live/canary-port-forward.log
           if-no-files-found: warn
           retention-days: 14
