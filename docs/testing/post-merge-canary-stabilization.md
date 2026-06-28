@@ -531,6 +531,7 @@ Next required proof: publish the new branch SHA image, then run `Console Live Pr
 - The workflow used `TEST_TARGET_KIND=private-canary` and `TEST_CONSOLE_URL=http://127.0.0.1:18080`. Production deploy, production verify, and production rollback steps were skipped.
 - Private canary rollout, port-forward, auth-boundary, and signed-session smoke passed.
 - `/clusters?groundtruth=1` now calls `/api/mcp/clusters`: the API returned `200` with `3` clusters, and route evidence showed UI values matching API and Kubernetes groundtruth (`3` clusters, `6` total/Ready nodes, `51` pods, `51` running pods, `0` pending pods, `0` crashloop pods).
+- Trace inspection for run `28338777287` found `78` app API requests total, exactly `3` `/api/mcp/clusters` requests, all `200`, and `0` `429` responses. That means the latest blocker is not a core rate-limit failure from the canary harness.
 - The first remaining canary blocker is now a real UI/runtime issue: visible overlap on the Clusters page around the backend-unavailable/offline panel, including `Unhealthy (` over `Backend unavailable`, `Offline (` over `Restart`, and disabled cluster actions overlapping the explanatory backend-unavailable text.
 - The evidence screenshot path is `e2e/visual-login/test-results/visual-login-intensive/semantic-live-canary-ui-li-d32fc-ive-canary-ui-layout-stable-semantic-groundtruth/test-failed-1.png` in artifact `console-live-promote-evidence`.
 
@@ -539,11 +540,11 @@ Follow-up classifier fix: the first failure-issue run updated `#54` as `live-rat
 - `node --check .github/scripts/console-live-promote-failure-issue.cjs`: passed.
 - `node --test .github/scripts/console-live-promote-failure-issue.test.cjs`: passed, 21/21 tests.
 
-Current PR red-check classification after pushing `2a42ac765b2fb28326b6cb7a1ff78f5a0222b58b`:
+Current PR red-check classification after pushing `d0f00e8ae6e828e623f3fdb15a31dfb5735f6de2`:
 
 | Check | Classification | Evidence | Canary action |
 |---|---|---|---|
-| Claude Code Review / `claude-review` | Fork setup noise | Run `28338930523` failed because the Claude Code GitHub App is not installed on `DavidDiaz0317/console` | Ignore for canary readiness |
-| Nil Safety / `pr-check` | Unrelated broad backend/test debt | Run `28338930521` reported nilaway findings in `pkg/api/handlers/workloads/cluster_groups_test.go` and `pkg/stellar/solver/solver.go`, outside this branch's live canary/frontend fetch changes | Do not chase in this canary slice |
-| Update Mechanism Guard / `Update Mechanism Tests` | Workflow/path configuration debt unrelated to canary | Run `28338930517` greps for missing `pkg/agent/updater_*` files and fails source invariants before exercising canary code | Do not chase in this canary slice |
+| Claude Code Review / `claude-review` | Fork setup noise | Run `28339060803` failed because the Claude Code GitHub App is not installed on `DavidDiaz0317/console` | Ignore for canary readiness |
+| Nil Safety / `pr-check` | Unrelated broad backend/test debt | Run `28339060811` reported nilaway findings in `pkg/api/handlers/workloads/cluster_groups_test.go` and `pkg/stellar/solver/solver.go`, outside this branch's live canary/frontend fetch changes | Do not chase in this canary slice |
+| Update Mechanism Guard / `Update Mechanism Tests` | Workflow/path configuration debt unrelated to canary | Run `28339060807` greps for missing `pkg/agent/updater_*` files and fails source invariants before exercising canary code | Do not chase in this canary slice |
 | Build and Deploy KC PR matrix | Candidate-image validation is already satisfied by manual dispatch | Run `28338475335` already published the explicit SHA image used by the private canary; current PR matrix jobs are not the source of canary evidence | Watch only if future candidate image dispatch fails |
