@@ -65,6 +65,7 @@ Remote validation started after pushing `2f5d340e1`:
 - Follow-up fix: private canary Helm installs no longer use `--atomic`; on install/readiness failure the workflow prints Helm status, canary resources, Deployment/pod descriptions, pod logs, and recent namespace events before the always-run cleanup step removes the canary release.
 - `Console Live Promote` workflow-dispatch run `28316014287` used the same candidate image with diagnostic workflow commit `29919a068`. It confirmed the canary image pulled successfully and the pod was crash-looping, but the namespace-scoped deployer cannot read `pods/log`. The rendered canary values had `persistence.enabled=false` while `DATABASE_PATH` still pointed to `/app/data/console.db`; with the chart's read-only root filesystem, that path is not writable without the persistent volume. Public production was not touched.
 - Follow-up fix: private canary releases now set `database.sqlitePath=/tmp/console-live-canary/console.db`, using the chart's existing writable `/tmp` `emptyDir` while keeping canary persistence disabled.
+- `Console Live Promote` workflow-dispatch run `28316305801` still found an immediate canary container exit after the writable SQLite path fix. The deployer can describe pods but cannot read `pods/log`, so the chart now sets `terminationMessagePolicy=FallbackToLogsOnError` on the console container. This should expose startup stderr through `kubectl describe pod` in the next canary run without broadening the deployer's RBAC.
 
 ## Current June 27 Status
 
