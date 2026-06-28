@@ -466,3 +466,30 @@ Local validation after the June 28 pacing/cascade update:
 - `cd web && npx playwright test --config e2e/visual-login/browser-matrix.config.ts --list`: passed, 3 tests listed.
 - `cd web && npx playwright test --config e2e/visual-login/macos-popup.config.ts --list`: passed, 1 test listed.
 - `cd web && npm run build`: passed, including post-build vendor safety checks.
+
+## June 28 Current-Head Private Canary Result
+
+Current-head image validation after the pacing/cascade update:
+
+- `Build and Deploy KC` workflow-dispatch run `28335714968` published `ghcr.io/daviddiaz0317/console:01650012ffc50fdf2f463aab274e49d6f84cec05`.
+- `Console Live Promote` workflow-dispatch run `28336010987` tested that explicit candidate image with `promoteProduction=false`.
+- Production was not deployed or promoted. The run deployed the candidate to the private canary namespace, port-forwarded to it, passed private auth-boundary checks, and passed signed-session smoke.
+- The run normalized safe live pacing to `LIVE_CANARY_ROUTE_DELAY_MS=15000` and `LIVE_CANARY_PHASE_COOLDOWN_MS=90000`.
+- The semantic phase stopped after the first blocker as intended. Browser matrix, adequacy, and later route tests were skipped.
+
+The first blocker is now isolated:
+
+| Source | Observed |
+|---|---|
+| Kubernetes groundtruth | `3` reachable contexts, `6` Ready nodes, `51` running pods, `16` namespaces, `12` available deployments |
+| Private canary UI at `/clusters?groundtruth=1` | Authenticated page loaded, but the cluster stats surface showed `0` clusters, `0` healthy, `0` nodes, and `0` pods |
+| Marker state | The page did not expose the expected `data-groundtruth-field` values, so the issue was reported as missing markers instead of the more useful count mismatch |
+
+Follow-up in this branch adds behavior-neutral semantic markers to the shared stats surface and to the Dashboard/Clusters stat values. The next dry-run canary should classify the same product issue as a concrete UI/API/groundtruth mismatch, for example expected `clusters-total=3` but UI rendered `0`, instead of failing first on absent markers.
+
+Additional local validation for the semantic marker follow-up:
+
+- `cd web && npm run build`: passed, including TypeScript and post-build vendor safety checks.
+- `cd web && npx vitest run src/components/ui/StatsOverview.test.tsx`: passed, 7/7 tests.
+- `cd web && npx eslint src/components/ui/StatsOverview.tsx src/components/ui/StatsOverview.test.tsx src/components/clusters/Clusters.tsx src/components/dashboard/DashboardState.ts src/hooks/useUniversalStats.ts e2e/visual-login/semantic/live-canary-ui.spec.ts e2e/visual-login/helpers/liveSiteAssertions.ts`: passed with existing warnings only.
+- `cd web && npx playwright test --config e2e/visual-login/intensive.config.ts --project=semantic-groundtruth --grep "@live-site" --list`: passed, 12 tests listed.
