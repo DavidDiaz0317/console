@@ -121,7 +121,7 @@ The only branch-caused generic Playwright failure identified after the rebase wa
 
 ## June 28 PR #65 Status
 
-Latest pushed PR head before the compact AI Missions follow-up: `2db35679b97ba34385cfab336636284d4d68e7ac`. Latest local validation/follow-up commit: `FINAL_SHA_TBD`.
+Latest pushed PR head before the compact AI Missions follow-up: `2db35679b97ba34385cfab336636284d4d68e7ac`. Compact AI Missions source/evidence commit: `ea91bc939`.
 
 Remote evidence for `2db35679b97ba34385cfab336636284d4d68e7ac`:
 
