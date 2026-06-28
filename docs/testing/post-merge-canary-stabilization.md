@@ -385,3 +385,11 @@ Remaining blockers:
 - The live canary dry run still finds real live-site/API pressure issues: a live `502` runtime/resource failure plus a core `/api/mcp/nodes` `429` classified as `live-rate-limit-data-loss`. This is no longer a noisy fake-zero cascade; it remains a real live product/infrastructure blocker tracked by issue `#54`.
 
 Recommended next action: keep PR #65 draft, fix or policy-exempt the broad generic Playwright base failures separately, install/configure the Claude app if that check remains required, and continue live-site product/infrastructure work from issue `#54`.
+
+## June 28 Private Canary Follow-Up
+
+- `Build and Deploy KC` workflow-dispatch run `28315504674` published branch image `ghcr.io/daviddiaz0317/console:4d0524f65a6b52f44841ff292d66f4f02e8508b5`.
+- `Console Live Promote` dry runs `28315735307`, `28316014287`, `28316305801`, and `28316600500` all kept production untouched and failed before live semantic tests because the private canary deployment could not become ready.
+- The first failures showed the canary should reuse the existing live service account/RBAC instead of creating cluster-scoped RBAC from the deploy workflow.
+- The next failures showed the canary also needed writable runtime state while persistence is disabled. SQLite was moved to `/tmp/console-live-canary/console.db`; the remaining crash was the watcher process exiting after the backend started.
+- Run `28316600500` exposed the crash through `terminationMessagePolicy: FallbackToLogsOnError`: backend startup and OAuth configuration completed, then `WATCHDOG EXITED code=1`. The current follow-up makes the watcher runtime metadata path configurable through `WATCHDOG_RUNTIME_FILE` and points the private canary at `/tmp/kc-watcher-runtime.env`.

@@ -303,6 +303,8 @@ jobs:
               value: "false"
             - name: CLUSTER_BACKED_MODE
               value: "true"
+            - name: WATCHDOG_RUNTIME_FILE
+              value: /tmp/kc-watcher-runtime.env
             - name: CONSOLE_LIVE_TEST_USER_BOOTSTRAP
               value: "true"
             - name: CONSOLE_LIVE_TEST_USER_ID
