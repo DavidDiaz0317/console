@@ -147,9 +147,12 @@ export async function assertLocatorInsideViewport(page: Page, locator: Locator, 
 }
 
 export async function assertNoSevereOverlap(page: Page, locator: Locator) {
-  const boxes = await locator.evaluateAll(elements => elements.map((element) => {
+  const boxes = await locator.evaluateAll(elements => elements.map((element, index) => {
     const rect = element.getBoundingClientRect()
-    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+    const contains = elements
+      .map((other, otherIndex) => index !== otherIndex && element.contains(other) ? otherIndex : -1)
+      .filter(otherIndex => otherIndex >= 0)
+    return { index, x: rect.x, y: rect.y, width: rect.width, height: rect.height, contains }
   }).filter((box) => {
     const meaningfulSize = box.width > 4 && box.height > 4
     const inViewport = box.x + box.width > 0
@@ -163,6 +166,7 @@ export async function assertNoSevereOverlap(page: Page, locator: Locator) {
     for (let j = i + 1; j < boxes.length; j += 1) {
       const a = boxes[i]
       const b = boxes[j]
+      if (a.contains.includes(b.index) || b.contains.includes(a.index)) continue
       const overlapWidth = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x))
       const overlapHeight = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y))
       const overlapArea = overlapWidth * overlapHeight
