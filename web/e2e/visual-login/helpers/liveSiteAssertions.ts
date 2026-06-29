@@ -1187,13 +1187,13 @@ export async function assertNoPositiveLiveCountContradictions(page: Page, route:
     {
       field: 'clusters',
       value: expected.clusters ?? expected['dashboard-clusters-total'] ?? expected['clusters-total'],
-      pattern: /\b(?:0|no)\s+clusters?\s+(?:detected|found)\b/i,
+      pattern: /\b(?:0|no)[^\S\r\n]+clusters?[^\S\r\n]+(?:detected|found)\b/i,
       description: 'UI says no clusters are detected while live clusters exist',
     },
     {
       field: 'namespaces',
       value: expected.namespaces ?? expected['dashboard-namespaces-total'] ?? expected['namespaces-total'],
-      pattern: /\b(?:0|no)\s+namespaces?\b/i,
+      pattern: /\b(?:0|no)[^\S\r\n]+namespaces?\b/i,
       description: 'UI says no namespaces exist while live namespaces exist',
     },
     {
@@ -1201,7 +1201,7 @@ export async function assertNoPositiveLiveCountContradictions(page: Page, route:
       value: route === '/deployments'
         ? expected.deployments ?? expected['deployments-total']
         : expected['dashboard-deployments-total'] ?? null,
-      pattern: /\b(?:0\s+deployments|no deployments found)\b/i,
+      pattern: /\b(?:0[^\S\r\n]+deployments|no[^\S\r\n]+deployments[^\S\r\n]+found)\b/i,
       description: 'UI says no deployments exist while live deployments exist',
     },
   ]
