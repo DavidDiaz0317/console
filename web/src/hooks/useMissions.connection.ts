@@ -67,7 +67,10 @@ export function createMissionConnectionApi(
   }
 
   const ensureConnection = () => {
-    if (getDemoMode() || isLocalAgentSuppressed() || areOptionalPollersSuppressed()) {
+    if (getDemoMode()) {
+      return Promise.reject(new Error('Agent unavailable in demo mode'))
+    }
+    if (isLocalAgentSuppressed() || areOptionalPollersSuppressed()) {
       return Promise.reject(new Error('Agent unavailable in this deployment'))
     }
     if (state.unmountedRef.current) {
