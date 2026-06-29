@@ -90,6 +90,44 @@ test('classifies route groundtruth field mismatches as UI/API evidence', () => {
   }), 'ui-api-mismatch')
 })
 
+test('infers route stat mismatches without generic route-failure noise', () => {
+  const failures = _test.inferLiveUiFailuresFromText([
+    'Error: live /deployments stats must match Kubernetes ground truth',
+    '@invariant:live-core-pages-render-real-data',
+  ].join('\n'))
+
+  assert.equal(failures.routeFailures.length, 0)
+  assert.deepEqual(failures.apiUiMismatches, [{
+    route: '/deployments',
+    field: 'not parsed from log',
+    expected: 'see evidence artifact',
+    actual: 'see evidence artifact',
+    source: 'log',
+  }])
+  assert.equal(_test.classifyFailure({
+    failures: [],
+    evidenceItems: [],
+    liveUiFailures: failures,
+    logText: '',
+  }), 'ui-api-mismatch')
+})
+
+test('only browser failures receive the browser-matrix label', () => {
+  assert.deepEqual(_test.labelsForFailureType('ui-api-mismatch'), [
+    'console-live',
+    'live-canary',
+    'test-failure',
+    'needs-fix',
+  ])
+  assert.deepEqual(_test.labelsForFailureType('safari-z-index'), [
+    'console-live',
+    'live-canary',
+    'test-failure',
+    'needs-fix',
+    'browser-matrix',
+  ])
+})
+
 test('classifies rate limits as live data loss', () => {
   assert.equal(classify({
     networkClassifications: [{

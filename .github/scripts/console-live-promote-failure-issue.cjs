@@ -246,6 +246,7 @@ function inferLiveUiFailuresFromText(textValue) {
     unexpectedRequestFailures: [],
     dashboardMismatches: [],
     routeFailures: [],
+    apiUiMismatches: [],
     interactiveFailures: [],
     fixtureMismatches: [],
     browserMatrixFailures: [],
@@ -269,7 +270,16 @@ function inferLiveUiFailuresFromText(textValue) {
     }
   }
 
-  if (/live \/ stats must match kubernetes ground truth|live dashboard stats must match|live-dashboard-groundtruth-match/i.test(text)) {
+  const routeStatsMismatch = text.match(/live\s+(\/[^\s]*)\s+stats must match kubernetes ground truth/i)
+  if (routeStatsMismatch && routeStatsMismatch[1] !== '/') {
+    failures.apiUiMismatches.push({
+      route: routeStatsMismatch[1],
+      field: 'not parsed from log',
+      expected: 'see evidence artifact',
+      actual: 'see evidence artifact',
+      source: 'log',
+    })
+  } else if (/live \/ stats must match kubernetes ground truth|live dashboard stats must match|live-dashboard-groundtruth-match/i.test(text)) {
     failures.dashboardMismatches.push({
       field: 'not parsed from log',
       expected: 'see evidence artifact',
@@ -278,7 +288,7 @@ function inferLiveUiFailuresFromText(textValue) {
     })
   }
 
-  if (/live-core-pages-render-real-data|must render expected live-data markers/i.test(text)) {
+  if (!routeStatsMismatch && /live-core-pages-render-real-data|must render expected live-data markers/i.test(text)) {
     failures.routeFailures.push({
       route: 'not parsed from log',
       reason: 'core page did not render expected live-data markers',
@@ -741,6 +751,14 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
+function labelsForFailureType(failureType) {
+  const labels = ['console-live', 'live-canary', 'test-failure', 'needs-fix']
+  if (/^(auth-boundary|live-network-error|safari-z-index|macos-popup-clipped|macos-top-layer-hidden|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)) {
+    labels.push('browser-matrix')
+  }
+  return labels
+}
+
 function summarizeNetworkEvidence(evidenceItems, liveUiFailures = {}) {
   const requestCountsByEndpoint = {}
   for (const item of evidenceItems) {
@@ -1045,6 +1063,7 @@ module.exports = async ({ github, context, core }) => {
   const browserMatrixFailure = /^(auth-boundary|live-network-error|safari-z-index|macos-popup-clipped|macos-top-layer-hidden|browser-layout-drift|browser-semantic-field-mismatch|browser-content-missing|browser-interaction-broken|browser-visual-baseline)$/.test(failureType)
   const titlePrefix = browserMatrixFailure ? '[console-live][browser-matrix]' : '[console-live][canary-blocked]'
   const title = `${titlePrefix}[${failureType}] ${shortFailure(failureType, failures)}`
+  const issueLabels = labelsForFailureType(failureType)
 
   let body = buildBody({
     marker,
@@ -1095,7 +1114,7 @@ module.exports = async ({ github, context, core }) => {
     ].join('\n')
 
     if (existing.state === 'open') {
-      await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body })
+      await github.rest.issues.update({ owner, repo, issue_number: existing.number, title, body, labels: issueLabels })
       const duplicates = openMatchingIssues.filter((issue) => issue.number !== existing.number)
       for (const duplicate of duplicates) {
         await github.rest.issues.createComment({
@@ -1151,13 +1170,15 @@ module.exports = async ({ github, context, core }) => {
     repo,
     title,
     body,
-    labels: Object.keys(LABELS),
+    labels: issueLabels,
   })
   core.info(`Created console live canary failure issue #${created.data.number}.`)
 }
 
 module.exports._test = {
   classifyFailure,
+  inferLiveUiFailuresFromText,
+  labelsForFailureType,
   liveFailuresFromRouteReports,
   parseImageState,
   selectExistingIssue,
