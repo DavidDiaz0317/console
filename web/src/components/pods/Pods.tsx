@@ -173,6 +173,7 @@ export function Pods() {
     const uniqueIssuePods = new Set(filteredPodIssues.map(p => `${p.cluster}/${p.namespace}/${p.name}`))
     const issueCount = filteredPodIssues.length
     const pendingCount = filteredPodIssues.filter(p => p.reason === 'Pending' || p.status === 'Pending').length
+    const crashLoopCount = filteredPodIssues.filter(p => /crashloop|crash loop/i.test([p.reason, p.status].filter(Boolean).join(' '))).length
     const restartCount = filteredPodIssues.filter(p => (p.restarts || 0) > 5).length
     const clusterCount = visibleClusters.length
 
@@ -181,6 +182,7 @@ export function Pods() {
       healthy: Math.max(0, totalPods - uniqueIssuePods.size),
       issues: issueCount,
       pending: pendingCount,
+      crashloop: crashLoopCount,
       restarts: restartCount,
       clusters: clusterCount
     }
@@ -190,7 +192,18 @@ export function Pods() {
   const getDashboardStatValue = (blockId: string): StatBlockValue => {
     switch (blockId) {
       case 'total_pods':
-        return { value: stats.totalPods, sublabel: 'total pods', onClick: () => drillToAllPods(), isClickable: stats.totalPods > 0 }
+        return {
+          value: stats.totalPods,
+          sublabel: 'total pods',
+          onClick: () => drillToAllPods(),
+          isClickable: stats.totalPods > 0,
+          groundtruthFields: {
+            'pods-total': stats.totalPods,
+            'pods-running': stats.healthy,
+            'pods-pending': stats.pending,
+            'pods-crashloop': stats.crashloop,
+          },
+        }
       case 'healthy':
         return { value: stats.healthy, sublabel: 'healthy pods', onClick: () => drillToAllPods('healthy'), isClickable: stats.healthy > 0 }
       case 'issues':

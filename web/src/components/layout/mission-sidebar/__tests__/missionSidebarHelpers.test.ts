@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Mission } from '../../../../hooks/useMissions'
 import type { Resolution } from '../../../../hooks/useResolutions'
-import type { MissionExport } from '../../../../lib/missions/types'
 import {
   handleApplyResolution,
   handleRollback,

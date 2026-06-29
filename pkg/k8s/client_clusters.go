@@ -26,6 +26,7 @@ type ClusterInfo struct {
 	NeverConnected bool   `json:"neverConnected,omitempty"` // true if cluster failed every health probe since startup
 	Source         string `json:"source,omitempty"`
 	NodeCount      int    `json:"nodeCount,omitempty"`
+	ReadyNodes     int    `json:"readyNodes,omitempty"`
 	PodCount       int    `json:"podCount,omitempty"`
 	IsCurrent      bool   `json:"isCurrent,omitempty"`
 }

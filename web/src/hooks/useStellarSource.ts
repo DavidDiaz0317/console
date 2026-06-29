@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getNextBatchTime, resolveStellarBatchIntervalMs } from '../components/stellar/lib/time'
 import { STORAGE_KEY_STELLAR_BATCH_INTERVAL_MS } from '../lib/constants/storage'
+import { areOptionalPollersSuppressed } from '../lib/constants/network'
 import { safeGetItem, safeSetItem } from '../lib/utils/localStorage'
 import { stellarApi } from '../services/stellar'
 import type { ProviderSession, StellarAction, StellarActivity, StellarNotification, StellarObservation, StellarOperationalState, StellarSolve, StellarSolveProgress, StellarTask, StellarWatch } from '../types/stellar'
@@ -124,6 +125,12 @@ export function useStellarSource() {
   }, [batchIntervalMs])
 
   const refreshState = useCallback(async () => {
+    if (areOptionalPollersSuppressed()) {
+      setConnectionError(null)
+      setIsConnected(false)
+      return
+    }
+
     const results = await Promise.allSettled([
       stellarApi.getState(),
       stellarApi.getNotifications(STELLAR_DEFAULT_FETCH_LIMIT, true),
@@ -184,6 +191,14 @@ export function useStellarSource() {
   }, [refreshBatch])
 
   const connectSSE = useCallback(() => {
+    if (areOptionalPollersSuppressed()) {
+      esRef.current?.close()
+      esRef.current = null
+      setIsConnected(false)
+      setConnectionError(null)
+      return
+    }
+
     esRef.current?.close()
     const es = new EventSource('/api/stellar/stream', { withCredentials: true })
     const on = <T,>(eventName: string, handler: (payload: T) => void) => {
@@ -296,6 +311,8 @@ export function useStellarSource() {
     reconnectRef.current = connectSSE
   }, [connectSSE])
   useEffect(() => {
+    if (areOptionalPollersSuppressed()) return
+
     if (batchTimeoutRef.current) clearTimeout(batchTimeoutRef.current)
     const delayMs = Math.max(0, nextBatchAtMs - Date.now())
     batchTimeoutRef.current = setTimeout(() => { void refreshBatch() }, delayMs)
@@ -306,6 +323,11 @@ export function useStellarSource() {
     }
   }, [nextBatchAtMs, refreshBatch])
   useEffect(() => {
+    if (areOptionalPollersSuppressed()) {
+      esRef.current?.close()
+      return
+    }
+
     const waitForToken = () => new Promise<void>(resolve => {
       if (hasStellarAuthCredentials()) {
         resolve()

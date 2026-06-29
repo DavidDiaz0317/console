@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import type { ReactNode, ButtonHTMLAttributes } from 'react'
 import type { StatBlockConfig } from './StatsBlockDefinitions'
+import type { StatBlockValue } from './StatsOverview'
 
 vi.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: () => {} },
@@ -59,7 +60,7 @@ vi.mock('./StatsConfig', () => ({
 
 import { StatsOverview } from './StatsOverview'
 
-function renderStatsOverview(block: StatBlockConfig, statValue: { value: string | number; sublabel?: string; progressValue?: number; max?: number }) {
+function renderStatsOverview(block: StatBlockConfig, statValue: StatBlockValue) {
   mockBlocks = [block]
   return render(
     <StatsOverview
@@ -144,5 +145,22 @@ describe('StatsOverview', () => {
     expect(block.className).toContain('bg-card')
     expect(block.className).toContain('text-card-foreground')
     expect(block.className).toContain('border-border/50')
+  })
+
+  it('renders hidden groundtruth fields for live canary checks', () => {
+    const { container } = renderStatsOverview(
+      { id: 'nodes', name: 'Nodes', icon: 'Box', visible: true, color: 'cyan' },
+      {
+        value: 6,
+        sublabel: 'total nodes',
+        groundtruthFields: {
+          'nodes-total': 6,
+          'nodes-ready': 6,
+        },
+      },
+    )
+
+    expect(container.querySelector('[data-groundtruth-field="nodes-total"]')?.textContent).toBe('6')
+    expect(container.querySelector('[data-groundtruth-field="nodes-ready"]')?.textContent).toBe('6')
   })
 })

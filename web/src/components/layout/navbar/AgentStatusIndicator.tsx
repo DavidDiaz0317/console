@@ -21,6 +21,7 @@ import {
   TOAST_DISMISS_MS,
   LOCAL_AGENT_HTTP_URL,
   BACKEND_HEALTH_CHECK_TIMEOUT_MS,
+  isLocalAgentSuppressed,
 } from '../../../lib/constants/network'
 import { agentFetch } from '@/hooks/mcp/shared'
 import type { AgentInfo } from '../../../types/agent'
@@ -70,6 +71,8 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
   // Fetch agents from kc-agent health endpoint (works even in demo mode
   // when the WebSocket is not connected)
   const fetchAgentsFromHealth = async () => {
+    if (isLocalAgentSuppressed()) return
+
     setIsDiscoveringAgents(true)
     try {
       const res = await agentFetch(`${LOCAL_AGENT_HTTP_URL}/health`, {
@@ -246,7 +249,9 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
   // Uses stabilized status values to prevent color flashes during navigation.
   // showDemoStyle is sticky: stays true after demo toggle until agent connects.
   const showAsDemoMode = isDemoMode || showDemoStyle
-  const isClusterBacked = isInClusterMode && !showAsDemoMode
+  const hasBackendOnlyLiveConnection =
+    isLocalAgentSuppressed() && isBackendConnected && backendStatus === 'connected'
+  const isClusterBacked = (isInClusterMode || hasBackendOnlyLiveConnection) && !showAsDemoMode
   const systemHealthTooltip = [dashboardHealth.message, ...dashboardHealth.details].join('\n')
 
   // Backend health affects the indicator when agent is connected (but not in demo mode)
@@ -296,7 +301,7 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
             Icon: Wifi,
             title: systemHealthTooltip,
           }
-        : stableConnected
+        : stableConnected || hasBackendOnlyLiveConnection
           ? {
               bg: isLiveMode
                 ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'

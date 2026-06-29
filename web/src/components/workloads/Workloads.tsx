@@ -22,6 +22,7 @@ import { PortalTooltip } from '../cards/llmd/shared/PortalTooltip'
 import { WorkloadImportDialog } from '../cards/WorkloadImportDialog'
 import { ConfirmDialog } from '../../lib/modals'
 import type { Workload } from '../cards/WorkloadDeployment'
+import { isLocalAgentSuppressed } from '../../lib/constants'
 
 const WORKLOADS_CARDS_KEY = 'kubestellar-workloads-cards'
 const IMPORTED_WORKLOAD_CLUSTER = 'Imported'
@@ -112,7 +113,7 @@ export function Workloads() {
   const isRefreshing = podIssuesRefreshing || deploymentIssuesRefreshing || deploymentsRefreshing
   // Show skeletons when loading with no data OR when agent is offline and demo mode is OFF OR mode switching
   const isAgentOffline = agentStatus === 'disconnected'
-  const forceSkeletonForOffline = !isDemoMode && isAgentOffline && !isInClusterMode() && !wasAgentEverConnected()
+  const forceSkeletonForOffline = !isDemoMode && isAgentOffline && !isInClusterMode() && !isLocalAgentSuppressed() && !wasAgentEverConnected()
   const showSkeletons = ((deployments.length === 0 && podIssues.length === 0 && deploymentIssues.length === 0) && isLoading) || forceSkeletonForOffline || isModeSwitching
 
   // Combined refresh

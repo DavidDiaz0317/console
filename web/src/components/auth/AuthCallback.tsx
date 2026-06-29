@@ -9,6 +9,7 @@ import { safeGetItem, safeRemoveItem, safeSetItem } from '../../lib/utils/localS
 import { setAgentToken } from '../../hooks/mcp/agentFetch'
 import { emitError, emitGitHubConnected } from '../../lib/analytics'
 import { STORAGE_KEY_HAS_SESSION } from '../../lib/constants/storage'
+import { isLocalAgentSuppressed } from '../../lib/constants/network'
 
 /** Timeout (ms) for the /auth/refresh call that confirms the HttpOnly cookie session. */
 const AUTH_REFRESH_TIMEOUT_MS = 5_000
@@ -102,6 +103,12 @@ export function AuthCallback() {
         // Fetch the kc-agent shared secret so agentFetch() and WebSocket
         // connections can authenticate with the local agent via expiring
         // session-scoped token storage.
+        if (isLocalAgentSuppressed()) {
+          const _isOnboarded = data.onboarded ?? onboarded
+          void _isOnboarded // reserved for future onboarding routing
+          return refreshUser()
+        }
+
         const agentController = new AbortController()
         const agentTimeoutId = setTimeout(() => agentController.abort(), AUTH_REFRESH_TIMEOUT_MS)
         return fetch('/api/agent/token', {
