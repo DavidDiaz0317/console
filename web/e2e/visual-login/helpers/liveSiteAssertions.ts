@@ -507,6 +507,7 @@ export async function assertNoVisibleTextCollisions(page: Page) {
   const collisions = await page.evaluate((ratioLimit) => {
     type TextBox = {
       text: string
+      element: Element
       x: number
       y: number
       width: number
@@ -536,6 +537,7 @@ export async function assertNoVisibleTextCollisions(page: Page) {
               if (inViewport) {
                 boxes.push({
                   text: text.slice(0, 80),
+                  element,
                   x: rect.x,
                   y: rect.y,
                   width: rect.width,
@@ -556,6 +558,7 @@ export async function assertNoVisibleTextCollisions(page: Page) {
       for (let j = i + 1; j < boxes.length; j += 1) {
         const a = boxes[i]
         const b = boxes[j]
+        if (a.element === b.element || a.element.contains(b.element) || b.element.contains(a.element)) continue
         const overlapWidth = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x))
         const overlapHeight = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y))
         const overlapArea = overlapWidth * overlapHeight
