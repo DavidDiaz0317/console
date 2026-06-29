@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-29T00:53:13.657Z",
+  "repository": "DavidDiaz0317/console",
+  "branch": "console-live-visual-evidence",
+  "runId": "28339495277",
+  "imageCount": 1,
+  "manifestPath": "runs/28339495277/manifest.json",
+  "manifestRawUrl": "https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/28339495277/manifest.json",
+  "readmeRawUrl": "https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/28339495277/README.md",
+  "images": [
+    {
+      "label": "test-failed-1.png",
+      "sourcePath": "console/console/web/e2e/visual-login/test-results/visual-login-intensive/semantic-live-canary-ui-li-d32fc-ive-canary-ui-layout-stable-semantic-groundtruth/test-failed-1.png",
+      "publishedPath": "runs/28339495277/01-console/console/web/e2e/visual-login/test-results/visual-login-intensive/semantic-live-canary-ui-li-d32fc-ive-canary-ui-layout-stable-semantic-groundtruth/test-failed-1.png",
+      "sizeBytes": 143137,
+      "rawUrl": "https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/28339495277/01-console/console/web/e2e/visual-login/test-results/visual-login-intensive/semantic-live-canary-ui-li-d32fc-ive-canary-ui-layout-stable-semantic-groundtruth/test-failed-1.png"
+    }
+  ]
+}
