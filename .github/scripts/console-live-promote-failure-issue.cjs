@@ -337,13 +337,33 @@ function liveFailuresFromRouteReports(routeReports) {
   }
 
   for (const report of routeReports || []) {
-    if (Array.isArray(report.mismatches)) {
-      failures.dashboardMismatches.push(...report.mismatches.map((mismatch) => ({
+    const reportMismatches = Array.isArray(report.mismatches)
+      ? report.mismatches.map((mismatch) => ({
         field: mismatch.field || 'unknown',
         expected: mismatch.expected ?? 'unknown',
         actual: mismatch.actual ?? null,
         route: mismatch.route || report.route || 'unknown',
-      })))
+        reason: mismatch.reason || 'mismatch',
+      }))
+      : []
+    if (Array.isArray(report.mismatches)) {
+      const route = String(report.route || '')
+      const isDashboardMismatch = route === '/' || reportMismatches.some((mismatch) => /^dashboard-/.test(String(mismatch.field)))
+      if (isDashboardMismatch) {
+        failures.dashboardMismatches.push(...reportMismatches)
+      } else if (report.kind === 'groundtruth-fields') {
+        failures.apiUiMismatches.push(...reportMismatches.map((mismatch) => ({
+          ...mismatch,
+          source: 'kubernetes-groundtruth',
+        })))
+      } else if (report.kind !== 'api-ui-fields') {
+        failures.routeFailures.push(...reportMismatches.map((mismatch) => ({
+          route: mismatch.route,
+          reason: `${mismatch.field} expected ${mismatch.expected} but rendered ${mismatch.actual}`,
+          expected: mismatch.expected,
+          actual: mismatch.actual,
+        })))
+      }
     }
     if (report.kind === 'route-content' && report.matched === false) {
       failures.routeFailures.push({
@@ -640,6 +660,8 @@ function logExcerpt(logs) {
   const primaryPatterns = [
     /visible text must not severely overlap/i,
     /live ui must/i,
+    /stats must match/i,
+    /deployments-total|deployments-available|namespaces-total|pods-total|nodes-total/i,
     /"first":/i,
     /"second":/i,
     /"ratio":/i,
@@ -1136,6 +1158,7 @@ module.exports = async ({ github, context, core }) => {
 
 module.exports._test = {
   classifyFailure,
+  liveFailuresFromRouteReports,
   parseImageState,
   selectExistingIssue,
 }

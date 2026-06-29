@@ -35,6 +35,61 @@ test('classifies API/UI mismatches as UI/API evidence', () => {
   }), 'ui-api-mismatch')
 })
 
+test('classifies route groundtruth field mismatches as UI/API evidence', () => {
+  const failures = _test.liveFailuresFromRouteReports([{
+    route: '/deployments',
+    kind: 'groundtruth-fields',
+    expected: {
+      'deployments-total': 12,
+      'deployments-available': 12,
+    },
+    actual: {
+      'deployments-total': 0,
+      'deployments-available': 0,
+    },
+    mismatches: [{
+      route: '/deployments',
+      field: 'deployments-total',
+      expected: 12,
+      actual: 0,
+      reason: 'mismatch',
+    }, {
+      route: '/deployments',
+      field: 'deployments-available',
+      expected: 12,
+      actual: 0,
+      reason: 'mismatch',
+    }],
+  }])
+
+  assert.equal(failures.dashboardMismatches.length, 0)
+  assert.deepEqual(failures.apiUiMismatches.map((mismatch) => ({
+    route: mismatch.route,
+    field: mismatch.field,
+    expected: mismatch.expected,
+    actual: mismatch.actual,
+    source: mismatch.source,
+  })), [{
+    route: '/deployments',
+    field: 'deployments-total',
+    expected: 12,
+    actual: 0,
+    source: 'kubernetes-groundtruth',
+  }, {
+    route: '/deployments',
+    field: 'deployments-available',
+    expected: 12,
+    actual: 0,
+    source: 'kubernetes-groundtruth',
+  }])
+  assert.equal(_test.classifyFailure({
+    failures: [],
+    evidenceItems: [],
+    liveUiFailures: failures,
+    logText: 'Error: live /deployments stats must match Kubernetes ground truth',
+  }), 'ui-api-mismatch')
+})
+
 test('classifies rate limits as live data loss', () => {
   assert.equal(classify({
     networkClassifications: [{
