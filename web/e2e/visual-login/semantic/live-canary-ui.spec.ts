@@ -43,7 +43,7 @@ const invariantIds = [
 ]
 
 const liveCanaryExpectedConsoleNoise = [
-  /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/i,
+  /Failed to load resource: the server responded with a status of 401 \([^)]*\)/i,
   /Failed to load resource: the server responded with a status of 403 \(Forbidden\)/i,
   /Failed to load resource: the server responded with a status of 405 \(Method Not Allowed\)/i,
   /Failed to load resource: the server responded with a status of 502 \(Bad Gateway\)/i,

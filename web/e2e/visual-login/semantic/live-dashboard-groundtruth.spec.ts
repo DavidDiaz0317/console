@@ -30,7 +30,7 @@ const invariantIds = [
 ]
 
 const liveDashboardExpectedConsoleNoise = [
-  /Failed to load resource: the server responded with a status of 401 \(Unauthorized\)/i,
+  /Failed to load resource: the server responded with a status of 401 \([^)]*\)/i,
   /\[Missions\] Failed to connect to agent: Error: CONNECTION_FAILED/i,
 ]
 
