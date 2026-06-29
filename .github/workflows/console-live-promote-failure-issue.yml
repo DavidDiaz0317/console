@@ -28,7 +28,7 @@ jobs:
     env:
       SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
       VISUAL_EVIDENCE_BRANCH: console-live-visual-evidence
-      VISUAL_EVIDENCE_PUBLISH_DIR: ${{ runner.temp }}/console-live-visual-evidence-publish
+      VISUAL_EVIDENCE_PUBLISH_DIR: console-live-visual-evidence-publish
 
     steps:
       - name: Checkout repository
