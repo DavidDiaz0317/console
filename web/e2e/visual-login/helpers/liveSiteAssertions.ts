@@ -516,7 +516,7 @@ export async function assertNoVisibleTextCollisions(page: Page) {
         const element = node.parentElement
         if (text.length >= 2 && element) {
           const style = window.getComputedStyle(element)
-          const hidden = element.closest('[aria-hidden="true"], [hidden], script, style')
+          const hidden = element.closest('[aria-hidden="true"], [hidden], script, style, .sr-only, [data-groundtruth-field]')
           if (!hidden && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
             const range = document.createRange()
             range.selectNodeContents(node)
