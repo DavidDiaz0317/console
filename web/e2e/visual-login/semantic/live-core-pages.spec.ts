@@ -89,12 +89,13 @@ const coreRoutes: CoreRoute[] = [
       'pods-total': groundTruth.pods.total,
       'pods-running': groundTruth.pods.running,
       'pods-pending': groundTruth.pods.pending,
-      'pods-issues': groundTruth.pods.failed + groundTruth.pods.crashLoopBackOff,
+      'pods-crashloop': groundTruth.pods.crashLoopBackOff,
     }),
     apiFields: apiFacts => ({
       'pods-total': apiFacts.pods.total,
       'pods-running': apiFacts.pods.running,
       'pods-pending': apiFacts.pods.pending,
+      'pods-crashloop': apiFacts.pods.crashLoopBackOff,
     }),
   },
   {
