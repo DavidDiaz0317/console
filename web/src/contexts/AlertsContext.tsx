@@ -27,7 +27,7 @@ import {
   saveAlerts,
 } from './alertStorage'
 import { STORAGE_KEY_AUTH_TOKEN } from '../lib/constants/storage'
-import { FETCH_DEFAULT_TIMEOUT_MS } from '../lib/constants/network'
+import { FETCH_DEFAULT_TIMEOUT_MS, areOptionalPollersSuppressed } from '../lib/constants/network'
 import {
   shouldDispatchBrowserNotification,
   type BrowserNotificationParams,
@@ -154,6 +154,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (areOptionalPollersSuppressed()) return
+
     let unmounted = false
     const fetchCronJobResults = async () => {
       const token = safeGet(STORAGE_KEY_AUTH_TOKEN)
@@ -204,6 +206,8 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (areOptionalPollersSuppressed()) return
+
     let unmounted = false
     const fetchNightlyE2E = async () => {
       if (unmounted) return

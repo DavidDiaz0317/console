@@ -21,6 +21,7 @@ import {
   TOAST_DISMISS_MS,
   LOCAL_AGENT_HTTP_URL,
   BACKEND_HEALTH_CHECK_TIMEOUT_MS,
+  isLocalAgentSuppressed,
 } from '../../../lib/constants/network'
 import { agentFetch } from '@/hooks/mcp/shared'
 import type { AgentInfo } from '../../../types/agent'
@@ -70,6 +71,8 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
   // Fetch agents from kc-agent health endpoint (works even in demo mode
   // when the WebSocket is not connected)
   const fetchAgentsFromHealth = async () => {
+    if (isLocalAgentSuppressed()) return
+
     setIsDiscoveringAgents(true)
     try {
       const res = await agentFetch(`${LOCAL_AGENT_HTTP_URL}/health`, {

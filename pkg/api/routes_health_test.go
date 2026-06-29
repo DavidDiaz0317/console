@@ -56,6 +56,7 @@ func TestHealthRoutes_StatusEndpoints(t *testing.T) {
 				"oauth_configured": false,
 				"in_cluster":       false,
 				"no_local_agent":   false,
+				"suppress_optional_pollers": false,
 				"install_method":   detectInstallMethod(false),
 				"project":          "kubestellar",
 			},

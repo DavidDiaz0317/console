@@ -276,6 +276,7 @@ export async function refreshSingleCluster(clusterName: string): Promise<void> {
       healthy: health.healthy,
       reachable: isReachable,
       nodeCount: health.nodeCount,
+      readyNodes: health.readyNodes,
       podCount: health.podCount,
       cpuCores: health.cpuCores,
       cpuRequestsCores: health.cpuRequestsCores,

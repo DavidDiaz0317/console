@@ -10,6 +10,7 @@ import { clearSSECache } from './sseClient'
 import { clearClusterCacheOnLogout } from '../hooks/mcp/shared'
 import { clearAgentToken, setAgentToken } from '../hooks/mcp/agentFetch'
 import { DEMO_TOKEN_VALUE, FETCH_DEFAULT_TIMEOUT_MS, STORAGE_KEY_DEMO_MODE, STORAGE_KEY_HAS_SESSION, STORAGE_KEY_ONBOARDED, STORAGE_KEY_USER_CACHE } from './constants'
+import { isLocalAgentSuppressed } from './constants/network'
 import { safeGet, safeRemove, safeSetJSON } from './safeLocalStorage'
 import { AUTH_TOKEN_SYNC_KEY, clearStoredAuthToken, getStoredAuthToken, getStoredAuthTokenSync, parseAuthTokenSyncEvent, setStoredAuthToken } from './authToken'
 import { emitLogin, emitLogout, setAnalyticsUserId, setAnalyticsUserProperties, emitConversionStep, emitDeveloperSession, emitSessionRefreshFailure } from './analytics'
@@ -324,20 +325,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // localStorage quota — best-effort hint
               }
               // Fetch kc-agent token so agentFetch/WebSocket can authenticate
-              try {
-                const agentRes = await fetch('/api/agent/token', {
-                  credentials: 'same-origin',
-                  headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                  signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
-                })
-                if (agentRes.ok) {
-                  const agentData = await agentRes.json()
-                  if (agentData.token) {
-                    setAgentToken(agentData.token)
+              if (!isLocalAgentSuppressed()) {
+                try {
+                  const agentRes = await fetch('/api/agent/token', {
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: AbortSignal.timeout(FETCH_DEFAULT_TIMEOUT_MS),
+                  })
+                  if (agentRes.ok) {
+                    const agentData = await agentRes.json()
+                    if (agentData.token) {
+                      setAgentToken(agentData.token)
+                    }
                   }
+                } catch {
+                  // Non-fatal: agent auth may fail while the browser session remains intact.
                 }
-              } catch {
-                // Non-fatal — agent auth will fail but session is intact
               }
               const meResponse = await fetch('/api/me', {
                 credentials: 'include',

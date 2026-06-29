@@ -17,12 +17,14 @@
 const viteEnv = (import.meta.env ?? {}) as Partial<ImportMetaEnv>
 const isDemoModeBuild = viteEnv.VITE_DEMO_MODE === 'true'
 const isNoLocalAgentBuild = viteEnv.VITE_NO_LOCAL_AGENT === 'true'
+const isConsoleLiveHost = typeof window !== 'undefined' && window.location.hostname === 'console-live.kubestellar.io'
 
 const _isNetlify = typeof window !== 'undefined' && (
   isDemoModeBuild ||
   window.location.hostname.includes('netlify.app') ||
   window.location.hostname.includes('deploy-preview-') ||
-  window.location.hostname === 'console.kubestellar.io'
+  window.location.hostname === 'console.kubestellar.io' ||
+  isConsoleLiveHost
 )
 
 /**
@@ -35,6 +37,7 @@ const _isNetlify = typeof window !== 'undefined' && (
  * deployed in-cluster where Vite env vars cannot be injected at runtime.
  */
 let _suppressAgent = _isNetlify || isNoLocalAgentBuild
+let _suppressOptionalPollers = isConsoleLiveHost
 
 /**
  * Called by the BrandingProvider after fetching /health to suppress agent
@@ -56,6 +59,21 @@ export function suppressLocalAgent(suppress: boolean): void {
 /** Check whether the local agent is suppressed (build-time or runtime). */
 export function isLocalAgentSuppressed(): boolean {
   return _suppressAgent
+}
+
+/**
+ * Suppress non-core background pollers for live canary deployments. This keeps
+ * semantic route checks focused on Kubernetes data without weakening backend
+ * rate limits.
+ */
+export function suppressOptionalPollers(suppress: boolean): void {
+  if (suppress) {
+    _suppressOptionalPollers = true
+  }
+}
+
+export function areOptionalPollersSuppressed(): boolean {
+  return _suppressOptionalPollers
 }
 
 /** Syntactically-valid but unroutable WS URL used when the agent is suppressed.

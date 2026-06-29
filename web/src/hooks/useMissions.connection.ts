@@ -1,5 +1,6 @@
 import { getDemoMode } from './useDemoMode'
 import { LOCAL_AGENT_WS_URL } from '../lib/constants'
+import { isLocalAgentSuppressed, areOptionalPollersSuppressed } from '../lib/constants/network'
 import { getWsAuthParams } from '../lib/utils/wsAuth'
 import {
   MISSION_RECONNECT_DELAY_MS,
@@ -66,8 +67,8 @@ export function createMissionConnectionApi(
   }
 
   const ensureConnection = () => {
-    if (getDemoMode()) {
-      return Promise.reject(new Error('Agent unavailable in demo mode'))
+    if (getDemoMode() || isLocalAgentSuppressed() || areOptionalPollersSuppressed()) {
+      return Promise.reject(new Error('Agent unavailable in this deployment'))
     }
     if (state.unmountedRef.current) {
       return Promise.reject(new Error('MissionProvider unmounted'))
@@ -309,7 +310,7 @@ export function createMissionConnectionApi(
 
           state.setAgentsLoading(false)
 
-          if (!getDemoMode() && state.wsReconnectAttempts.current < WS_RECONNECT_MAX_RETRIES) {
+          if (!getDemoMode() && !isLocalAgentSuppressed() && !areOptionalPollersSuppressed() && state.wsReconnectAttempts.current < WS_RECONNECT_MAX_RETRIES) {
             const attempt = state.wsReconnectAttempts.current
             const delay = Math.min(
               WS_RECONNECT_INITIAL_DELAY_MS * Math.pow(2, attempt),

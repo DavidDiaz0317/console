@@ -334,6 +334,10 @@ jobs:
               value: "false"
             - name: CLUSTER_BACKED_MODE
               value: "true"
+            - name: CONSOLE_LIVE_TEST_MODE
+              value: "true"
+            - name: SUPPRESS_OPTIONAL_POLLERS
+              value: "true"
             - name: WATCHDOG_RUNTIME_FILE
               value: /tmp/kc-watcher-runtime.env
             - name: CONSOLE_LIVE_TEST_USER_BOOTSTRAP
@@ -492,6 +496,10 @@ jobs:
             - name: DEV_MODE
               value: "false"
             - name: CLUSTER_BACKED_MODE
+              value: "true"
+            - name: CONSOLE_LIVE_TEST_MODE
+              value: "true"
+            - name: SUPPRESS_OPTIONAL_POLLERS
               value: "true"
           EOF
           helm upgrade --install "$LIVE_RELEASE" ./deploy/helm/kubestellar-console \

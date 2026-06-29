@@ -80,6 +80,7 @@ func (h *MCPHandlers) ListClusters(c *fiber.Ctx) error {
 			if health, ok := healthMap[clusters[i].Name]; ok {
 				clusters[i].Healthy = health.Healthy
 				clusters[i].NodeCount = health.NodeCount
+				clusters[i].ReadyNodes = health.ReadyNodes
 				clusters[i].PodCount = health.PodCount
 				// Surface the stale-kubeconfig signal: a cluster that has
 				// a health cache entry but has never been successfully
