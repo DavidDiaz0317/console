@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
+const mockIsLocalAgentSuppressed = vi.hoisted(() => vi.fn(() => false))
+
+vi.mock('../../../../lib/constants/network', async () => {
+  const actual = await vi.importActual<typeof import('../../../../lib/constants/network')>('../../../../lib/constants/network')
+  return {
+    ...actual,
+    isLocalAgentSuppressed: () => mockIsLocalAgentSuppressed(),
+  }
+})
+
 vi.mock('../../../../lib/demoMode', () => ({
   isDemoMode: () => false, getDemoMode: () => false, isNetlifyDeployment: false,
   isDemoModeForced: false, canToggleDemoMode: () => true, setDemoMode: vi.fn(),
@@ -119,6 +129,7 @@ describe('AgentStatusIndicator', () => {
       criticalCount: 0,
       warningCount: 0,
     })
+    mockIsLocalAgentSuppressed.mockReturnValue(false)
   })
 
   it('renders without crashing', () => {
@@ -170,6 +181,31 @@ describe('AgentStatusIndicator', () => {
     render(<AgentStatusIndicator />)
 
     expect(screen.getByText('networkUtils.online')).toBeTruthy()
+    expect(screen.getByTestId('navbar-agent-status-btn').getAttribute('title')).toBe('agent.liveMode')
+  })
+
+  it('shows live online state when local agent is suppressed but backend is connected', () => {
+    mockIsLocalAgentSuppressed.mockReturnValue(true)
+    mockUseLocalAgent.mockReturnValueOnce({
+      status: 'disconnected',
+      health: {},
+      connectionEvents: [],
+      isConnected: false,
+      isDegraded: false,
+      isAuthError: false,
+      dataErrorCount: 0,
+      lastDataError: null,
+    })
+    mockUseBackendHealth.mockReturnValueOnce({
+      status: 'connected',
+      isConnected: true,
+      isInClusterMode: false,
+    })
+
+    render(<AgentStatusIndicator />)
+
+    expect(screen.getByText('networkUtils.online')).toBeTruthy()
+    expect(screen.queryByText('networkUtils.offline')).toBeNull()
     expect(screen.getByTestId('navbar-agent-status-btn').getAttribute('title')).toBe('agent.liveMode')
   })
 

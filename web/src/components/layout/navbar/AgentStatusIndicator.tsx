@@ -249,7 +249,9 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
   // Uses stabilized status values to prevent color flashes during navigation.
   // showDemoStyle is sticky: stays true after demo toggle until agent connects.
   const showAsDemoMode = isDemoMode || showDemoStyle
-  const isClusterBacked = isInClusterMode && !showAsDemoMode
+  const hasBackendOnlyLiveConnection =
+    isLocalAgentSuppressed() && isBackendConnected && backendStatus === 'connected'
+  const isClusterBacked = (isInClusterMode || hasBackendOnlyLiveConnection) && !showAsDemoMode
   const systemHealthTooltip = [dashboardHealth.message, ...dashboardHealth.details].join('\n')
 
   // Backend health affects the indicator when agent is connected (but not in demo mode)
@@ -299,7 +301,7 @@ export function AgentStatusIndicator({ showLabel = false }: AgentStatusIndicator
             Icon: Wifi,
             title: systemHealthTooltip,
           }
-        : stableConnected
+        : stableConnected || hasBackendOnlyLiveConnection
           ? {
               bg: isLiveMode
                 ? 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'

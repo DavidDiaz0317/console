@@ -90,6 +90,7 @@ const forbiddenLiveUiPatterns = [
   { label: 'endpoint error summary', source: String.raw`endpoint errors?`, flags: 'i' },
   { label: 'AI prediction load failure', source: String.raw`/predictions/ai\s*-\s*Load failed`, flags: 'i' },
   { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
+  { label: 'offline live status badge', source: String.raw`\bOffline\b`, flags: 'i' },
 ]
 
 const optionalLiveNetworkPatterns = [
@@ -585,6 +586,17 @@ async function successfulLiveApiEndpointKeys(page: Page, origin: string): Promis
   return new Set(endpointKeys.map(endpoint => normalizeEndpointKey(endpoint, origin)))
 }
 
+async function liveSessionStillValid(page: Page): Promise<boolean> {
+  return page.evaluate(async () => {
+    try {
+      const response = await fetch('/api/me', { credentials: 'include' })
+      return response.status === 200
+    } catch {
+      return false
+    }
+  }).catch(() => false)
+}
+
 function normalizeEndpointKey(rawUrl: string, origin: string): string {
   try {
     const url = new URL(rawUrl, origin)
@@ -598,8 +610,12 @@ function isRecoveredAuthBoundaryResponse(
   entry: { status?: number; url: string },
   successfulEndpoints: Set<string>,
   origin: string,
+  sessionStillValid = false,
 ): boolean {
-  return entry.status === 401 && successfulEndpoints.has(normalizeEndpointKey(entry.url, origin))
+  if (entry.status !== 401) return false
+  const endpointKey = normalizeEndpointKey(entry.url, origin)
+  if (successfulEndpoints.has(endpointKey)) return true
+  return sessionStillValid && endpointKey.startsWith('/api/mcp/')
 }
 
 export async function assertNoUnexpectedLiveNetworkErrors(
@@ -616,6 +632,7 @@ export async function assertNoUnexpectedLiveNetworkErrors(
     ...additionalAllowed,
   ]
   const successfulEndpoints = await successfulLiveApiEndpointKeys(page, origin)
+  const sessionStillValid = await liveSessionStillValid(page)
   const recoveredAuthResponses = collectors.errorResponses
     .filter(entry => {
       try {
@@ -624,7 +641,7 @@ export async function assertNoUnexpectedLiveNetworkErrors(
         return false
       }
     })
-    .filter(entry => isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin))
+    .filter(entry => isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin, sessionStillValid))
     .map(entry => `${entry.method} ${entry.status} ${entry.url}`)
   const unexpectedResponses = collectors.errorResponses
     .filter(entry => {
@@ -634,7 +651,7 @@ export async function assertNoUnexpectedLiveNetworkErrors(
         return false
       }
     })
-    .filter(entry => !isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin))
+    .filter(entry => !isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin, sessionStillValid))
     .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
     .map(entry => `${entry.method} ${entry.status} ${entry.url}`)
   const unexpectedFailures = collectors.failedRequests
@@ -658,7 +675,7 @@ export async function assertNoUnexpectedLiveNetworkErrors(
       }
     })
     .flatMap(entry => {
-      if (isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin)) {
+      if (isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin, sessionStillValid)) {
         return [{
           classification: 'auth-boundary-recovered',
           method: entry.method,
