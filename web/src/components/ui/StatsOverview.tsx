@@ -30,6 +30,7 @@ import { useStatHistory, MIN_SPARKLINE_POINTS } from '../../hooks/useStatHistory
 import { wrapAbbreviations } from '../shared/TechnicalAcronym'
 import { safeGetJSON, safeSetJSON } from '../../lib/utils/localStorage'
 import { STAT_BLOCK_COLORS as COLOR_HEX } from '../../lib/tokens'
+import { isLocalAgentSuppressed } from '../../lib/constants'
 
 // Icon mapping for dynamic rendering
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -584,7 +585,12 @@ export function StatsOverview({
   // When demo mode is OFF and agent is confirmed disconnected, force skeleton display
   // Don't force skeleton during 'connecting' - show cached data to prevent flicker
   const isAgentOffline = agentStatus === 'disconnected'
-  const forceLoadingForOffline = !isDemoMode && !isDemoData && isAgentOffline && !isInClusterMode() && !wasAgentEverConnected()
+  const forceLoadingForOffline = !isDemoMode
+    && !isDemoData
+    && isAgentOffline
+    && !isInClusterMode()
+    && !isLocalAgentSuppressed()
+    && !wasAgentEverConnected()
   // Show skeleton during mode switching for smooth transitions
   const effectiveIsLoading = isLoading || forceLoadingForOffline || isModeSwitching
   const effectiveHasData = forceLoadingForOffline ? false : hasData

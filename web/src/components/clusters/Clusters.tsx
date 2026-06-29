@@ -28,7 +28,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { ClusterCardSkeleton } from '../ui/ClusterCardSkeleton'
 import { useIsModeSwitching } from '../../lib/unified/demo'
 import { useTranslation } from 'react-i18next'
-import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_CLUSTER_LAYOUT, STORAGE_KEY_CLUSTER_ORDER, FETCH_DEFAULT_TIMEOUT_MS } from '../../lib/constants'
+import { LOCAL_AGENT_HTTP_URL, STORAGE_KEY_CLUSTER_LAYOUT, STORAGE_KEY_CLUSTER_ORDER, FETCH_DEFAULT_TIMEOUT_MS, isLocalAgentSuppressed } from '../../lib/constants'
 import { safeGetItem, safeSetItem } from '../../lib/utils/localStorage'
 import { useModalState } from '../../lib/modals'
 import { useToast } from '../ui/Toast'
@@ -69,7 +69,7 @@ export function Clusters() {
   // When demo mode is OFF and agent is not connected, force skeleton display
   // Also show skeleton during mode switching for smooth transitions
   const isAgentOffline = agentStatus === 'disconnected'
-  const forceSkeletonForOffline = !isDemoMode && isAgentOffline && !isInClusterMode() && !wasAgentEverConnected()
+  const forceSkeletonForOffline = !isDemoMode && isAgentOffline && !isInClusterMode() && !isLocalAgentSuppressed() && !wasAgentEverConnected()
   const { isClusterAdmin, loading: permissionsLoading } = usePermissions()
   const {
     selectedClusters: globalSelectedClusters,
