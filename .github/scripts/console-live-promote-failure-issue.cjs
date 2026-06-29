@@ -719,6 +719,85 @@ function artifactRows(artifacts, runUrlBase, runId) {
   })
 }
 
+function visualEvidenceFromArtifacts(artifactRoot) {
+  const manifests = walk(artifactRoot)
+    .filter((file) => /(^|[\\/])visual-evidence-manifest\.json$/i.test(file))
+    .map((file) => readJsonFile(file))
+    .filter(Boolean)
+  const images = dedupe(
+    manifests
+      .flatMap((manifest) => manifest.images || [])
+      .filter((image) => image && image.rawUrl)
+      .map((image) => JSON.stringify({
+        label: image.label || path.basename(image.sourcePath || image.publishedPath || 'screenshot'),
+        sourcePath: image.sourcePath || '',
+        publishedPath: image.publishedPath || '',
+        rawUrl: image.rawUrl,
+        sizeBytes: image.sizeBytes,
+      }))
+  ).map((image) => JSON.parse(image))
+
+  return {
+    imageCount: images.length,
+    images,
+    manifests: manifests.map((manifest) => ({
+      runId: manifest.runId,
+      manifestRawUrl: manifest.manifestRawUrl,
+      readmeRawUrl: manifest.readmeRawUrl,
+      branch: manifest.branch,
+    })),
+  }
+}
+
+function visualEvidenceSection(visualEvidence) {
+  const images = (visualEvidence?.images || []).slice(0, 6)
+  const manifests = visualEvidence?.manifests || []
+  if (!images.length) {
+    return [
+      '## Visual Evidence',
+      '',
+      'No inline screenshots were published for this run. Use the evidence artifact table below for downloadable traces, reports, and raw Playwright attachments.',
+    ].join('\n')
+  }
+
+  const manifestLinks = dedupe(
+    manifests
+      .flatMap((manifest) => [manifest.readmeRawUrl, manifest.manifestRawUrl])
+      .filter(Boolean)
+  )
+  return [
+    '## Visual Evidence',
+    '',
+    'Selected failure screenshots are published to the `console-live-visual-evidence` branch so Hive/AI agents can view them directly in this issue without downloading artifact zips.',
+    '',
+    ...images.flatMap((image, index) => [
+      `### Screenshot ${index + 1}: ${image.label}`,
+      '',
+      `![${image.label}](${image.rawUrl})`,
+      '',
+      `- Source artifact path: \`${String(image.sourcePath || 'unknown').replace(/\\/g, '/')}\``,
+      `- Published path: \`${String(image.publishedPath || 'unknown').replace(/\\/g, '/')}\``,
+      '',
+    ]),
+    ...(manifestLinks.length ? [`Visual evidence manifest/readme: ${manifestLinks.map((url) => `[link](${url})`).join(', ')}`] : []),
+  ].join('\n')
+}
+
+function visualEvidenceComment(visualEvidence) {
+  const images = (visualEvidence?.images || []).slice(0, 3)
+  if (!images.length) return '- Visual evidence: no inline screenshots were published for this run.'
+  return [
+    '- Visual evidence:',
+    '',
+    ...images.flatMap((image, index) => [
+      `  - Screenshot ${index + 1}: [${image.label}](${image.rawUrl})`,
+      '',
+      `    ![${image.label}](${image.rawUrl})`,
+      '',
+    ]),
+  ].join('\n')
+}
+
 function summarizeNetworkEvidence(evidenceItems, liveUiFailures = {}) {
   const requestCountsByEndpoint = {}
   for (const item of evidenceItems) {
@@ -826,6 +905,7 @@ function buildBody({
   blocked,
   runUrlBase,
   runId,
+  visualEvidence,
 }) {
   const failureRows = failures.map((failure) =>
     `| ${escapeCell(failure.title)} | ${escapeCell(failure.project)} | ${escapeCell(failure.status)} | ${escapeCell(failure.retry)} | ${escapeCell(failure.specPath)} |`
@@ -870,6 +950,8 @@ function buildBody({
     '```json',
     truncate(JSON.stringify(networkSummary, null, 2), 5000),
     '```',
+    '',
+    visualEvidenceSection(visualEvidence),
     '',
     '## Evidence',
     '',
@@ -959,6 +1041,7 @@ module.exports = async ({ github, context, core }) => {
 
   const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, { owner, repo, run_id: runId, per_page: 100 })
   const files = walk(artifactRoot)
+  const visualEvidence = visualEvidenceFromArtifacts(artifactRoot)
   const resultFiles = files.filter((file) => /(^|[\\/])results\.json$/i.test(file))
   const evidenceFiles = files.filter((file) => /(^|[\\/])evidence\.json$/i.test(file)).map((file) => path.relative(process.cwd(), file))
   const reportFiles = files.filter((file) => /[\\/]test-results[\\/]reports[\\/]/i.test(file)).map((file) => path.relative(process.cwd(), file))
@@ -1043,6 +1126,7 @@ module.exports = async ({ github, context, core }) => {
     blocked,
     runUrlBase,
     runId,
+    visualEvidence,
   })
   if (body.length > 60000) body = `${body.slice(0, 59000)}\n\n...body truncated...\n${marker}`
 
@@ -1070,6 +1154,8 @@ module.exports = async ({ github, context, core }) => {
       `- Run: [#${runId}](${run.html_url})`,
       `- Candidate image: \`${imageState.candidate}\``,
       `- Safety rollback/auth gate triggered: \`${blocked}\``,
+      '',
+      visualEvidenceComment(visualEvidence),
     ].join('\n')
 
     if (existing.state === 'open') {
@@ -1118,6 +1204,8 @@ module.exports = async ({ github, context, core }) => {
         `- Run: [#${runId}](${run.html_url})`,
         `- Candidate image: \`${imageState.candidate}\``,
         `- Safety rollback/auth gate triggered: \`${blocked}\``,
+        '',
+        visualEvidenceComment(visualEvidence),
       ].join('\n'),
     })
     core.info(`Commented on closed console live canary failure issue #${existing.number} without reopening it.`)
@@ -1138,4 +1226,7 @@ module.exports._test = {
   classifyFailure,
   parseImageState,
   selectExistingIssue,
+  visualEvidenceComment,
+  visualEvidenceFromArtifacts,
+  visualEvidenceSection,
 }

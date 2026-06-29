@@ -1,5 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
 const { _test } = require('./console-live-promote-failure-issue.cjs')
 
 function classify(liveUiFailures, logText = '') {
@@ -243,4 +246,46 @@ test('selects a closed matching issue when no open issue exists', () => {
   assert.equal(selected.existing.number, 62)
   assert.equal(selected.existing.state, 'closed')
   assert.deepEqual(selected.openMatchingIssues, [])
+})
+
+test('renders inline visual evidence screenshots for AI-fix issues', () => {
+  const section = _test.visualEvidenceSection({
+    images: [{
+      label: 'test-failed-1.png',
+      sourcePath: 'web/test-results/live/test-failed-1.png',
+      publishedPath: 'runs/123/01-test-failed-1.png',
+      rawUrl: 'https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/123/01-test-failed-1.png',
+    }],
+    manifests: [{
+      manifestRawUrl: 'https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/123/manifest.json',
+    }],
+  })
+
+  assert.match(section, /## Visual Evidence/)
+  assert.match(section, /!\[test-failed-1\.png\]\(https:\/\/raw\.githubusercontent\.com\/DavidDiaz0317\/console\/console-live-visual-evidence\/runs\/123\/01-test-failed-1\.png\)/)
+  assert.match(section, /Source artifact path: `web\/test-results\/live\/test-failed-1\.png`/)
+})
+
+test('reads visual evidence manifest from downloaded artifacts', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-live-visual-evidence-'))
+  try {
+    fs.writeFileSync(path.join(tempDir, 'visual-evidence-manifest.json'), JSON.stringify({
+      runId: '123',
+      branch: 'console-live-visual-evidence',
+      manifestRawUrl: 'https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/123/manifest.json',
+      images: [{
+        label: 'failure.png',
+        sourcePath: 'web/test-results/failure.png',
+        publishedPath: 'runs/123/01-failure.png',
+        rawUrl: 'https://raw.githubusercontent.com/DavidDiaz0317/console/console-live-visual-evidence/runs/123/01-failure.png',
+        sizeBytes: 128,
+      }],
+    }))
+    const visualEvidence = _test.visualEvidenceFromArtifacts(tempDir)
+    assert.equal(visualEvidence.imageCount, 1)
+    assert.equal(visualEvidence.images[0].label, 'failure.png')
+    assert.equal(visualEvidence.manifests[0].branch, 'console-live-visual-evidence')
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  }
 })

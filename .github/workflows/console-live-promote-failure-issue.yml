@@ -15,7 +15,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   issues: write
 
@@ -27,6 +27,8 @@ jobs:
     if: github.repository == 'DavidDiaz0317/console' && (github.event_name == 'workflow_dispatch' || contains(fromJSON('["failure","cancelled","timed_out"]'), github.event.workflow_run.conclusion))
     env:
       SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+      VISUAL_EVIDENCE_BRANCH: console-live-visual-evidence
+      VISUAL_EVIDENCE_PUBLISH_DIR: ${{ runner.temp }}/console-live-visual-evidence-publish
 
     steps:
       - name: Checkout repository
@@ -48,6 +50,64 @@ jobs:
             --name console-live-macos-popup-evidence \
             --dir console-live-promote-artifacts || true
           find console-live-promote-artifacts -maxdepth 8 -type f | sort || true
+
+      - name: Prepare inline visual evidence
+        env:
+          ARTIFACT_ROOT: console-live-promote-artifacts
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          VISUAL_EVIDENCE_BRANCH: ${{ env.VISUAL_EVIDENCE_BRANCH }}
+          VISUAL_EVIDENCE_PUBLISH_DIR: ${{ env.VISUAL_EVIDENCE_PUBLISH_DIR }}
+        run: node .github/scripts/publish-console-live-visual-evidence.cjs
+
+      - name: Publish inline visual evidence branch
+        shell: bash
+        env:
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          VISUAL_EVIDENCE_BRANCH: ${{ env.VISUAL_EVIDENCE_BRANCH }}
+          VISUAL_EVIDENCE_PUBLISH_DIR: ${{ env.VISUAL_EVIDENCE_PUBLISH_DIR }}
+        run: |
+          set -euo pipefail
+          run_dir="$VISUAL_EVIDENCE_PUBLISH_DIR/runs/$SOURCE_RUN_ID"
+          if [ ! -d "$run_dir" ] || ! find "$run_dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) | grep -q .; then
+            echo "No visual evidence images to publish for run $SOURCE_RUN_ID."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          worktree_dir="$RUNNER_TEMP/console-live-visual-evidence-branch"
+          rm -rf "$worktree_dir"
+          if git ls-remote --exit-code --heads origin "$VISUAL_EVIDENCE_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$VISUAL_EVIDENCE_BRANCH:$VISUAL_EVIDENCE_BRANCH" --force
+            git worktree add "$worktree_dir" "$VISUAL_EVIDENCE_BRANCH"
+          else
+            git worktree add --detach "$worktree_dir"
+            (
+              cd "$worktree_dir"
+              git switch --orphan "$VISUAL_EVIDENCE_BRANCH"
+              git rm -rf . >/dev/null 2>&1 || true
+              printf '# Console Live Visual Evidence\n\nRuntime-published screenshots for console-live canary failures.\n' > README.md
+            )
+          fi
+
+          mkdir -p "$worktree_dir/runs"
+          if [ ! -f "$worktree_dir/README.md" ]; then
+            printf '# Console Live Visual Evidence\n\nRuntime-published screenshots for console-live canary failures.\n' > "$worktree_dir/README.md"
+          fi
+          rm -rf "$worktree_dir/runs/$SOURCE_RUN_ID"
+          cp -R "$run_dir" "$worktree_dir/runs/$SOURCE_RUN_ID"
+          (
+            cd "$worktree_dir"
+            git add README.md "runs/$SOURCE_RUN_ID"
+            if git diff --cached --quiet; then
+              echo "Visual evidence branch already contains run $SOURCE_RUN_ID."
+            else
+              git commit -m "Add console live visual evidence for run $SOURCE_RUN_ID"
+              git push origin "HEAD:$VISUAL_EVIDENCE_BRANCH"
+            fi
+          )
 
       - name: Create or update AI-fix issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
