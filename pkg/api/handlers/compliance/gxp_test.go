@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/stretchr/testify/require"
 
 	"github.com/kubestellar/console/pkg/compliance/gxp"
 )
@@ -20,7 +21,9 @@ func setupGxPApp() *fiber.App {
 
 func TestGxPConfig(t *testing.T) {
 	app := setupGxPApp()
-	req, _ := http.NewRequest("GET", "/api/compliance/gxp/config", nil)
+	req, err := http.NewRequest("GET", "/api/compliance/gxp/config", nil)
+	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
@@ -40,7 +43,9 @@ func TestGxPConfig(t *testing.T) {
 
 func TestGxPRecords(t *testing.T) {
 	app := setupGxPApp()
-	req, _ := http.NewRequest("GET", "/api/compliance/gxp/records", nil)
+	req, err := http.NewRequest("GET", "/api/compliance/gxp/records", nil)
+	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
@@ -60,7 +65,9 @@ func TestGxPRecords(t *testing.T) {
 
 func TestGxPChainVerify(t *testing.T) {
 	app := setupGxPApp()
-	req, _ := http.NewRequest("GET", "/api/compliance/gxp/chain/verify", nil)
+	req, err := http.NewRequest("GET", "/api/compliance/gxp/chain/verify", nil)
+	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
@@ -80,7 +87,9 @@ func TestGxPChainVerify(t *testing.T) {
 
 func TestGxPSummary(t *testing.T) {
 	app := setupGxPApp()
-	req, _ := http.NewRequest("GET", "/api/compliance/gxp/summary", nil)
+	req, err := http.NewRequest("GET", "/api/compliance/gxp/summary", nil)
+	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, -1)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)

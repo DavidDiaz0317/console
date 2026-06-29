@@ -26,6 +26,7 @@ func TestListFrameworks(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/compliance/frameworks/", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -43,6 +44,7 @@ func TestGetFramework(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/compliance/frameworks/pci-dss-4.0", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -59,6 +61,7 @@ func TestGetFrameworkNotFound(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/compliance/frameworks/nonexistent", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
@@ -71,6 +74,7 @@ func TestEvaluateFrameworkDemo(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/pci-dss-4.0/evaluate",
 		strings.NewReader(body))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
@@ -90,6 +94,7 @@ func TestEvaluateFrameworkNotFound(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/nonexistent/evaluate",
 		strings.NewReader(body))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
@@ -103,6 +108,7 @@ func TestEvaluateFrameworkMissingCluster(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/pci-dss-4.0/evaluate",
 		strings.NewReader(body))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
@@ -115,6 +121,7 @@ func TestEvaluateFrameworkBadBody(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/pci-dss-4.0/evaluate",
 		strings.NewReader("not json"))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 5000)
 	assert.NoError(t, err)
@@ -173,6 +180,7 @@ func TestEvaluateLiveCluster(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/pci-dss-4.0/evaluate",
 		strings.NewReader(body))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 10000)
 	assert.NoError(t, err)
@@ -232,6 +240,7 @@ func TestEvaluateFrameworkLiveError(t *testing.T) {
 	req, err := http.NewRequest("POST", "/api/compliance/frameworks/pci-dss-4.0/evaluate",
 		strings.NewReader(body))
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, 10000)
 	require.NoError(t, err)

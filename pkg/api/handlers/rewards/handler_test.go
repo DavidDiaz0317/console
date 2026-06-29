@@ -33,6 +33,7 @@ func TestGetGitHubRewards(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/rewards/github", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)

@@ -154,6 +154,7 @@ func TestGetDetectionRuns_DemoMode(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/detection-runs", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 	req.Header.Set("X-Demo-Mode", "true")
 
 	resp, err := env.App.Test(req, 5000)
@@ -179,6 +180,7 @@ func TestGetDetectionRuns_NoToken_FallsBackToDemo(t *testing.T) {
 
 	req, err := http.NewRequest("GET", "/api/detection-runs", nil)
 	require.NoError(t, err)
+	req.Host = "localhost"
 
 	resp, err := env.App.Test(req, 5000)
 	require.NoError(t, err)

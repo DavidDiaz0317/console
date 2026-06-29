@@ -185,6 +185,7 @@ func Test_parseMissionPayload(t *testing.T) {
 
 			req, err := http.NewRequest(http.MethodPost, "/test", bytes.NewReader(jsonBody))
 			require.NoError(t, err)
+			req.Host = "localhost"
 			req.Header.Set("Content-Type", "application/json")
 
 			c := app.AcquireCtx(&fasthttp.RequestCtx{})

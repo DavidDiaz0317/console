@@ -100,6 +100,7 @@ func TestStellarPreferencesRoundTrip(t *testing.T) {
 
 	getReq, err := http.NewRequest(http.MethodGet, "/api/stellar/preferences", nil)
 	require.NoError(t, err)
+	getReq.Host = "localhost"
 	getResp, err := app.Test(getReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, getResp.StatusCode)
@@ -118,6 +119,7 @@ func TestStellarPreferencesRoundTrip(t *testing.T) {
 	raw, _ := json.Marshal(updateBody)
 	putReq, err := http.NewRequest(http.MethodPut, "/api/stellar/preferences", bytes.NewReader(raw))
 	require.NoError(t, err)
+	putReq.Host = "localhost"
 	putReq.Header.Set("Content-Type", "application/json")
 	putResp, err := app.Test(putReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -140,6 +142,7 @@ func TestStellarMissionAndActionFlow(t *testing.T) {
 	rawMission, _ := json.Marshal(createMissionBody)
 	createMissionReq, err := http.NewRequest(http.MethodPost, "/api/stellar/missions", bytes.NewReader(rawMission))
 	require.NoError(t, err)
+	createMissionReq.Host = "localhost"
 	createMissionReq.Header.Set("Content-Type", "application/json")
 	createMissionResp, err := app.Test(createMissionReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -160,6 +163,7 @@ func TestStellarMissionAndActionFlow(t *testing.T) {
 	rawAction, _ := json.Marshal(createActionBody)
 	createActionReq, err := http.NewRequest(http.MethodPost, "/api/stellar/actions", bytes.NewReader(rawAction))
 	require.NoError(t, err)
+	createActionReq.Host = "localhost"
 	createActionReq.Header.Set("Content-Type", "application/json")
 	createActionResp, err := app.Test(createActionReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -172,6 +176,7 @@ func TestStellarMissionAndActionFlow(t *testing.T) {
 
 	approveReq, err := http.NewRequest(http.MethodPost, "/api/stellar/actions/"+actionID+"/approve", bytes.NewReader([]byte(`{}`)))
 	require.NoError(t, err)
+	approveReq.Host = "localhost"
 	approveReq.Header.Set("Content-Type", "application/json")
 	approveResp, err := app.Test(approveReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -187,6 +192,7 @@ func TestStellarAskStateDigestAndNotifications(t *testing.T) {
 	rawAsk, _ := json.Marshal(askBody)
 	askReq, err := http.NewRequest(http.MethodPost, "/api/stellar/ask", bytes.NewReader(rawAsk))
 	require.NoError(t, err)
+	askReq.Host = "localhost"
 	askReq.Header.Set("Content-Type", "application/json")
 	askResp, err := app.Test(askReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -194,18 +200,21 @@ func TestStellarAskStateDigestAndNotifications(t *testing.T) {
 
 	stateReq, err := http.NewRequest(http.MethodGet, "/api/stellar/state", nil)
 	require.NoError(t, err)
+	stateReq.Host = "localhost"
 	stateResp, err := app.Test(stateReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, stateResp.StatusCode)
 
 	digestReq, err := http.NewRequest(http.MethodGet, "/api/stellar/digest", nil)
 	require.NoError(t, err)
+	digestReq.Host = "localhost"
 	digestResp, err := app.Test(digestReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, digestResp.StatusCode)
 
 	notifReq, err := http.NewRequest(http.MethodGet, "/api/stellar/notifications", nil)
 	require.NoError(t, err)
+	notifReq.Host = "localhost"
 	notifResp, err := app.Test(notifReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, notifResp.StatusCode)
@@ -218,6 +227,7 @@ func TestStellarAskStateDigestAndNotifications(t *testing.T) {
 		if id != "" {
 			readReq, reqErr := http.NewRequest(http.MethodPost, "/api/stellar/notifications/"+id+"/read", nil)
 			require.NoError(t, reqErr)
+			readReq.Host = "localhost"
 			readResp, readErr := app.Test(readReq, stellarTestFiberTimeoutMs)
 			require.NoError(t, readErr)
 			require.Equal(t, http.StatusNoContent, readResp.StatusCode)
@@ -283,6 +293,7 @@ func TestStellarNotificationStateTransitions(t *testing.T) {
 
 	investigateReq, err := http.NewRequest(http.MethodPost, "/api/stellar/notifications/"+notification.ID+"/investigate", bytes.NewReader([]byte(`{"investigationSummary":"pulling logs"}`)))
 	require.NoError(t, err)
+	investigateReq.Host = "localhost"
 	investigateReq.Header.Set("Content-Type", "application/json")
 	investigateResp, err := app.Test(investigateReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -296,6 +307,7 @@ func TestStellarNotificationStateTransitions(t *testing.T) {
 
 	resolveReq, err := http.NewRequest(http.MethodPost, "/api/stellar/notifications/"+notification.ID+"/resolve", bytes.NewReader([]byte(`{"resolutionNote":"restarted deployment"}`)))
 	require.NoError(t, err)
+	resolveReq.Host = "localhost"
 	resolveReq.Header.Set("Content-Type", "application/json")
 	resolveResp, err := app.Test(resolveReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -322,6 +334,7 @@ func TestStellarNotificationStateTransitions(t *testing.T) {
 
 	dismissReq, err := http.NewRequest(http.MethodPost, "/api/stellar/notifications/"+notification2.ID+"/dismiss", bytes.NewReader([]byte(`{"dismissalReason":"duplicate event"}`)))
 	require.NoError(t, err)
+	dismissReq.Host = "localhost"
 	dismissReq.Header.Set("Content-Type", "application/json")
 	dismissResp, err := app.Test(dismissReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -347,6 +360,7 @@ func TestStellarResolveWatchReturnsJSON(t *testing.T) {
 	rawCreate, _ := json.Marshal(createBody)
 	createReq, err := http.NewRequest(http.MethodPost, "/api/stellar/watches", bytes.NewReader(rawCreate))
 	require.NoError(t, err)
+	createReq.Host = "localhost"
 	createReq.Header.Set("Content-Type", "application/json")
 	createResp, err := app.Test(createReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
@@ -360,6 +374,7 @@ func TestStellarResolveWatchReturnsJSON(t *testing.T) {
 
 	resolveReq, err := http.NewRequest(http.MethodPost, "/api/stellar/watches/"+watchID+"/resolve", bytes.NewReader([]byte(`{}`)))
 	require.NoError(t, err)
+	resolveReq.Host = "localhost"
 	resolveReq.Header.Set("Content-Type", "application/json")
 	resolveResp, err := app.Test(resolveReq, stellarTestFiberTimeoutMs)
 	require.NoError(t, err)
