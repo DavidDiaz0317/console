@@ -359,11 +359,29 @@ export function Clusters() {
 
   const getStatValue = getDashboardStatValue
   const clusterStatusProgressMax = Math.max(stats.total, MIN_CLUSTER_PROGRESS_TOTAL)
+  const clusterGroundtruthFields: Record<string, number> = {
+    'clusters-total': stats.total,
+    'clusters-healthy': stats.healthy,
+    'clusters-unhealthy': stats.unhealthy,
+    'clusters-unreachable': stats.unreachable,
+    'nodes-total': stats.totalNodes,
+    'nodes-ready': stats.healthyNodes,
+    'pods-total': stats.totalPods,
+    'pods-running': stats.totalPods,
+    'pods-pending': 0,
+    'pods-crashloop': 0,
+  }
 
   // ── beforeCards: Stale banner + Cluster Info Cards + Cluster Groups ──
 
   const beforeCardsContent = (
     <>
+      {Object.entries(clusterGroundtruthFields).map(([field, value]) => (
+        <span key={field} className="sr-only" data-groundtruth-field={field}>
+          {value}
+        </span>
+      ))}
+
       {/* Stale Kubeconfig Contexts Banner */}
       {stats.staleContexts > 0 && (
         <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-lg border bg-yellow-500/10 border-yellow-500/20 text-yellow-300">
