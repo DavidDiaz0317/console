@@ -29,6 +29,7 @@ export interface LiveUiFailureEvidence {
   textCollisions?: Array<{ first: string; second: string; ratio: number }>
   unexpectedNetworkResponses?: string[]
   unexpectedRequestFailures?: string[]
+  recoveredAuthBoundaryResponses?: string[]
   networkClassifications?: Array<{ classification: string; method?: string; status?: number; url: string }>
   dashboardMismatches?: Array<{ field: string; expected: number | string; actual: number | string | null; actualValues?: Array<number | null>; route: string; reason?: string }>
   routeFailures?: Array<{ route: string; reason: string; expected?: string; actual?: string | null }>

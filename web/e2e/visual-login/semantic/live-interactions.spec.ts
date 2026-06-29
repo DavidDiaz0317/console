@@ -156,7 +156,7 @@ test('live interactive surfaces work @intensive @live-site @interactions @invari
     await dismissOptionalLiveOverlays(page)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], '/')
+    await assertNoUnexpectedLiveNetworkErrors(page, collectors, baseUrl, [], '/')
     await assertNoCriticalRuntimeErrors(collectors, liveInteractionExpectedConsoleNoise)
 
     writeLiveSiteReport({

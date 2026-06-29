@@ -92,7 +92,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
     })
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], '/')
+    await assertNoUnexpectedLiveNetworkErrors(page, collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], '/')
     await assertNoCriticalRuntimeErrors(collectors, liveDashboardExpectedConsoleNoise)
 
     writeLiveSiteReport({

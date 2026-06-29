@@ -69,6 +69,7 @@ export type LiveApiFactScope = 'all' | 'dashboard' | 'clusters' | 'nodes' | 'pod
 
 type LiveNetworkClassification = {
   classification: string
+  method?: string
   status?: number
   url: string
 }
@@ -569,7 +570,32 @@ export async function assertNoVisibleTextCollisions(page: Page) {
   expect(collisions, 'live UI visible text must not severely overlap').toEqual([])
 }
 
-export function assertNoUnexpectedLiveNetworkErrors(
+async function successfulLiveApiEndpointKeys(page: Page, origin: string): Promise<Set<string>> {
+  const endpointKeys = await page.evaluate(() =>
+    ((window as unknown as { __KC_LIVE_SUCCESSFUL_API_ENDPOINTS__?: string[] }).__KC_LIVE_SUCCESSFUL_API_ENDPOINTS__ || [])
+  ).catch(() => [])
+  return new Set(endpointKeys.map(endpoint => normalizeEndpointKey(endpoint, origin)))
+}
+
+function normalizeEndpointKey(rawUrl: string, origin: string): string {
+  try {
+    const url = new URL(rawUrl, origin)
+    return `${url.pathname}${url.search}`
+  } catch {
+    return rawUrl.replace(/^https?:\/\/[^/]+/i, '')
+  }
+}
+
+function isRecoveredAuthBoundaryResponse(
+  entry: { status?: number; url: string },
+  successfulEndpoints: Set<string>,
+  origin: string,
+): boolean {
+  return entry.status === 401 && successfulEndpoints.has(normalizeEndpointKey(entry.url, origin))
+}
+
+export async function assertNoUnexpectedLiveNetworkErrors(
+  page: Page,
   collectors: EvidenceCollectors,
   baseUrl: string,
   additionalAllowed: RegExp[] = [],
@@ -581,6 +607,17 @@ export function assertNoUnexpectedLiveNetworkErrors(
     ...optionalLiveNetworkPatterns,
     ...additionalAllowed,
   ]
+  const successfulEndpoints = await successfulLiveApiEndpointKeys(page, origin)
+  const recoveredAuthResponses = collectors.errorResponses
+    .filter(entry => {
+      try {
+        return new URL(entry.url).origin === origin
+      } catch {
+        return false
+      }
+    })
+    .filter(entry => isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin))
+    .map(entry => `${entry.method} ${entry.status} ${entry.url}`)
   const unexpectedResponses = collectors.errorResponses
     .filter(entry => {
       try {
@@ -589,6 +626,7 @@ export function assertNoUnexpectedLiveNetworkErrors(
         return false
       }
     })
+    .filter(entry => !isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin))
     .filter(entry => !allowed.some(pattern => pattern.test(entry.url)))
     .map(entry => `${entry.method} ${entry.status} ${entry.url}`)
   const unexpectedFailures = collectors.failedRequests
@@ -612,6 +650,14 @@ export function assertNoUnexpectedLiveNetworkErrors(
       }
     })
     .flatMap(entry => {
+      if (isRecoveredAuthBoundaryResponse(entry, successfulEndpoints, origin)) {
+        return [{
+          classification: 'auth-boundary-recovered',
+          method: entry.method,
+          status: entry.status,
+          url: entry.url,
+        }]
+      }
       const classification = networkClassification(entry.status, entry.url)
       return classification
         ? [{ classification, method: entry.method, status: entry.status, url: entry.url }]
@@ -626,6 +672,7 @@ export function assertNoUnexpectedLiveNetworkErrors(
     ...(collectors.liveUiFailures || {}),
     unexpectedNetworkResponses: unexpectedResponses,
     unexpectedRequestFailures: unexpectedFailures,
+    recoveredAuthBoundaryResponses: recoveredAuthResponses,
     networkClassifications: [
       ...((collectors.liveUiFailures || {}).networkClassifications || []),
       ...networkClassifications,
@@ -743,6 +790,14 @@ export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 
   return page.evaluate(async (factScope: LiveApiFactScope) => {
     type EndpointFact = { status: number | null; count: number | null; error?: string }
     const endpoints: Record<string, EndpointFact> = {}
+    const successfulEndpointKeys = new Set(
+      ((window as unknown as { __KC_LIVE_SUCCESSFUL_API_ENDPOINTS__?: string[] }).__KC_LIVE_SUCCESSFUL_API_ENDPOINTS__ || [])
+    )
+    const rememberSuccessfulEndpoint = (endpoint: string) => {
+      const url = new URL(endpoint, window.location.origin)
+      successfulEndpointKeys.add(`${url.pathname}${url.search}`)
+      ;(window as unknown as { __KC_LIVE_SUCCESSFUL_API_ENDPOINTS__?: string[] }).__KC_LIVE_SUCCESSFUL_API_ENDPOINTS__ = [...successfulEndpointKeys]
+    }
     const shouldFetch = (endpointScope: LiveApiFactScope) =>
       factScope === 'all'
       || factScope === endpointScope
@@ -787,6 +842,9 @@ export async function collectLiveApiFacts(page: Page, scope: LiveApiFactScope = 
                     ? (data as { namespaces: unknown[] }).namespaces.length
                     : null
         endpoints[endpoint] = { status: response.status, count }
+        if (response.ok) {
+          rememberSuccessfulEndpoint(endpoint)
+        }
         return { status: response.status, data, count }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)

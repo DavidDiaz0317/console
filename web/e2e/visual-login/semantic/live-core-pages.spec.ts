@@ -185,7 +185,7 @@ for (const coreRoute of coreRoutes) {
       await assertNoForbiddenLiveUi(page)
       await assertLiveLayoutStable(page)
       await assertNoVisibleTextCollisions(page)
-      await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], coreRoute.route)
+      await assertNoUnexpectedLiveNetworkErrors(page, collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], coreRoute.route)
       await assertNoCriticalRuntimeErrors(collectors, liveCorePageExpectedConsoleNoise)
 
       writeLiveRouteEvidence({

@@ -111,7 +111,7 @@ test('live canary UI matches Kubernetes groundtruth without screenshot baselines
     }, route)
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [], route)
+    await assertNoUnexpectedLiveNetworkErrors(page, collectors, baseUrl, [], route)
     await assertNoCriticalRuntimeErrors(collectors, liveCanaryExpectedConsoleNoise)
 
     writeLiveSiteReport({
