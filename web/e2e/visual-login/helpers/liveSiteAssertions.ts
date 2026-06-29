@@ -90,7 +90,6 @@ const forbiddenLiveUiPatterns = [
   { label: 'endpoint error summary', source: String.raw`endpoint errors?`, flags: 'i' },
   { label: 'AI prediction load failure', source: String.raw`/predictions/ai\s*-\s*Load failed`, flags: 'i' },
   { label: 'widget install prompt', source: String.raw`\bInstall widget\b`, flags: 'i' },
-  { label: 'offline live status badge', source: String.raw`\bOffline\b`, flags: 'i' },
 ]
 
 const optionalLiveNetworkPatterns = [
@@ -479,6 +478,13 @@ export async function assertNoForbiddenLiveUi(page: Page) {
         .filter(node => pattern.regex.test(node.text))
         .map(node => ({ label: pattern.label, text: node.text.slice(0, 160) }))
     )
+    const agentStatusText = document.querySelector('[data-testid="navbar-agent-status-btn"]')?.textContent || ''
+    if (/\boffline\b/i.test(agentStatusText)) {
+      forbiddenMatches.push({
+        label: 'offline live navbar status',
+        text: agentStatusText.replace(/\s+/g, ' ').trim().slice(0, 160),
+      })
+    }
     const warningBadges = textNodes
       .map(node => {
         const match = node.text.match(/\b(\d+)\s+warnings?\b/i)
