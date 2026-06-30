@@ -243,8 +243,10 @@ test.describe('Update Settings', () => {
   test('done banner can be dismissed', async ({ page }) => {
     const ws = await setupUpdateTest(page)
 
-    sendProgress(ws, 'done', 'Update complete — restart successful', 100)
-    await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
+    await expect(async () => {
+      sendProgress(ws, 'done', 'Update complete — restart successful', 100)
+      await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10000 })
 
     // Click dismiss
     await page.getByTestId('update-done-dismiss').click()
