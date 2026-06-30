@@ -253,8 +253,9 @@ jobs:
             const summary = report.summary || {};
             const decisions = report.decisions || [];
             const rows = decisions.slice(0, 8).map((decision) => {
-              const crop = decision.regions?.[0]?.stitched_crop || 'n/a';
-              return `| ${decision.component_name || 'visual diff'} | ${decision.classification} | ${decision.routing} | ${decision.reasoning || ''} | ${crop} |`;
+              const region = decision.regions?.[0] || decision;
+              const crop = region.stitched_crop || 'n/a';
+              return `| ${decision.component_name || 'visual diff'} | ${decision.classification} | ${decision.routing} | ${region.location || 'n/a'} | ${region.component_hint || decision.suspected_component || 'n/a'} | ${region.evidence_note || decision.reasoning || ''} | ${crop} |`;
             });
             const body = [
               '<!-- visual-evidence-package -->',
@@ -263,9 +264,9 @@ jobs:
               `Outcome: \`${summary.outcome}\``,
               'CI does not make a semantic model verdict. The generated failure issue is the interface for the image-capable agent.',
               '',
-              '| Component / route | CI classification | Routing | Evidence note | Crop artifact path |',
-              '|---|---|---|---|---|',
-              rows.length ? rows.join('\n') : '| none | n/a | n/a | No visual diff pairs were parsed. | n/a |',
+              '| Component / route | CI classification | Routing | Location | Component hint | Evidence note | Crop artifact path |',
+              '|---|---|---|---|---|---|---|',
+              rows.length ? rows.join('\n') : '| none | n/a | n/a | n/a | n/a | No visual diff pairs were parsed. | n/a |',
             ].join('\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,

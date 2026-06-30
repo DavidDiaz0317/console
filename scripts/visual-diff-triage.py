@@ -337,20 +337,44 @@ def stitch(before: Image.Image, after: Image.Image, bbox: tuple[int, int, int, i
     canvas.save(output)
 
 
-def downscale(image: Image.Image, max_width: int) -> Image.Image:
-    if image.width <= max_width:
-        return image
-    ratio = max_width / image.width
-    return image.resize((max_width, max(1, int(image.height * ratio))))
-
-
-def stitch_full(before: Image.Image, after: Image.Image, output: Path, max_width: int) -> None:
-    half_width = max(1, max_width // 2)
-    stitch(downscale(before, half_width), downscale(after, half_width), (0, 0, downscale(before, half_width).width, downscale(before, half_width).height), output)
-
-
 VALID_OUTCOMES = {"regression", "intended_change", "noise"}
 PREDICTION_LABELS = (AGENT_TRIAGE_CLASSIFICATION, "noise")
+
+
+ROUTE_CONTEXT: dict[str, dict[str, str]] = {
+    "/": {
+        "component_hint": "dashboard shell / card grid",
+        "purpose": "Main landing dashboard summarizing cluster, policy, workload, and operational cards.",
+    },
+    "/clusters": {
+        "component_hint": "clusters page / cluster inventory",
+        "purpose": "Cluster management view showing registered clusters, status, and navigation context.",
+    },
+    "/settings": {
+        "component_hint": "settings page",
+        "purpose": "Configuration surface for user, integration, and console settings.",
+    },
+    "/ci-cd": {
+        "component_hint": "CI/CD dashboard cards",
+        "purpose": "Pipeline and deployment status dashboard for CI/CD workflows.",
+    },
+    "/cluster-admin": {
+        "component_hint": "cluster admin page",
+        "purpose": "Administrative cluster operations and management controls.",
+    },
+    "/workloads": {
+        "component_hint": "workloads overview",
+        "purpose": "Workload inventory and health overview across clusters/namespaces.",
+    },
+    "/quantum": {
+        "component_hint": "quantum demo cards",
+        "purpose": "Quantum demo UI with circuit, histogram, qubit grid, and control cards.",
+    },
+    "/compliance": {
+        "component_hint": "compliance dashboard",
+        "purpose": "Compliance, policy, and posture overview for the environment.",
+    },
+}
 
 
 def high_risk(changed_files: list[str], config: dict[str, Any]) -> bool:
@@ -377,6 +401,131 @@ def component_from_pair(pair: ImagePair) -> tuple[str, str]:
     return (Path(source).name or pair.test_title or "visual-regression", route)
 
 
+def route_context(route: str, component_name: str) -> dict[str, str]:
+    context = ROUTE_CONTEXT.get(route, {})
+    return {
+        "component_hint": context.get("component_hint") or component_name or "visual-regression screenshot region",
+        "purpose": context.get("purpose") or "Stable visual contract for this route/component in the console UI.",
+    }
+
+
+def region_location(bbox: tuple[int, int, int, int], width: int, height: int) -> str:
+    left, top, right, bottom = bbox
+    cx = (left + right) / 2
+    cy = (top + bottom) / 2
+    horizontal = "left" if cx < width / 3 else "right" if cx > 2 * width / 3 else "center"
+    vertical = "top" if cy < height / 3 else "bottom" if cy > 2 * height / 3 else "middle"
+    return f"{vertical}-{horizontal}"
+
+
+def crop_area_ratio(bbox: tuple[int, int, int, int], width: int, height: int) -> float:
+    left, top, right, bottom = bbox
+    total = width * height
+    return ((right - left) * (bottom - top) / total) if total else 0
+
+
+def score_mask_region(mask: Image.Image, bbox: tuple[int, int, int, int]) -> int:
+    return int(mask.crop(bbox).histogram()[255])
+
+
+def split_focus_regions(
+    mask: Image.Image,
+    bbox: tuple[int, int, int, int],
+    max_regions: int,
+    padding: int,
+    grid_rows: int,
+    grid_cols: int,
+) -> list[dict[str, Any]]:
+    """Split a very large changed area into the densest smaller tiles.
+
+    This avoids sending a full-page screenshot to the issue agent while still preserving the most
+    informative visual evidence. Tiles are scored by changed-pixel count and then padded for context.
+    """
+    width, height = mask.size
+    left, top, right, bottom = bbox
+    candidates: list[dict[str, Any]] = []
+    grid_rows = max(1, grid_rows)
+    grid_cols = max(1, grid_cols)
+    for row in range(grid_rows):
+        tile_top = top + (bottom - top) * row // grid_rows
+        tile_bottom = top + (bottom - top) * (row + 1) // grid_rows
+        for col in range(grid_cols):
+            tile_left = left + (right - left) * col // grid_cols
+            tile_right = left + (right - left) * (col + 1) // grid_cols
+            tile = (tile_left, tile_top, tile_right, tile_bottom)
+            score = score_mask_region(mask, tile)
+            if score <= 0:
+                continue
+            candidates.append({
+                "bbox": bbox_with_padding(tile, width, height, padding),
+                "changed_pixels": score,
+                "mode": "focused_tile",
+            })
+    if not candidates:
+        return [{"bbox": bbox_with_padding(bbox, width, height, padding), "changed_pixels": 0, "mode": "focused_tile_fallback"}]
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[int, int, int, int]] = set()
+    for candidate in sorted(candidates, key=lambda item: item["changed_pixels"], reverse=True):
+        key = tuple(candidate["bbox"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(candidate)
+        if len(deduped) >= max_regions:
+            break
+    return deduped
+
+
+def build_evidence_regions(mask: Image.Image, config: dict[str, Any]) -> list[dict[str, Any]]:
+    thresholds = config.get("thresholds", {})
+    max_regions = int(thresholds.get("max_regions", 4))
+    padding = int(thresholds.get("crop_padding_px", 16))
+    max_crop_area = float(thresholds.get("max_crop_area_ratio", 0.25))
+    grid_rows = int(thresholds.get("focus_grid_rows", 3))
+    grid_cols = int(thresholds.get("focus_grid_cols", 3))
+    width, height = mask.size
+
+    components = connected_components(mask, max_regions=max_regions * grid_rows * grid_cols, padding=padding)
+    regions: list[dict[str, Any]] = []
+    for component in components:
+        bbox = tuple(component["bbox"])
+        if crop_area_ratio(bbox, width, height) > max_crop_area:
+            regions.extend(split_focus_regions(mask, bbox, max_regions, padding, grid_rows, grid_cols))
+        else:
+            regions.append({**component, "mode": "connected_component"})
+        if len(regions) >= max_regions:
+            break
+
+    return sorted(regions, key=lambda item: item.get("changed_pixels", 0), reverse=True)[:max_regions]
+
+
+def enrich_region(
+    region: dict[str, Any],
+    width: int,
+    height: int,
+    route: str,
+    component_name: str,
+    index: int,
+    total: int,
+) -> dict[str, Any]:
+    bbox = tuple(region["bbox"])
+    context = route_context(route, component_name)
+    return {
+        "bbox": list(bbox),
+        "location": region_location(bbox, width, height),
+        "component_hint": context["component_hint"],
+        "component_purpose": context["purpose"],
+        "crop_strategy": region.get("mode", "connected_component"),
+        "changed_pixels": region.get("changed_pixels"),
+        "evidence_note": (
+            f"Focused crop {index}/{total} around the highest-density changed pixels in the "
+            f"{region_location(bbox, width, height)} of route `{route}`. Inspect this local BEFORE/AFTER "
+            "region first; only open full artifacts if the crop is ambiguous."
+        ),
+    }
+
+
 def triage(args: argparse.Namespace) -> int:
     repo_root = Path(args.repo_root).resolve()
     config = load_json(Path(args.config), {})
@@ -392,7 +541,6 @@ def triage(args: argparse.Namespace) -> int:
         "head_sha": os.getenv("GITHUB_SHA", ""),
     }
     is_high_risk = high_risk(changed_files, config)
-    max_regions = int(thresholds.get("max_regions", 3))
 
     pairs = discover_pairs(
         results_json=Path(args.playwright_results).resolve(),
@@ -443,35 +591,24 @@ def triage(args: argparse.Namespace) -> int:
             decisions.append({**base_decision, "classification": "noise", "confidence": 1.0, "routing": "pass", "reasoning": "Changed area is below the configured noise threshold; no agent issue is needed.", "model_called": False, "requires_agent_triage": False, "regions": [{"bbox": bbox, "stitched_crop": rel(crop_path, repo_root)}]})
             continue
 
-        if changed_ratio >= float(thresholds.get("full_page_changed_area_ratio", 0.6)):
-            full_path = crop_dir / f"pair-{pair_index}-full-page.png"
-            stitch_full(before, after, full_path, int(thresholds.get("max_full_image_width", 1200)))
-            decisions.append({**base_decision, "classification": AGENT_TRIAGE_CLASSIFICATION, "confidence": 0.0, "routing": "agent_triage", "reasoning": "Changed area covers most of the page; CI packaged a downscaled full-page BEFORE/AFTER image for the issue-scanning agent.", "model_called": False, "requires_agent_triage": True, "regions": [{"bbox": [0, 0, before.width, before.height], "stitched_crop": rel(full_path, repo_root), "mode": "downscaled_full_page"}]})
-            continue
-
-        components = connected_components(mask, max_regions=max_regions + 1, padding=int(thresholds.get("crop_padding_px", 16)))
-        use_full_image = len(components) > max_regions
-        if use_full_image:
-            regions = [{"bbox": (0, 0, before.width, before.height), "note": f"More than {max_regions} changed regions; using one downscaled full-page image."}]
-        else:
-            regions = components[:max_regions]
+        regions = build_evidence_regions(mask, config)
+        if not regions:
+            regions = [{"bbox": bbox_with_padding(mask.getbbox() or (0, 0, before.width, before.height), before.width, before.height, int(thresholds.get("crop_padding_px", 16))), "changed_pixels": changed_pixels, "mode": "fallback_crop"}]
 
         region_results: list[dict[str, Any]] = []
         for region_index, region in enumerate(regions, start=1):
             bbox = tuple(region["bbox"])
             crop_path = crop_dir / f"pair-{pair_index}-region-{region_index}.png"
-            if use_full_image:
-                stitch_full(before, after, crop_path, int(thresholds.get("max_full_image_width", 1200)))
-            else:
-                stitch(before, after, bbox, crop_path)
+            stitch(before, after, bbox, crop_path)
+            metadata = enrich_region(region, before.width, before.height, route, component_name, region_index, len(regions))
             result = {
                 "classification": AGENT_TRIAGE_CLASSIFICATION,
                 "confidence": 0.0,
-                "reasoning": AGENT_TRIAGE_REASONING,
-                "suspected_component": None,
+                "reasoning": metadata["evidence_note"],
+                "suspected_component": metadata["component_hint"],
                 "severity": None,
+                **metadata,
             }
-            result["bbox"] = list(bbox)
             result["stitched_crop"] = rel(crop_path, repo_root)
             region_results.append(result)
 
@@ -772,8 +909,6 @@ def classify_images(
     changed_ratio = changed_pixels / total_pixels if total_pixels else 0
     if changed_pixels == 0 or changed_ratio < float(thresholds.get("noise_changed_area_ratio", 0.001)):
         return {"classification": "noise", "confidence": 1.0, "model_called": False}
-    if changed_ratio >= float(thresholds.get("full_page_changed_area_ratio", 0.6)):
-        return {"classification": AGENT_TRIAGE_CLASSIFICATION, "confidence": 0.0, "model_called": False}
     bbox = bbox_with_padding(
         mask.getbbox() or (0, 0, before.width, before.height),
         before.width, before.height, int(thresholds.get("crop_padding_px", 16)),

@@ -614,19 +614,30 @@ jobs:
               const blocks = [];
               const usedUrls = new Set();
               for (const decision of triageDecisions) {
-              const crop = decision.regions?.[0]?.stitched_crop;
-              const url = crop ? publishResult.urlByBasename.get(path.basename(crop)) : null;
-              if (!url || usedUrls.has(url)) continue;
-              usedUrls.add(url);
-              const label = decision.component_name || decision.test_title || 'Visual diff';
-              blocks.push([
-                  `### ${escapeAlt(label)} — \`${decision.classification || 'n/a'}\``,
-                  '',
-                  `Routing: \`${decision.routing || 'n/a'}\`${decision.severity ? ` · Severity: \`${decision.severity}\`` : ''}`,
-                  '',
-                  `![${escapeAlt(label)} — before / after](${url})`,
-                  decision.reasoning ? `\n> ${escapeAlt(decision.reasoning)}` : '',
-                ].filter(Boolean).join('\n'));
+                const regions = decision.regions?.length ? decision.regions : [decision];
+                regions.forEach((region, regionIndex) => {
+                  const crop = region.stitched_crop;
+                  const url = crop ? publishResult.urlByBasename.get(path.basename(crop)) : null;
+                  if (!url || usedUrls.has(url)) return;
+                  usedUrls.add(url);
+                  const label = decision.component_name || decision.test_title || 'Visual diff';
+                  const location = region.location || 'unknown location';
+                  const componentHint = region.component_hint || region.suspected_component || decision.suspected_component || 'unknown component';
+                  const purpose = region.component_purpose || 'Stable visual contract for this UI region.';
+                  const bbox = Array.isArray(region.bbox) ? region.bbox.join(', ') : 'n/a';
+                  blocks.push([
+                    `### ${escapeAlt(label)} — region ${regionIndex + 1}/${regions.length}`,
+                    '',
+                    `- CI route: \`${decision.route || 'unknown'}\``,
+                    `- Approx location: \`${location}\``,
+                    `- Component hint: \`${escapeAlt(componentHint)}\``,
+                    `- Component purpose: ${escapeAlt(purpose)}`,
+                    `- BBox: \`${bbox}\` · Crop strategy: \`${region.crop_strategy || 'focused_crop'}\``,
+                    '',
+                    `![${escapeAlt(label)} ${location} — before / after](${url})`,
+                    region.evidence_note ? `\n> ${escapeAlt(region.evidence_note)}` : decision.reasoning ? `\n> ${escapeAlt(decision.reasoning)}` : '',
+                  ].filter(Boolean).join('\n'));
+                });
               }
               // Inline any published crop not tied to a decision (e.g. full-page or sub-threshold crops).
               for (const image of publishResult.images) {
@@ -639,7 +650,7 @@ jobs:
                 ].join('\n'));
               }
               return [
-                'Each image below is a stitched **BEFORE | AFTER** comparison of a changed region, republished from the workflow artifacts so it renders inline here.',
+                'Each image below is a focused stitched **BEFORE | AFTER** crop around changed pixels, not a full-page screenshot. CI adds approximate location and component context so the image-capable issue agent can inspect the smallest useful visual evidence first.',
                 '',
                 blocks.join('\n\n'),
               ].join('\n');
@@ -656,7 +667,7 @@ jobs:
               '',
               'You are the image-capable issue agent assigned to this visual-regression issue. CI did **not** call a VLM and did **not** decide whether this is an intended UI change, visual noise, or a regression. Resolve it end to end using the evidence in this issue.',
               '',
-              '**Step 1 — Gather evidence.** Inspect every image in the "Visual Report — Before / After" section above (what changed: layout, color, text, an added or removed element, a full-page redesign, or a blank/broken render?). Read the "Visual Evidence Package" table for crop paths and changed-region metadata. Read "Pull Request Context" for the changed files and the PR intent.',
+              '**Step 1 — Gather evidence.** Inspect every focused crop in the "Visual Report — Before / After" section above (what changed: layout, color, text, an added or removed element, clipping, overlap, or blank/broken render?). Use the approximate location, component hint, component purpose, and bbox metadata to understand where this crop sits on the page. Read "Pull Request Context" for the changed files and the PR intent. Only open the full workflow artifact if the focused crops are ambiguous.',
               '',
               '**Step 2 — Classify: intended change (positive) vs regression (negative).**',
               '- **Intended UI change (positive):** the visual delta matches what the PR set out to do (it edits the matching component/route and the change looks like a deliberate restyle, new column, copy change, etc.).',
@@ -764,9 +775,10 @@ jobs:
             });
 
             const triageRows = triageDecisions.slice(0, 12).map((decision) => {
-              const crop = decision.regions?.[0]?.stitched_crop || '';
-              const bbox = decision.bbox || decision.regions?.[0]?.bbox || '';
-              return `| ${escapeCell(decision.component_name || decision.test_title || 'visual diff')} | ${escapeCell(decision.classification)} | ${escapeCell(decision.confidence)} | ${escapeCell(decision.routing)} | ${escapeCell(decision.severity || 'n/a')} | ${escapeCell(Array.isArray(bbox) ? bbox.join(', ') : bbox)} | ${escapeCell(decision.suspected_component || 'n/a')} | ${escapeCell(decision.reasoning || '')} | ${escapeCell(crop || 'See artifacts')} |`;
+              const region = decision.regions?.[0] || decision;
+              const crop = region.stitched_crop || '';
+              const bbox = region.bbox || decision.bbox || '';
+              return `| ${escapeCell(decision.component_name || decision.test_title || 'visual diff')} | ${escapeCell(decision.classification)} | ${escapeCell(decision.confidence)} | ${escapeCell(decision.routing)} | ${escapeCell(region.location || 'n/a')} | ${escapeCell(Array.isArray(bbox) ? bbox.join(', ') : bbox)} | ${escapeCell(region.component_hint || decision.suspected_component || 'n/a')} | ${escapeCell(region.component_purpose || 'n/a')} | ${escapeCell(region.evidence_note || decision.reasoning || '')} | ${escapeCell(crop || 'See artifacts')} |`;
             });
 
             const primaryTriage = primaryTriageClassification(triageDecisions);
@@ -890,11 +902,11 @@ jobs:
               '',
               '## Visual Evidence Package',
               '',
-              'Playwright detected a screenshot mismatch. CI only packages cropped BEFORE/AFTER evidence for the issue-scanning agent; it does not decide whether the change is intended, noise, or a regression.',
+              'Playwright detected a screenshot mismatch. CI only packages focused cropped BEFORE/AFTER evidence plus location/component context for the issue-scanning agent; it does not decide whether the change is intended, noise, or a regression.',
               '',
-              '| Component / route | CI classification | Confidence | Routing | Severity | BBox | Suspected Component | Evidence Note | Stitched Crop |',
-              '|---|---|---:|---|---|---|---|---|---|',
-              triageRows.length ? triageRows.join('\n') : '| No visual evidence rows parsed | n/a | n/a | n/a | n/a | n/a | n/a | Inspect Playwright diff artifacts | See artifacts |',
+              '| Component / route | CI classification | Confidence | Routing | Location | BBox | Component Hint | Component Purpose | Evidence Note | Stitched Crop |',
+              '|---|---|---:|---|---|---|---|---|---|---|',
+              triageRows.length ? triageRows.join('\n') : '| No visual evidence rows parsed | n/a | n/a | n/a | n/a | n/a | n/a | n/a | Inspect Playwright diff artifacts | See artifacts |',
               '',
               triageSection,
               '',

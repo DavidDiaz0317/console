@@ -3,10 +3,11 @@
   "thresholds": {
     "pixel_channel_threshold": 16,
     "noise_changed_area_ratio": 0.001,
-    "full_page_changed_area_ratio": 0.6,
     "crop_padding_px": 16,
-    "max_regions": 3,
-    "max_full_image_width": 1200,
+    "max_regions": 4,
+    "max_crop_area_ratio": 0.25,
+    "focus_grid_rows": 3,
+    "focus_grid_cols": 3,
     "target_handoff_precision": 0.95,
     "min_samples": 50,
     "eval_min_accuracy": 0.8
