@@ -222,8 +222,33 @@ async function mockSkipPatternRoutes(page: Page): Promise<void> {
 
 async function seedScannerAuth(page: Page): Promise<void> {
   await page.addInitScript((user) => {
+    const originalFetch = window.fetch.bind(window)
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const requestUrl = typeof input === 'string'
+        ? input
+        : input instanceof Request
+          ? input.url
+          : input.toString()
+      const { pathname } = new URL(requestUrl, window.location.origin)
+      const normalizedPath = pathname.replace(/\/+$/, '')
+      if (normalizedPath === '/api/me') {
+        return new Response(JSON.stringify(user), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (normalizedPath === '/auth/refresh') {
+        return new Response(JSON.stringify({ refreshed: true, onboarded: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return originalFetch(input, init)
+    }
+
     const now = String(Date.now())
     localStorage.setItem('token', 'test-token')
+    sessionStorage.setItem('token', 'test-token')
     localStorage.setItem('kc-demo-mode', 'true')
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-user-cache', JSON.stringify(user))
@@ -350,6 +375,7 @@ test('console error scan — all routes', async ({ page }) => {
   // Set auth token in localStorage (ProtectedRoute checks this)
   await page.evaluate(() => {
     localStorage.setItem('token', 'test-token')
+    sessionStorage.setItem('token', 'test-token')
     localStorage.setItem('kc-demo-mode', 'true')
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('kc-user-cache', JSON.stringify({
