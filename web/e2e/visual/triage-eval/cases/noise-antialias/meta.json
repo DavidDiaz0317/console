@@ -1,0 +1,9 @@
+{
+  "expected": "noise",
+  "pr_title": "No-op refactor",
+  "changed_files": [
+    "web/src/lib/util.ts"
+  ],
+  "note": "Sub-pixel / anti-aliasing difference only.",
+  "source": "synthetic-seed"
+}

@@ -7,8 +7,17 @@ on:
       - 'web/e2e/visual/**'
       - '.github/workflows/visual-regression.yml'
   workflow_dispatch:
+    inputs:
+      generate_baselines:
+        description: Force snapshot update mode instead of compare mode.
+        type: boolean
+        default: false
 
-permissions: read-all
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  issues: write
 
 concurrency:
   group: visual-${{ github.ref }}
@@ -17,15 +26,16 @@ concurrency:
 jobs:
   app-visual-regression:
     name: App Visual Regression
-    if: github.repository == 'kubestellar/console'
+    # Demo PR in fork: allow running visual regression in this repository too.
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: web
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -35,15 +45,136 @@ jobs:
 
       - run: npm ci
 
-      - name: Check baseline snapshots
-        id: check-baselines
+      - name: Resolve visual regression mode
+        id: mode
+        env:
+          GENERATE_BASELINES: ${{ github.event_name == 'workflow_dispatch' && inputs.generate_baselines || false }}
         run: |
-          if ls e2e/visual/app-visual-regression.spec.ts-snapshots/chromium/*.png 1>/dev/null 2>&1; then
-            echo "baselines_exist=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "baselines_exist=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No baseline snapshots found — will generate new baselines."
+          MIN_CORE_VISUAL_BASELINE_PNG_COUNT=10
+          CORE_COUNT=$(find e2e/visual/app-visual-regression.spec.ts-snapshots -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+          CORE_COUNT=${CORE_COUNT:-0}
+          echo "core_count=$CORE_COUNT" >> "$GITHUB_OUTPUT"
+          echo "min_core_count=$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" >> "$GITHUB_OUTPUT"
+          if [ "$CORE_COUNT" -gt 0 ] && [ "$CORE_COUNT" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
+            # Partial baselines = anomaly (some core baselines are missing/deleted). Make it LOUD rather
+            # than silently downgrading to generate mode, which would mask a disabled visual sensor.
+            # A tracked alarm issue is opened/updated below so the gap is not lost in a single run log.
+            echo "::error::Partial visual baselines detected (${CORE_COUNT}/${MIN_CORE_VISUAL_BASELINE_PNG_COUNT}). The visual-regression sensor may be silently disabled — regenerating, but this needs investigation."
           fi
+          if [ "$GENERATE_BASELINES" = "true" ] || [ "$CORE_COUNT" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
+            echo "run_mode=generate" >> "$GITHUB_OUTPUT"
+            echo "::notice::Running in baseline generation mode (core baselines: ${CORE_COUNT})."
+          else
+            echo "run_mode=compare" >> "$GITHUB_OUTPUT"
+            echo "::notice::Running in visual compare mode (core baselines: ${CORE_COUNT})."
+          fi
+
+      - name: Alarm on missing or partial baselines
+        # Opening/closing the alarm issue needs write access; a fork-triggered run only has a read-only
+        # token, so never let this bookkeeping step fail the visual gate.
+        if: always() && steps.mode.outputs.core_count != ''
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CORE_COUNT: ${{ steps.mode.outputs.core_count }}
+          MIN_CORE_COUNT: ${{ steps.mode.outputs.min_core_count }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const coreCount = Number(process.env.CORE_COUNT);
+            const minCount = Number(process.env.MIN_CORE_COUNT);
+            const LABEL = 'visual-baselines-missing';
+            const marker = '<!-- visual-baselines-missing -->';
+            const isPartial = coreCount > 0 && coreCount < minCount;
+
+            let repoInfo;
+            try {
+              repoInfo = (await github.rest.repos.get({ owner, repo })).data;
+            } catch (error) {
+              core.warning(`Could not read repo info: ${error.message}`);
+              return;
+            }
+            if (!repoInfo.has_issues) {
+              core.warning('Issues are disabled for this repo; cannot track the baseline alarm.');
+              return;
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: LABEL, per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
+
+            if (isPartial) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: LABEL });
+              } catch {
+                await github.rest.issues.createLabel({
+                  owner, repo, name: LABEL, color: 'b60205',
+                  description: 'Core visual-regression baselines are missing or partial; the sensor may be disabled.',
+                }).catch((error) => core.warning(`Could not create label: ${error.message}`));
+              }
+              const body = [
+                marker,
+                '## ⚠️ Partial visual-regression baselines detected',
+                '',
+                `Found \`${coreCount}\` of the expected \`${minCount}\` core baseline PNGs under`,
+                '`web/e2e/visual/app-visual-regression.spec.ts-snapshots`.',
+                '',
+                'When fewer than the full set are committed, the Visual Regression workflow falls back to',
+                'baseline-generation mode and the compare+triage sensor is effectively **disabled** — a real',
+                'UI break would not fail CI. Restore the missing baselines (or regenerate the full set) so the',
+                'sensor stays armed.',
+                '',
+                `- Triggering run: [#${context.runId}](${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId})`,
+                `- Branch: \`${context.ref}\``,
+                '',
+                '> Auto-generated by Visual Regression. Auto-closes when all core baselines are present.',
+              ].join('\n');
+              if (existing) {
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+                core.warning(`Updated baseline alarm issue #${existing.number}.`);
+              } else {
+                const created = await github.rest.issues.create({
+                  owner, repo, title: '[Visual Regression] Core visual baselines missing or partial', body, labels: [LABEL],
+                });
+                core.warning(`Opened baseline alarm issue #${created.data.number}.`);
+              }
+            } else if (existing && coreCount >= minCount) {
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed', state_reason: 'completed' });
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `✅ All \`${minCount}\` core visual baselines are present again (found \`${coreCount}\`). Auto-closing.`,
+              });
+              core.info(`Closed baseline alarm issue #${existing.number}.`);
+            }
+
+      - name: Write visual regression context
+        run: |
+          mkdir -p e2e/test-results/app-visual-context
+          node <<'NODE'
+          const fs = require('fs');
+          const context = {
+            suite: 'app-visual-regression',
+            target: {
+              type: 'full-app-visual-regression',
+              baseUrl: 'http://localhost:4173',
+              routes: [
+                '/',
+                '/clusters',
+                '/settings',
+                '/ci-cd',
+                '/cluster-admin',
+                '/compliance',
+                '/workloads',
+                '/quantum'
+              ],
+            },
+            expectedContract: 'Core console routes and visual states must remain stable against committed Chromium/Linux baselines.',
+            baselinePolicy: 'Committed Linux baselines are the source of truth for PR visual regression checks.',
+          };
+          fs.writeFileSync('e2e/test-results/app-visual-context/context.json', JSON.stringify(context, null, 2));
+          NODE
 
       - name: Build frontend
         run: npm run build
@@ -58,33 +189,137 @@ jobs:
         run: timeout 30 bash -c 'until curl -sf http://localhost:4173 > /dev/null; do sleep 1; done'
 
       - name: Run visual regression tests
-        if: steps.check-baselines.outputs.baselines_exist == 'true'
+        id: visual_tests
+        if: steps.mode.outputs.run_mode == 'compare'
+        continue-on-error: true
         run: npm run test:visual
         env:
           CI: 'true'
           APP_VISUAL_BASE_URL: 'http://localhost:4173'
 
+      - name: Prepare visual triage context
+        id: triage_context
+        if: steps.mode.outputs.run_mode == 'compare' && steps.visual_tests.outcome == 'failure'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          PR_TITLE: ${{ github.event.pull_request.title || '' }}
+        run: |
+          mkdir -p web/e2e/test-results/visual-triage
+          : > /tmp/visual-triage-changed-files.txt
+          if [ -n "$PR_NUMBER" ]; then
+            gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' > /tmp/visual-triage-changed-files.txt
+          else
+            git diff --name-only HEAD^ HEAD > /tmp/visual-triage-changed-files.txt || true
+          fi
+          {
+            echo "pr_number=${PR_NUMBER}"
+            echo "pr_title<<EOF"
+            echo "$PR_TITLE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Package visual diff evidence for issue agent
+        id: visual_triage
+        if: steps.mode.outputs.run_mode == 'compare' && steps.visual_tests.outcome == 'failure'
+        working-directory: .
+        env:
+          PR_NUMBER: ${{ steps.triage_context.outputs.pr_number }}
+        run: |
+          python3 -m pip install --user Pillow
+          python3 scripts/visual-diff-triage.py triage \
+            --repo-root . \
+            --config .github/visual-triage-config.json \
+            --playwright-results web/e2e/test-results/app-visual-results/results.json \
+            --test-results-dir web/e2e/test-results/app-visual \
+            --snapshots-root web/e2e/visual \
+            --output-dir web/e2e/test-results/visual-triage \
+            --changed-files /tmp/visual-triage-changed-files.txt \
+            --pr-title "${{ steps.triage_context.outputs.pr_title }}" \
+            --pr-number "${{ steps.triage_context.outputs.pr_number }}"
+
+      - name: Comment visual evidence package
+        # Only attempt the PR comment from a same-repo PR. A pull_request run triggered from a fork
+        # gets a read-only GITHUB_TOKEN, so createComment 403s; skip cleanly there (and never let a
+        # comment failure fail the gate — the Enforce step below is the real verdict).
+        if: steps.visual_triage.outputs.outcome != '' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('web/e2e/test-results/visual-triage/triage-results.json', 'utf8'));
+            const summary = report.summary || {};
+            const decisions = report.decisions || [];
+            const rows = decisions.slice(0, 8).map((decision) => {
+              const crop = decision.regions?.[0]?.stitched_crop || 'n/a';
+              return `| ${decision.component_name || 'visual diff'} | ${decision.classification} | ${decision.routing} | ${decision.reasoning || ''} | ${crop} |`;
+            });
+            const body = [
+              '<!-- visual-evidence-package -->',
+              '## Visual diff evidence packaged for issue agent',
+              '',
+              `Outcome: \`${summary.outcome}\``,
+              'CI does not make a semantic model verdict. The generated failure issue is the interface for the image-capable agent.',
+              '',
+              '| Component / route | CI classification | Routing | Evidence note | Crop artifact path |',
+              '|---|---|---|---|---|',
+              rows.length ? rows.join('\n') : '| none | n/a | n/a | No visual diff pairs were parsed. | n/a |',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
       - name: Generate baseline snapshots
-        if: steps.check-baselines.outputs.baselines_exist == 'false'
+        if: steps.mode.outputs.run_mode == 'generate'
         run: npm run test:visual:update
         env:
           CI: 'true'
           APP_VISUAL_BASE_URL: 'http://localhost:4173'
 
       - name: Upload generated baselines
-        if: steps.check-baselines.outputs.baselines_exist == 'false'
+        if: steps.mode.outputs.run_mode == 'generate'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-visual-baselines
-          path: web/e2e/visual/app-visual-regression.spec.ts-snapshots/
+          path: web/e2e/visual/**/*-snapshots/
           retention-days: 30
 
       - name: Upload visual diff artifacts
-        if: failure()
+        if: always() && (steps.visual_tests.outcome == 'failure' || failure())
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-visual-diff
           path: |
             web/e2e/test-results/app-visual/
+            web/e2e/test-results/app-visual-results/
+            web/e2e/test-results/app-visual-context/
+            web/e2e/test-results/visual-triage/
             web/e2e/app-visual-report/
+            /tmp/preview.log
           retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Enforce visual evidence handoff
+        if: steps.mode.outputs.run_mode == 'compare' && steps.visual_tests.outcome == 'failure'
+        working-directory: .
+        run: |
+          outcome="${{ steps.visual_triage.outputs.outcome }}"
+          if [ "$outcome" = "pass" ]; then
+            echo "Only negligible visual noise was detected; no issue-agent handoff is needed."
+            exit 0
+          fi
+          if [ "$outcome" = "agent_triage" ]; then
+            echo "Visual differences were packaged for the issue-scanning agent. Failing CI so the issue workflow creates the handoff report."
+            exit 1
+          fi
+          if [ -z "$outcome" ]; then
+            echo "Visual evidence packaging did not produce an outcome."
+            exit 1
+          fi
+          echo "Unexpected visual evidence outcome: $outcome"
+          exit 1

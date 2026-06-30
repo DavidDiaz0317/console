@@ -1,0 +1,9 @@
+{
+  "expected": "intended_change",
+  "pr_title": "Restyle primary button to brand blue",
+  "changed_files": [
+    "web/src/components/ui/Button.tsx"
+  ],
+  "note": "Deliberate restyle to the brand palette; no broken rendering.",
+  "source": "synthetic-seed"
+}

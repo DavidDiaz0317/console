@@ -1,0 +1,9 @@
+{
+  "expected": "intended_change",
+  "pr_title": "Restyle dashboard card surface",
+  "changed_files": [
+    "web/src/components/cards/Card.tsx"
+  ],
+  "note": "Intentional surface recolor consistent with the PR.",
+  "source": "synthetic-seed"
+}
