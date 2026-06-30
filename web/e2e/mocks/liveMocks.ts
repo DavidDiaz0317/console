@@ -204,7 +204,7 @@ export async function setupAuth(page: Page, user?: typeof mockUser): Promise<voi
   const u = user || mockUser
   await page.route('**/api/**', (route) => {
     const { pathname } = new URL(route.request().url())
-    if (pathname !== '/api/me') return route.fallback()
+    if (pathname.replace(/\/+$/, '') !== '/api/me') return route.fallback()
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(u) })
   })
 }
