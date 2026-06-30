@@ -453,7 +453,7 @@ func TestTerminateAllStatusTypes(t *testing.T) {
 			errStr:           "",
 			expectNotifCount: 1,
 			expectSeverity:   "info",
-			expectTitle:      "✦ Stellar resolved an issue",
+			expectTitle:      "\u2726 Stellar resolved an issue",
 		},
 		{
 			name:             "escalated status",
