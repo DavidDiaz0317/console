@@ -490,6 +490,42 @@ test.describe('ClusterResourceTree', () => {
           body: JSON.stringify({ error: 'Internal server error' }),
         })
       )
+      await page.route('**/health', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'ok',
+            version: 'dev',
+            oauth_configured: false,
+            in_cluster: false,
+            no_local_agent: true,
+            install_method: 'dev',
+          }),
+        })
+      )
+      await page.route('**/api/stellar/state', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            generatedAt: new Date().toISOString(),
+            clustersWatching: [],
+            eventCounts: { critical: 0, warning: 0, info: 0 },
+            recentEvents: [],
+            unreadAlerts: 0,
+            activeMissionIds: [],
+            pendingActionIds: [],
+          }),
+        })
+      )
+      await page.route('**/api/kagent/status', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ available: false, reason: 'not configured in tests' }),
+        })
+      )
       await page.route('**/127.0.0.1:8585/**', (route) =>
         route.fulfill({
           status: 200,

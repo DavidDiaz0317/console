@@ -235,7 +235,6 @@ export async function mockApiFallback(page: Page) {
   // STRICT MOCKING: Log unmocked API calls to help detect missing endpoints (#11225)
   await page.route('**/api/**', (route) => {
     const url = route.request().url()
-    // eslint-disable-next-line no-console
     console.error(`[mockApiFallback] Unmocked API call: ${url}`)
     route.fulfill({
       status: 200,
@@ -561,7 +560,6 @@ export async function mockApiFallbackStrict(page: Page) {
   // rather than silent empty-state renders.
   await page.route('**/api/**', (route) => {
     const url = route.request().url()
-    // eslint-disable-next-line no-console
     console.error(`[mockApiFallbackStrict] Unmocked API call (returning 404): ${url}`)
     route.fulfill({
       status: 404,
@@ -645,7 +643,6 @@ export async function setupDemoMode(page: Page) {
 export async function setupDemoAndNavigate(page: Page, path: string) {
   await setupDemoMode(page)
   await page.goto(path, { waitUntil: 'domcontentloaded' })
-  await waitForAppContent(page)
 }
 
 export async function waitForAppContent(
@@ -679,7 +676,6 @@ export async function waitForNetworkIdleBestEffort(
     await page.waitForLoadState('networkidle', { timeout: timeoutMs })
   } catch {
     if (typeof process !== 'undefined' && process.env.E2E_VERBOSE_WAITS) {
-      // eslint-disable-next-line no-console -- Opt-in debug logging for tests
       console.warn(
         `[e2e] networkidle timed out after ${timeoutMs}ms${label ? ` (${label})` : ''} — page may have long-lived WebSocket/SSE connections`
       )

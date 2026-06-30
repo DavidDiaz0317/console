@@ -1,9 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   setupDemoAndNavigate,
   setupErrorCollector,
-  waitForSubRoute,
-  NETWORK_IDLE_TIMEOUT_MS,
   ELEMENT_VISIBLE_TIMEOUT_MS,
 } from './helpers/setup'
 
@@ -32,22 +30,31 @@ const STAT_SUBLABEL_LOADBALANCER = 'external access'
 const STAT_SUBLABEL_NODEPORT = 'node-level access'
 const STAT_SUBLABEL_CLUSTERIP = 'internal only'
 const STAT_SUBLABEL_ENDPOINTS = 'endpoints'
+const ROUTE_READY_TIMEOUT_MS = 30_000
+
+async function waitForNetworkReady(page: Page) {
+  await expect(page.getByTestId('dashboard-title')).toContainText(PAGE_TITLE, {
+    timeout: ROUTE_READY_TIMEOUT_MS,
+  })
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 test.describe('Network Deep Tests (/network)', () => {
-  test.beforeEach(async ({ page }) => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    if (testInfo.title === 'loads without console errors') return
     await setupDemoAndNavigate(page, '/network')
-    await waitForSubRoute(page)
+    await waitForNetworkReady(page)
   })
 
   test('loads without console errors', async ({ page }) => {
     const { errors } = setupErrorCollector(page)
-    // Re-navigate to capture errors from a fresh load
     await setupDemoAndNavigate(page, '/network')
-    await waitForSubRoute(page)
+    await waitForNetworkReady(page)
     expect(errors).toHaveLength(0)
   })
 
@@ -136,7 +143,7 @@ test.describe('Network Deep Tests (/network)', () => {
     )
 
     await setupDemoAndNavigate(page, '/network')
-    await waitForSubRoute(page)
+    await waitForNetworkReady(page)
 
     // The page should still render its header even if data fails
     await expect(page.getByTestId('dashboard-header')).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })

@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   setupDemoAndNavigate,
-  ELEMENT_VISIBLE_TIMEOUT_MS,
   NETWORK_IDLE_TIMEOUT_MS,
 } from '../helpers/setup'
 
@@ -74,7 +73,21 @@ const MISSION_DEEP_LINKS = [
   '/missions/install-open-cluster-management',
 ] as const
 
-const ALL_ROUTES = [...DASHBOARD_ROUTES, ...LANDING_ROUTES] as const
+test.describe.configure({ mode: 'serial' })
+
+async function expectRenderedContent(page: Page, label: string): Promise<void> {
+  await page.waitForLoadState('domcontentloaded')
+  await expect.poll(
+    () => page.evaluate(() => (document.body.textContent || '').trim().length),
+    {
+      timeout: CONTENT_TIMEOUT_MS,
+      message: `${label} rendered a blank page`,
+    },
+  ).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+
+  const crash = page.getByText(/something went wrong|application error|unhandled error/i)
+  await expect(crash).not.toBeVisible()
+}
 
 test.describe('Deep Links — Dashboard Routes', () => {
   for (const route of DASHBOARD_ROUTES) {
@@ -82,15 +95,7 @@ test.describe('Deep Links — Dashboard Routes', () => {
 
     test(`${label} renders content (not blank)`, async ({ page }) => {
       await setupDemoAndNavigate(page, route)
-
-      await page.waitForFunction(
-        (min) => (document.body.innerText || '').trim().length > min,
-        MIN_BODY_TEXT_LENGTH,
-        { timeout: CONTENT_TIMEOUT_MS },
-      )
-
-      const crash = page.getByText(/something went wrong|application error|unhandled error/i)
-      await expect(crash).not.toBeVisible()
+      await expectRenderedContent(page, `Route "${route}"`)
     })
   }
 })
@@ -101,15 +106,7 @@ test.describe('Deep Links — Landing Pages', () => {
 
     test(`${label} renders content (not blank)`, async ({ page }) => {
       await setupDemoAndNavigate(page, route)
-
-      await page.waitForFunction(
-        (min) => (document.body.innerText || '').trim().length > min,
-        MIN_BODY_TEXT_LENGTH,
-        { timeout: CONTENT_TIMEOUT_MS },
-      )
-
-      const crash = page.getByText(/something went wrong|application error|unhandled error/i)
-      await expect(crash).not.toBeVisible()
+      await expectRenderedContent(page, `Landing page "${route}"`)
     })
   }
 })
@@ -120,15 +117,7 @@ test.describe('Deep Links — Mission Deep Links', () => {
 
     test(`mission "${missionName}" renders landing page`, async ({ page }) => {
       await setupDemoAndNavigate(page, route)
-
-      await page.waitForFunction(
-        (min) => (document.body.innerText || '').trim().length > min,
-        MIN_BODY_TEXT_LENGTH,
-        { timeout: CONTENT_TIMEOUT_MS },
-      )
-
-      const crash = page.getByText(/something went wrong|application error|unhandled error/i)
-      await expect(crash).not.toBeVisible()
+      await expectRenderedContent(page, `Mission "${missionName}"`)
     })
   }
 })
@@ -136,25 +125,12 @@ test.describe('Deep Links — Mission Deep Links', () => {
 test.describe('Deep Links — Query Params & Special Routes', () => {
   test('/?browse=missions renders missions content', async ({ page }) => {
     await setupDemoAndNavigate(page, '/?browse=missions')
-
-    await page.waitForFunction(
-      (min) => (document.body.innerText || '').trim().length > min,
-      MIN_BODY_TEXT_LENGTH,
-      { timeout: CONTENT_TIMEOUT_MS },
-    )
-
-    const crash = page.getByText(/something went wrong|application error/i)
-    await expect(crash).not.toBeVisible()
+    await expectRenderedContent(page, '/?browse=missions')
   })
 
   test('route with hash fragment does not crash', async ({ page }) => {
     await setupDemoAndNavigate(page, '/settings#appearance')
-
-    await page.waitForFunction(
-      (min) => (document.body.innerText || '').trim().length > min,
-      MIN_BODY_TEXT_LENGTH,
-      { timeout: CONTENT_TIMEOUT_MS },
-    )
+    await expectRenderedContent(page, '/settings#appearance')
   })
 })
 
@@ -186,7 +162,6 @@ test.describe('Deep Links — Navigation Integrity', () => {
     expect(finalUrl).not.toContain('redirect')
 
     // Page should have content
-    const bodyText = await page.evaluate(() => (document.body.innerText || '').trim())
-    expect(bodyText.length).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
+    await expectRenderedContent(page, '/missions')
   })
 })

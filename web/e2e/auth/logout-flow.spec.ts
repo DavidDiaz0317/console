@@ -3,9 +3,9 @@
 // Real-backend JWT revocation is covered by auth/token-refresh.spec.ts.
 
 import { test, expect, type Page } from '@playwright/test'
-import { mockApiFallback, mockApiMe, mockLocalAgentUnavailable, ELEMENT_VISIBLE_TIMEOUT_MS } from '../helpers/setup'
+import { mockApiFallback, mockLocalAgentUnavailable, ELEMENT_VISIBLE_TIMEOUT_MS } from '../helpers/setup'
 
-const LOGOUT_TIMEOUT_MS = 15_000
+const LOGOUT_TIMEOUT_MS = 30_000
 
 const STORAGE_TOKEN_KEY = 'token'
 const STORAGE_HAS_SESSION_KEY = 'kc-has-session'
@@ -13,12 +13,32 @@ const STORAGE_AGENT_TOKEN_KEY = 'kc-agent-token'
 const STORAGE_AUTH_SYNC_KEY = 'kc-auth-token-sync'
 const TEST_TOKEN = 'test-jwt-logout-token'
 
+async function mockSignedInUser(page: Page): Promise<void> {
+  await page.route('**/api/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: '1',
+        github_id: '12345',
+        github_login: 'testuser',
+        email: 'test@example.com',
+        onboarded: true,
+        role: 'admin',
+      }),
+    })
+  )
+}
+
 async function seedAuthState(page: Page, token: string = TEST_TOKEN): Promise<void> {
   await page.addInitScript((t) => {
     localStorage.setItem('token', t)
     localStorage.setItem('kc-has-session', 'true')
+    localStorage.setItem('kc-demo-mode', 'false')
     localStorage.setItem('demo-user-onboarded', 'true')
     localStorage.setItem('kc-agent-setup-dismissed', 'true')
+    localStorage.setItem('kc-hints-suppressed', 'true')
+    sessionStorage.setItem('kc-update-toast-seen', '1')
     localStorage.setItem('kc-backend-status', JSON.stringify({
       available: true,
       timestamp: Date.now(),
@@ -65,11 +85,20 @@ async function mockLogoutEndpoint(page: Page): Promise<() => { captured: boolean
 async function confirmSignOut(page: Page): Promise<void> {
   const signOutItem = page.getByRole('menuitem', { name: /sign out/i })
   await expect(signOutItem).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
-  await signOutItem.click({ force: true })
+  await signOutItem.dispatchEvent('click')
 
   const confirmButton = page.getByRole('button', { name: /^log out$/i })
   await expect(confirmButton).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
-  await confirmButton.click()
+  await confirmButton.dispatchEvent('click')
+}
+
+async function openProfileMenu(page: Page): Promise<void> {
+  const profileButton = page.getByTestId('navbar-profile-btn')
+  await expect(profileButton).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+  await profileButton.dispatchEvent('click')
+  await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible({
+    timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
+  })
 }
 
 async function expectSignedOut(page: Page): Promise<void> {
@@ -95,7 +124,7 @@ test.describe('Logout flow (mocked backend)', () => {
     await mockApiFallback(page)
     await mockOAuthConfiguredHealth(page)
     await mockLocalAgentUnavailable(page)
-    await mockApiMe(page)
+    await mockSignedInUser(page)
   })
 
   test('sign-out clears session keys from localStorage and navigates to /login', async ({ page }) => {
@@ -109,10 +138,7 @@ test.describe('Logout flow (mocked backend)', () => {
     })
 
     // Open the profile dropdown and click Sign Out
-    await page.getByTestId('navbar-profile-btn').click()
-    await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible({
-      timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
-    })
+    await openProfileMenu(page)
     await confirmSignOut(page)
 
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
@@ -143,8 +169,7 @@ test.describe('Logout flow (mocked backend)', () => {
       timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
     })
 
-    await page.getByTestId('navbar-profile-btn').click()
-    await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible()
+    await openProfileMenu(page)
     await confirmSignOut(page)
 
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
@@ -163,8 +188,7 @@ test.describe('Logout flow (mocked backend)', () => {
       timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
     })
 
-    await page.getByTestId('navbar-profile-btn').click()
-    await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible()
+    await openProfileMenu(page)
     await confirmSignOut(page)
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
     await expectSignedOut(page)

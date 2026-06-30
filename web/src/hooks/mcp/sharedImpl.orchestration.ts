@@ -232,7 +232,7 @@ export async function fullFetchClusters() {
       : getLiveClustersForFallback(clusterCache.clusters)
 
     await finishWithMinDuration({
-      error: null,
+      error: 'Cluster data unavailable',
       clusters: fallbackClusters,
       isLoading: false,
       isRefreshing: false,

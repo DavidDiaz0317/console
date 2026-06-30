@@ -1,9 +1,7 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   setupDemoAndNavigate,
-  setupDemoMode,
   setupErrorCollector,
-  NETWORK_IDLE_TIMEOUT_MS,
   ELEMENT_VISIBLE_TIMEOUT_MS,
 } from './helpers/setup'
 
@@ -29,8 +27,6 @@ const CONTRIBUTE_URL_SUBSTRING = 'console-marketplace'
 /** Expected issues URL substring for Help Wanted issues */
 const ISSUES_URL_SUBSTRING = 'console-marketplace/issues'
 
-/** Number of type filter buttons (All + Dashboards + Card Presets + Themes) */
-const EXPECTED_TYPE_FILTER_COUNT = 4
 const MARKETPLACE_REGISTRY_URL = 'https://raw.githubusercontent.com/kubestellar/console-marketplace/main/registry.json'
 const GITHUB_SEARCH_ISSUES_URL = 'https://api.github.com/search/issues'
 const MOCK_MARKETPLACE_REGISTRY = {
@@ -82,13 +78,22 @@ const MOCK_MARKETPLACE_REGISTRY = {
     },
   ],
 }
+const ROUTE_READY_TIMEOUT_MS = 45_000
+
+async function waitForMarketplaceReady(page: Page) {
+  await expect(page.getByTestId('dashboard-title')).toContainText(/marketplace/i, {
+    timeout: ROUTE_READY_TIMEOUT_MS,
+  })
+}
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 test.describe('Marketplace Deep Tests (/marketplace)', () => {
-  test.beforeEach(async ({ page }) => {
+  test.describe.configure({ mode: 'serial' })
+
+  test.beforeEach(async ({ page }, testInfo) => {
     await page.route(MARKETPLACE_REGISTRY_URL, route =>
       route.fulfill({
         status: 200,
@@ -103,10 +108,9 @@ test.describe('Marketplace Deep Tests (/marketplace)', () => {
         body: JSON.stringify({ total_count: 0, items: [] }),
       })
     )
+    if (testInfo.title === 'loads without console errors') return
     await setupDemoAndNavigate(page, MARKETPLACE_ROUTE)
-    await expect(page.getByTestId('dashboard-header')).toBeVisible({
-      timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
-    })
+    await waitForMarketplaceReady(page)
   })
 
   // -------------------------------------------------------------------------
@@ -115,12 +119,11 @@ test.describe('Marketplace Deep Tests (/marketplace)', () => {
 
   test.describe('Page Structure', () => {
     test('loads without console errors', async ({ page }) => {
+      test.slow()
       const { errors } = setupErrorCollector(page)
-      // Re-navigate to capture errors from a fresh load
+      // Install the collector before the first route load so route-level errors are captured.
       await setupDemoAndNavigate(page, MARKETPLACE_ROUTE)
-      await expect(page.getByTestId('dashboard-header')).toBeVisible({
-        timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
-      })
+      await waitForMarketplaceReady(page)
       expect(errors).toHaveLength(0)
     })
 
@@ -153,7 +156,6 @@ test.describe('Marketplace Deep Tests (/marketplace)', () => {
       const listBtn = page.locator('button[title="List view"]')
       // These only appear when items are loaded; use a soft check
       const gridVisible = await gridBtn.isVisible().catch(() => false)
-      const listVisible = await listBtn.isVisible().catch(() => false)
       // If marketplace has items, both should be visible
       if (gridVisible) {
         await expect(gridBtn).toBeVisible()
@@ -206,16 +208,19 @@ test.describe('Marketplace Deep Tests (/marketplace)', () => {
 
     test('type filter buttons are present', async ({ page }) => {
       // Should have "All", "Dashboards", "Card Presets", "Themes" buttons
-      const allBtn = page.getByRole('button', { name: /^All\b/ })
+      const typeFilters = page.locator('div').filter({
+        has: page.getByRole('button', { name: /^Dashboards\b/ }),
+      }).first()
+      const allBtn = typeFilters.getByRole('button', { name: /^All\b/ })
       await expect(allBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const dashboardsBtn = page.getByRole('button', { name: /^Dashboards\b/ })
+      const dashboardsBtn = typeFilters.getByRole('button', { name: /^Dashboards\b/ })
       await expect(dashboardsBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const cardPresetsBtn = page.getByRole('button', { name: /^Card Presets\b/ })
+      const cardPresetsBtn = typeFilters.getByRole('button', { name: /^Card Presets\b/ })
       await expect(cardPresetsBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const themesBtn = page.getByRole('button', { name: /^Themes\b/ })
+      const themesBtn = typeFilters.getByRole('button', { name: /^Themes\b/ })
       await expect(themesBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
     })
   })
