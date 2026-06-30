@@ -105,8 +105,9 @@ test.describe('Network Deep Tests (/network)', () => {
 
   test('shows endpoints stat', async ({ page }) => {
     // #12090 — Wait for data hydration instead of skipping assertion
-    const stat = page.locator('text=' + STAT_SUBLABEL_ENDPOINTS).first()
+    const stat = page.getByTestId('stat-block-endpoints')
     await expect(stat).toBeVisible({ timeout: 30000 })
+    await expect(stat).toContainText(STAT_SUBLABEL_ENDPOINTS, { timeout: 30000 })
   })
 
   test('refresh button is clickable', async ({ page }) => {

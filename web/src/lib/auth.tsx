@@ -11,7 +11,7 @@ import { clearClusterCacheOnLogout } from '../hooks/mcp/shared'
 import { clearAgentToken, setAgentToken } from '../hooks/mcp/agentFetch'
 import { DEMO_TOKEN_VALUE, FETCH_DEFAULT_TIMEOUT_MS, STORAGE_KEY_DEMO_MODE, STORAGE_KEY_HAS_SESSION, STORAGE_KEY_ONBOARDED, STORAGE_KEY_USER_CACHE } from './constants'
 import { isLocalAgentSuppressed } from './constants/network'
-import { safeGet, safeRemove, safeSetJSON } from './safeLocalStorage'
+import { safeGet, safeRemove, safeSet, safeSetJSON } from './safeLocalStorage'
 import { AUTH_TOKEN_SYNC_KEY, clearStoredAuthToken, getStoredAuthToken, getStoredAuthTokenSync, parseAuthTokenSyncEvent, setStoredAuthToken } from './authToken'
 import { emitLogin, emitLogout, setAnalyticsUserId, setAnalyticsUserProperties, emitConversionStep, emitDeveloperSession, emitSessionRefreshFailure } from './analytics'
 import { setDemoMode as setGlobalDemoMode } from './demoMode'
@@ -212,6 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // session.
     await clearStoredAuthToken()
     clearAgentToken()
+    // A real authenticated session may have auto-enabled demo data when the
+    // local agent was absent. Signing out must leave the user unauthenticated
+    // instead of allowing a protected route to re-enter the demo dashboard.
+    safeSet(STORAGE_KEY_DEMO_MODE, 'false')
+    setGlobalDemoMode(false, true)
     safeRemove(AUTH_USER_CACHE_KEY)
     safeRemove(STORAGE_KEY_HAS_SESSION)
     try {

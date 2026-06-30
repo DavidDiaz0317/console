@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
-import { setupDemoMode, setupErrorCollector } from './helpers/setup'
+import { setupDemoMode, setupErrorCollector, waitForAppContent } from './helpers/setup'
 
 /**
  * Route Coverage E2E Tests
@@ -36,6 +36,7 @@ async function loadRouteAndAssertNoErrors(
   const collector = setupErrorCollector(page)
   await page.goto(path)
   await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {})
+  await waitForAppContent(page)
   await expect(page.locator('body')).toBeVisible()
 
   if (collector.errors.length > 0) {
@@ -51,11 +52,12 @@ async function loadRouteAndAssertNoErrors(
  * Polls until React renders rather than reading body text immediately.
  */
 async function assertPageHasContent(page: Page, path: string) {
-  await page.waitForFunction(
-    (min) => (document.body.innerText || '').trim().length > min,
-    MIN_BODY_TEXT_LENGTH,
-    { timeout: ELEMENT_VISIBLE_TIMEOUT_MS },
-  )
+  await waitForAppContent(page)
+  const bodyText = await page.textContent('body')
+  expect(
+    bodyText?.length,
+    `${path} rendered a blank or near-empty page`,
+  ).toBeGreaterThan(MIN_BODY_TEXT_LENGTH)
 }
 
 // ===========================================================================

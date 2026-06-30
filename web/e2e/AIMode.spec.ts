@@ -17,15 +17,16 @@ test.describe('AI Mode Settings', () => {
 
   test.describe('AI Mode Section', () => {
     test('displays settings page with AI mode section', async ({ page }) => {
-      await expect(page.getByTestId('settings-page')).toBeVisible({ timeout: 10000 })
+      const settingsPage = page.getByTestId('settings-page')
+      await expect(settingsPage).toBeVisible({ timeout: 10000 })
 
-      // Should have AI Usage Mode or AI-related settings - use more specific selector
-      const aiSection = page.getByText(/ai.*mode|intelligence/i)
-      // Verify at least one AI mode heading/label exists
-      await expect(aiSection.first()).toBeVisible({ timeout: 5000 })
-      
+      await expect(
+        settingsPage.getByRole('heading', { name: /^AI Usage Mode$/i })
+      ).toBeVisible({ timeout: 5000 })
+
       // Verify the section contains actual mode selection buttons
-      const modeButtons = page.getByRole('button', { name: /low|medium|high/i })
+      const modeButtons = settingsPage.getByRole('group', { name: /^AI Usage Mode$/i })
+        .getByRole('button', { name: /low|medium|high/i })
       await expect(modeButtons.first()).toBeVisible({ timeout: 5000 })
     })
 

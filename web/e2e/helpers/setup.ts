@@ -645,6 +645,21 @@ export async function setupDemoMode(page: Page) {
 export async function setupDemoAndNavigate(page: Page, path: string) {
   await setupDemoMode(page)
   await page.goto(path, { waitUntil: 'domcontentloaded' })
+  await waitForAppContent(page)
+}
+
+export async function waitForAppContent(
+  page: Page,
+  timeoutMs: number = ELEMENT_VISIBLE_TIMEOUT_MS,
+) {
+  await page.locator('#root').waitFor({ state: 'visible', timeout: timeoutMs })
+  await page.waitForFunction(
+    () => (document.body.innerText || '').trim().length > 0,
+    { timeout: timeoutMs },
+  ).catch(() => {
+    // Some error-state routes intentionally render late; callers with stricter
+    // expectations assert their route-specific markers after this best-effort wait.
+  })
 }
 
 // ---------------------------------------------------------------------------

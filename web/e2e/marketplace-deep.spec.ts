@@ -206,16 +206,16 @@ test.describe('Marketplace Deep Tests (/marketplace)', () => {
 
     test('type filter buttons are present', async ({ page }) => {
       // Should have "All", "Dashboards", "Card Presets", "Themes" buttons
-      const allBtn = page.locator('button').filter({ hasText: 'All' }).first()
+      const allBtn = page.getByRole('button', { name: /^All\b/ })
       await expect(allBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const dashboardsBtn = page.locator('button').filter({ hasText: 'Dashboards' }).first()
+      const dashboardsBtn = page.getByRole('button', { name: /^Dashboards\b/ })
       await expect(dashboardsBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const cardPresetsBtn = page.locator('button').filter({ hasText: 'Card Presets' }).first()
+      const cardPresetsBtn = page.getByRole('button', { name: /^Card Presets\b/ })
       await expect(cardPresetsBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
 
-      const themesBtn = page.locator('button').filter({ hasText: 'Themes' }).first()
+      const themesBtn = page.getByRole('button', { name: /^Themes\b/ })
       await expect(themesBtn).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
     })
   })

@@ -287,8 +287,13 @@ test.describe('Resolution Memory System', () => {
     await page.waitForLoadState('domcontentloaded').catch(() => {})
 
     // Open sidebar
-    const toggleButton = page.locator('[data-tour="ai-missions"]').first()
+    const toggleButton = page.locator('[data-tour="ai-missions-toggle"]').first()
+    await expect(toggleButton).toBeVisible({ timeout: 10000 })
     await toggleButton.click()
+
+    const missionButton = page.getByRole('button', { name: /Fix CrashLoopBackOff in nginx pod/i }).first()
+    await expect(missionButton).toBeVisible({ timeout: 10000 })
+    await missionButton.click()
 
     // In non-fullscreen mode, we should see a banner about related resolutions
     const relatedBanner = page.locator('text=/similar resolution|Related Knowledge/i')

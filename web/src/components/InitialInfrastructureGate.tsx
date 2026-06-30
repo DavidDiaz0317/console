@@ -11,7 +11,6 @@ import { stellarApi } from '../services/stellar'
 import { StatusBadge } from './ui/StatusBadge'
 import { Button } from './ui/Button'
 import { safeRemove } from '../lib/safeLocalStorage'
-import { areOptionalPollersSuppressed } from '../lib/constants/network'
 
 const INITIAL_HANDSHAKE_TIMEOUT_MS = 15_000
 const INITIAL_HANDSHAKE_TIMEOUT_SECONDS = INITIAL_HANDSHAKE_TIMEOUT_MS / 1000
@@ -94,7 +93,7 @@ export function InitialInfrastructureGate({ children }: InitialInfrastructureGat
   useEffect(() => {
     // In demo mode there is no real backend — skip the handshake entirely
     // so the hosted demo (console.kubestellar.io) renders immediately.
-    if (isDemoMode() || areOptionalPollersSuppressed()) {
+    if (isDemoMode()) {
       dispatch({ type: 'SET_READY' })
       return
     }

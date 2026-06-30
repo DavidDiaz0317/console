@@ -254,7 +254,7 @@ fi
 mkdir -p ./data
 
 # Watcher runtime metadata points to the private temp files created by kc-watcher.
-WATCHDOG_RUNTIME_FILE="${WATCHDOG_RUNTIME_FILE:-$SCRIPT_DIR/data/kc-watcher-runtime.env}"
+WATCHDOG_RUNTIME_FILE="$SCRIPT_DIR/data/kc-watcher-runtime.env"
 WATCHDOG_RUNTIME_DIR=""
 STAGE_FILE=""
 WATCHDOG_PID_FILE=""
