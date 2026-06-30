@@ -12,10 +12,6 @@ on:
         description: Force snapshot update mode instead of compare mode.
         type: boolean
         default: false
-      triage_demo:
-        description: Enable deterministic VLM triage demo mode (same-repo dispatch only, for proof runs).
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -224,20 +220,12 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Semantic visual diff triage
+      - name: Package visual diff evidence for issue agent
         id: visual_triage
         if: steps.mode.outputs.run_mode == 'compare' && steps.visual_tests.outcome == 'failure'
         working-directory: .
         env:
           PR_NUMBER: ${{ steps.triage_context.outputs.pr_number }}
-          VISUAL_TRIAGE_API_URL: ${{ vars.VISUAL_TRIAGE_API_URL }}
-          VISUAL_TRIAGE_API_KEY: ${{ secrets.VISUAL_TRIAGE_API_KEY }}
-          VISUAL_TRIAGE_MODEL: ${{ vars.VISUAL_TRIAGE_MODEL }}
-          VISUAL_TRIAGE_DEMO_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.triage_demo || false }}
-          # Demo keys off the attacker-controllable PR title, so the script only honors it when this
-          # second "trusted" flag is also set — true only for same-repo manual dispatch, never on PRs.
-          VISUAL_TRIAGE_DEMO_TRUSTED: ${{ github.event_name == 'workflow_dispatch' && github.repository == 'DavidDiaz0317/console' }}
-          VISUAL_TRIAGE_AUTO_UPDATE_ALLOWED: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           python3 -m pip install --user Pillow
           python3 scripts/visual-diff-triage.py triage \
@@ -251,55 +239,7 @@ jobs:
             --pr-title "${{ steps.triage_context.outputs.pr_title }}" \
             --pr-number "${{ steps.triage_context.outputs.pr_number }}"
 
-      - name: Optional baseline-free visual assertion
-        if: steps.mode.outputs.run_mode == 'compare' && vars.VISUAL_TRIAGE_BASELINE_FREE_CHECK == 'true'
-        working-directory: .
-        run: |
-          echo "Baseline-free VLM visual assertion is opt-in and configured separately."
-          echo "Current run keeps the check disabled unless VISUAL_TRIAGE_BASELINE_FREE_CHECK=true."
-
-      - name: Auto-update intended visual baselines
-        if: steps.visual_triage.outputs.outcome == 'pass' && steps.visual_triage.outputs.baseline_update_count != '0' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        working-directory: .
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          git fetch origin "$HEAD_REF:$HEAD_REF"
-          git checkout "$HEAD_REF"
-          python3 - <<'PY'
-          import json
-          import shutil
-          from pathlib import Path
-
-          report = json.loads(Path('web/e2e/test-results/visual-triage/triage-results.json').read_text())
-          for update in report.get('baseline_updates', []):
-              actual = Path(update['actual_path'])
-              baseline = Path(update['baseline_path'])
-              if not actual.exists():
-                  raise SystemExit(f'Missing actual screenshot: {actual}')
-              baseline.parent.mkdir(parents=True, exist_ok=True)
-              shutil.copy2(actual, baseline)
-          PY
-          # Re-verify before committing: a baseline copied from a non-deterministic (animated, time- or
-          # data-dependent) frame would still flake on the next run. Re-run the visual suite against the
-          # freshly-copied baselines and only commit if it is now green; otherwise abort to human review.
-          echo "Re-running the visual suite to verify the updated baselines are stable..."
-          if ! (cd web && CI=true APP_VISUAL_BASE_URL=http://localhost:4173 npm run test:visual); then
-            echo "::error::Updated baselines did not produce a green visual suite on re-run; the source frame is unstable. Aborting auto-commit and routing to human review."
-            git checkout -- web/e2e/visual || true
-            exit 1
-          fi
-          git add web/e2e/visual .github/triage-tuning.json
-          if git diff --cached --quiet; then
-            echo "No baseline updates to commit."
-            exit 0
-          fi
-          git -c user.name="github-actions[bot]" \
-              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -m "Update visual baselines after semantic triage"
-          git push origin HEAD:"$HEAD_REF"
-
-      - name: Comment visual triage decision
+      - name: Comment visual evidence package
         # Only attempt the PR comment from a same-repo PR. A pull_request run triggered from a fork
         # gets a read-only GITHUB_TOKEN, so createComment 403s; skip cleanly there (and never let a
         # comment failure fail the gate — the Enforce step below is the real verdict).
@@ -314,19 +254,18 @@ jobs:
             const decisions = report.decisions || [];
             const rows = decisions.slice(0, 8).map((decision) => {
               const crop = decision.regions?.[0]?.stitched_crop || 'n/a';
-              return `| ${decision.component_name || 'visual diff'} | ${decision.classification} | ${decision.confidence ?? 0} | ${decision.routing} | ${decision.reasoning || ''} | ${crop} |`;
+              return `| ${decision.component_name || 'visual diff'} | ${decision.classification} | ${decision.routing} | ${decision.reasoning || ''} | ${crop} |`;
             });
             const body = [
-              '<!-- visual-triage-decision -->',
-              '## Semantic visual diff triage',
+              '<!-- visual-evidence-package -->',
+              '## Visual diff evidence packaged for issue agent',
               '',
               `Outcome: \`${summary.outcome}\``,
-              `Model calls: \`${summary.model_calls || 0}\``,
-              `Baseline updates: \`${summary.baseline_update_count || 0}\``,
+              'CI does not make a semantic model verdict. The generated failure issue is the interface for the image-capable agent.',
               '',
-              '| Component / route | Classification | Confidence | Routing | Reasoning | Crop artifact path |',
-              '|---|---:|---:|---|---|---|',
-              rows.length ? rows.join('\n') : '| none | n/a | n/a | n/a | No visual diff pairs were parsed. | n/a |',
+              '| Component / route | CI classification | Routing | Evidence note | Crop artifact path |',
+              '|---|---|---|---|---|',
+              rows.length ? rows.join('\n') : '| none | n/a | n/a | No visual diff pairs were parsed. | n/a |',
             ].join('\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -365,22 +304,22 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Enforce semantic visual triage result
+      - name: Enforce visual evidence handoff
         if: steps.mode.outputs.run_mode == 'compare' && steps.visual_tests.outcome == 'failure'
         working-directory: .
         run: |
           outcome="${{ steps.visual_triage.outputs.outcome }}"
           if [ "$outcome" = "pass" ]; then
-            echo "Semantic visual triage resolved the pixel diff without failing the run."
+            echo "Only negligible visual noise was detected; no issue-agent handoff is needed."
             exit 0
           fi
-          if [ "$outcome" = "human_review" ]; then
-            echo "Semantic visual triage requires human review."
+          if [ "$outcome" = "agent_triage" ]; then
+            echo "Visual differences were packaged for the issue-scanning agent. Failing CI so the issue workflow creates the handoff report."
             exit 1
           fi
           if [ -z "$outcome" ]; then
-            echo "Semantic visual triage did not produce an outcome."
+            echo "Visual evidence packaging did not produce an outcome."
             exit 1
           fi
-          echo "Semantic visual triage classified the diff as a regression."
+          echo "Unexpected visual evidence outcome: $outcome"
           exit 1

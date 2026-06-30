@@ -1,9 +1,8 @@
 name: Visual Triage Eval
 
-# Accuracy gate for the semantic visual-triage classifier. Runs the SAME pipeline functions the live
-# triage uses against the curated eval set under web/e2e/visual/triage-eval/cases and fails below
-# eval_min_accuracy. Uses the REAL VLM only when secrets.VISUAL_TRIAGE_API_KEY is configured; otherwise
-# it runs an always-on synthetic smoke (--mock-model) so PRs and forks still get a deterministic gate.
+# Accuracy gate for the CI-side visual evidence packager. Semantic judgment happens later in the
+# image-capable issue agent; this workflow only verifies that the CI pipeline ignores tiny noise and
+# packages meaningful visual diffs for issue-agent handoff.
 
 on:
   pull_request:
@@ -29,7 +28,7 @@ concurrency:
 
 jobs:
   eval:
-    name: Visual Triage Accuracy Gate
+    name: Visual Evidence Packaging Gate
     if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -46,11 +45,6 @@ jobs:
 
       - name: Run visual triage eval gate
         env:
-          # Real VLM credentials are honored only when the secret is present; on PRs/forks the secret is
-          # empty and the step falls back to the deterministic --mock-model smoke.
-          VISUAL_TRIAGE_API_URL: ${{ vars.VISUAL_TRIAGE_API_URL }}
-          VISUAL_TRIAGE_API_KEY: ${{ secrets.VISUAL_TRIAGE_API_KEY }}
-          VISUAL_TRIAGE_MODEL: ${{ vars.VISUAL_TRIAGE_MODEL }}
           MIN_ACCURACY: ${{ inputs.min_accuracy }}
         run: |
           set -euo pipefail
@@ -59,18 +53,12 @@ jobs:
           if [ -n "${MIN_ACCURACY:-}" ]; then
             MIN_ARGS=(--min-accuracy "$MIN_ACCURACY")
           fi
-          if [ -n "${VISUAL_TRIAGE_API_KEY:-}" ]; then
-            echo "::notice::VISUAL_TRIAGE_API_KEY present — running the REAL VLM eval (Phase-3 budget enforced by the engine)."
-            MODEL_ARGS=()
-          else
-            echo "::notice::No VISUAL_TRIAGE_API_KEY — running the deterministic --mock-model smoke."
-            MODEL_ARGS=(--mock-model)
-          fi
+          echo "::notice::Running deterministic visual evidence packaging eval; no model API is used in CI."
           python3 scripts/visual-diff-triage.py eval \
             --config .github/visual-triage-config.json \
             --cases-dir web/e2e/visual/triage-eval/cases \
             --output web/e2e/test-results/visual-triage-eval/eval-results.json \
-            "${MIN_ARGS[@]}" "${MODEL_ARGS[@]}"
+            "${MIN_ARGS[@]}"
 
       - name: Upload eval results
         if: always()
