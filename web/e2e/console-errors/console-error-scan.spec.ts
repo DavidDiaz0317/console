@@ -188,7 +188,7 @@ async function mockSkipPatternRoutes(page: Page): Promise<void> {
   const objectPatterns = [
     '**/api/kubectl/**', '**/api/active-users*',
     '**/api/user/preferences*', '**/api/permissions/**',
-    '**/auth/**', '**/api/dashboards/**', '**/api/feedback/**',
+    '**/api/dashboards/**', '**/api/feedback/**',
     '**/api/persistence/**', '**/api/config/**', '**/api/gitops/**',
     '**/api/rewards/**',
   ]
@@ -202,6 +202,13 @@ async function mockSkipPatternRoutes(page: Page): Promise<void> {
       route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
     )
   }
+  await page.route('**/auth/**', (route) => {
+    const pathname = new URL(route.request().url()).pathname
+    if (!pathname.startsWith('/auth/')) {
+      return route.fallback()
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -289,6 +296,9 @@ test('console error scan — all routes', async ({ page }) => {
   await setupAuth(page)
   await setupLiveMocks(page, { delayDataAPIs: false })
   await mockSkipPatternRoutes(page)
+  // setupLiveMocks/mockSkipPatternRoutes install broad API handlers. Register
+  // /api/me last so AuthProvider always receives the schema-valid mock user.
+  await setupAuth(page)
 
   // Prime the app — initial load
   console.log('[ConsoleErrorScan] Priming app with initial load...')

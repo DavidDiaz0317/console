@@ -265,6 +265,8 @@ test.describe('Resolution Memory System', () => {
   })
 
   test('seeded resolutions appear in related knowledge panel', async ({ page }) => {
+    await expect(page.getByTestId('dashboard-page')).toBeVisible({ timeout: 10000 })
+
     // Seed resolutions and a matching mission
     await page.evaluate(() => {
       // Seed resolutions
@@ -295,19 +297,21 @@ test.describe('Resolution Memory System', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
-      localStorage.setItem('kc_missions', JSON.stringify([mission]))
+      const missionsPayload = JSON.stringify([mission])
+      localStorage.setItem('kc_missions', missionsPayload)
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'kc_missions',
+        oldValue: null,
+        newValue: missionsPayload,
+      }))
     })
-
-    // Reload
-    await page.reload({ waitUntil: 'domcontentloaded' })
-    await page.waitForLoadState('domcontentloaded').catch(() => {})
 
     // Open sidebar
     await openAiMissions(page)
 
     const missionButton = page.getByRole('button', { name: /Fix CrashLoopBackOff in nginx pod/i }).first()
     if (!(await missionButton.isVisible({ timeout: 2000 }).catch(() => false))) {
-      const historyButton = page.getByRole('button', { name: /View \d+ previous missions/i }).first()
+      const historyButton = page.getByRole('button', { name: /View \d+ previous missions?/i }).first()
       await expect(historyButton).toBeVisible({ timeout: 10000 })
       await historyButton.click()
     }
