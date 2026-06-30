@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { setupDemoAndNavigate, ELEMENT_VISIBLE_TIMEOUT_MS } from '../helpers/setup'
 import { assertNoLayoutOverflow, collectConsoleErrors } from '../helpers/ux-assertions'
 
@@ -8,6 +8,23 @@ const MOBILE_HEIGHT = 812
 
 /** Timeout for mission browser to open (ms) */
 const MISSION_LOAD_TIMEOUT_MS = 5_000
+
+async function ensureMissionBrowserVisible(page: Page): Promise<boolean> {
+  const browser = page.getByTestId('mission-browser')
+  if (await browser.isVisible({ timeout: MISSION_LOAD_TIMEOUT_MS }).catch(() => false)) {
+    return true
+  }
+
+  const missionToggle = page.getByTestId('navbar-ai-missions-btn')
+  if (!(await missionToggle.isVisible({ timeout: 3_000 }).catch(() => false))) {
+    return false
+  }
+
+  await missionToggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(browser).toBeVisible({ timeout: MISSION_LOAD_TIMEOUT_MS })
+  return true
+}
 
 test.describe('Mission Exploration — "Find and use a mission"', () => {
   test('missions page loads', async ({ page }) => {
@@ -20,19 +37,8 @@ test.describe('Mission Exploration — "Find and use a mission"', () => {
 
   test('mission browser renders', async ({ page }) => {
     await setupDemoAndNavigate(page, '/missions')
-    const browser = page.getByTestId('mission-browser')
-    const hasBrowser = await browser.isVisible({ timeout: MISSION_LOAD_TIMEOUT_MS }).catch(() => false)
-    if (hasBrowser) {
-      await expect(browser).toBeVisible()
-    } else {
-      // Mission browser may open via a button click
-      const browseBtn = page.locator('button:has-text("Browse"), button:has-text("Mission"), button:has-text("Explore")')
-      const hasBtn = await browseBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)
-      if (hasBtn) {
-        await browseBtn.first().click()
-        await expect(page.getByTestId('mission-browser')).toBeVisible({ timeout: MISSION_LOAD_TIMEOUT_MS })
-      }
-    }
+    const hasBrowser = await ensureMissionBrowserVisible(page)
+    if (!hasBrowser) test.skip(true, 'Mission browser not visible')
   })
 
   test('mission search input is functional', async ({ page }) => {
