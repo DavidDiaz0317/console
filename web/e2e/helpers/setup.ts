@@ -154,13 +154,15 @@ export function setupErrorCollector(page: Page): { errors: string[]; warnings: s
  * to simulate an unauthenticated state should NOT call this helper.
  */
 export async function mockApiMe(page: Page) {
-  await page.route('**/api/me', (route) =>
-    route.fulfill({
+  await page.route('**/api/**', (route) => {
+    const { pathname } = new URL(route.request().url())
+    if (pathname !== '/api/me') return route.fallback()
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(MOCK_DEMO_USER),
     })
-  )
+  })
 }
 
 export async function mockLocalAgentUnavailable(page: Page) {
@@ -778,13 +780,15 @@ export const DEFAULT_AUTH_USER: MockApiUser = {
 export async function setupAuth(page: Page, user?: Partial<MockApiUser>): Promise<void> {
   await mockApiFallback(page)
   const u: MockApiUser = { ...DEFAULT_AUTH_USER, ...(user || {}) }
-  await page.route('**/api/me', (route) =>
-    route.fulfill({
+  await page.route('**/api/**', (route) => {
+    const { pathname } = new URL(route.request().url())
+    if (pathname !== '/api/me') return route.fallback()
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(u),
     })
-  )
+  })
 }
 
 /** Options for seeding auth state via localStorage */

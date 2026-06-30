@@ -202,9 +202,11 @@ export function getMockRESTData(url: string, data?: Record<string, Record<string
  */
 export async function setupAuth(page: Page, user?: typeof mockUser): Promise<void> {
   const u = user || mockUser
-  await page.route('**/api/me', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(u) })
-  )
+  await page.route('**/api/**', (route) => {
+    const { pathname } = new URL(route.request().url())
+    if (pathname !== '/api/me') return route.fallback()
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(u) })
+  })
 }
 
 /**
