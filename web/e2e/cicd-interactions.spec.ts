@@ -418,7 +418,10 @@ test.describe('CI/CD Live Runs expand and details (#11016)', () => {
       // Live links point to GitHub; demo fixtures use "#" placeholders.
       const href = await firstLink.getAttribute('href')
       if (href) {
-        expect(href === '#' || href.includes('github.com')).toBe(true)
+        const linkUrl = new URL(href, page.url())
+        expect(href === '#' || linkUrl.hostname === 'github.com' || linkUrl.hostname.endsWith('.github.com')).toBe(
+          true
+        )
       }
     } else {
       // No runs visible
