@@ -301,14 +301,22 @@ test.describe('Update Settings', () => {
       .poll(() => ws.routes.length, { timeout: RECONNECT_TIMEOUT_MS })
       .toBeGreaterThan(routeCountBeforeDisconnect)
 
-    // Resume the update on the new connection(s) — send a later stage
-    sendProgress(ws, 'building', 'Building Go binaries...', 60)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByTestId('update-progress-message')).toContainText('Building Go binaries')
+    // Resume the update on the new connection(s) — the replacement socket can
+    // be registered before the app listener is ready, so retry the synthetic
+    // event until the UI observes it.
+    await expect(async () => {
+      sendProgress(ws, 'building', 'Building Go binaries...', 60)
+      await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 1000 })
+      await expect(page.getByTestId('update-progress-message')).toContainText('Building Go binaries', {
+        timeout: 1000,
+      })
+    }).toPass({ timeout: 10000 })
 
     // Complete the update
-    sendProgress(ws, 'done', 'Update complete — restart successful', 100)
-    await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 5000 })
+    await expect(async () => {
+      sendProgress(ws, 'done', 'Update complete — restart successful', 100)
+      await expect(page.getByTestId('update-done-banner')).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10000 })
     await expect(page.getByTestId('update-progress-banner')).not.toBeVisible()
     await expect(page.getByTestId('update-refresh-button')).toBeVisible()
   })
