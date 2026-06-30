@@ -64,7 +64,7 @@ export function useLocalStorage<T>(
   const setStoredValue = useCallback((newValue: T | ((prev: T) => T)) => {
     setValue((previousValue) => {
       const nextValue = typeof newValue === 'function'
-        ? newValue(previousValue)
+        ? (newValue as (prev: T) => T)(previousValue)
         : newValue
       try {
         const serializedValue = serialize(nextValue)
