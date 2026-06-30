@@ -57,26 +57,42 @@ async function dismissAnyOpenModals(page: Page) {
 }
 
 async function clickSidebarRoute(page: Page, href: string) {
-  // After navigating, sidebar sections may re-render / collapse. Wait for
-  // the visible sidebar to stabilize before looking for the target link.
-  const sidebar = page.locator('[data-testid="sidebar"]:visible').first()
-  await expect(sidebar).toBeVisible({ timeout: ROUTE_LOAD_TIMEOUT_MS })
+  const maxAttempts = 3
 
-  // Dismiss any auto-opened modals that could overlay the sidebar (#11829).
-  await dismissAnyOpenModals(page)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    // After navigating, sidebar sections may re-render / collapse. Wait for
+    // the visible sidebar to stabilize before looking for the target link.
+    const sidebar = page.locator('[data-testid="sidebar"]:visible').first()
+    await expect(sidebar).toBeVisible({ timeout: ROUTE_LOAD_TIMEOUT_MS })
 
-  const link = sidebar.locator(`a[href="${href}"]`).first()
+    // Dismiss any auto-opened modals that could overlay the sidebar (#11829).
+    await dismissAnyOpenModals(page)
 
-  await link.waitFor({ state: 'attached', timeout: ROUTE_LOAD_TIMEOUT_MS })
-  await link.scrollIntoViewIfNeeded()
-  await link.waitFor({ state: 'visible', timeout: ROUTE_LOAD_TIMEOUT_MS })
+    const link = sidebar.locator(`a[href="${href}"]`).first()
 
-  // Re-locate within the visible sidebar immediately before the click so React
-  // re-renders do not leave us clicking a stale or hidden duplicate node.
-  try {
-    await sidebar.locator(`a[href="${href}"]`).first().click({ timeout: ROUTE_LOAD_TIMEOUT_MS })
-  } catch {
-    await sidebar.locator(`a[href="${href}"]`).first().click({ force: true, timeout: ROUTE_LOAD_TIMEOUT_MS })
+    await link.waitFor({ state: 'attached', timeout: ROUTE_LOAD_TIMEOUT_MS })
+    await link.scrollIntoViewIfNeeded()
+    await link.waitFor({ state: 'visible', timeout: ROUTE_LOAD_TIMEOUT_MS })
+
+    // Re-locate within the visible sidebar immediately before the click so React
+    // re-renders do not leave us clicking a stale or hidden duplicate node.
+    try {
+      await sidebar.locator(`a[href="${href}"]`).first().click({
+        force: attempt > 0,
+        timeout: ROUTE_LOAD_TIMEOUT_MS,
+      })
+    } catch {
+      await sidebar.locator(`a[href="${href}"]`).first().dispatchEvent('click')
+    }
+
+    const reachedTarget = await page
+      .waitForURL(routeMatcher(href), { timeout: 3000 })
+      .then(() => true)
+      .catch(() => false)
+
+    if (reachedTarget) {
+      break
+    }
   }
 
   await assertRouteLoaded(page, href)

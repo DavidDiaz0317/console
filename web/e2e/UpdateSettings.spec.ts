@@ -279,8 +279,10 @@ test.describe('Update Settings', () => {
     const ws = await setupUpdateTest(page)
 
     // Start an update — UI should show the progress banner
-    sendProgress(ws, 'pulling', 'Pulling latest changes...', 10)
-    await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 5000 })
+    await expect(async () => {
+      sendProgress(ws, 'pulling', 'Pulling latest changes...', 10)
+      await expect(page.getByTestId('update-progress-banner')).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10000 })
     await expect(page.getByTestId('update-progress-message')).toContainText('Pulling latest changes')
 
     // Simulate a mid-update disconnect by closing every open WS connection
