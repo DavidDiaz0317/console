@@ -605,7 +605,7 @@ describe('fullFetchClusters', () => {
     await fullFetchClusters()
 
     expect(clusterCache.isLoading).toBe(false)
-    expect(clusterCache.error).toBeNull()
+    expect(clusterCache.error).toBe('Cluster data unavailable')
     expect(clusterCache.clusters).toEqual([])
     expect(clusterCache.consecutiveFailures).toBeGreaterThan(0)
   })
