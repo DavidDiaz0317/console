@@ -82,7 +82,7 @@ export function Navbar({ topOffset = 0 }: NavbarProps) {
   }, [isMobile])
 
   return (
-    <nav data-tour="navbar" style={{ top: topOffset }} className="fixed left-0 right-0 h-16 glass z-sticky px-3 md:px-6 flex items-center justify-between overflow-x-clip">
+    <nav data-tour="navbar" style={{ top: topOffset }} className="fixed left-0 right-0 h-16 bg-purple-600 z-sticky px-3 md:px-6 flex items-center justify-between overflow-x-clip">
       {isMobile && showMobileSearch && (
         <div className="absolute inset-0 z-modal flex items-center gap-2 bg-background/95 px-3 backdrop-blur-md">
           <div className="min-w-0 flex-1">
