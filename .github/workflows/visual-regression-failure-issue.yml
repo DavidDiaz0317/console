@@ -75,6 +75,11 @@ jobs:
             const artifactRoot = process.env.ARTIFACT_ROOT;
             const runUrlBase = `${context.serverUrl}/${owner}/${repo}/actions/runs`;
 
+            // GitHub rejects an issue body or comment longer than 65536 chars with a 422
+            // ("Body is too long, max 65536"). 60000 is the safe margin already used for the
+            // initial issue body; the same cap is now applied to the update-path comment too.
+            const MAX_ISSUE_TEXT_CHARS = 60000;
+
             const labelDefs = {
               'visual-regression-failure': {
                 color: 'd93f0b',
@@ -831,7 +836,14 @@ jobs:
               }
             }
 
+            // Include the run's head branch in the dedup signature so each branch/PR gets its
+            // OWN issue instead of colliding onto one shared issue when different PRs happen to
+            // fail the same specs/jobs. Re-runs of the SAME branch still hash to one signature,
+            // so they keep deduping to a single issue (the intended behavior). Keeping branch in
+            // the signature also stays consistent with close-on-green (visual-regression-close-
+            // issue.yml), which matches the issue to a run by branch. `run` is fetched above.
             const signatureSource = [
+              `branch:${run.head_branch || ''}`,
               ...failures.map((failure) => `${failure.specPath}:${failure.title}`).sort(),
               ...failedJobs.map((job) => job.name).sort(),
             ].filter(Boolean).join('|') || `visual-regression:${runId}`;
@@ -1108,8 +1120,8 @@ jobs:
               ...suggestedFiles.map((file) => `- \`${file}\``),
             ].join('\n');
 
-            if (body.length > 60000) {
-              body = `${body.slice(0, 59000)}\n\n...body truncated to stay under GitHub issue limits...\n${marker}`;
+            if (body.length > MAX_ISSUE_TEXT_CHARS) {
+              body = `${body.slice(0, MAX_ISSUE_TEXT_CHARS)}\n\n...body truncated to stay under GitHub issue limits...\n${marker}`;
             }
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -1122,7 +1134,7 @@ jobs:
             const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
 
             if (existing) {
-              const comment = [
+              let comment = [
                 marker,
                 autofixBlock,
                 'Visual Regression is still failing with the same signature.',
@@ -1142,6 +1154,12 @@ jobs:
                 '',
                 visualReportSection,
               ].join('\n');
+
+              // Same length guard as the create-path body above: an un-truncated comment (the
+              // inlined visual report can be large) would otherwise 422 with "Body is too long".
+              if (comment.length > MAX_ISSUE_TEXT_CHARS) {
+                comment = `${comment.slice(0, MAX_ISSUE_TEXT_CHARS)}\n\n...comment truncated to stay under GitHub issue limits...\n${marker}`;
+              }
 
               await github.rest.issues.createComment({
                 owner,
