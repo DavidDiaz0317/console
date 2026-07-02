@@ -1,0 +1,70 @@
+name: Visual Triage Eval
+
+# Accuracy gate for the CI-side visual evidence packager. Semantic judgment happens later in the
+# image-capable issue agent; this workflow only verifies that the CI pipeline ignores tiny noise and
+# packages meaningful visual diffs for issue-agent handoff.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/visual-diff-triage.py'
+      - 'web/e2e/visual/triage-eval/**'
+      - '.github/visual-triage-config.json'
+      - '.github/workflows/visual-triage-eval.yml'
+  workflow_dispatch:
+    inputs:
+      min_accuracy:
+        description: Override the eval_min_accuracy gate (blank = use config).
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: visual-triage-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Visual Evidence Packaging Gate
+    if: github.repository == 'kubestellar/console' || github.repository == 'DavidDiaz0317/console'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow
+        run: python3 -m pip install --user Pillow
+
+      - name: Run visual triage eval gate
+        env:
+          MIN_ACCURACY: ${{ inputs.min_accuracy }}
+        run: |
+          set -euo pipefail
+          mkdir -p web/e2e/test-results/visual-triage-eval
+          MIN_ARGS=()
+          if [ -n "${MIN_ACCURACY:-}" ]; then
+            MIN_ARGS=(--min-accuracy "$MIN_ACCURACY")
+          fi
+          echo "::notice::Running deterministic visual evidence packaging eval; no model API is used in CI."
+          python3 scripts/visual-diff-triage.py eval \
+            --config .github/visual-triage-config.json \
+            --cases-dir web/e2e/visual/triage-eval/cases \
+            --output web/e2e/test-results/visual-triage-eval/eval-results.json \
+            "${MIN_ARGS[@]}"
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-triage-eval-results
+          path: web/e2e/test-results/visual-triage-eval/
+          retention-days: 14
+          if-no-files-found: ignore

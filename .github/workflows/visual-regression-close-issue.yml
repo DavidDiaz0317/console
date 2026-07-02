@@ -1,0 +1,286 @@
+name: Visual Regression Close Issue
+
+# Closes the open visual-regression-failure issue for a branch once Visual Regression goes green
+# again (close-on-green), posts a recovery comment, and - for the learning loop (Phase 5) - derives a
+# resolution-based verdict and writes it back to the in-repo triage ledger via `ingest-verdict`.
+#
+# MVP = one-issue-per-branch: the failure issue carries a machine-readable `<!-- triage-autofix -->`
+# block whose `branch` field we match against this run's head branch.
+
+on:
+  workflow_run:
+    workflows:
+      - Visual Regression
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Visual Regression workflow run ID to process.
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  close-on-green:
+    name: Close Visual Regression Failure Issue On Green
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    env:
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+
+    steps:
+      - name: Find matching failure issue and derive verdict
+        id: find
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = Number(process.env.SOURCE_RUN_ID);
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+            if (run.name !== 'Visual Regression') {
+              core.info(`Run ${runId} is "${run.name}", not "Visual Regression"; skipping.`);
+              return;
+            }
+            if (run.conclusion !== 'success') {
+              core.info(`Run ${runId} concluded with ${run.conclusion}; only green runs close issues.`);
+              return;
+            }
+            const branch = run.head_branch || '';
+            if (!branch) {
+              core.info('No head branch on the run; nothing to match.');
+              return;
+            }
+
+            // Parse the machine-readable autofix block emitted by the failure-issue workflow.
+            function parseAutofix(text) {
+              const match = /<!-- triage-autofix\s*(\{[\s\S]*?\})\s*-->/.exec(text || '');
+              if (!match) return null;
+              try {
+                return JSON.parse(match[1]);
+              } catch (error) {
+                core.warning(`Could not parse triage-autofix block: ${error.message}`);
+                return null;
+              }
+            }
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'visual-regression-failure',
+              per_page: 100,
+            });
+
+            const branchTableMarker = `| Branch | \`${branch}\` |`;
+            let matched = null;
+            let autofix = null;
+            for (const issue of issues) {
+              const fromBody = parseAutofix(issue.body);
+              if (fromBody && fromBody.branch === branch) {
+                matched = issue;
+                autofix = fromBody;
+                break;
+              }
+            }
+            // Fallback: older issues without a branch in the block but with the run-context branch row.
+            if (!matched) {
+              for (const issue of issues) {
+                if (issue.body && issue.body.includes(branchTableMarker)) {
+                  matched = issue;
+                  autofix = parseAutofix(issue.body);
+                  break;
+                }
+              }
+            }
+
+            if (!matched) {
+              core.info(`No open visual-regression-failure issue for branch ${branch}.`);
+              return;
+            }
+
+            // Derive a resolution-based verdict from how the PR changed files between fail and green.
+            // Precedence matters for a MIXED PR that BOTH edits product code AND updates baselines: a
+            // real code fix landed, so source changes win over baseline changes and it scores as a
+            // regression (keeps the ledger confusion matrix honest for the learning loop):
+            //   web/src code changed         -> regression (wins even if baselines also changed)
+            //   baselines changed, no source -> intended_change (deliberate re-baseline only)
+            //   neither                      -> noise (flake / quarantined / unrelated green)
+            let changedFiles = [];
+            for (const prRef of run.pull_requests || []) {
+              try {
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: prRef.number,
+                  per_page: 100,
+                });
+                changedFiles.push(...files.map((file) => file.filename));
+              } catch (error) {
+                core.warning(`Could not list files for PR #${prRef.number}: ${error.message}`);
+              }
+            }
+            // Forks often omit run.pull_requests - fall back to the open/merged PR for this head branch.
+            if (changedFiles.length === 0) {
+              try {
+                const prs = await github.paginate(github.rest.pulls.list, {
+                  owner,
+                  repo,
+                  state: 'all',
+                  head: `${owner}:${branch}`,
+                  per_page: 20,
+                });
+                const pr = prs.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+                if (pr) {
+                  const files = await github.paginate(github.rest.pulls.listFiles, {
+                    owner,
+                    repo,
+                    pull_number: pr.number,
+                    per_page: 100,
+                  });
+                  changedFiles.push(...files.map((file) => file.filename));
+                }
+              } catch (error) {
+                core.warning(`Could not resolve PR for branch ${branch}: ${error.message}`);
+              }
+            }
+
+            const baselineChanged = changedFiles.some((file) => /web\/e2e\/visual\/.*-snapshots\/.*\.png$/.test(file));
+            const sourceChanged = changedFiles.some((file) => file.startsWith('web/src/'));
+            // Source changes take precedence over baseline changes: a mixed PR (fix + re-baseline) is a
+            // real code fix and must be scored regression, not intended_change. intended_change is kept
+            // only for baseline-only PRs; source-only PRs stay regression; neither stays noise.
+            let verdict = 'noise';
+            if (sourceChanged) verdict = 'regression';
+            else if (baselineChanged) verdict = 'intended_change';
+
+            // Find the most recent FAILED Visual Regression run on this branch so we can recover the
+            // ledger rows it emitted (decision_ids alone cannot be ingested without their base rows).
+            let failingRunId = '';
+            try {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+                owner,
+                repo,
+                branch,
+                event: 'pull_request',
+                per_page: 100,
+              });
+              const failed = runs
+                .filter((candidate) => candidate.name === 'Visual Regression' && candidate.conclusion === 'failure')
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+              if (failed) failingRunId = String(failed.id);
+            } catch (error) {
+              core.warning(`Could not list prior failed runs: ${error.message}`);
+            }
+
+            const decisionIds = (autofix && Array.isArray(autofix.decision_ids)) ? autofix.decision_ids : [];
+            core.setOutput('issue_number', String(matched.number));
+            core.setOutput('branch', branch);
+            core.setOutput('verdict', verdict);
+            core.setOutput('decision_ids', decisionIds.join(' '));
+            core.setOutput('failing_run_id', failingRunId);
+            core.info(`Matched issue #${matched.number} (branch ${branch}); verdict=${verdict}; decisions=${decisionIds.length}.`);
+
+      - name: Checkout the resolved head branch
+        # Check out the PR head branch (not the default branch) so the verdict commit rides into the
+        # default branch when the PR merges. Best-effort: a deleted/merged branch simply skips ingestion.
+        if: steps.find.outputs.issue_number != '' && steps.find.outputs.decision_ids != ''
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.find.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Download failing-run ledger artifact
+        if: steps.checkout.outcome == 'success' && steps.find.outputs.failing_run_id != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          FAILING_RUN_ID: ${{ steps.find.outputs.failing_run_id }}
+        run: |
+          mkdir -p failing-artifact
+          gh run download "$FAILING_RUN_ID" \
+            --repo "$REPOSITORY" \
+            --name app-visual-diff \
+            --dir failing-artifact || echo "No app-visual-diff artifact found for run $FAILING_RUN_ID."
+
+      - name: Ingest resolution verdict into the ledger
+        if: steps.checkout.outcome == 'success' && steps.find.outputs.decision_ids != ''
+        continue-on-error: true
+        env:
+          VERDICT: ${{ steps.find.outputs.verdict }}
+          DECISION_IDS: ${{ steps.find.outputs.decision_ids }}
+          HEAD_REF: ${{ steps.find.outputs.branch }}
+        run: |
+          set -euo pipefail
+          export LEDGER=".github/triage-ledger.jsonl"
+          # Seed the canonical ledger with the rows the failing run emitted (append-only, dedup by id).
+          export ARTIFACT_LEDGER="$(find failing-artifact -name 'triage-ledger.jsonl' 2>/dev/null | head -n1 || true)"
+          python3 scripts/merge_ledger.py
+          for did in $DECISION_IDS; do
+            python3 scripts/visual-diff-triage.py ingest-verdict \
+              --ledger "$LEDGER" \
+              --decision-id "$did" \
+              --outcome "$VERDICT" \
+              --source resolution || echo "ingest-verdict failed for $did (non-fatal)."
+          done
+          if git diff --quiet -- "$LEDGER"; then
+            echo "No ledger changes to commit."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              add "$LEDGER"
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "Record resolution verdict (${VERDICT}) in triage ledger"
+          # Persist verdicts on the branch so they ride into the default branch when the PR merges.
+          git push origin "HEAD:${HEAD_REF}" || echo "Ledger push failed (non-fatal); verdict not persisted."
+
+      - name: Close the failure issue
+        if: steps.find.outputs.issue_number != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ISSUE_NUMBER: ${{ steps.find.outputs.issue_number }}
+          BRANCH: ${{ steps.find.outputs.branch }}
+          VERDICT: ${{ steps.find.outputs.verdict }}
+          SOURCE_RUN_ID: ${{ env.SOURCE_RUN_ID }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = Number(process.env.ISSUE_NUMBER);
+            const branch = process.env.BRANCH;
+            const verdict = process.env.VERDICT;
+            const runId = Number(process.env.SOURCE_RUN_ID);
+            const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
+
+            const comment = [
+              `✅ Visual Regression is green again on \`${branch}\`. Auto-closing this issue.`,
+              '',
+              `- Recovery run: [#${runId}](${run.html_url})`,
+              `- Commit: \`${run.head_sha}\``,
+              `- Resolution verdict written to the triage ledger: \`${verdict}\``,
+            ].join('\n');
+
+            await github.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body: comment });
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              state: 'closed',
+              state_reason: 'completed',
+            });
+            core.info(`Closed visual-regression-failure issue #${issueNumber} (verdict=${verdict}).`);

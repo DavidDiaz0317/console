@@ -1,0 +1,9 @@
+{
+  "expected": "regression",
+  "pr_title": "Tighten clusters card padding",
+  "changed_files": [
+    "web/src/components/clusters/Clusters.tsx"
+  ],
+  "note": "Card content looks clipped/overlapped after the change.",
+  "source": "synthetic-seed"
+}

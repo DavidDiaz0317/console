@@ -1,0 +1,9 @@
+{
+  "expected": "regression",
+  "pr_title": "Add dropdown to settings",
+  "changed_files": [
+    "web/src/components/settings/Settings.tsx"
+  ],
+  "note": "A menu appears rendered behind other content (z-index).",
+  "source": "synthetic-seed"
+}

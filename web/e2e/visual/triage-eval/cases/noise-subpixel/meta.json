@@ -1,0 +1,9 @@
+{
+  "expected": "noise",
+  "pr_title": "Bump dependency",
+  "changed_files": [
+    "package.json"
+  ],
+  "note": "No meaningful visual change.",
+  "source": "synthetic-seed"
+}
