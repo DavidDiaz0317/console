@@ -59,7 +59,7 @@ jobs:
             # Partial baselines = anomaly (some core baselines are missing/deleted). Make it LOUD rather
             # than silently downgrading to generate mode, which would mask a disabled visual sensor.
             # A tracked alarm issue is opened/updated below so the gap is not lost in a single run log.
-            echo "::error::Partial visual baselines detected (${CORE_COUNT}/${MIN_CORE_VISUAL_BASELINE_PNG_COUNT}). The visual-regression sensor may be silently disabled — regenerating, but this needs investigation."
+            echo "::error::Partial visual baselines detected (${CORE_COUNT}/${MIN_CORE_VISUAL_BASELINE_PNG_COUNT}). The visual-regression sensor may be silently disabled - regenerating, but this needs investigation."
           fi
           if [ "$GENERATE_BASELINES" = "true" ] || [ "$CORE_COUNT" -lt "$MIN_CORE_VISUAL_BASELINE_PNG_COUNT" ]; then
             echo "run_mode=generate" >> "$GITHUB_OUTPUT"
@@ -122,7 +122,7 @@ jobs:
                 '`web/e2e/visual/app-visual-regression.spec.ts-snapshots`.',
                 '',
                 'When fewer than the full set are committed, the Visual Regression workflow falls back to',
-                'baseline-generation mode and the compare+triage sensor is effectively **disabled** — a real',
+                'baseline-generation mode and the compare+triage sensor is effectively **disabled** - a real',
                 'UI break would not fail CI. Restore the missing baselines (or regenerate the full set) so the',
                 'sensor stays armed.',
                 '',
@@ -242,7 +242,7 @@ jobs:
       - name: Comment visual evidence package
         # Only attempt the PR comment from a same-repo PR. A pull_request run triggered from a fork
         # gets a read-only GITHUB_TOKEN, so createComment 403s; skip cleanly there (and never let a
-        # comment failure fail the gate — the Enforce step below is the real verdict).
+        # comment failure fail the gate - the Enforce step below is the real verdict).
         if: steps.visual_triage.outputs.outcome != '' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         continue-on-error: true
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -302,7 +302,11 @@ jobs:
             web/e2e/test-results/visual-triage/
             web/e2e/app-visual-report/
             /tmp/preview.log
-          retention-days: 14
+          # 90 = GitHub Actions platform max retention days. visual-regression-close-issue.yml recovers
+          # the ledger rows (and thus the resolution verdict) by re-downloading this app-visual-diff
+          # artifact when a PR greens later, so a shorter window silently drops the verdict for slow PRs.
+          # A PR that greens more than 90 days after failing is still a theoretical (accepted) gap.
+          retention-days: 90
           if-no-files-found: ignore
 
       - name: Enforce visual evidence handoff

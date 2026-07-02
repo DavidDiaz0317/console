@@ -5,8 +5,8 @@ name: Visual Triage Metrics Badge
 # a resolution/human verdict are scored; until enough verdicts accrue the badge reads "n/a".
 #
 # Secrets / config required:
-#   GIST_TOKEN     — PAT with gist scope (skips gracefully if absent)
-#   BADGE_GIST_ID  — repo variable: the Gist holding visual-triage-precision.json
+#   GIST_TOKEN     - PAT with gist scope (skips gracefully if absent)
+#   BADGE_GIST_ID  - repo variable: the Gist holding visual-triage-precision.json
 
 on:
   schedule:
@@ -67,7 +67,7 @@ jobs:
             let message;
             let color;
             if (precision === null || !enough) {
-              // Not enough labeled samples yet — do not imply a measured precision.
+              // Not enough labeled samples yet - do not imply a measured precision.
               message = enough ? 'n/a' : `gathering (${report.sample_size || 0} verdicts)`;
               color = 'lightgrey';
             } else {
@@ -88,7 +88,7 @@ jobs:
             const gistId = process.env.BADGE_GIST_ID;
             const gistToken = process.env.GIST_TOKEN;
             if (!gistToken || !gistId) {
-              console.log('No GIST_TOKEN or BADGE_GIST_ID — computed the badge but skipping the Gist write.');
+              console.log('No GIST_TOKEN or BADGE_GIST_ID - computed the badge but skipping the Gist write.');
               return;
             }
 

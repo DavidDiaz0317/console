@@ -1,0 +1,103 @@
+name: Visual Baseline Refresh
+
+# Scheduled anti-drift maintenance. Fonts, browser rendering, and sub-threshold pixel changes
+# accumulate over time; left unchecked they eventually trip the visual gate on unrelated PRs.
+# This job periodically regenerates the baselines on the default branch and, if anything moved,
+# opens a "refresh visual baselines" PR for human review rather than committing to main directly.
+
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  PREVIEW_PORT: '4173'
+  PREVIEW_WAIT_SECONDS: '30'
+  SNAPSHOT_PATHSPEC: 'web/e2e/visual/**/*-snapshots/*.png'
+
+jobs:
+  refresh-baselines:
+    name: Refresh visual baselines on default branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: web
+        run: npm run build
+
+      - name: Start preview server
+        working-directory: web
+        run: nohup npm run preview -- --port "$PREVIEW_PORT" > /tmp/preview.log 2>&1 &
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for preview server
+        run: timeout "$PREVIEW_WAIT_SECONDS" bash -c 'until curl -sf "http://localhost:${PREVIEW_PORT}" > /dev/null; do sleep 1; done'
+
+      - name: Regenerate baseline snapshots
+        working-directory: web
+        run: npm run test:visual:update
+        env:
+          CI: 'true'
+          APP_VISUAL_BASE_URL: 'http://localhost:4173'
+
+      - name: Open baseline refresh PR if baselines drifted
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REFRESH_BRANCH: chore/visual-baseline-refresh-${{ github.run_id }}
+        run: |
+          CHANGED=$(git status --porcelain -- "$SNAPSHOT_PATHSPEC")
+          if [ -z "$CHANGED" ]; then
+            echo "::notice::No baseline drift detected; nothing to refresh."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b "$REFRESH_BRANCH"
+          git add -- "$SNAPSHOT_PATHSPEC"
+          git commit -m "chore: refresh visual baselines"
+          git push origin "$REFRESH_BRANCH"
+          BODY_FILE="$(mktemp)"
+          {
+            echo "## Automated visual baseline refresh"
+            echo ""
+            echo "This PR was opened by the scheduled **Visual Baseline Refresh** workflow. It regenerates the"
+            echo "committed Linux visual baselines on the default branch to absorb accumulated font/render and"
+            echo "sub-threshold pixel drift that would otherwise eventually trip the visual-regression gate on"
+            echo "unrelated PRs."
+            echo ""
+            echo "### What to review"
+            echo "- These changes are **only** regenerated snapshot PNGs under \`web/e2e/visual/**/*-snapshots/\`."
+            echo "- Confirm the diffs are benign rendering drift (anti-aliasing, font hinting) and not a real UI regression."
+            echo "- If a diff looks like a genuine visual change, investigate before merging."
+            echo ""
+            echo "> Generated on the Linux CI runner, so the \`-linux\` baselines match the visual-regression job."
+          } > "$BODY_FILE"
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base "$DEFAULT_BRANCH" \
+            --head "$REFRESH_BRANCH" \
+            --title "chore: refresh visual baselines" \
+            --body-file "$BODY_FILE"
+          echo "::notice::Opened baseline refresh PR from ${REFRESH_BRANCH}."
