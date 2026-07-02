@@ -1,3 +1,4 @@
+// pipeline-test: comment-only negative control (type file, no visual output)
 export interface JaegerCollector {
     name: string
     status: 'Healthy' | 'Degraded' | 'Unhealthy'
