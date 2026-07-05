@@ -10,7 +10,9 @@ name: Visual Triage Metrics Badge
 
 on:
   schedule:
-    - cron: '37 * * * *'
+    # Daily at 06:37 UTC. The badge only changes as new resolution verdicts accrue, so an
+    # hourly cadence just added CI noise; once a day is plenty to keep the number fresh.
+    - cron: '37 6 * * *'
   workflow_dispatch:
 
 permissions:
