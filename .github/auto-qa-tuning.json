@@ -65,12 +65,10 @@
     "size_acceptance": {},
     "type_acceptance": {},
     "common_rejection_reasons": [
-      "- PR #59: Closing this stale demo PR as part of fork cleanup. Active implementation PRs remain open.",
-      "- PR #58: Closing this stale demo PR as part of fork cleanup. Active implementation PRs remain open.",
-      "- PR #57: Closing this stale demo PR as part of fork cleanup. Active implementation PRs remain open."
+      "- PR #46: Closing per author request."
     ],
     "best_change_type": "bug_fix",
-    "last_report_date": "2026-06-28"
+    "last_report_date": "2026-07-05"
   },
   "cncf_insights": {
     "last_scan_date": "2026-07-01",
