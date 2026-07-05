@@ -29,10 +29,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Pillow is only needed by the image-processing commands (triage / eval / self-test). Import it
+# lazily so the metrics / ingest-verdict commands - which only read the JSON ledger and never
+# touch PIL - can run in environments that do not install Pillow (e.g. the metrics-badge workflow).
 try:
     from PIL import Image, ImageChops, ImageDraw
-except ImportError as exc:  # pragma: no cover - exercised in CI setup failures
-    raise SystemExit("Pillow is required. Install it with: python -m pip install Pillow") from exc
+except ImportError:  # pragma: no cover - exercised when Pillow is absent
+    Image = ImageChops = ImageDraw = None  # type: ignore[assignment]
+
+PILLOW_IMPORT_HINT = "Pillow is required. Install it with: python -m pip install Pillow"
+
+
+def _require_pillow() -> None:
+    """Fail only when a command that actually needs Pillow is invoked without it."""
+    if Image is None:
+        raise SystemExit(PILLOW_IMPORT_HINT)
 
 AGENT_TRIAGE_CLASSIFICATION = "agent_triage_required"
 AGENT_TRIAGE_REASONING = (
@@ -527,6 +538,7 @@ def enrich_region(
 
 
 def triage(args: argparse.Namespace) -> int:
+    _require_pillow()
     repo_root = Path(args.repo_root).resolve()
     config = load_json(Path(args.config), {})
     thresholds = config.get("thresholds", {})
@@ -700,6 +712,7 @@ def make_fixture_pair(root: Path, name: str, kind: str) -> tuple[Path, Path]:
 
 
 def self_test(args: argparse.Namespace) -> int:
+    _require_pillow()
     with tempfile.TemporaryDirectory() as temp_dir_name:
         temp_dir = Path(temp_dir_name)
         repo = temp_dir / "repo"
@@ -923,6 +936,7 @@ def eval_cases(args: argparse.Namespace) -> int:
     Since semantic judgment is delegated to the issue-scanning agent, this gate only checks that
     noise cases are ignored and non-noise cases are packaged for agent triage.
     """
+    _require_pillow()
     config = load_json(Path(args.config), {})
     thresholds = config.get("thresholds", {})
     min_accuracy = float(args.min_accuracy) if args.min_accuracy else float(thresholds.get("eval_min_accuracy", 0.8))
