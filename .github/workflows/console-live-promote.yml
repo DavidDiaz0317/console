@@ -450,6 +450,34 @@ jobs:
         run: |
           set -euo pipefail
           export KUBECONFIG="$DEPLOY_KUBECONFIG"
+
+          rwo_pvcs="$(kubectl -n "$LIVE_NAMESPACE" get pvc -l "app.kubernetes.io/instance=$LIVE_RELEASE" -o json 2>/dev/null \
+            | jq -r '.items[] | select((.spec.accessModes // []) | index("ReadWriteMany") | not) | .metadata.name' || true)"
+          if [ -n "$rwo_pvcs" ]; then
+            echo "::warning::Found console-live PVC(s) incompatible with ReadWriteMany: $(echo "$rwo_pvcs" | tr '\n' ' ')"
+            echo "Scaling down $LIVE_DEPLOYMENT before PVC migration..."
+            kubectl -n "$LIVE_NAMESPACE" scale deploy "$LIVE_DEPLOYMENT" --replicas=0 2>/dev/null || true
+            kubectl -n "$LIVE_NAMESPACE" wait pod \
+              -l "app.kubernetes.io/instance=$LIVE_RELEASE,app.kubernetes.io/component!=pvc-migration" \
+              --for=delete --timeout=180s 2>/dev/null || true
+            kubectl -n "$LIVE_NAMESPACE" delete job "${LIVE_DEPLOYMENT}-pvc-migration" --ignore-not-found=true 2>/dev/null || true
+
+            for pvc in $rwo_pvcs; do
+              echo "::warning::Deleting incompatible PVC '$pvc'; Helm will recreate it as ReadWriteMany."
+              kubectl -n "$LIVE_NAMESPACE" delete pvc "$pvc" --wait=false 2>/dev/null || true
+              if ! kubectl -n "$LIVE_NAMESPACE" wait --for=delete "pvc/$pvc" --timeout=180s 2>/dev/null; then
+                echo "::warning::PVC '$pvc' is still terminating after scale-down; clearing finalizers."
+                kubectl -n "$LIVE_NAMESPACE" patch pvc "$pvc" --type=merge -p '{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+                if ! kubectl -n "$LIVE_NAMESPACE" wait --for=delete "pvc/$pvc" --timeout=60s 2>/dev/null; then
+                  echo "::error::PVC '$pvc' could not be deleted; console-live deployment cannot proceed."
+                  exit 1
+                fi
+              fi
+            done
+          else
+            echo "No console-live RWO PVC migration needed."
+          fi
+
           prod_values="$RUNNER_TEMP/console-live/prod-values.yaml"
           promote_timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           cat > "$prod_values" <<EOF
