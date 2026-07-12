@@ -64,11 +64,9 @@
     "best_pr_size": "S",
     "size_acceptance": {},
     "type_acceptance": {},
-    "common_rejection_reasons": [
-      "- PR #46: Closing per author request."
-    ],
+    "common_rejection_reasons": [],
     "best_change_type": "bug_fix",
-    "last_report_date": "2026-07-05"
+    "last_report_date": "2026-07-12"
   },
   "cncf_insights": {
     "last_scan_date": "2026-07-08",
