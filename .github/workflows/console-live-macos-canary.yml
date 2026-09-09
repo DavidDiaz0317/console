@@ -28,7 +28,8 @@ concurrency:
 
 env:
   LIVE_URL: ${{ vars.CONSOLE_LIVE_URL || 'https://console-live.kubestellar.io' }}
-  LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '3000' }}
+  LIVE_CANARY_ROUTE_DELAY_MS: ${{ vars.LIVE_CANARY_ROUTE_DELAY_MS || '15000' }}
+  LIVE_CANARY_MIN_ROUTE_DELAY_MS: '15000'
   CONSOLE_LIVE_TEST_SESSION_COUNT: ${{ vars.CONSOLE_LIVE_MACOS_TEST_SESSION_COUNT || '16' }}
   CONSOLE_LIVE_TEST_USER_ID: ${{ secrets.CONSOLE_LIVE_TEST_USER_ID || vars.CONSOLE_LIVE_TEST_USER_ID }}
   CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ secrets.CONSOLE_LIVE_TEST_GITHUB_LOGIN || vars.CONSOLE_LIVE_TEST_GITHUB_LOGIN || 'DavidDiaz0317' }}
@@ -45,6 +46,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Normalize live canary pacing
+        shell: bash
+        run: |
+          set -euo pipefail
+          route_delay="${LIVE_CANARY_ROUTE_DELAY_MS:-15000}"
+          if ! [[ "$route_delay" =~ ^[0-9]+$ ]] || [ "$route_delay" -lt "$LIVE_CANARY_MIN_ROUTE_DELAY_MS" ]; then
+            route_delay="$LIVE_CANARY_MIN_ROUTE_DELAY_MS"
+          fi
+          echo "LIVE_CANARY_ROUTE_DELAY_MS=$route_delay" >> "$GITHUB_ENV"
+          echo "LIVE_CANARY_ROUTE_DELAY_MS=$route_delay" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -126,6 +138,7 @@ jobs:
           CONSOLE_LIVE_TEST_GITHUB_LOGIN: ${{ env.CONSOLE_LIVE_TEST_GITHUB_LOGIN }}
           CONSOLE_LIVE_TEST_USER_ROLE: ${{ env.CONSOLE_LIVE_TEST_USER_ROLE }}
           LIVE_CANARY_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_ROUTE_DELAY_MS }}
+          LIVE_CANARY_MIN_ROUTE_DELAY_MS: ${{ env.LIVE_CANARY_MIN_ROUTE_DELAY_MS }}
           MACOS_POPUP_LITMUS_FORCE_FAILURE: ${{ env.MACOS_POPUP_LITMUS_FORCE_FAILURE }}
         run: npm run test:visual:macos-popup
 

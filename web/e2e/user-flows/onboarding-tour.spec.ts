@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test'
 import {
-  setupDemoMode,
   setupDemoAndNavigate,
   ELEMENT_VISIBLE_TIMEOUT_MS,
   NETWORK_IDLE_TIMEOUT_MS,
@@ -127,14 +126,23 @@ test.describe('Onboarding Tour', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {})
 
-    const skipBtn = page.getByRole('button', { name: /skip|dismiss|close/i })
-    const hasSkip = await skipBtn.first().isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
+    const tourContainer = page.getByTestId('tour-tooltip')
+      .or(page.locator('[class*="tour"], [class*="joyride"], [class*="onboarding"]'))
+      .first()
+    const hasTour = await tourContainer.isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
+    if (!hasTour) {
+      test.skip()
+      return
+    }
+
+    const skipBtn = tourContainer.getByRole('button', { name: /skip|dismiss|close/i })
+    const hasSkip = await skipBtn.isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
     if (!hasSkip) {
       test.skip()
       return
     }
 
-    await skipBtn.first().click()
+    await skipBtn.click()
 
     const tooltip = page.locator('[class*="tour"], [class*="joyride"], [class*="onboarding"]')
     await expect(tooltip).not.toBeVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS })
@@ -153,10 +161,16 @@ test.describe('Onboarding Tour', () => {
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {})
 
     // Dismiss tour via skip or complete it
-    const skipBtn = page.getByRole('button', { name: /skip|dismiss|close|done|finish/i })
-    const hasSkip = await skipBtn.first().isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
-    if (hasSkip) {
-      await skipBtn.first().click()
+    const tourContainer = page.getByTestId('tour-tooltip')
+      .or(page.locator('[class*="tour"], [class*="joyride"], [class*="onboarding"]'))
+      .first()
+    const hasTour = await tourContainer.isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
+    if (hasTour) {
+      const skipBtn = tourContainer.getByRole('button', { name: /skip|dismiss|close|done|finish/i })
+      const hasSkip = await skipBtn.isVisible({ timeout: TOUR_TOOLTIP_TIMEOUT_MS }).catch(() => false)
+      if (hasSkip) {
+        await skipBtn.click()
+      }
     }
 
     const tourFlag = await page.evaluate((key) => localStorage.getItem(key), TOUR_COMPLETED_KEY)

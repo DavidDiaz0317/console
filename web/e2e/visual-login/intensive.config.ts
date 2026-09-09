@@ -14,6 +14,7 @@ const hasExternalBaseUrl = Boolean(
   || process.env.LIVE_PRODUCTION_CONSOLE_URL
   || process.env.SELF_HOSTED_CONSOLE_URL,
 )
+const isLiveSiteRun = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
 
 export default defineConfig({
   testDir: '.',
@@ -21,7 +22,7 @@ export default defineConfig({
   expect: { timeout: isCI ? 15_000 : 10_000 },
   fullyParallel: false,
   forbidOnly: isCI,
-  retries: isCI ? 1 : 0,
+  retries: isLiveSiteRun ? 0 : isCI ? 1 : 0,
   workers: 1,
   reporter: isCI
     ? [

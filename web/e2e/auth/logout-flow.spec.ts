@@ -10,11 +10,16 @@ const LOGOUT_TIMEOUT_MS = 15_000
 const STORAGE_TOKEN_KEY = 'token'
 const STORAGE_HAS_SESSION_KEY = 'kc-has-session'
 const STORAGE_AGENT_TOKEN_KEY = 'kc-agent-token'
+const STORAGE_DEMO_MODE_KEY = 'kc-demo-mode'
+const STORAGE_AUTH_SEEDED_KEY = 'kc-e2e-auth-seeded'
+const AUTH_TOKEN_SYNC_KEY = 'kc-auth-token-sync'
 const TEST_TOKEN = 'test-jwt-logout-token'
 
 async function seedAuthState(page: Page, token: string = TEST_TOKEN): Promise<void> {
-  await page.addInitScript((t) => {
-    localStorage.setItem('token', t)
+  await page.addInitScript(({ markerKey, tokenValue }) => {
+    if (localStorage.getItem(markerKey) === 'true') return
+    localStorage.setItem(markerKey, 'true')
+    localStorage.setItem('token', tokenValue)
     localStorage.setItem('kc-has-session', 'true')
     localStorage.setItem('demo-user-onboarded', 'true')
     localStorage.setItem('kc-agent-setup-dismissed', 'true')
@@ -22,7 +27,7 @@ async function seedAuthState(page: Page, token: string = TEST_TOKEN): Promise<vo
       available: true,
       timestamp: Date.now(),
     }))
-  }, token)
+  }, { markerKey: STORAGE_AUTH_SEEDED_KEY, tokenValue: token })
 }
 
 async function mockLogoutEndpoint(page: Page): Promise<() => { captured: boolean; authHeader: string | null }> {
@@ -40,6 +45,33 @@ async function mockLogoutEndpoint(page: Page): Promise<() => { captured: boolean
   })
 
   return () => ({ captured, authHeader })
+}
+
+async function confirmSignOut(page: Page): Promise<void> {
+  await page.getByRole('menuitem', { name: /sign out/i }).click()
+  const dialog = page.getByRole('dialog').last()
+  await expect(dialog).toBeVisible({ timeout: ELEMENT_VISIBLE_TIMEOUT_MS })
+  await dialog.getByRole('button', { name: /log out|logout|actions\.logout/i }).click()
+}
+
+async function mockOAuthConfigured(page: Page): Promise<void> {
+  await page.unroute('**/health')
+  await page.route('**/health', (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname !== '/health') return route.fallback()
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'ok',
+        version: 'dev',
+        oauth_configured: true,
+        in_cluster: false,
+        no_local_agent: true,
+        install_method: 'dev',
+      }),
+    })
+  })
 }
 
 test.describe('Logout flow (mocked backend)', () => {
@@ -67,7 +99,7 @@ test.describe('Logout flow (mocked backend)', () => {
     await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible({
       timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
     })
-    await page.getByRole('button', { name: /sign out/i }).click()
+    await confirmSignOut(page)
 
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
 
@@ -99,7 +131,7 @@ test.describe('Logout flow (mocked backend)', () => {
 
     await page.getByTestId('navbar-profile-btn').click()
     await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible()
-    await page.getByRole('button', { name: /sign out/i }).click()
+    await confirmSignOut(page)
 
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
 
@@ -107,8 +139,9 @@ test.describe('Logout flow (mocked backend)', () => {
     expect(agentToken).toBeNull()
   })
 
-  test('after sign-out, navigating to / stays on /login', async ({ page }) => {
+  test('after sign-out with demo disabled, navigating to / stays on /login', async ({ page }) => {
     await mockLogoutEndpoint(page)
+    await mockOAuthConfigured(page)
 
     await seedAuthState(page)
     await page.goto('/')
@@ -119,8 +152,19 @@ test.describe('Logout flow (mocked backend)', () => {
 
     await page.getByTestId('navbar-profile-btn').click()
     await expect(page.getByTestId('navbar-profile-dropdown')).toBeVisible()
-    await page.getByRole('button', { name: /sign out/i }).click()
+    await confirmSignOut(page)
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })
+    await expect.poll(
+      () => page.evaluate((k) => ({
+        local: localStorage.getItem(k),
+        session: sessionStorage.getItem(k),
+      }), STORAGE_TOKEN_KEY),
+      { timeout: ELEMENT_VISIBLE_TIMEOUT_MS },
+    ).toEqual({ local: null, session: null })
+
+    // The frontend can intentionally fall back to demo mode when no OAuth
+    // backend is available. This case is specifically the protected-login path.
+    await page.evaluate((k) => localStorage.setItem(k, 'false'), STORAGE_DEMO_MODE_KEY)
 
     // Navigate to protected root — must be redirected back to /login
     await page.goto('/')
@@ -136,15 +180,17 @@ test.describe('Logout flow (mocked backend)', () => {
       timeout: ELEMENT_VISIBLE_TIMEOUT_MS,
     })
 
-    // Simulate another tab removing the token. Because page2 is in the same
-    // browser context, localStorage is shared and the removal fires a
-    // StorageEvent on page — triggering the cross-tab logout handler in auth.tsx
-    // which sets window.location.href = '/login'.
+    // Simulate another tab clearing auth through the app's auth-token sync key.
+    // Real session tokens now live in expiring browser storage wrappers, so the
+    // cross-tab logout listener watches kc-auth-token-sync instead of the legacy
+    // plain localStorage token entry.
     const page2 = await context.newPage()
     await mockApiFallback(page2)
     await page2.goto('/login')
     await page2.waitForLoadState('domcontentloaded')
-    await page2.evaluate((k) => localStorage.removeItem(k), STORAGE_TOKEN_KEY)
+    await page2.evaluate((k) => {
+      localStorage.setItem(k, JSON.stringify({ state: 'cleared', ts: Date.now() }))
+    }, AUTH_TOKEN_SYNC_KEY)
     await page2.close()
 
     await expect(page).toHaveURL(/\/login/, { timeout: LOGOUT_TIMEOUT_MS })

@@ -507,13 +507,21 @@ export async function mockApiFallback(page: Page) {
   // which is a different origin — not caught by the same-origin **/api/** pattern.
   // In CI (vite preview on localhost:4173), these requests escape route mocking
   // and hit the real server, which may return 503, generating console errors.
-  await page.route('https://console.kubestellar.io/**', (route) =>
-    route.fulfill({
+  // If the test itself is running against console.kubestellar.io, this pattern
+  // also matches the document and assets. Only mock API paths; let the app
+  // shell load normally.
+  await page.route('https://console.kubestellar.io/**', (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (!url.pathname.startsWith('/api/')) {
+      return route.fallback()
+    }
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({}),
     })
-  )
+  })
 }
 
 /**

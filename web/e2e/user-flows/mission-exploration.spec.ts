@@ -24,15 +24,25 @@ test.describe('Mission Exploration — "Find and use a mission"', () => {
     const hasBrowser = await browser.isVisible({ timeout: MISSION_LOAD_TIMEOUT_MS }).catch(() => false)
     if (hasBrowser) {
       await expect(browser).toBeVisible()
-    } else {
-      // Mission browser may open via a button click
-      const browseBtn = page.locator('button:has-text("Browse"), button:has-text("Mission"), button:has-text("Explore")')
-      const hasBtn = await browseBtn.first().isVisible({ timeout: 3_000 }).catch(() => false)
-      if (hasBtn) {
-        await browseBtn.first().click()
-        await expect(page.getByTestId('mission-browser')).toBeVisible({ timeout: MISSION_LOAD_TIMEOUT_MS })
-      }
+      return
     }
+
+    // Mission browser may open via a route-local button. Keep this scoped to
+    // page content so navbar AI controls do not satisfy the selector.
+    const missionRoute = page.locator('main')
+    const browseBtn = missionRoute.getByRole('button', {
+      name: /^(Browse|Browse Community Missions|Browse Missions|Explore Missions|Mission Browser|Open Mission Browser)/i,
+    }).first()
+    const hasBtn = await browseBtn.isVisible({ timeout: 3_000 }).catch(() => false)
+    if (hasBtn) {
+      await browseBtn.click()
+      await expect(page.getByTestId('mission-browser')).toBeVisible({ timeout: MISSION_LOAD_TIMEOUT_MS })
+      return
+    }
+
+    await expect(browser, 'mission browser should be visible or have a route-local opener').toBeVisible({
+      timeout: MISSION_LOAD_TIMEOUT_MS,
+    })
   })
 
   test('mission search input is functional', async ({ page }) => {

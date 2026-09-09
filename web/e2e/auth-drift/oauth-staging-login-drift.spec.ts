@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page, type TestInfo } from '@playwright/test'
 
 const OAUTH_LOGIN_URL = process.env.AUTH_DRIFT_LOGIN_URL || 'http://127.0.0.1:4176/login'
 const USE_EXTERNAL_OAUTH_TARGET = !!process.env.AUTH_DRIFT_LOGIN_URL
@@ -132,31 +132,66 @@ async function openOAuthLoginPage(page: Page, request: APIRequestContext): Promi
   await waitForLoginAssets(page)
 }
 
+async function attachLoginCardScreenshot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  const loginCard = page.locator('[data-testid="login-page"] .glass')
+  await testInfo.attach(name, {
+    body: await loginCard.screenshot(),
+    contentType: 'image/png',
+  })
+}
+
+async function expectOAuthLoginCardContract(page: Page): Promise<void> {
+  const loginCard = page.locator('[data-testid="login-page"] .glass')
+  const logo = page.getByAltText(/KubeStellar logo/i)
+  const loginButton = page.getByTestId('github-login-button')
+  const welcomeHeading = page.getByTestId('login-welcome-heading')
+
+  await expect(loginCard).toBeVisible()
+  await expect(logo).toBeVisible()
+  await expect(welcomeHeading).toBeVisible()
+  await expect(loginButton).toBeVisible()
+  await expect(loginButton).toBeEnabled()
+  await expect(loginButton).toContainText(/Continue with GitHub/i)
+
+  await expect(page.getByTestId('oauth-setup-notice')).toHaveCount(0)
+  await expect(page.getByTestId('github-setup-button')).toHaveCount(0)
+  await expect(page.getByTestId('demo-mode-button')).toHaveCount(0)
+  await expect(page.getByText('Hosted demo', { exact: true })).toHaveCount(0)
+  await expect(page.getByText(/Real GitHub sign-in is not available on the hosted demo/i)).toHaveCount(0)
+  await expect(page.getByText(/By signing in, you agree to our/i)).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Terms of Service/i })).toHaveCount(0)
+
+  const cardBox = await loginCard.boundingBox()
+  const logoBox = await logo.boundingBox()
+  const headingBox = await welcomeHeading.boundingBox()
+  const buttonBox = await loginButton.boundingBox()
+
+  expect(cardBox).not.toBeNull()
+  expect(logoBox).not.toBeNull()
+  expect(headingBox).not.toBeNull()
+  expect(buttonBox).not.toBeNull()
+
+  expect(logoBox!.y).toBeGreaterThanOrEqual(cardBox!.y)
+  expect(headingBox!.y).toBeGreaterThan(logoBox!.y)
+  expect(buttonBox!.y).toBeGreaterThan(headingBox!.y)
+  expect(buttonBox!.x).toBeGreaterThanOrEqual(cardBox!.x)
+  expect(buttonBox!.x + buttonBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width)
+}
+
 test.describe('OAuth staging login UI drift', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('OAuth staging login page renders stable GitHub login UI', async ({ page, request }) => {
+  test('OAuth staging login page renders stable GitHub login UI', async ({ page, request }, testInfo) => {
     await openOAuthLoginPage(page, request)
 
     await expect(page).toHaveTitle(/KubeStellar Console/i)
     await expect(page.getByRole('heading', { name: /^KubeStellar$/i })).toBeVisible()
 
-    const loginButton = page.getByTestId('github-login-button')
-    await expect(loginButton).toBeVisible()
-    await expect(loginButton).toBeEnabled()
-    await expect(loginButton).toContainText(/Continue with GitHub/i)
-
-    await expect(page.getByTestId('oauth-setup-notice')).toHaveCount(0)
-    await expect(page.getByTestId('github-setup-button')).toHaveCount(0)
-    await expect(page.getByTestId('demo-mode-button')).toHaveCount(0)
-    await expect(page.getByText('Hosted demo', { exact: true })).toHaveCount(0)
-    await expect(page.getByText(/Real GitHub sign-in is not available on the hosted demo/i)).toHaveCount(0)
-
-    const loginCard = page.locator('[data-testid="login-page"] .glass')
-    await expect(loginCard).toHaveScreenshot('oauth-login-card.png')
+    await expectOAuthLoginCardContract(page)
+    await attachLoginCardScreenshot(page, testInfo, 'oauth-login-card-current')
   })
 
-  test('OAuth staging login card fits mobile viewport', async ({ page, request }) => {
+  test('OAuth staging login card fits mobile viewport', async ({ page, request }, testInfo) => {
     await page.setViewportSize(MOBILE_VIEWPORT)
     await openOAuthLoginPage(page, request)
 
@@ -173,7 +208,8 @@ test.describe('OAuth staging login UI drift', () => {
     expect(box!.y).toBeGreaterThanOrEqual(0)
     expect(box!.y + box!.height).toBeLessThanOrEqual(MOBILE_VIEWPORT.height)
 
-    await expect(loginCard).toHaveScreenshot('oauth-login-card-mobile.png')
+    await expectOAuthLoginCardContract(page)
+    await attachLoginCardScreenshot(page, testInfo, 'oauth-login-card-mobile-current')
   })
 
   test('OAuth staging login button points at backend auth route', async ({ page, request }) => {

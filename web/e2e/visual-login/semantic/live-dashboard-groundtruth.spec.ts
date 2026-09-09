@@ -17,6 +17,7 @@ import {
   establishLiveCanarySession,
   gotoLiveCanaryRoute,
   liveCanaryUrl,
+  liveRateLimitDataLossSkipReason,
   writeLiveSiteReport,
 } from '../helpers/liveSiteAssertions'
 
@@ -35,6 +36,8 @@ const liveDashboardExpectedConsoleNoise = [
 
 test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @groundtruth @invariant:live-dashboard-groundtruth-match', async ({ page }, testInfo) => {
   invariantIds.forEach(id => annotateLiveInvariant(testInfo, id))
+  const rateLimitSkipReason = liveRateLimitDataLossSkipReason()
+  if (rateLimitSkipReason) test.skip(true, rateLimitSkipReason)
   const collectors = installEvidenceCollectors(page)
   const baseUrl = liveCanaryUrl()
   const liveChecksRequired = process.env.LIVE_SITE_TESTS === 'true' || process.env.LIVE_CLUSTER_TESTS === 'true'
@@ -65,7 +68,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
     const response = await gotoLiveCanaryRoute(page, baseUrl, '/')
     expect(response?.ok(), 'live canary Dashboard route must be reachable').toBeTruthy()
     await dismissOptionalLiveOverlays(page)
-    await assertLiveDashboardShell(page)
+    await assertLiveDashboardShell(page, '/')
     await assertGroundtruthFields(page, {
       'dashboard-clusters-total': groundTruth.contexts.reachable,
       'dashboard-healthy-clusters': groundTruth.contexts.reachable,
@@ -89,7 +92,7 @@ test('live dashboard stats match Kubernetes groundtruth @intensive @live-site @g
     })
     await assertLiveLayoutStable(page)
     await assertNoVisibleTextCollisions(page)
-    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i])
+    await assertNoUnexpectedLiveNetworkErrors(collectors, baseUrl, [/\/api\/agent\/auto-update\/status$/i], '/')
     await assertNoCriticalRuntimeErrors(collectors, liveDashboardExpectedConsoleNoise)
 
     writeLiveSiteReport({

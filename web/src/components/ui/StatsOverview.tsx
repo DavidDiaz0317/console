@@ -169,6 +169,10 @@ const HEATMAP_HIGH_CONTRAST_TEXT_CLASSES = {
 export interface StatBlockValue {
   value: string | number
   sublabel?: string
+  /** Optional machine-readable semantic value for live canary groundtruth checks. */
+  groundtruthField?: string
+  /** Optional semantic values when one visible card represents multiple live facts. */
+  groundtruthFields?: Record<string, string | number | null | undefined>
   onClick?: () => void
   isClickable?: boolean
   /** Whether this stat uses demo/mock data (shows yellow border + badge) */
@@ -286,6 +290,10 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
   const progressMaxLabel = hasExplicitMax && !isPercentageStat
     ? (data.format ? data.format(data.max) : data.max)
     : null
+  const groundtruthFields = {
+    ...(data.groundtruthField ? { [data.groundtruthField]: rawValue } : {}),
+    ...(data.groundtruthFields || {}),
+  }
 
   // Sparkline: fall back to numeric if not enough data yet.
   // Progress-style modes also fall back when the stat has no real denominator,
@@ -318,6 +326,12 @@ const StatBlock = memo(function StatBlock({ block, data, hasData, isLoading, his
         onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); data.onClick?.() } },
       } : {})}
     >
+      {Object.entries(groundtruthFields).map(([field, value]) => (
+        <span key={field} className="sr-only" data-groundtruth-field={field}>
+          {value ?? ''}
+        </span>
+      ))}
+
       {/* Demo badge */}
       {isDemo && (
         <span className="absolute -top-1 -right-1" title="Demo data">
