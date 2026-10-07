@@ -421,7 +421,7 @@ export function Settings() {
   return (
     <div
       data-testid="settings-page"
-      className="pt-16 max-w-6xl mx-auto flex gap-6"
+      className="pt-16 max-w-6xl mx-auto flex gap-6 bg-pink-600"
     >
       {/* Settings restored toast */}
       {showRestoredToast && (
